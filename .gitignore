@@ -1,0 +1,27 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+.DS_Store
+
+# Bun
+bun.lockb
+
+# Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Gradle / Android
+.gradle/
+**/build/
+
+# Local protocol scratch output
+*.local.anky
+tmp/

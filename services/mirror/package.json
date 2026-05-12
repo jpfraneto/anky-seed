@@ -1,0 +1,21 @@
+{
+  "name": "@anky/mirror",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anky/protocol": "file:../../protocol/implementations/typescript",
+    "@noble/curves": "^2.0.1",
+    "bs58": "^6.0.0",
+    "hono": "^4.10.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}
