@@ -340,7 +340,7 @@ private struct PrivacyPolicyPage: View {
                 Text("questions, deletion requests, and privacy reports")
                     .youCaption()
 
-                Text("jpfraneto@gmail.com")
+                Text("jp@anky.app")
                     .font(.system(size: 14, design: .monospaced))
                     .foregroundStyle(YouPalette.paper)
                     .textSelection(.enabled)

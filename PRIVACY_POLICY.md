@@ -52,4 +52,4 @@ Anky does claim the default direction of the app is local-first: the `.anky` fil
 
 ## Contact
 
-Questions, deletion requests, and privacy reports: jpfraneto@gmail.com
+Questions, deletion requests, and privacy reports: jp@anky.app
