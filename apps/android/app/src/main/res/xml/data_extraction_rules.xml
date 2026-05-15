@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="Anky/identity.enc" />
+        <exclude domain="file" path="Anky/identity.iv" />
+        <exclude domain="sharedpref" path="inc.anky.android.identity.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="Anky/identity.enc" />
+        <exclude domain="file" path="Anky/identity.iv" />
+        <exclude domain="sharedpref" path="inc.anky.android.identity.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

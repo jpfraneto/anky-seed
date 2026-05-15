@@ -25,6 +25,10 @@ DerivedData/
 # Gradle / Android
 .gradle/
 **/build/
+**/local.properties
+**/keystore.properties
+*.jks
+*.keystore
 
 # Local protocol scratch output
 *.local.anky

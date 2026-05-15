@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="file" path="Anky/identity.enc" />
+    <exclude domain="file" path="Anky/identity.iv" />
+    <exclude domain="sharedpref" path="inc.anky.android.identity.preferences_pb" />
+</full-backup-content>

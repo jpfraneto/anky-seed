@@ -3,11 +3,7 @@ import XCTest
 
 final class ReconstructionTests: XCTestCase {
     func testParserKeepsAcceptedSpaces() throws {
-        let parsed = try AnkyParser.parse("""
-        1770000000000 h
-        0042
-        8000
-        """)
+        let parsed = try AnkyParser.parse("1770000000000 h\n0042  \n8000")
 
         XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "h ")
     }

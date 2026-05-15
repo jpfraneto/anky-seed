@@ -1,0 +1,19 @@
+# Copy this file to apps/android/local.properties for local release builds.
+# Do not commit local.properties, keystores, passwords, or service account files.
+
+# Android SDK path. Android Studio usually manages this automatically.
+# sdk.dir=/Users/you/Library/Android/sdk
+
+# Release versioning. versionCode must increase for every Play upload.
+ANKY_ANDROID_VERSION_CODE=1
+ANKY_ANDROID_VERSION_NAME=0.1.0
+
+# Google Play upload key used to sign Android App Bundles before upload.
+# Store the keystore outside this repository.
+ANKY_ANDROID_KEYSTORE_FILE=/absolute/path/to/anky-upload-key.jks
+ANKY_ANDROID_KEYSTORE_PASSWORD=replace-me
+ANKY_ANDROID_KEY_ALIAS=anky-upload
+ANKY_ANDROID_KEY_PASSWORD=replace-me
+
+# Android public SDK key only. Never use RevenueCat secret keys in the app.
+ANKY_REVENUECAT_ANDROID_PUBLIC_KEY=
