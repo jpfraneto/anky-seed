@@ -15,5 +15,6 @@ export async function spendCredit(input: {
     idempotencyKey: input.idempotencyKey,
     secretKey: input.env.revenueCatSecretKey,
     projectId: input.env.revenueCatProjectId,
+    creditCode: input.env.revenueCatCreditCode,
   });
 }

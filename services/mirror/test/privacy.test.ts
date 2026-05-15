@@ -23,6 +23,8 @@ describe("privacy logging", () => {
     expect(output).not.toContain("hello private writing");
     expect(output).not.toContain("You are Anky");
     expect(output).not.toContain("Here is what I saw");
+    expect(output).not.toContain("seed phrase");
+    expect(output).not.toContain("private key");
     expect(output).toContain("anky_hash");
   });
 

@@ -60,6 +60,70 @@ describe("POST /anky", () => {
     expect(json.error.code).toBe("INVALID_ANKY");
   });
 
+  test("rejects bodies over the configured size limit without echoing content", async () => {
+    const body = new TextEncoder().encode("1770000000000 secret-too-large-writing\n8000");
+    const app = createApp({
+      env: loadEnv({
+        ANKY_DEV_BYPASS_CREDITS: "true",
+        ANKY_DEV_MOCK_MIRROR: "true",
+        ANKY_MAX_BODY_BYTES: "10",
+      }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: {
+        ...(await signedHeaders(body)),
+        "Content-Length": String(body.byteLength),
+      },
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(413);
+    expect(text).toContain("BODY_TOO_LARGE");
+    expect(text).not.toContain("secret-too-large-writing");
+  });
+
+  test("rejects stale request times", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: loadEnv({
+        ANKY_DEV_BYPASS_CREDITS: "true",
+        ANKY_DEV_MOCK_MIRROR: "true",
+        REQUEST_TIME_TOLERANCE_MS: "1000",
+      }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {}, String(Date.now() - 5000)),
+      body,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("INVALID_SIGNATURE");
+  });
+
+  test("rejects invalid signatures", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+    });
+    const headers = await signedHeaders(body);
+    headers["X-Anky-Signature"] = bs58.encode(crypto.getRandomValues(new Uint8Array(64)));
+
+    const response = await app.request("/anky", { method: "POST", headers, body });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("INVALID_SIGNATURE");
+  });
+
   test("rejects incomplete ankys", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
     const app = createApp({
@@ -91,15 +155,34 @@ describe("POST /anky", () => {
     expect(response.status).toBe(401);
     expect(json.error.code).toBe("MISSING_SIGNATURE");
   });
+
+  test("fails closed when RevenueCat is not configured", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(json.error.code).toBe("MIRROR_FAILED");
+  });
 });
 
 async function signedHeaders(
   body: Uint8Array,
   extra: Record<string, string> = {},
+  requestTimeOverride?: string,
 ): Promise<Record<string, string>> {
   const secretKey = crypto.getRandomValues(new Uint8Array(32));
   const publicKey = ed25519.getPublicKey(secretKey);
-  const requestTime = String(Date.now());
+  const requestTime = requestTimeOverride ?? String(Date.now());
   const bodySha256 = await sha256Hex(body);
   const message = canonicalAnkyPostMessage({ requestTime, bodySha256 });
   const signature = ed25519.sign(new TextEncoder().encode(message), secretKey);

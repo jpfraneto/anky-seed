@@ -13,10 +13,14 @@ coverage/
 # Bun
 bun.lockb
 
+# SwiftPM
+.build/
+
 # Xcode
 DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+*.xcuserstate
 
 # Gradle / Android
 .gradle/

@@ -3,6 +3,7 @@ export type SafeLogFields = {
   publicKeyHash?: string;
   ankyHash?: string;
   client?: string;
+  durationMs?: number;
   statusCode: number;
   latencyMs: number;
   modelProvider?: "openrouter" | "mock" | "none";

@@ -24,6 +24,7 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
     let ankyHash: string | undefined;
     let keyHash: string | undefined;
     let client: string | undefined;
+    let durationMs: number | undefined;
     let creditResult: string | undefined;
     let modelProvider: "openrouter" | "mock" | "none" = "none";
 
@@ -32,6 +33,14 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
       if (!contentType.toLowerCase().startsWith("text/plain")) {
         statusCode = 400;
         return errorJson(c, "INVALID_ANKY");
+      }
+      if (requestBodyTooLarge(c.req.header("content-length"), env.maxBodyBytes)) {
+        statusCode = 413;
+        return errorJson(c, "BODY_TOO_LARGE");
+      }
+      if (env.mirrorDisabled) {
+        statusCode = 500;
+        return errorJson(c, "MIRROR_FAILED");
       }
 
       const publicKey = c.req.header("x-anky-public-key");
@@ -54,6 +63,10 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
       }
 
       const bodyBytes = new Uint8Array(await c.req.arrayBuffer());
+      if (bodyBytes.byteLength > env.maxBodyBytes) {
+        statusCode = 413;
+        return errorJson(c, "BODY_TOO_LARGE");
+      }
       ankyHash = await sha256Hex(bodyBytes);
       const message = canonicalAnkyPostMessage({ requestTime, bodySha256: ankyHash });
       if (!verifySolanaSignature({ publicKey, signature, message })) {
@@ -71,6 +84,7 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
         statusCode = 400;
         return errorJson(c, "INCOMPLETE_RITUAL");
       }
+      durationMs = validation.durationMs;
 
       const idempotencyKey = await sha256Hex(`${publicKey}:${ankyHash}`);
       if (inFlight.has(idempotencyKey)) {
@@ -83,8 +97,12 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
         const credit = await spendCredit({ env, publicKey, idempotencyKey });
         creditResult = credit.result;
         if (!credit.ok) {
-          statusCode = 402;
-          return errorJson(c, "INSUFFICIENT_CREDITS");
+          if (credit.result === "insufficient") {
+            statusCode = 402;
+            return errorJson(c, "INSUFFICIENT_CREDITS");
+          }
+          statusCode = 500;
+          return errorJson(c, "MIRROR_FAILED");
         }
 
         const writing = reconstructText(validation.parsed);
@@ -111,6 +129,7 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
         publicKeyHash: keyHash,
         ankyHash,
         client,
+        durationMs,
         statusCode,
         latencyMs: Date.now() - startedAt,
         modelProvider,
@@ -124,4 +143,10 @@ export function createAnkyRoute(env: Env, logger: SafeLogger): Hono {
 
 export function clearInFlightForTests(): void {
   inFlight.clear();
+}
+
+function requestBodyTooLarge(contentLength: string | undefined, maxBodyBytes: number): boolean {
+  if (!contentLength) return false;
+  const parsed = Number(contentLength);
+  return Number.isFinite(parsed) && parsed > maxBodyBytes;
 }

@@ -17,9 +17,12 @@ export async function callOpenRouter(input: {
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
+    signal: AbortSignal.timeout(input.env.openrouterTimeoutMs),
     headers: {
       Authorization: `Bearer ${input.env.openrouterApiKey}`,
       "Content-Type": "application/json",
+      "HTTP-Referer": "https://anky.app",
+      "X-Title": "Anky Mirror",
     },
     body: JSON.stringify({
       model: input.env.openrouterModel,

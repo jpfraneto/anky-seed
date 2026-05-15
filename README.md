@@ -31,7 +31,7 @@ anky/
   docs/                 product, technical, API, and privacy law
   protocol/             .anky spec, fixtures, TypeScript implementation, tests
   services/mirror/      Bun + Hono mirror service
-  apps/ios/             native SwiftUI app placeholder
+  apps/ios/             native SwiftUI app
   apps/android/         native Kotlin app placeholder
   scripts/              local utility scripts
   infra/                deployment notes and future infrastructure
@@ -60,6 +60,55 @@ The mirror exposes:
 `POST /anky` accepts `Content-Type: text/plain; charset=utf-8`. The request body is the exact `.anky` text/bytes. It does not accept JSON writing bodies.
 
 Signature verification is implemented with Ed25519 using `@noble/curves` and Solana-style base58 public keys/signatures via `bs58`.
+
+The service listens on `process.env.PORT` and `0.0.0.0` for Railway. It has a production guard: when `ANKY_ENV=production` or `NODE_ENV=production`, dev credit bypass and mock mirror are forbidden, OpenRouter and RevenueCat configuration are required, and startup fails loudly if the mirror is unsafe.
+
+For local iOS testing with a mock reflection:
+
+```sh
+cd services/mirror
+ANKY_DEV_BYPASS_CREDITS=true ANKY_DEV_MOCK_MIRROR=true bun run dev
+```
+
+Then set the iOS app's `You -> Mirror base URL` to `http://127.0.0.1:3000` for simulator, or to your Mac's LAN IP for a physical iPhone.
+
+Current Railway mirror URL:
+
+```txt
+https://mirror-production-a23c.up.railway.app
+```
+
+Current status: `/health` is live on Railway. `POST /anky` is intentionally disabled there with `ANKY_MIRROR_DISABLED=true` until real OpenRouter and RevenueCat secrets replace placeholder variables.
+
+Railway deployment notes:
+
+```sh
+railway login
+railway link
+railway variables set ANKY_ENV=production NODE_ENV=production
+railway variables set OPENROUTER_API_KEY=... OPENROUTER_MODEL=... OPENROUTER_PRIVACY_CONFIRMED=true
+railway variables set REVENUECAT_SECRET_KEY=... REVENUECAT_PROJECT_ID=...
+railway variables set ANKY_DEV_BYPASS_CREDITS=false ANKY_DEV_MOCK_MIRROR=false
+railway up
+railway domain
+curl https://<railway-domain>/health
+```
+
+See `services/mirror/README.md` and `infra/railway/mirror.md`.
+
+## iOS App
+
+The native iOS v0 loop is implemented:
+
+- Write captures local `.anky` files.
+- Write now opens as a full-screen keyboard-first ritual surface with Ankyverse progress rings and local haptics.
+- Reveal reconstructs locally as a reading/stats screen and can request a mirror for complete ankys.
+- Ask Anky signs `POST /anky` and sends the exact `.anky` bytes.
+- Reflections are stored locally by hash.
+- Map shows the local trail grouped by day with complete/fragment/reflection state.
+- You exposes public key, recovery phrase reveal/copy after local auth, Face ID app lock, reminders, export, safe free-credit/WhatsApp contact, `$ANKY` CA copy, privacy, and DEBUG mirror tools.
+
+See `apps/ios/README.md` for build, test, storage, and privacy details.
 
 ## Protocol Tests
 
@@ -91,5 +140,5 @@ This reads from disk, prints derived facts, and never uploads writing.
 - `/register`, `/session`, `/me`, `/v1/reflections`, or any product endpoint besides `POST /anky`
 - Server-side persistence of raw `.anky`, reconstructed writing, prompts, or reflections
 - Solana sealing, NFTs, Looms, proofs, Helius, Privy, social feed, chat, cloud sync, or AI memory
-- Full iOS or Android app implementation
+- Android app implementation
 - Automatic free credits

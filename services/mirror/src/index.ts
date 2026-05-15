@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { loadEnv } from "./env";
+import { assertProductionSafe, loadEnv } from "./env";
 import { createAnkyRoute } from "./routes/anky";
 import { healthRoute } from "./routes/health";
 import { createSafeLogger } from "./privacy/safeLogger";
@@ -20,9 +20,11 @@ export function createApp(input: {
 
 if (import.meta.main) {
   const env = loadEnv();
+  assertProductionSafe(env);
   Bun.serve({
     port: env.port,
+    hostname: env.host,
     fetch: createApp({ env }).fetch,
   });
-  console.log(`anky mirror listening on :${env.port}`);
+  console.log(`anky mirror listening on ${env.host}:${env.port}`);
 }

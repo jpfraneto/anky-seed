@@ -10,7 +10,7 @@ export function parseMirrorResponse(raw: string): MirrorResponse {
   }
 
   return {
-    title: parsed.title.trim().split(/\s+/).slice(0, 3).join(" "),
+    title: parsed.title.trim().split(/\s+/).slice(0, 5).join(" "),
     reflection: parsed.reflection.trim(),
   };
 }
