@@ -26,7 +26,7 @@ Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -
 - `Ask Anky` sends the exact `.anky` UTF-8 bytes to `POST /anky` with signature headers.
 - Returned reflections are stored locally by `.anky` hash.
 - Map shows the local trail by day, with today state, complete/fragment/reflection counts, previews, day detail, and Reveal navigation.
-- You shows public key, recovery phrase reveal/copy after local auth, Face ID app lock, daily local reminders, local export, free-credit/WhatsApp contact, `$ANKY` CA copy, privacy, and credit placeholders.
+- You shows public key, recovery phrase reveal/copy after local auth, Face ID app lock, daily local reminders, local export, free-credit/WhatsApp contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
 
 ## Build And Run
 
@@ -81,6 +81,8 @@ OPENROUTER_MODEL=...
 OPENROUTER_PRIVACY_CONFIRMED=true
 REVENUECAT_SECRET_KEY=...
 REVENUECAT_PROJECT_ID=...
+REVENUECAT_CREDIT_CODE=CRD
+ANKY_MIRROR_DISABLED=false
 ANKY_DEV_BYPASS_CREDITS=false
 ANKY_DEV_MOCK_MIRROR=false
 ```
@@ -91,7 +93,13 @@ Verify a deployed mirror:
 curl https://<railway-domain>/health
 ```
 
-Current Railway status: `https://mirror-production-a23c.up.railway.app/health` is live. The service is in `ANKY_MIRROR_DISABLED=true` mode until real OpenRouter and RevenueCat secrets replace the Railway placeholders, so `Ask Anky` will fail closed on that URL for now.
+Current Railway status: `https://mirror-production-a23c.up.railway.app/health` is live. Production is configured with `ANKY_MIRROR_DISABLED=false`, so `Ask Anky` should reach `POST /anky`; success still depends on a valid app signature, OpenRouter availability, and the writer having RevenueCat `CRD` credits.
+
+To verify current non-secret Railway state:
+
+```sh
+railway run --service mirror --environment production -- sh -c 'printf "ANKY_MIRROR_DISABLED=%s\nOPENROUTER_PRIVACY_CONFIRMED=%s\nREVENUECAT_CREDIT_CODE=%s\n" "$ANKY_MIRROR_DISABLED" "$OPENROUTER_PRIVACY_CONFIRMED" "$REVENUECAT_CREDIT_CODE"'
+```
 
 ## Configure Mirror URL
 
@@ -139,7 +147,7 @@ You is the local control surface:
 - Native export/share of individual `.anky` files and reflection JSON files.
 - Safe DM JP / WhatsApp message containing only public key, platform, and app version.
 - WhatsApp opens JP directly at `+56 9 8549 1126`.
-- Disabled Buy/Refresh credit placeholders.
+- RevenueCat-backed credit balance, credit packs, purchase buttons, and manual refresh.
 - `$ANKY` contract address copy and link to `https://anky.app/ankycoin`.
 - Privacy policy link to `https://anky.app/privacy-policy.md`.
 - DEBUG-only mirror URL and destructive local reset tools.
@@ -166,7 +174,7 @@ The tests cover parser/reconstruction/duration/hash, generated writer output, ca
 ## Known Limitations
 
 - No Android implementation in this pass.
-- No real RevenueCat purchase flow; credit buttons are placeholders.
+- RevenueCat purchases require the App Store Connect products, RevenueCat offering, and virtual currency grant rules to remain aligned with the product IDs in `RevenueCatCreditsClient.swift`.
 - No production OpenRouter tuning in iOS; local mirror dev mode is supported.
 - Recovery phrase identity is implemented with the BIP39 English word list and deterministic ANKY Ed25519 key derivation.
 - Identity is Ed25519 with Solana-style base58 public key/signature, but not yet Solana BIP44 path compatible.

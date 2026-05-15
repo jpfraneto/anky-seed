@@ -78,7 +78,13 @@ Current Railway mirror URL:
 https://mirror-production-a23c.up.railway.app
 ```
 
-Current status: `/health` is live on Railway. `POST /anky` is intentionally disabled there with `ANKY_MIRROR_DISABLED=true` until real OpenRouter and RevenueCat secrets replace placeholder variables.
+Current status: `/health` is live on Railway. The production `mirror` service is configured with `ANKY_MIRROR_DISABLED=false`, `OPENROUTER_PRIVACY_CONFIRMED=true`, and `REVENUECAT_CREDIT_CODE=CRD`; `POST /anky` is enabled, but it requires a valid signed app request and a RevenueCat credit balance.
+
+Verify current non-secret Railway state without printing secrets:
+
+```sh
+railway run --service mirror --environment production -- sh -c 'printf "ANKY_MIRROR_DISABLED=%s\nOPENROUTER_PRIVACY_CONFIRMED=%s\nREVENUECAT_CREDIT_CODE=%s\n" "$ANKY_MIRROR_DISABLED" "$OPENROUTER_PRIVACY_CONFIRMED" "$REVENUECAT_CREDIT_CODE"'
+```
 
 Railway deployment notes:
 
@@ -87,8 +93,8 @@ railway login
 railway link
 railway variables set ANKY_ENV=production NODE_ENV=production
 railway variables set OPENROUTER_API_KEY=... OPENROUTER_MODEL=... OPENROUTER_PRIVACY_CONFIRMED=true
-railway variables set REVENUECAT_SECRET_KEY=... REVENUECAT_PROJECT_ID=...
-railway variables set ANKY_DEV_BYPASS_CREDITS=false ANKY_DEV_MOCK_MIRROR=false
+railway variables set REVENUECAT_SECRET_KEY=... REVENUECAT_PROJECT_ID=... REVENUECAT_CREDIT_CODE=CRD
+railway variables set ANKY_MIRROR_DISABLED=false ANKY_DEV_BYPASS_CREDITS=false ANKY_DEV_MOCK_MIRROR=false
 railway up
 railway domain
 curl https://<railway-domain>/health

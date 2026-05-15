@@ -108,4 +108,10 @@ Current deployment:
 https://mirror-production-a23c.up.railway.app
 ```
 
-This Railway service is currently deployed in `ANKY_MIRROR_DISABLED=true` mode because the configured OpenRouter and RevenueCat values are placeholders. `/health` is live. `POST /anky` remains fail-closed until real secrets are set and `ANKY_MIRROR_DISABLED=false`.
+This Railway service is currently deployed with `ANKY_MIRROR_DISABLED=false`, `OPENROUTER_PRIVACY_CONFIRMED=true`, and `REVENUECAT_CREDIT_CODE=CRD`. `/health` is live. `POST /anky` is enabled, but it requires a valid signed app request and a RevenueCat credit balance.
+
+Verify current non-secret Railway state without printing API keys:
+
+```sh
+railway run --service mirror --environment production -- sh -c 'printf "ANKY_MIRROR_DISABLED=%s\nOPENROUTER_PRIVACY_CONFIRMED=%s\nREVENUECAT_CREDIT_CODE=%s\n" "$ANKY_MIRROR_DISABLED" "$OPENROUTER_PRIVACY_CONFIRMED" "$REVENUECAT_CREDIT_CODE"'
+```
