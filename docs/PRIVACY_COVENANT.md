@@ -22,10 +22,27 @@ By default, the server must never persist:
 
 The server may temporarily hold writing in memory during one reflection request. That temporary handling is not storage and must not become a journal, archive, analytics corpus, or hidden memory.
 
-Manual free-credit grants are allowed only through a JP-operated flow. The "DM JP for free credits" flow may include:
+A new writer may receive 8 automatic trial reflection credits.
+
+The trial grant must not include writing.
+
+The trial grant must not require screenshots, `.anky` files, reconstructed text, private reflections, prompts, or journal content.
+
+The trial grant may use:
 
 - public key
 - platform
-- optional app version
+- app version
+- RevenueCat customer state
+- platform attestation result
+- minimal abuse-prevention metadata
 
-It must never include writing, `.anky` files, reconstructed text, private reflections, screenshots of writing, or prompts.
+The trial grant must not turn Anky into a cloud journal.
+
+The server still receives writing only when the writer explicitly asks for reflection.
+
+The server still processes the `.anky` transiently.
+
+The server still forgets.
+
+The “DM JP for free credits” flow may remain as a fallback support path, but it must never include writing.

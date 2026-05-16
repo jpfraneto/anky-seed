@@ -66,6 +66,99 @@ class WriteViewModelTest {
     }
 
     @Test
+    fun completedHashCanBeConsumedAfterRevealNavigation() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        stores.draft.save("$start h\n472000 e")
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start + 472000 + 8000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        advanceUntilIdle()
+
+        val completedHash = viewModel.state.value.completedHash
+        viewModel.consumeCompletedHash()
+
+        assertEquals(stores.archive.list().single().hash, completedHash)
+        assertNull(viewModel.state.value.completedHash)
+    }
+
+    @Test
+    fun completedSessionResetsWriteStateLikeIos() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        stores.draft.save("$start h\n472000 e")
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start + 472000 + 8000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        advanceUntilIdle()
+
+        val completedHash = viewModel.state.value.completedHash
+
+        assertEquals(stores.archive.list().single().hash, completedHash)
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals("", viewModel.state.value.latestGlyph)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(0, viewModel.state.value.elapsedMs)
+        assertEquals(0, viewModel.state.value.silenceElapsedMs)
+        assertEquals(8000, viewModel.state.value.silenceRemainingMs)
+        assertEquals(0f, viewModel.state.value.progress)
+    }
+
+    @Test
+    fun saveFailureShowsIosErrorCopyAndPreservesClosedDraft() = runTest {
+        val root = temp.newFolder()
+        val archiveFile = temp.newFile("archive-is-not-a-directory")
+        val draft = ActiveDraftStore.forDirectory(File(root, "draft"))
+        val reflections = ReflectionStore.forDirectory(File(root, "reflections"))
+        val index = SessionIndexStore.forFile(File(root, "session-index.json"))
+        val start = 1_770_000_000_000
+        draft.save("$start h\n472000 e")
+
+        val viewModel = WriteViewModel(
+            activeDraftStore = draft,
+            archive = LocalAnkyArchive.forDirectory(archiveFile),
+            reflectionStore = reflections,
+            indexStore = index,
+            nowMs = { start + 472000 + 8000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        advanceUntilIdle()
+
+        assertEquals("Could not save this .anky.", viewModel.state.value.errorMessage)
+        assertEquals("$start h\n472000 e\n8000", draft.load())
+        assertEquals(0, index.load().size)
+    }
+
+    @Test
+    fun invalidRestoredDraftShowsIosErrorCopyAndLeavesDraftUntouched() = runTest {
+        val stores = stores()
+        stores.draft.save("not-a-timestamp h")
+
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        advanceUntilIdle()
+
+        assertEquals("Could not restore the active draft.", viewModel.state.value.errorMessage)
+        assertEquals("not-a-timestamp h", stores.draft.load())
+        assertEquals(0, stores.archive.list().size)
+    }
+
+    @Test
     fun rejectedDeletionOrReplacementDoesNotMutateDraft() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
@@ -84,6 +177,38 @@ class WriteViewModelTest {
 
         assertEquals("$start h", stores.draft.load())
         assertEquals(0, stores.archive.list().size)
+    }
+
+    @Test
+    fun abandonIfEmptyClearsDraftButStartedSessionPersists() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        stores.draft.save("")
+        val emptyViewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        emptyViewModel.abandonIfEmpty()
+
+        assertNull(stores.draft.load())
+
+        val startedViewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        startedViewModel.acceptGlyph("h")
+        startedViewModel.abandonIfEmpty()
+
+        assertEquals("$start h", stores.draft.load())
     }
 
     private fun TestScope.stores(): Stores {

@@ -38,6 +38,14 @@ class WriterIdentityStore(
 
     fun hasRecoveryPhrase(): Boolean = loadRecoveryPhrase() != null
 
+    fun resetForDevelopment() {
+        encryptedPhraseFile.delete()
+        ivFile.delete()
+        runCatching {
+            java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.deleteEntry(KeyAlias)
+        }
+    }
+
     private fun loadRecoveryPhrase(): RecoveryPhrase? {
         if (!encryptedPhraseFile.exists() || !ivFile.exists()) return null
         val cipher = Cipher.getInstance(Transformation)

@@ -56,6 +56,32 @@ class ProtocolFixtureTest {
     }
 
     @Test
+    fun writerAcceptsSingleGraphemeClustersLikeSwiftCharacter() {
+        val writer = AnkyWriter()
+
+        assertTrue(writer.accept("e\u0301", 1770000000000))
+        assertTrue(writer.accept("👍🏽", 1770000000042))
+        assertTrue(writer.accept("👨‍👩‍👧‍👦", 1770000000084))
+        assertTrue(writer.accept("🇨🇱", 1770000000126))
+        assertTrue(writer.accept("\u0301", 1770000000168))
+        assertTrue(writer.accept("\u200D", 1770000000210))
+        assertTrue(writer.accept("a\u200D", 1770000000252))
+        assertFalse(writer.accept("ab", 1770000000127))
+        assertFalse(writer.accept("a\n", 1770000000127))
+
+        assertEquals("1770000000000 e\u0301\n42 👍🏽\n42 👨‍👩‍👧‍👦\n42 🇨🇱\n42 \u0301\n42 \u200D\n42 a\u200D", writer.text)
+        val validation = AnkyValidator.validate(writer.text) as AnkyValidation.Valid
+        assertEquals("e\u0301👍🏽👨‍👩‍👧‍👦🇨🇱\u0301\u200Da\u200D", AnkyReconstructor.reconstructText(validation.parsed))
+    }
+
+    @Test
+    fun durationFormattingMatchesIosClampingAndShape() {
+        assertEquals("0m 00s", AnkyDuration.formatted(-1_000))
+        assertEquals("0m 00s", AnkyDuration.formatted(999))
+        assertEquals("1m 01s", AnkyDuration.formatted(61_999))
+    }
+
+    @Test
     fun hashUsesExactUtf8Bytes() {
         val body = "1770000000000 h\n0042 e\n8000"
         assertNotEquals(

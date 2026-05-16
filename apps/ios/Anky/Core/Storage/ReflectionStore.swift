@@ -63,6 +63,14 @@ struct ReflectionStore {
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
+    func delete(hash: String) throws {
+        let reflectionURL = url(for: hash)
+        guard fileManager.fileExists(atPath: reflectionURL.path) else {
+            return
+        }
+        try fileManager.removeItem(at: reflectionURL)
+    }
+
     func clear() throws {
         let urls = fileURLs()
         for url in urls {

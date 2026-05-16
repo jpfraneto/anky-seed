@@ -3,6 +3,7 @@ package inc.anky.android.core.mirror
 import inc.anky.android.core.identity.AnkyPostSigner
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.protocol.AnkyHasher
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,12 +16,13 @@ class MirrorClient(
 ) {
     fun askAnky(bytes: ByteArray, identity: WriterIdentity): MirrorResponsePayload {
         val signed = AnkyPostSigner.sign(body = bytes, identity = identity)
-        val base = configuration.baseUrl.trim().trimEnd('/')
+        val base = configuration.effectiveBaseUrl().trimEnd('/')
         if (!base.startsWith("http://") && !base.startsWith("https://")) {
             throw MirrorClientError.InvalidUrl
         }
+        val url = "$base/anky".toHttpUrlOrNull() ?: throw MirrorClientError.InvalidUrl
         val request = Request.Builder()
-            .url("$base/anky")
+            .url(url)
             .post(bytes.toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .header("Content-Type", "text/plain; charset=utf-8")
             .header("Accept", "application/json")
@@ -31,19 +33,33 @@ class MirrorClient(
             .build()
 
         client.newCall(request).execute().use { response ->
-            val bodyText = response.body?.string() ?: throw MirrorClientError.InvalidResponse
-            val json = runCatching { JSONObject(bodyText) }.getOrElse {
-                throw MirrorClientError.InvalidResponse
-            }
+            val bodyText = response.body?.string()
             if (response.isSuccessful) {
-                val payload = json.toMirrorResponsePayload()
+                val json = bodyText?.toJsonObjectOrNull() ?: throw MirrorClientError.InvalidResponse
+                val payload = runCatching { json.toMirrorResponsePayload() }.getOrElse {
+                    throw MirrorClientError.InvalidResponse
+                }
                 if (payload.hash != AnkyHasher.sha256Hex(bytes)) throw MirrorClientError.HashMismatch
                 return payload
             }
-            throw json.toMirrorServerError()
+            throw bodyText
+                ?.toJsonObjectOrNull()
+                ?.toMirrorServerError()
+                ?: MirrorClientError.Server(
+                    MirrorErrorCode.Unknown,
+                    "Anky could not return a reflection right now.",
+                )
         }
     }
 }
+
+internal fun MirrorConfiguration.effectiveBaseUrl(): String {
+    val candidate = baseUrl.trim()
+    return candidate.ifEmpty { MirrorConfiguration().baseUrl }
+}
+
+private fun String.toJsonObjectOrNull(): JSONObject? =
+    runCatching { JSONObject(this) }.getOrNull()
 
 private fun JSONObject.toMirrorResponsePayload(): MirrorResponsePayload =
     MirrorResponsePayload(
@@ -56,7 +72,10 @@ private fun JSONObject.toMirrorResponsePayload(): MirrorResponsePayload =
 private fun JSONObject.toMirrorServerError(): MirrorClientError.Server {
     val error = optJSONObject("error")
     val code = error?.optString("code").toMirrorErrorCode()
-    val message = error?.optString("message") ?: "Anky could not return a reflection right now."
+    val message = error
+        ?.optString("message")
+        ?.takeUnless { it.isBlank() }
+        ?: "Anky could not return a reflection right now."
     return MirrorClientError.Server(code, message)
 }
 

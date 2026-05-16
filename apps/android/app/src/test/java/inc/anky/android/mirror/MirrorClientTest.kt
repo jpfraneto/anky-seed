@@ -1,5 +1,7 @@
 package inc.anky.android.mirror
 
+import inc.anky.android.BuildConfig
+import inc.anky.android.core.identity.AnkyPostSigner
 import inc.anky.android.core.identity.RecoveryPhrase
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
@@ -7,6 +9,7 @@ import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.mirror.MirrorErrorCode
+import inc.anky.android.core.mirror.effectiveBaseUrl
 import inc.anky.android.core.protocol.AnkyHasher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -25,6 +28,33 @@ class MirrorClientTest {
     fun eligibilityRejectsFragments() {
         assertFalse(MirrorEligibility.canAsk("1770000000000 h\n0042 e"))
         assertTrue(MirrorEligibility.canAsk("1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"))
+        assertFalse(MirrorEligibility.canAsk(isComplete = false, hasReflection = false))
+        assertTrue(MirrorEligibility.canAsk(isComplete = true, hasReflection = false))
+        assertFalse(MirrorEligibility.canAsk(isComplete = true, hasReflection = true))
+    }
+
+    @Test
+    fun blankMirrorUrlFallsBackToDefaultLikeIos() {
+        assertEquals(
+            BuildConfig.DEFAULT_MIRROR_BASE_URL,
+            MirrorConfiguration(" \n\t ").effectiveBaseUrl(),
+        )
+    }
+
+    @Test
+    fun invalidMirrorUrlUsesIosCopy() {
+        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+            .toByteArray(Charsets.UTF_8)
+        val invalidUrls = listOf("not a url", "http://")
+
+        for (url in invalidUrls) {
+            try {
+                MirrorClient(MirrorConfiguration(url)).askAnky(body, identity)
+                error("Expected invalid URL error")
+            } catch (error: MirrorClientError.InvalidUrl) {
+                assertEquals("The mirror URL is not valid.", error.message)
+            }
+        }
     }
 
     @Test
@@ -51,8 +81,19 @@ class MirrorClientTest {
             assertEquals("application/json", request.getHeader("Accept"))
             assertEquals(identity.publicKey, request.getHeader("X-Anky-Public-Key"))
             assertEquals("android", request.getHeader("X-Anky-Client"))
-            assertTrue(request.getHeader("X-Anky-Signature")!!.isNotBlank())
-            assertTrue(request.getHeader("X-Anky-Request-Time")!!.isNotBlank())
+            val signature = request.getHeader("X-Anky-Signature")!!
+            val requestTime = request.getHeader("X-Anky-Request-Time")!!
+            assertTrue(signature.isNotBlank())
+            assertTrue(requestTime.isNotBlank())
+            assertTrue(
+                identity.verifies(
+                    AnkyPostSigner.canonicalMessage(
+                        requestTime = requestTime,
+                        bodySha256 = AnkyHasher.sha256Hex(body),
+                    ),
+                    signature,
+                ),
+            )
         } finally {
             server.shutdown()
         }
@@ -74,6 +115,51 @@ class MirrorClientTest {
                 error("Expected server error")
             } catch (error: MirrorClientError.Server) {
                 assertEquals(MirrorErrorCode.InsufficientCredits, error.code)
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun malformedServerErrorBodyUsesGenericServerCopyLikeIos() {
+        val server = MockWebServer()
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody("not json"),
+        )
+        server.start()
+        try {
+            val client = MirrorClient(MirrorConfiguration(server.url("/").toString()))
+            try {
+                client.askAnky("1770000000000 h\n8000".toByteArray(Charsets.UTF_8), identity)
+                error("Expected server error")
+            } catch (error: MirrorClientError.Server) {
+                assertEquals(MirrorErrorCode.Unknown, error.code)
+                assertEquals("Anky could not return a reflection right now.", error.message)
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun successfulMalformedPayloadUsesInvalidResponseCopy() {
+        val server = MockWebServer()
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"hash":"missing fields"}"""),
+        )
+        server.start()
+        try {
+            val client = MirrorClient(MirrorConfiguration(server.url("/").toString()))
+            try {
+                client.askAnky("1770000000000 h\n8000".toByteArray(Charsets.UTF_8), identity)
+                error("Expected invalid response")
+            } catch (error: MirrorClientError.InvalidResponse) {
+                assertEquals("The mirror returned an invalid response.", error.message)
             }
         } finally {
             server.shutdown()

@@ -1,10 +1,16 @@
 import Foundation
 
+enum RevealCopySection {
+    case writing
+    case reflection
+}
+
 @MainActor
 final class RevealViewModel: ObservableObject {
-    @Published private(set) var didCopyText = false
     @Published private(set) var reflection: LocalReflection?
     @Published private(set) var isAskingAnky = false
+    @Published private(set) var isDeleting = false
+    @Published private(set) var isDeleted = false
     @Published var errorMessage: String?
 
     let reconstructedText: String
@@ -17,6 +23,7 @@ final class RevealViewModel: ObservableObject {
 
     private let clipboard: ClipboardClient
     private let artifact: SavedAnky
+    private let archive: LocalAnkyArchive
     private let reflectionStore: ReflectionStore
     private let sessionIndexStore: SessionIndexStore
     private let identityStore: WriterIdentityStore
@@ -25,6 +32,7 @@ final class RevealViewModel: ObservableObject {
     init(
         artifact: SavedAnky,
         clipboard: ClipboardClient = ClipboardClient(),
+        archive: LocalAnkyArchive = LocalAnkyArchive(),
         reflectionStore: ReflectionStore = ReflectionStore(),
         sessionIndexStore: SessionIndexStore = SessionIndexStore(),
         identityStore: WriterIdentityStore = WriterIdentityStore(),
@@ -41,6 +49,7 @@ final class RevealViewModel: ObservableObject {
             .split { $0.isWhitespace || $0.isNewline }
             .count
         self.clipboard = clipboard
+        self.archive = archive
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
         self.identityStore = identityStore
@@ -70,9 +79,38 @@ final class RevealViewModel: ObservableObject {
         MirrorEligibility.canAskAnky(isComplete: isComplete, hasReflection: reflection != nil)
     }
 
-    func copyText() {
-        clipboard.copy(reconstructedText)
-        didCopyText = true
+    func copy(_ section: RevealCopySection) {
+        switch section {
+        case .writing:
+            clipboard.copy(reconstructedText)
+        case .reflection:
+            guard let reflection else {
+                clipboard.copy(reconstructedText)
+                return
+            }
+            clipboard.copy("\(reflection.title)\n\n\(reflection.reflection)")
+        }
+    }
+
+    func deleteSession() {
+        guard !isDeleting, !isDeleted else {
+            return
+        }
+
+        isDeleting = true
+        errorMessage = nil
+
+        do {
+            try archive.delete(artifact)
+            try? reflectionStore.delete(hash: artifact.hash)
+            try sessionIndexStore.delete(hash: artifact.hash)
+            reflection = nil
+            isDeleted = true
+        } catch {
+            errorMessage = "This writing session could not be deleted."
+        }
+
+        isDeleting = false
     }
 
     func askAnky() async {

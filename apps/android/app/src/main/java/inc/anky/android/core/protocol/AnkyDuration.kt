@@ -9,4 +9,11 @@ object AnkyDuration {
 
     fun isComplete(parsed: ParsedAnky): Boolean =
         durationMs(parsed) >= CompleteRitualMs && parsed.terminalSilenceMs == TerminalSilenceMs
+
+    fun formatted(durationMs: Long): String {
+        val totalSeconds = maxOf(0, durationMs / 1000)
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return "${minutes}m ${seconds.toString().padStart(2, '0')}s"
+    }
 }

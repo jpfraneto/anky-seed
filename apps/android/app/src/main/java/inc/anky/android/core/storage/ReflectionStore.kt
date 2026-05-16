@@ -30,9 +30,23 @@ class ReflectionStore private constructor(
             ?.sortedByDescending { it.createdAt }
             ?: emptyList()
 
-    private fun urlFor(hash: String): File = File(directory, "$hash.json")
+    fun fileList(): List<File> =
+        directory.listFiles { file -> file.extension == "json" }
+            ?.sortedBy { it.name }
+            ?: emptyList()
+
+    fun clear() {
+        fileList().forEach { it.delete() }
+    }
+
+    private fun urlFor(hash: String): File {
+        require(hash.matches(Sha256Hex)) { "Invalid reflection hash." }
+        return File(directory, "$hash.json")
+    }
 
     companion object {
+        private val Sha256Hex = Regex("^[0-9a-f]{64}$")
+
         fun forDirectory(directory: File): ReflectionStore = ReflectionStore(directory)
     }
 }

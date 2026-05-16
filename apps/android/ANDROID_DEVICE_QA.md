@@ -129,7 +129,7 @@ Use a device with biometric or device credential enrolled.
 
 1. Open `You`.
 2. Enable `App lock`.
-3. Complete the system authentication prompt.
+3. Complete the system authentication prompt that appears after the setting is enabled.
 4. Force-stop the app:
 
    ```bash
@@ -144,7 +144,7 @@ Use a device with biometric or device credential enrolled.
 
 Pass:
 
-- Enabling app lock requires local authentication.
+- Enabling app lock stores the setting and immediately presents the app lock authentication gate.
 - On relaunch with app lock enabled, protected app surfaces are not usable before authentication succeeds.
 - Canceling authentication keeps the app locked.
 - Successful authentication unlocks the app.
@@ -153,7 +153,7 @@ Pass:
 Fail:
 
 - Write, Map, You, identity material, or archive content is accessible before successful unlock.
-- App lock can be enabled without local authentication.
+- App lock can be enabled without immediately presenting the authentication gate.
 - Canceling the prompt still unlocks the app.
 
 ## Recovery Phrase Gates
@@ -163,17 +163,14 @@ Fail:
 3. Cancel the authentication prompt.
 4. Tap `Reveal recovery phrase` again and authenticate.
 5. Note that the phrase appears only after authentication.
-6. Tap `Copy recovery phrase`.
-7. Cancel the authentication prompt.
-8. Tap `Copy recovery phrase` again and authenticate.
-9. Paste into a private scratch field outside the app only to confirm clipboard content, then delete it.
+6. Tap `Copy`.
+7. Paste into a private scratch field outside the app only to confirm clipboard content, then delete it.
 
 Pass:
 
 - Reveal requires local authentication every time the phrase is not already displayed.
 - Canceling reveal does not show the phrase.
-- Copy requires a separate local authentication prompt.
-- Canceling copy does not put the phrase on the clipboard.
+- Copy is only available after the phrase has been revealed by local authentication.
 - The phrase is not logged.
 
 Fail:
@@ -539,6 +536,7 @@ These are not device QA failures unless the submitted release claims they are co
 - Daily reminders use local inexact alarms and depend on platform notification permission behavior on Android 13+.
 - Mirror success depends on a reachable mirror, valid signing, OpenRouter/backing service availability, and available credits.
 - Device QA requires an actual connected device or emulator; Gradle instrumentation packaging alone is not proof of runtime behavior.
+- Screen-by-screen iOS visual comparison is tracked in `IOS_PARITY_MAP.md`; Android-only screenshots are not enough to waive missing iOS references.
 
 ## Final QA Sign-Off
 
@@ -555,6 +553,7 @@ Terminal silence close:
 Complete ritual:
 Reveal:
 Map:
+Side-by-side iOS visual comparison:
 Export / share:
 Reminders:
 Mirror signing:

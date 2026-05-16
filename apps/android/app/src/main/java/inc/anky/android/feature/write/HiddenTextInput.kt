@@ -14,6 +14,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import inc.anky.android.core.protocol.isSingleProtocolGlyph
 
 @Composable
 fun HiddenTextInput(
@@ -30,7 +31,7 @@ fun HiddenTextInput(
         onValueChange = { next ->
             when {
                 next.isEmpty() -> onRejectedMutation()
-                next.codePointCount(0, next.length) == 1 && next != "\n" && next != "\r" -> onGlyph(next)
+                next.isSingleProtocolGlyph() -> onGlyph(next)
                 else -> onRejectedMutation()
             }
             value.value = ""

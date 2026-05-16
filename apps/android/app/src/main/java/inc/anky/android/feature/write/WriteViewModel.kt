@@ -3,6 +3,8 @@ package inc.anky.android.feature.write
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.core.protocol.AnkyParser
+import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyValidator
 import inc.anky.android.core.protocol.AnkyValidation
 import inc.anky.android.core.protocol.AnkyWriter
@@ -22,10 +24,15 @@ import kotlinx.coroutines.launch
 
 data class WriteState(
     val latestGlyph: String = "",
+    val displayedText: String = "",
     val elapsedMs: Long = 0,
+    val silenceElapsedMs: Long = 0,
+    val silenceRemainingMs: Long = AnkyDuration.TerminalSilenceMs,
     val progress: Float = 0f,
     val isClosing: Boolean = false,
     val completedHash: String? = null,
+    val acceptedGlyphCount: Int = 0,
+    val errorMessage: String? = null,
 )
 
 class WriteViewModel(
@@ -36,13 +43,17 @@ class WriteViewModel(
     private val nowMs: () -> Long = { System.currentTimeMillis() },
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : ViewModel() {
-    private var writer: AnkyWriter = activeDraftStore.load()
-        ?.takeIf { it.isNotBlank() }
-        ?.let { runCatching { AnkyWriter.fromDraft(it) }.getOrNull() }
-        ?: AnkyWriter()
+    private val restoredDraftText = activeDraftStore.load()?.takeIf { it.isNotBlank() }
+    private val restoredWriterResult = restoredDraftText?.let { runCatching { AnkyWriter.fromDraft(it) } }
+    private val restoreErrorMessage =
+        if (restoredWriterResult?.isFailure == true) "Could not restore the active draft." else null
+    private var writer: AnkyWriter = restoredWriterResult?.getOrNull() ?: AnkyWriter()
     private var closeJob: Job? = null
+    private var sessionStartMs: Long? = restoredStartMs()
+    private var displayedText: String = restoredDisplayedText()
+    private var acceptedGlyphCount = restoredGlyphCount()
 
-    private val _state = MutableStateFlow(deriveState())
+    private val _state = MutableStateFlow(deriveState().copy(errorMessage = restoreErrorMessage))
     val state: StateFlow<WriteState> = _state
 
     init {
@@ -50,7 +61,11 @@ class WriteViewModel(
     }
 
     fun acceptGlyph(glyph: String) {
-        if (!writer.accept(glyph, nowMs())) return
+        val now = nowMs()
+        if (!writer.isStarted) sessionStartMs = now
+        if (!writer.accept(glyph, now)) return
+        displayedText += glyph
+        acceptedGlyphCount += 1
         activeDraftStore.save(writer.text)
         scheduleClose(afterMs = AnkyDuration.TerminalSilenceMs)
         _state.value = deriveState(latestGlyph = glyph)
@@ -58,6 +73,22 @@ class WriteViewModel(
 
     fun ignoreBackspaceOrReplacement() {
         _state.update { it.copy(isClosing = writer.isStarted) }
+    }
+
+    fun abandonIfEmpty() {
+        if (writer.isStarted) {
+            activeDraftStore.save(writer.text)
+        } else {
+            activeDraftStore.clear()
+        }
+    }
+
+    fun consumeCompletedHash() {
+        _state.update { it.copy(completedHash = null) }
+    }
+
+    fun refreshLiveState() {
+        if (writer.isStarted) _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
     }
 
     private fun scheduleClose(afterMs: Long) {
@@ -73,12 +104,25 @@ class WriteViewModel(
         if (!writer.isClosed) writer.closeWithTerminalSilence()
         val text = writer.text
         activeDraftStore.save(text)
-        val artifact = archive.save(text)
-        val summary = SessionSummary.make(artifact, reflectionStore.load(artifact.hash))
-        indexStore.upsert(summary)
-        activeDraftStore.clear()
-        _state.value = deriveState().copy(completedHash = artifact.hash, isClosing = false)
-        writer = AnkyWriter()
+        runCatching {
+            val artifact = archive.save(text)
+            val summary = SessionSummary.make(artifact, reflectionStore.load(artifact.hash))
+            indexStore.upsert(summary)
+            artifact
+        }.onSuccess { artifact ->
+            activeDraftStore.clear()
+            writer = AnkyWriter()
+            displayedText = ""
+            sessionStartMs = null
+            acceptedGlyphCount = 0
+            _state.value = deriveState().copy(completedHash = artifact.hash, isClosing = false, errorMessage = null)
+        }.onFailure {
+            activeDraftStore.save(text)
+            _state.value = deriveState().copy(
+                isClosing = false,
+                errorMessage = "Could not save this .anky.",
+            )
+        }
     }
 
     private fun scheduleCloseForRestoredDraft() {
@@ -94,13 +138,29 @@ class WriteViewModel(
 
     private fun deriveState(latestGlyph: String = ""): WriteState {
         val validation = AnkyValidator.validate(writer.text)
-        val elapsed = (validation as? AnkyValidation.Valid)?.durationMs ?: 0
+        val now = nowMs()
+        val elapsed = sessionStartMs?.let { maxOf(0, now - it) }
+            ?: (validation as? AnkyValidation.Valid)?.durationMs
+            ?: 0
+        val silenceElapsed = writer.lastAcceptedMs?.let { maxOf(0, now - it) } ?: 0
         return WriteState(
             latestGlyph = latestGlyph,
+            displayedText = displayedText,
             elapsedMs = elapsed,
+            silenceElapsedMs = silenceElapsed,
+            silenceRemainingMs = maxOf(0, AnkyDuration.TerminalSilenceMs - silenceElapsed),
             progress = (elapsed.toFloat() / AnkyDuration.CompleteRitualMs).coerceIn(0f, 1f),
             isClosing = writer.isStarted,
+            acceptedGlyphCount = acceptedGlyphCount,
         )
     }
 
+    private fun restoredStartMs(): Long? =
+        runCatching { AnkyParser.parse(writer.text).startEpochMs }.getOrNull()
+
+    private fun restoredDisplayedText(): String =
+        runCatching { AnkyReconstructor.reconstructText(AnkyParser.parse(writer.text)) }.getOrDefault("")
+
+    private fun restoredGlyphCount(): Int =
+        runCatching { AnkyParser.parse(writer.text).events.size }.getOrDefault(0)
 }

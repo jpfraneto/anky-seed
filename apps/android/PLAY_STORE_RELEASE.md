@@ -151,7 +151,7 @@ Always answer the live Play Console questionnaire truthfully for the submitted b
 
 ## RevenueCat Android Product Setup
 
-Current app behavior is intentionally disabled unless Android RevenueCat configuration exists.
+Current app behavior is disabled unless the Android public SDK key, RevenueCat offering, CRD virtual currency, and Google Play products are configured.
 
 Setup checklist:
 
@@ -162,7 +162,7 @@ Setup checklist:
 - Create products/packages/offerings in RevenueCat for Android credit packages.
 - Connect RevenueCat to Google Play with the required Play Developer API/service-account setup in the RevenueCat dashboard.
 - Use the writer public key as RevenueCat App User ID.
-- Verify purchase and credit balance on an internal testing track before enabling purchase UI as active.
+- Verify package display, purchase flow, and CRD balance refresh on an internal testing track before shipping a build with `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY`.
 - Backend remains responsible for spending credits when `POST /anky` succeeds.
 
 Known iOS product IDs are references only:
@@ -186,7 +186,7 @@ Before every Play upload, verify:
 - Hash/signature are computed over exact UTF-8 bytes.
 - Fragments remain local/copy/export only and cannot Ask Anky.
 - Raw `.anky`, reconstructed writing, prompts, reflections, recovery phrase, private key, and seed are not logged.
-- Android backup/device transfer excludes identity ciphertext and IV files.
+- Android automatic app backup is disabled; local `.anky` files, reflections, drafts, and identity material do not enter cloud/device-transfer backup by default.
 
 ## Pre-Upload Checklist
 
@@ -212,3 +212,4 @@ Before every Play upload, verify:
 - Google Play content ratings: https://support.google.com/googleplay/android-developer/answer/9898843
 - RevenueCat Android SDK: https://www.revenuecat.com/docs/getting-started/installation/android
 - RevenueCat product configuration: https://www.revenuecat.com/docs/projects/configuring-products
+- RevenueCat virtual currency: https://www.revenuecat.com/docs/offerings/virtual-currency

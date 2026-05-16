@@ -57,6 +57,10 @@ final class MapViewModel: ObservableObject {
         days.filter { !calendar.isDateInToday($0.date) }
     }
 
+    func day(for date: Date) -> SessionDay? {
+        spatialDays.first { calendar.isDate($0.date, inSameDayAs: date) }
+    }
+
     func artifact(for summary: SessionSummary) -> SavedAnky? {
         try? archive.load(url: summary.localFileURL)
     }

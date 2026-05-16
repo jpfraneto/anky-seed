@@ -1,6 +1,7 @@
 package inc.anky.android.feature.map
 
 import androidx.lifecycle.ViewModel
+import inc.anky.android.core.storage.AppOpenStore
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionDay
@@ -16,12 +17,17 @@ class MapViewModel(
     private val archive: LocalAnkyArchive,
     private val reflectionStore: ReflectionStore,
     private val indexStore: SessionIndexStore,
+    private val appOpenStore: AppOpenStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MapState())
     val state: StateFlow<MapState> = _state
 
     fun refresh() {
         val sessions = indexStore.rebuild(archive, reflectionStore)
-        _state.value = MapState(days = SessionIndexStore.groupByDay(sessions))
+        val firstOpen = sessions
+            .minByOrNull { it.createdAt }
+            ?.let { appOpenStore.recordEarlierFirstOpenDate(it.createdAt) }
+            ?: appOpenStore.loadOrCreate()
+        _state.value = MapState(days = SessionIndexStore.groupByContinuousDays(sessions, firstOpen))
     }
 }

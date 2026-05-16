@@ -112,6 +112,10 @@ struct SessionDay: Hashable, Identifiable {
         completeCount
     }
 
+    var hasAnky: Bool {
+        ankyCount > 0
+    }
+
     var writingSessionCount: Int {
         fragmentCount
     }
@@ -214,6 +218,10 @@ struct SessionIndexStore {
             )
         }
         try save(sessions)
+    }
+
+    func delete(hash: String) throws {
+        try save(load().filter { $0.hash != hash })
     }
 
     func clear() throws {

@@ -3,7 +3,9 @@ package inc.anky.android.feature.reveal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import inc.anky.android.core.identity.WriterIdentityStore
+import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
+import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.privacy.PrivacyMessages
 import inc.anky.android.core.storage.LocalAnkyArchive
@@ -12,6 +14,7 @@ import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.core.storage.SessionIndexStore
 import java.time.Instant
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +27,7 @@ data class RevealState(
     val privacyReminder: String = PrivacyMessages.RevealReminder,
     val canAskAnky: Boolean = false,
     val isAsking: Boolean = false,
+    val didCopyText: Boolean = false,
     val error: String? = null,
 )
 
@@ -32,9 +36,26 @@ class RevealViewModel(
     private val archive: LocalAnkyArchive,
     private val reflectionStore: ReflectionStore,
     private val indexStore: SessionIndexStore,
-    private val identityStore: WriterIdentityStore,
+    private val identityProvider: () -> WriterIdentity,
     private val mirrorClientProvider: () -> MirrorClient,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
+    constructor(
+        hash: String,
+        archive: LocalAnkyArchive,
+        reflectionStore: ReflectionStore,
+        indexStore: SessionIndexStore,
+        identityStore: WriterIdentityStore,
+        mirrorClientProvider: () -> MirrorClient,
+    ) : this(
+        hash = hash,
+        archive = archive,
+        reflectionStore = reflectionStore,
+        indexStore = indexStore,
+        identityProvider = { identityStore.loadOrCreate() },
+        mirrorClientProvider = mirrorClientProvider,
+    )
+
     private val _state = MutableStateFlow(RevealState())
     val state: StateFlow<RevealState> = _state
 
@@ -49,21 +70,23 @@ class RevealViewModel(
             artifact = artifact,
             reflection = reflection,
             privacyReminder = if (artifact?.isComplete == false) PrivacyMessages.FragmentReminder else PrivacyMessages.RevealReminder,
-            canAskAnky = artifact != null && reflection == null && MirrorEligibility.canAsk(artifact.text),
+            canAskAnky = artifact != null && MirrorEligibility.canAsk(
+                isComplete = artifact.isComplete,
+                hasReflection = reflection != null,
+            ),
         )
     }
 
     fun askAnky() {
-        val artifact = _state.value.artifact ?: return
-        if (!MirrorEligibility.canAsk(artifact.text)) {
-            _state.update { it.copy(error = MirrorEligibility.reason(artifact.text)) }
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            _state.update { it.copy(isAsking = true, error = null) }
+        val current = _state.value
+        val artifact = current.artifact ?: return
+        if (!current.canAskAnky || current.isAsking) return
+        _state.update { it.copy(isAsking = true, error = null) }
+        viewModelScope.launch(dispatcher) {
             runCatching {
-                val identity = identityStore.loadOrCreate()
+                val identity = identityProvider()
                 val payload = mirrorClientProvider().askAnky(artifact.text.toByteArray(Charsets.UTF_8), identity)
+                if (payload.hash != artifact.hash) throw MirrorClientError.HashMismatch
                 val reflection = LocalReflection(
                     hash = payload.hash,
                     title = payload.title,
@@ -86,10 +109,22 @@ class RevealViewModel(
                 _state.update {
                     it.copy(
                         isAsking = false,
-                        error = error.message ?: "Anky could not return a reflection right now.",
+                        error = mirrorFailureMessage(error),
                     )
                 }
             }
         }
     }
+
+    fun markTextCopied() {
+        _state.update { it.copy(didCopyText = true) }
+    }
 }
+
+private fun mirrorFailureMessage(error: Throwable): String =
+    when (error) {
+        is MirrorClientError -> error.message ?: GenericMirrorFailureMessage
+        else -> GenericMirrorFailureMessage
+    }
+
+private const val GenericMirrorFailureMessage = "Anky could not return a reflection right now."

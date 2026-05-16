@@ -45,6 +45,10 @@ class LocalAnkyArchive private constructor(
             ?.sortedBy { it.name }
             ?: emptyList()
 
+    fun clear() {
+        fileList().forEach { it.delete() }
+    }
+
     private fun artifactFrom(ankyText: String, file: File): SavedAnky {
         val parsed = AnkyParser.parse(ankyText)
         return SavedAnky(

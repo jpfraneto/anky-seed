@@ -52,7 +52,8 @@ data class SessionSummary(
         fun preview(text: String): String {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) return "No readable text"
-            return if (trimmed.length > 96) trimmed.take(96) + "..." else trimmed
+            val prefix = trimmed.swiftCharacterPrefix(96)
+            return if (prefix.isTruncated) prefix.text + "..." else trimmed
         }
 
         fun wordCount(text: String): Int =
@@ -66,4 +67,67 @@ data class SessionDay(
     val completeCount: Int,
     val fragmentCount: Int,
     val reflectionCount: Int,
+    val dayInRegion: Int,
 )
+
+private data class SwiftCharacterPrefix(
+    val text: String,
+    val isTruncated: Boolean,
+)
+
+private fun String.swiftCharacterPrefix(limit: Int): SwiftCharacterPrefix {
+    var characterCount = 0
+    var index = 0
+    while (index < length && characterCount < limit) {
+        index = nextSwiftCharacterEnd(index)
+        characterCount += 1
+    }
+    return SwiftCharacterPrefix(text = substring(0, index), isTruncated = index < length)
+}
+
+private fun String.nextSwiftCharacterEnd(start: Int): Int {
+    var index = start
+    val first = codePointAt(index)
+    index += Character.charCount(first)
+
+    if (first in RegionalIndicators && index < length) {
+        val second = codePointAt(index)
+        if (second in RegionalIndicators) {
+            index += Character.charCount(second)
+        }
+    }
+
+    index = consumeAttachedMarks(index)
+    while (index < length && codePointAt(index) == ZeroWidthJoiner) {
+        index += Character.charCount(ZeroWidthJoiner)
+        if (index < length) {
+            index += Character.charCount(codePointAt(index))
+            index = consumeAttachedMarks(index)
+        }
+    }
+    return index
+}
+
+private fun String.consumeAttachedMarks(start: Int): Int {
+    var index = start
+    while (index < length) {
+        val codePoint = codePointAt(index)
+        if (!codePoint.isAttachedMark()) break
+        index += Character.charCount(codePoint)
+    }
+    return index
+}
+
+private fun Int.isAttachedMark(): Boolean {
+    val type = Character.getType(this)
+    return type == Character.NON_SPACING_MARK.toInt() ||
+        type == Character.COMBINING_SPACING_MARK.toInt() ||
+        type == Character.ENCLOSING_MARK.toInt() ||
+        this in VariationSelectors ||
+        this in EmojiModifiers
+}
+
+private const val ZeroWidthJoiner = 0x200D
+private val RegionalIndicators = 0x1F1E6..0x1F1FF
+private val VariationSelectors = 0xFE00..0xFE0F
+private val EmojiModifiers = 0x1F3FB..0x1F3FF

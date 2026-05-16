@@ -60,4 +60,54 @@ private fun List<String>.dropLastWhileIndexedOnce(predicate: (String) -> Boolean
 }
 
 internal fun String.isSingleProtocolGlyph(): Boolean =
-    codePointCount(0, length) == 1 && this != "\n" && this != "\r"
+    isSingleGraphemeCluster()
+
+private fun String.isSingleGraphemeCluster(): Boolean {
+    if (isEmpty() || contains('\n') || contains('\r')) return false
+
+    val codePoints = codePoints().toArray()
+    if (codePoints.size == 2 && codePoints.all(::isRegionalIndicator)) return true
+
+    var clusters = 0
+    var joinsNext = false
+    for (codePoint in codePoints) {
+        when {
+            codePoint == ZeroWidthJoiner -> {
+                if (clusters == 0) {
+                    clusters = 1
+                } else {
+                    if (joinsNext) return false
+                    joinsNext = true
+                }
+            }
+            codePoint.isAttachedMark() -> {
+                if (clusters == 0) clusters = 1
+            }
+            joinsNext -> {
+                joinsNext = false
+            }
+            else -> {
+                clusters += 1
+                if (clusters > 1) return false
+            }
+        }
+    }
+    return clusters == 1
+}
+
+private fun Int.isAttachedMark(): Boolean {
+    val type = Character.getType(this)
+    return type == Character.NON_SPACING_MARK.toInt() ||
+        type == Character.COMBINING_SPACING_MARK.toInt() ||
+        type == Character.ENCLOSING_MARK.toInt() ||
+        this in VariationSelectors ||
+        this in EmojiModifiers
+}
+
+private fun isRegionalIndicator(codePoint: Int): Boolean =
+    codePoint in RegionalIndicators
+
+private const val ZeroWidthJoiner = 0x200D
+private val VariationSelectors = 0xFE00..0xFE0F
+private val EmojiModifiers = 0x1F3FB..0x1F3FF
+private val RegionalIndicators = 0x1F1E6..0x1F1FF

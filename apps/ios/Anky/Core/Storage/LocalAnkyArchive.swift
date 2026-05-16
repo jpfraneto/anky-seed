@@ -68,6 +68,19 @@ struct LocalAnkyArchive {
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
+    func delete(_ artifact: SavedAnky) throws {
+        if fileManager.fileExists(atPath: artifact.url.path) {
+            try fileManager.removeItem(at: artifact.url)
+            return
+        }
+
+        let hashURL = directoryURL.appendingPathComponent("\(artifact.hash).anky")
+        guard fileManager.fileExists(atPath: hashURL.path) else {
+            return
+        }
+        try fileManager.removeItem(at: hashURL)
+    }
+
     func clear() throws {
         let urls = fileURLs()
         for url in urls {

@@ -7,6 +7,11 @@ object SafeLog {
     private val Forbidden = listOf(
         Regex("\\d{13} .+\\n\\d{1,} .+", RegexOption.DOT_MATCHES_ALL),
         Regex("ANKY_RECOVERY_PHRASE_V1"),
+        Regex("recovery phrase", RegexOption.IGNORE_CASE),
+        Regex("seed phrase", RegexOption.IGNORE_CASE),
+        Regex("private key", RegexOption.IGNORE_CASE),
+        Regex("signature", RegexOption.IGNORE_CASE),
+        Regex("X-Anky-Signature", RegexOption.IGNORE_CASE),
         Regex("prompt", RegexOption.IGNORE_CASE),
         Regex("reflection", RegexOption.IGNORE_CASE),
     )

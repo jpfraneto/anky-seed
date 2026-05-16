@@ -280,18 +280,29 @@ Credits are not payment for privacy.
 
 Credits are payment for mirror compute.
 
-Free credits are not automatic in the early system.
+A new writer should be able to feel the mirror before needing to contact JP or pay.
 
-Free credits are curated.
+Official mobile clients may receive one automatic trial grant of 8 reflection credits.
 
-The early free-credit flow is:
+The automatic trial grant is:
 
-1. Writer taps “DM JP for free credits.”
-2. The app opens a message containing the writer’s public key.
-3. JP grants credits manually.
-4. The writer returns and refreshes credits.
+- device-bound
+- app-bound
+- platform-bound
+- RevenueCat-backed
+- not a user account
+- not a writing database
+- not a login ceremony
 
-This creates a human onboarding loop and prevents free-credit abuse.
+The trial grant exists only to let the writer experience Anky’s reflection.
+
+The grant must not require the writer to share writing with JP.
+
+The grant must not create a new onboarding database.
+
+The grant must not weaken the rule that the server receives writing only when the writer explicitly asks for reflection.
+
+The early “DM JP for free credits” flow may remain as a fallback/support path, but it is no longer the primary onboarding path.
 
 ---
 

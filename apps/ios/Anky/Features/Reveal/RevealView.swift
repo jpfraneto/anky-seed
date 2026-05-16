@@ -4,9 +4,14 @@ import UIKit
 struct RevealView: View {
     @StateObject private var viewModel: RevealViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmDelete = false
+    @State private var activeSection: RevealCopySection = .writing
+    @State private var copiedSection: RevealCopySection?
+    private let onDeleted: () -> Void
 
-    init(viewModel: RevealViewModel) {
+    init(viewModel: RevealViewModel, onDeleted: @escaping () -> Void = {}) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.onDeleted = onDeleted
     }
 
     var body: some View {
@@ -16,48 +21,104 @@ struct RevealView: View {
 
             RevealBackgroundTexture()
 
-            VStack(spacing: 0) {
-                RevealHeader(
-                    date: viewModel.createdDate,
-                    time: viewModel.createdTime,
-                    metadata: viewModel.metadataLine,
-                    dismiss: dismiss
-                )
+            ScrollViewReader { proxy in
+                VStack(spacing: 0) {
+                    RevealHeader(
+                        date: viewModel.createdDate,
+                        time: viewModel.createdTime,
+                        metadata: viewModel.metadataLine,
+                        isDeleting: viewModel.isDeleting,
+                        dismiss: dismiss,
+                        delete: {
+                            confirmDelete = true
+                        }
+                    )
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        SelectableWritingText(text: viewModel.reconstructedText)
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            SelectableWritingText(
+                                text: viewModel.reconstructedText,
+                                isHighlighted: copiedSection == .writing
+                            )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 8)
+                            .background(SectionPositionReader(section: .writing))
+                            .id(RevealScrollTarget.writing)
 
-                        PrivacyDivider()
-                            .padding(.top, 28)
+                            PrivacyDivider()
+                                .padding(.top, 28)
 
-                        RevealActions(viewModel: viewModel)
-                            .padding(.top, 20)
-
-                        if let reflection = viewModel.reflection {
-                            SavedReflectionPanel(reflection: reflection)
+                            RevealActions(viewModel: viewModel)
                                 .padding(.top, 20)
-                        }
+                                .id(RevealScrollTarget.askAnky)
 
-                        if let errorMessage = viewModel.errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote)
-                                .foregroundStyle(Color.red.opacity(0.9))
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .multilineTextAlignment(.center)
-                                .padding(.top, 18)
+                            if let reflection = viewModel.reflection {
+                                SavedReflectionPanel(
+                                    reflection: reflection,
+                                    isHighlighted: copiedSection == .reflection
+                                )
+                                .padding(.top, 20)
+                                .background(SectionPositionReader(section: .reflection))
+                                .id(RevealScrollTarget.reflection)
+                            }
+
+                            if let errorMessage = viewModel.errorMessage {
+                                Text(errorMessage)
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.red.opacity(0.9))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.top, 18)
+                            }
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.top, 20)
+                        .padding(.bottom, 118)
+                    }
+                    .coordinateSpace(name: RevealCoordinateSpace.scroll)
+                    .onPreferenceChange(SectionPositionPreferenceKey.self) { positions in
+                        updateActiveSection(with: positions)
+                    }
+                }
+                .overlay(alignment: .trailing) {
+                    FloatingCopyButton(section: activeCopySection, isCopied: copiedSection == activeCopySection) {
+                        copyActiveSection()
+                    }
+                    .padding(.trailing, 16)
+                }
+                .overlay(alignment: .bottom) {
+                    RevealFloatingStatus(
+                        activeSection: activeSection,
+                        canAskAnky: viewModel.canAskAnky,
+                        hasReflection: viewModel.reflection != nil,
+                        isAskingAnky: viewModel.isAskingAnky
+                    ) {
+                        withAnimation(.snappy(duration: 0.45)) {
+                            proxy.scrollTo(RevealScrollTarget.askAnky, anchor: .bottom)
                         }
                     }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 20)
-                    .padding(.bottom, 44)
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 18)
                 }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .confirmationDialog("delete this writing session?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("delete writing session", role: .destructive) {
+                viewModel.deleteSession()
+            }
+            Button("cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the local .anky file and any local reflection for this session.")
+        }
+        .onChange(of: viewModel.isDeleted) { _, isDeleted in
+            guard isDeleted else {
+                return
+            }
+            onDeleted()
+            dismiss()
+        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 30)
                 .onEnded { value in
@@ -70,13 +131,50 @@ struct RevealView: View {
                 }
         )
     }
+
+    private var activeCopySection: RevealCopySection {
+        if activeSection == .reflection, viewModel.reflection != nil {
+            return .reflection
+        }
+        return .writing
+    }
+
+    private func copyActiveSection() {
+        let section = activeCopySection
+        viewModel.copy(section)
+        withAnimation(.easeInOut(duration: 0.18)) {
+            copiedSection = section
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+            guard copiedSection == section else {
+                return
+            }
+            withAnimation(.easeOut(duration: 0.45)) {
+                copiedSection = nil
+            }
+        }
+    }
+
+    private func updateActiveSection(with positions: [RevealCopySection: CGFloat]) {
+        guard !positions.isEmpty else {
+            return
+        }
+
+        if let reflectionY = positions[.reflection], reflectionY < 260 {
+            activeSection = .reflection
+        } else {
+            activeSection = .writing
+        }
+    }
 }
 
 private struct RevealHeader: View {
     let date: String
     let time: String
     let metadata: String
+    let isDeleting: Bool
     let dismiss: DismissAction
+    let delete: () -> Void
 
     private let backButtonSize: CGFloat = 40
 
@@ -110,8 +208,26 @@ private struct RevealHeader: View {
             }
             .frame(maxWidth: .infinity)
 
-            Color.clear
-                .frame(width: backButtonSize, height: backButtonSize)
+            Button(action: delete) {
+                if isDeleting {
+                    ProgressView()
+                        .tint(RevealPalette.paper)
+                        .frame(width: backButtonSize, height: backButtonSize)
+                } else {
+                    Image(systemName: "trash")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.red.opacity(0.88))
+                        .frame(width: backButtonSize, height: backButtonSize)
+                        .background(Color.black.opacity(0.24), in: Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.red.opacity(0.22), lineWidth: 1)
+                        )
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isDeleting)
+            .accessibilityLabel("Delete writing session")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -121,6 +237,37 @@ private struct RevealHeader: View {
                 .fill(RevealPalette.gold.opacity(0.13))
                 .frame(height: 1)
         }
+    }
+}
+
+private enum RevealScrollTarget {
+    case writing
+    case askAnky
+    case reflection
+}
+
+private enum RevealCoordinateSpace {
+    static let scroll = "revealScroll"
+}
+
+private struct SectionPositionReader: View {
+    let section: RevealCopySection
+
+    var body: some View {
+        GeometryReader { geometry in
+            Color.clear.preference(
+                key: SectionPositionPreferenceKey.self,
+                value: [section: geometry.frame(in: .named(RevealCoordinateSpace.scroll)).minY]
+            )
+        }
+    }
+}
+
+private struct SectionPositionPreferenceKey: PreferenceKey {
+    static var defaultValue: [RevealCopySection: CGFloat] = [:]
+
+    static func reduce(value: inout [RevealCopySection: CGFloat], nextValue: () -> [RevealCopySection: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
 
@@ -177,6 +324,7 @@ private struct PrivacyDivider: View {
 
 private struct SelectableWritingText: UIViewRepresentable {
     let text: String
+    let isHighlighted: Bool
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -196,14 +344,20 @@ private struct SelectableWritingText: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 7
+        textView.backgroundColor = UIColor(
+            isHighlighted
+                ? RevealPalette.copiedGlow.opacity(0.10)
+                : Color.clear
+        )
         textView.attributedText = NSAttributedString(
             string: text,
             attributes: [
                 .font: UIFont(name: "Georgia", size: 19) ?? UIFont.systemFont(ofSize: 19),
-                .foregroundColor: UIColor(RevealPalette.paper),
+                .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.paper),
                 .paragraphStyle: paragraph
             ]
         )
+        textView.layer.cornerRadius = isHighlighted ? 12 : 0
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
@@ -242,14 +396,6 @@ private struct RevealActions: View {
                 )
                 .disabled(viewModel.isAskingAnky)
             }
-
-            QuietCopyButton(
-                title: viewModel.didCopyText ? "copied all text" : "copy all text",
-                systemImage: "doc.on.doc"
-            ) {
-                viewModel.copyText()
-            }
-            .padding(.top, viewModel.canAskAnky ? 0 : 2)
         }
     }
 }
@@ -308,35 +454,6 @@ private struct ThreadedActionButton: View {
     }
 }
 
-private struct QuietCopyButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .medium))
-
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            .foregroundStyle(RevealPalette.paper.opacity(0.7))
-            .frame(maxWidth: .infinity)
-            .frame(height: 42)
-            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(RevealPalette.gold.opacity(0.18), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 private struct ThreadOverlay: View {
     var body: some View {
         ZStack {
@@ -366,32 +483,176 @@ private struct ThreadOverlay: View {
     }
 }
 
+private struct FloatingCopyButton: View {
+    let section: RevealCopySection
+    let isCopied: Bool
+    let action: () -> Void
+
+    private var label: String {
+        switch section {
+        case .writing:
+            return isCopied ? "copied writing" : "copy writing"
+        case .reflection:
+            return isCopied ? "copied reflection" : "copy reflection"
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 12, weight: .semibold))
+
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            .foregroundStyle(isCopied ? RevealPalette.ink : RevealPalette.paper.opacity(0.78))
+            .padding(.horizontal, 10)
+            .frame(height: 38)
+            .background(
+                isCopied
+                    ? RevealPalette.gold.opacity(0.88)
+                    : Color.black.opacity(0.28),
+                in: Capsule()
+            )
+            .overlay(
+                Capsule()
+                    .stroke(RevealPalette.gold.opacity(isCopied ? 0.44 : 0.18), lineWidth: 1)
+            )
+            .shadow(color: RevealPalette.gold.opacity(isCopied ? 0.28 : 0.08), radius: isCopied ? 14 : 7, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+private struct RevealFloatingStatus: View {
+    let activeSection: RevealCopySection
+    let canAskAnky: Bool
+    let hasReflection: Bool
+    let isAskingAnky: Bool
+    let action: () -> Void
+
+    private var title: String {
+        if canAskAnky {
+            return isAskingAnky ? "asking anky" : "ask anky for reflection"
+        }
+        switch activeSection {
+        case .writing:
+            return "writing"
+        case .reflection:
+            return "reflection"
+        }
+    }
+
+    private var systemImage: String {
+        if canAskAnky {
+            return "sparkles"
+        }
+        switch activeSection {
+        case .writing:
+            return "text.alignleft"
+        case .reflection:
+            return "quote.bubble"
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if isAskingAnky {
+                    ProgressView()
+                        .tint(RevealPalette.paper)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                if canAskAnky {
+                    Image(systemName: "arrow.down")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+            }
+            .foregroundStyle(RevealPalette.paper.opacity(canAskAnky ? 0.92 : 0.62))
+            .padding(.horizontal, 14)
+            .frame(height: 42)
+            .background(Color.black.opacity(0.34), in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(RevealPalette.gold.opacity(canAskAnky ? 0.34 : 0.12), lineWidth: 1)
+            )
+            .shadow(color: RevealPalette.gold.opacity(canAskAnky ? 0.16 : 0.05), radius: 16, y: 5)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canAskAnky)
+        .accessibilityLabel(title)
+    }
+}
+
 private struct SavedReflectionPanel: View {
     let reflection: LocalReflection
+    let isHighlighted: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(reflection.title.lowercased())
                 .font(.custom("Georgia", size: 23).weight(.bold))
-                .foregroundStyle(RevealPalette.markdownHeading)
+                .foregroundStyle(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.markdownHeading)
                 .tracking(0)
 
-            SimpleMarkdownText(text: reflection.reflection)
+            SelectableReflectionText(text: reflection.reflection, isHighlighted: isHighlighted)
         }
+        .padding(.horizontal, isHighlighted ? 12 : 0)
+        .padding(.vertical, isHighlighted ? 12 : 0)
+        .background(
+            isHighlighted
+                ? RevealPalette.copiedGlow.opacity(0.08)
+                : Color.clear,
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 }
 
-private struct SimpleMarkdownText: View {
+private struct SelectableReflectionText: UIViewRepresentable {
     let text: String
+    let isHighlighted: Bool
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                markdownLine(line)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .textSelection(.enabled)
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.backgroundColor = .clear
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = false
+        textView.showsVerticalScrollIndicator = false
+        textView.showsHorizontalScrollIndicator = false
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.adjustsFontForContentSizeCategory = false
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return textView
+    }
+
+    func updateUIView(_ textView: UITextView, context: Context) {
+        textView.backgroundColor = UIColor(
+            isHighlighted
+                ? RevealPalette.copiedGlow.opacity(0.08)
+                : Color.clear
+        )
+        textView.attributedText = attributedReflection()
+        textView.layer.cornerRadius = isHighlighted ? 12 : 0
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? UIScreen.main.bounds.width - 56
+        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: size.height)
     }
 
     private var lines: [String] {
@@ -400,63 +661,57 @@ private struct SimpleMarkdownText: View {
             .map(String.init)
     }
 
-    @ViewBuilder
-    private func markdownLine(_ line: String) -> some View {
+    private func attributedReflection() -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        for (index, line) in lines.enumerated() {
+            result.append(attributedLine(line))
+            if index < lines.count - 1 {
+                result.append(NSAttributedString(string: "\n"))
+            }
+        }
+        return result
+    }
+
+    private func attributedLine(_ line: String) -> NSAttributedString {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 5
+        paragraph.paragraphSpacing = trimmed.isEmpty ? 9 : 4
 
         if trimmed.isEmpty {
-            Color.clear
-                .frame(height: 12)
-        } else if let heading = headingText(from: trimmed) {
-            Text(inlineAttributedString(heading))
-                .font(.custom("Georgia", size: 20).weight(.bold))
-                .lineSpacing(2)
-                .foregroundStyle(RevealPalette.markdownHeading)
-                .padding(.top, 4)
-                .padding(.bottom, 5)
-        } else if let quote = quoteText(from: trimmed) {
-            Text(inlineAttributedString(quote))
-                .font(.custom("Georgia", size: 16))
-                .italic()
-                .lineSpacing(5)
-                .foregroundStyle(Color(hex: 0xF4F1EA).opacity(0.68))
-                .padding(.leading, 10)
-                .padding(.vertical, 3)
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(RevealPalette.gold.opacity(0.36))
-                        .frame(width: 2)
-                }
-                .padding(.top, 6)
-        } else if let bullet = bulletText(from: trimmed) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("•")
-                    .font(.custom("Georgia", size: 16))
-                    .foregroundStyle(RevealPalette.goldSoft)
-                Text(inlineAttributedString(bullet))
-                    .font(.custom("Georgia", size: 16))
-                    .lineSpacing(5)
-                    .foregroundStyle(RevealPalette.paper)
-            }
-            .padding(.vertical, 2)
-        } else if let numbered = numberedText(from: trimmed) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(numbered.marker)
-                    .font(.custom("Georgia", size: 16))
-                    .foregroundStyle(RevealPalette.goldSoft)
-                Text(inlineAttributedString(numbered.text))
-                    .font(.custom("Georgia", size: 16))
-                    .lineSpacing(5)
-                    .foregroundStyle(RevealPalette.paper)
-            }
-            .padding(.vertical, 2)
-        } else {
-            Text(inlineAttributedString(trimmed))
-                .font(.custom("Georgia", size: 16))
-                .lineSpacing(5)
-                .foregroundStyle(RevealPalette.paper)
-                .padding(.vertical, 2)
+            return NSAttributedString(string: "", attributes: [.paragraphStyle: paragraph])
         }
+
+        if let heading = headingText(from: trimmed) {
+            return NSAttributedString(
+                string: heading,
+                attributes: [
+                    .font: UIFont(name: "Georgia-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20),
+                    .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.markdownHeading),
+                    .paragraphStyle: paragraph
+                ]
+            )
+        }
+
+        if let quote = quoteText(from: trimmed) {
+            let attributed = NSMutableAttributedString(string: quote, attributes: baseAttributes(paragraph: paragraph, italic: true))
+            attributed.addAttribute(
+                .foregroundColor,
+                value: UIColor(RevealPalette.paper.opacity(isHighlighted ? 0.88 : 0.68)),
+                range: NSRange(location: 0, length: attributed.length)
+            )
+            return attributed
+        }
+
+        if let bullet = bulletText(from: trimmed) {
+            return inlineAttributedString("• \(bullet)", paragraph: paragraph)
+        }
+
+        if let numbered = numberedText(from: trimmed) {
+            return inlineAttributedString("\(numbered.marker) \(numbered.text)", paragraph: paragraph)
+        }
+
+        return inlineAttributedString(trimmed, paragraph: paragraph)
     }
 
     private func headingText(from line: String) -> String? {
@@ -497,26 +752,26 @@ private struct SimpleMarkdownText: View {
         return ("\(numberText).", String(line[line.index(after: restStart)...]))
     }
 
-    private func inlineAttributedString(_ text: String) -> AttributedString {
-        var result = AttributedString()
+    private func inlineAttributedString(_ text: String, paragraph: NSMutableParagraphStyle) -> NSAttributedString {
+        let result = NSMutableAttributedString()
         var index = text.startIndex
 
         while index < text.endIndex {
             if text[index...].hasPrefix("**"),
                let end = text[text.index(index, offsetBy: 2)...].range(of: "**") {
                 let contentStart = text.index(index, offsetBy: 2)
-                append(String(text[contentStart..<end.lowerBound]), to: &result, style: .strong)
+                append(String(text[contentStart..<end.lowerBound]), to: result, style: .strong, paragraph: paragraph)
                 index = end.upperBound
             } else if text[index] == "`",
                       let end = text[text.index(after: index)...].firstIndex(of: "`") {
                 let contentStart = text.index(after: index)
-                append(String(text[contentStart..<end]), to: &result, style: .code)
+                append(String(text[contentStart..<end]), to: result, style: .code, paragraph: paragraph)
                 index = text.index(after: end)
             } else {
                 let nextStrong = text[index...].range(of: "**")?.lowerBound
                 let nextCode = text[index...].firstIndex(of: "`")
                 let next = [nextStrong, nextCode].compactMap { $0 }.min() ?? text.endIndex
-                append(String(text[index..<next]), to: &result, style: .normal)
+                append(String(text[index..<next]), to: result, style: .normal, paragraph: paragraph)
                 index = next
             }
         }
@@ -524,19 +779,34 @@ private struct SimpleMarkdownText: View {
         return result
     }
 
-    private func append(_ string: String, to result: inout AttributedString, style: InlineStyle) {
-        var chunk = AttributedString(string)
+    private func baseAttributes(paragraph: NSMutableParagraphStyle, italic: Bool = false) -> [NSAttributedString.Key: Any] {
+        [
+            .font: italic
+                ? UIFont.italicSystemFont(ofSize: 16)
+                : (UIFont(name: "Georgia", size: 16) ?? UIFont.systemFont(ofSize: 16)),
+            .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.paper),
+            .paragraphStyle: paragraph
+        ]
+    }
+
+    private func append(
+        _ string: String,
+        to result: NSMutableAttributedString,
+        style: InlineStyle,
+        paragraph: NSMutableParagraphStyle
+    ) {
+        var attributes = baseAttributes(paragraph: paragraph)
         switch style {
         case .normal:
-            chunk.foregroundColor = RevealPalette.paper
+            break
         case .strong:
-            chunk.foregroundColor = RevealPalette.gold
-            chunk.font = .custom("Georgia", size: 16).bold()
+            attributes[.foregroundColor] = UIColor(RevealPalette.gold)
+            attributes[.font] = UIFont(name: "Georgia-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         case .code:
-            chunk.foregroundColor = RevealPalette.paper.opacity(0.82)
-            chunk.font = .system(size: 15, design: .monospaced)
+            attributes[.foregroundColor] = UIColor(RevealPalette.paper.opacity(isHighlighted ? 0.92 : 0.82))
+            attributes[.font] = UIFont.monospacedSystemFont(ofSize: 15, weight: .regular)
         }
-        result += chunk
+        result.append(NSAttributedString(string: string, attributes: attributes))
     }
 
     private enum InlineStyle {
@@ -554,6 +824,8 @@ private enum RevealPalette {
     static let markdownHeading = Color(hex: 0xF6D978)
     static let violet = Color(hex: 0x6F5DFF)
     static let goldSoft = gold.opacity(0.72)
+    static let copiedPaper = Color(hex: 0xFFF8DC)
+    static let copiedGlow = Color(hex: 0xF8D97A)
     static let buttonFill = Color(red: 68 / 255, green: 48 / 255, blue: 23 / 255).opacity(0.62)
 }
 

@@ -7,6 +7,7 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 class SessionIndexStore private constructor(
     private val file: File,
@@ -54,12 +55,17 @@ class SessionIndexStore private constructor(
         })
     }
 
+    fun clear() {
+        if (file.exists()) file.delete()
+    }
+
     companion object {
         fun forFile(file: File): SessionIndexStore = SessionIndexStore(file)
 
-        fun groupByDay(sessions: List<SessionSummary>, zoneId: ZoneId = ZoneId.systemDefault()): List<SessionDay> =
-            sessions
-                .groupBy { LocalDate.ofInstant(it.createdAt, zoneId) }
+        fun groupByDay(sessions: List<SessionSummary>, zoneId: ZoneId = ZoneId.systemDefault()): List<SessionDay> {
+            val grouped = sessions.groupBy { it.createdAt.atZone(zoneId).toLocalDate() }
+            val startDate = grouped.keys.minOrNull() ?: LocalDate.now(zoneId)
+            return grouped
                 .map { (day, daySessions) ->
                     val sorted = daySessions.sortedByDescending { it.createdAt }
                     SessionDay(
@@ -68,9 +74,45 @@ class SessionIndexStore private constructor(
                         completeCount = sorted.count { it.isComplete },
                         fragmentCount = sorted.count { !it.isComplete },
                         reflectionCount = sorted.count { it.hasReflection },
+                        dayInRegion = dayInRegion(startDate, day),
                     )
                 }
                 .sortedByDescending { it.dayEpochMs }
+        }
+
+        fun groupByContinuousDays(
+            sessions: List<SessionSummary>,
+            firstOpen: Instant,
+            now: Instant = Instant.now(),
+            zoneId: ZoneId = ZoneId.systemDefault(),
+        ): List<SessionDay> {
+            val grouped = sessions.groupBy { it.createdAt.atZone(zoneId).toLocalDate() }
+            val firstOpenDate = firstOpen.atZone(zoneId).toLocalDate()
+            val earliestSessionDate = grouped.keys.minOrNull()
+            val latestSessionDate = grouped.keys.maxOrNull()
+            val today = now.atZone(zoneId).toLocalDate()
+            val startDate = listOfNotNull(firstOpenDate, earliestSessionDate).minOrNull() ?: firstOpenDate
+            val endDate = listOfNotNull(today, latestSessionDate).maxOrNull() ?: today
+            val dayCount = ChronoUnit.DAYS.between(startDate, endDate).coerceAtLeast(0)
+
+            return (0..dayCount).map { offset ->
+                val day = startDate.plusDays(offset)
+                val sorted = grouped[day].orEmpty().sortedByDescending { it.createdAt }
+                SessionDay(
+                    dayEpochMs = day.atStartOfDay(zoneId).toInstant().toEpochMilli(),
+                    sessions = sorted,
+                    completeCount = sorted.count { it.isComplete },
+                    fragmentCount = sorted.count { !it.isComplete },
+                    reflectionCount = sorted.count { it.hasReflection },
+                    dayInRegion = dayInRegion(startDate, day),
+                )
+            }
+        }
+
+        private fun dayInRegion(startDate: LocalDate, day: LocalDate): Int {
+            val dayIndex = ChronoUnit.DAYS.between(startDate, day).coerceAtLeast(0)
+            return ((dayIndex % 8) + 1).toInt()
+        }
     }
 }
 

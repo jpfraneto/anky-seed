@@ -61,6 +61,23 @@ This is metadata only.
 
 It must not be used as the sole security mechanism.
 
+### Optional Trial Headers
+
+Official mobile clients may include:
+
+X-Anky-App-Version: <semver_or_build>
+X-Anky-Trial-Proof: <platform_attestation_token>
+
+`X-Anky-Trial-Proof` is only used when the backend needs to evaluate whether the writer/device is eligible for the automatic 8-credit trial grant.
+
+The trial proof must not contain writing.
+
+The trial proof must not replace request signature verification.
+
+The trial proof must not be trusted as the sole identity of the writer.
+
+The public key remains the writer identity.
+
 3. Canonical Signature Message
 
 The client signs:
@@ -263,26 +280,34 @@ The server must not persist reflection content long-term to support idempotency.
 
 Short-lived cache is acceptable.
 
-9. Credit Behavior
+## 9. Credit Behavior
 
 The endpoint costs 1 credit.
 
-The backend checks and spends credits before calling the model provider.
+The backend checks RevenueCat balance for the public key.
 
-If credit spending fails, the model provider must not be called.
+If balance is at least 1:
 
-If the model provider fails after spending a credit, the backend should either:
+- spend 1 credit
+- call the model
+- return reflection
 
-refund the credit, or
-avoid committing the spend until reflection succeeds
+If balance is less than 1:
 
-The v0 recommendation:
+- check whether the request is eligible for the automatic trial grant
+- if eligible, grant 8 credits through RevenueCat
+- then spend 1 credit for this reflection
+- return reflection with updated creditsRemaining
 
-Create idempotent pending spend if supported.
-Call model.
-Commit spend only after successful reflection.
+If the writer is not eligible for the automatic trial grant and has insufficient credits, return 402 INSUFFICIENT_CREDITS.
 
-If the credit provider only supports immediate spend, implement refund-on-failure.
+The trial grant must be idempotent.
+
+The reflection spend must be idempotent.
+
+The model provider must not be called unless credit spend succeeds or the trial grant/spend flow succeeds.
+
+If the model provider fails after spending credit, refund the credit or avoid committing the spend until reflection succeeds.
 
 10. Privacy Behavior
 

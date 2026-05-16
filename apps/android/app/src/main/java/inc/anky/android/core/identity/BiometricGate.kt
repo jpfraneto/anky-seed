@@ -27,15 +27,15 @@ class DeviceBiometricGate(
                 ContextCompat.getMainExecutor(activity),
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        continuation.resume(true)
+                        if (continuation.isActive) continuation.resume(true)
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        continuation.resume(false)
+                        if (continuation.isActive) continuation.resume(false)
                     }
 
                     override fun onAuthenticationFailed() {
-                        if (continuation.isActive) continuation.resume(false)
+                        // Non-terminal biometric mismatch. Keep the prompt alive until success or a real error/cancel.
                     }
                 },
             )
@@ -47,6 +47,9 @@ class DeviceBiometricGate(
                         BiometricManager.Authenticators.DEVICE_CREDENTIAL,
                 )
                 .build()
+            continuation.invokeOnCancellation {
+                prompt.cancelAuthentication()
+            }
             prompt.authenticate(info)
         }
     }

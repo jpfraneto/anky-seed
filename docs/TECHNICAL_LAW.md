@@ -198,7 +198,8 @@ Parse model output.
 Return reflection JSON.
 Forget raw .anky.
 Forget reconstructed writing.
-8. Credit Law
+
+## 8. Credit Law
 
 RevenueCat is the credit ledger.
 
@@ -206,7 +207,7 @@ The Anky backend should not maintain an independent credit database unless absol
 
 Purchases happen in the native app through RevenueCat.
 
-The backend spends credits when POST /anky succeeds.
+The backend spends credits when `POST /anky` succeeds.
 
 The backend should use an idempotency key derived from:
 
@@ -214,9 +215,21 @@ publicKey + ankyHash
 
 This prevents double spending when the client retries the same reflection request.
 
-Free credits are manually granted by JP during the early phase.
+Official mobile clients may receive one automatic trial grant of 8 credits.
 
-Automatic free credits are forbidden in v0 because they create infinite-wallet abuse.
+The trial grant is not a `/register` flow.
+
+The trial grant happens lazily inside `POST /anky`, only when a writer asks for reflection on a complete `.anky`.
+
+The trial grant requires proof that the request came from an official app/device path.
+
+For iOS, use DeviceCheck or App Attest.
+
+For Android, use Play Integrity / device recall when available.
+
+If device-bound proof is unavailable, automatic grants should be disabled or treated as a limited beta risk.
+
+The public key remains the RevenueCat App User ID, mirror identity, credit account key, and free-credit grant target.
 
 9. Database Law
 
@@ -320,7 +333,7 @@ social feed
 chat threads
 multi-reflection modes
 analytics over writing content
-automatic free credits
+automatic free credits without device-bound abuse protection
 React Native bridge
 shared cross-platform UI framework
 
