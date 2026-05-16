@@ -31,6 +31,7 @@ struct RevealView: View {
                         isDeleting: viewModel.isDeleting,
                         dismiss: dismiss,
                         delete: {
+                            RevealHaptics.warning()
                             confirmDelete = true
                         }
                     )
@@ -80,13 +81,13 @@ struct RevealView: View {
                     .onPreferenceChange(SectionPositionPreferenceKey.self) { positions in
                         updateActiveSection(with: positions)
                     }
-                }
-                .overlay(alignment: .topTrailing) {
-                    FloatingCopyButton(section: activeCopySection, isCopied: copiedSection == activeCopySection) {
-                        copyActiveSection()
+                    .overlay(alignment: .topTrailing) {
+                        FloatingCopyButton(section: activeCopySection, isCopied: copiedSection == activeCopySection) {
+                            copyActiveSection()
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.top, 20)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 20)
                 }
                 .overlay(alignment: .bottom) {
                     if viewModel.canAskAnky && !didTapReflectionPrompt {
@@ -106,13 +107,14 @@ struct RevealView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .confirmationDialog("delete this writing session?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("delete writing session", role: .destructive) {
+        .confirmationDialog("delete forever?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("delete forever", role: .destructive) {
+                RevealHaptics.warning()
                 viewModel.deleteSession()
             }
             Button("cancel", role: .cancel) {}
         } message: {
-            Text("This removes the local .anky file and any local reflection for this session.")
+            Text("This permanently deletes this writing session and its saved reflection from this device. This cannot be undone.")
         }
         .onChange(of: viewModel.isDeleted) { _, isDeleted in
             guard isDeleted else {
@@ -143,15 +145,16 @@ struct RevealView: View {
 
     private func copyActiveSection() {
         let section = activeCopySection
+        RevealHaptics.selection()
         viewModel.copy(section)
-        withAnimation(.easeInOut(duration: 0.18)) {
+        withAnimation(.easeOut(duration: 0.08)) {
             copiedSection = section
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.48) {
             guard copiedSection == section else {
                 return
             }
-            withAnimation(.easeOut(duration: 0.45)) {
+            withAnimation(.easeOut(duration: 0.22)) {
                 copiedSection = nil
             }
         }
@@ -167,6 +170,16 @@ struct RevealView: View {
         } else {
             activeSection = .writing
         }
+    }
+}
+
+private enum RevealHaptics {
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    static func warning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 }
 
@@ -314,7 +327,7 @@ private struct PrivacyDivider: View {
                     .frame(height: 1)
             }
 
-            Text("your writing is yours. it only leaves your device if you ask for a reflection.")
+            Text("your writing is yours. it only leaves your device if you ask for a reflection. it is deleted after processing and not stored anywhere. anky does not have a database")
                 .font(.system(size: 13))
                 .lineSpacing(3)
                 .foregroundStyle(RevealPalette.paper.opacity(0.62))
@@ -346,26 +359,31 @@ private struct SelectableWritingText: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 7
-        textView.backgroundColor = UIColor(
-            isHighlighted
-                ? RevealPalette.copiedGlow.opacity(0.10)
-                : Color.clear
-        )
+        textView.backgroundColor = .clear
         textView.attributedText = NSAttributedString(
             string: text,
             attributes: [
                 .font: UIFont(name: "Georgia", size: 19) ?? UIFont.systemFont(ofSize: 19),
-                .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.paper),
-                .paragraphStyle: paragraph
+                .foregroundColor: UIColor(RevealPalette.paper),
+                .paragraphStyle: paragraph,
+                .shadow: copyShadow(isHighlighted)
             ]
         )
-        textView.layer.cornerRadius = isHighlighted ? 12 : 0
+        textView.layer.cornerRadius = 0
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? UIScreen.main.bounds.width - 56
         let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: size.height)
+    }
+
+    private func copyShadow(_ isHighlighted: Bool) -> NSShadow {
+        let shadow = NSShadow()
+        shadow.shadowColor = UIColor(isHighlighted ? RevealPalette.copyMagenta : Color.clear)
+        shadow.shadowOffset = CGSize(width: 2, height: 2)
+        shadow.shadowBlurRadius = 0
+        return shadow
     }
 }
 
@@ -512,20 +530,15 @@ private struct FloatingCopyButton: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
-            .foregroundStyle(isCopied ? RevealPalette.ink : RevealPalette.paper.opacity(0.78))
+            .foregroundStyle(isCopied ? RevealPalette.copyMagenta : RevealPalette.paper)
             .padding(.horizontal, 10)
             .frame(height: 38)
-            .background(
-                isCopied
-                    ? RevealPalette.gold.opacity(0.88)
-                    : Color.black.opacity(0.28),
-                in: Capsule()
-            )
+            .background(RevealPalette.copyButtonFill, in: Capsule())
             .overlay(
                 Capsule()
-                    .stroke(RevealPalette.gold.opacity(isCopied ? 0.44 : 0.18), lineWidth: 1)
+                    .stroke((isCopied ? RevealPalette.copyMagenta : RevealPalette.gold).opacity(isCopied ? 0.72 : 0.32), lineWidth: 1)
             )
-            .shadow(color: RevealPalette.gold.opacity(isCopied ? 0.28 : 0.08), radius: isCopied ? 14 : 7, y: 4)
+            .shadow(color: isCopied ? RevealPalette.copyMagenta.opacity(0.32) : Color.black.opacity(0.38), radius: isCopied ? 12 : 10, y: 5)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -590,8 +603,9 @@ private struct SavedReflectionPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(reflection.title.lowercased())
                 .font(.custom("Georgia", size: 23).weight(.bold))
-                .foregroundStyle(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.markdownHeading)
+                .foregroundStyle(RevealPalette.markdownHeading)
                 .tracking(0)
+                .shadow(color: isHighlighted ? RevealPalette.copyMagenta : .clear, radius: 0, x: 2, y: 2)
 
             SelectableReflectionText(text: reflection.reflection, isHighlighted: isHighlighted)
 
@@ -601,14 +615,6 @@ private struct SavedReflectionPanel: View {
                     .foregroundStyle(RevealPalette.goldSoft.opacity(0.78))
             }
         }
-        .padding(.horizontal, isHighlighted ? 12 : 0)
-        .padding(.vertical, isHighlighted ? 12 : 0)
-        .background(
-            isHighlighted
-                ? RevealPalette.copiedGlow.opacity(0.08)
-                : Color.clear,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
     }
 }
 
@@ -632,13 +638,9 @@ private struct SelectableReflectionText: UIViewRepresentable {
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
-        textView.backgroundColor = UIColor(
-            isHighlighted
-                ? RevealPalette.copiedGlow.opacity(0.08)
-                : Color.clear
-        )
+        textView.backgroundColor = .clear
         textView.attributedText = attributedReflection()
-        textView.layer.cornerRadius = isHighlighted ? 12 : 0
+        textView.layer.cornerRadius = 0
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
@@ -679,8 +681,9 @@ private struct SelectableReflectionText: UIViewRepresentable {
                 string: heading,
                 attributes: [
                     .font: UIFont(name: "Georgia-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20),
-                    .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.markdownHeading),
-                    .paragraphStyle: paragraph
+                    .foregroundColor: UIColor(RevealPalette.markdownHeading),
+                    .paragraphStyle: paragraph,
+                    .shadow: copyShadow
                 ]
             )
         }
@@ -689,7 +692,7 @@ private struct SelectableReflectionText: UIViewRepresentable {
             let attributed = NSMutableAttributedString(string: quote, attributes: baseAttributes(paragraph: paragraph, italic: true))
             attributed.addAttribute(
                 .foregroundColor,
-                value: UIColor(RevealPalette.paper.opacity(isHighlighted ? 0.88 : 0.68)),
+                value: UIColor(RevealPalette.paper.opacity(0.68)),
                 range: NSRange(location: 0, length: attributed.length)
             )
             return attributed
@@ -776,9 +779,18 @@ private struct SelectableReflectionText: UIViewRepresentable {
             .font: italic
                 ? UIFont.italicSystemFont(ofSize: 16)
                 : (UIFont(name: "Georgia", size: 16) ?? UIFont.systemFont(ofSize: 16)),
-            .foregroundColor: UIColor(isHighlighted ? RevealPalette.copiedPaper : RevealPalette.paper),
-            .paragraphStyle: paragraph
+            .foregroundColor: UIColor(RevealPalette.paper),
+            .paragraphStyle: paragraph,
+            .shadow: copyShadow
         ]
+    }
+
+    private var copyShadow: NSShadow {
+        let shadow = NSShadow()
+        shadow.shadowColor = UIColor(isHighlighted ? RevealPalette.copyMagenta : Color.clear)
+        shadow.shadowOffset = CGSize(width: 2, height: 2)
+        shadow.shadowBlurRadius = 0
+        return shadow
     }
 
     private func append(
@@ -795,7 +807,7 @@ private struct SelectableReflectionText: UIViewRepresentable {
             attributes[.foregroundColor] = UIColor(RevealPalette.gold)
             attributes[.font] = UIFont(name: "Georgia-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
         case .code:
-            attributes[.foregroundColor] = UIColor(RevealPalette.paper.opacity(isHighlighted ? 0.92 : 0.82))
+            attributes[.foregroundColor] = UIColor(RevealPalette.paper.opacity(0.82))
             attributes[.font] = UIFont.monospacedSystemFont(ofSize: 15, weight: .regular)
         }
         result.append(NSAttributedString(string: string, attributes: attributes))
@@ -818,6 +830,9 @@ private enum RevealPalette {
     static let goldSoft = gold.opacity(0.72)
     static let copiedPaper = Color(hex: 0xFFF8DC)
     static let copiedGlow = Color(hex: 0xF8D97A)
+    static let copyFlashText = Color(hex: 0xFFFFFF)
+    static let copyMagenta = Color(hex: 0xFF3BD4)
+    static let copyButtonFill = Color(hex: 0x120F0B)
     static let buttonFill = Color(red: 68 / 255, green: 48 / 255, blue: 23 / 255).opacity(0.62)
 }
 

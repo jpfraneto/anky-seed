@@ -252,7 +252,7 @@ private fun PrivacyDivider(modifier: Modifier = Modifier) {
             Box(Modifier.weight(1f).height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.22f)))
         }
         Text(
-            "your writing is yours. it only leaves your device if you ask for a reflection.",
+            "your writing is yours. it only leaves your device if you ask for a reflection. it is deleted after processing and not stored anywhere. anky does not have a database",
             style = AnkyType.Caption.copy(color = AnkyColors.Paper.copy(alpha = 0.62f), fontWeight = FontWeight.Normal),
             textAlign = TextAlign.Center,
         )

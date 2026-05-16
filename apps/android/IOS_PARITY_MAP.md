@@ -47,7 +47,7 @@ Asset count audit: the iOS asset catalog currently contains 120 raster files bec
 | iOS copy | Swift source | Android location | Status |
 | --- | --- | --- | --- |
 | `Write`, `Map`, `You` | `AppRoot.swift` | `AnkyNav.kt` | Matched. |
-| `your writing is yours. it only leaves your device if you ask for a reflection.` | `RevealView.swift` | `RevealScreen.kt` | Matched. |
+| `your writing is yours. it only leaves your device if you ask for a reflection. it is deleted after processing and not stored anywhere. anky does not have a database` | `RevealView.swift` | `RevealScreen.kt` | Matched. |
 | `ask anky`, `asking anky`, `copy all text`, `copied all text` | `RevealView.swift` | `RevealScreen.kt`, `RevealViewModel.kt` | Matched lowercase, including post-copy state. |
 | `ready to ask anky for reflection`, `write 8 minutes to ask anky for reflection` | `RevealViewModel.swift` | `RevealScreen.kt` | Matched. |
 | `you`, `your story. your uniqueness.` | `YouView.swift` | `YouScreen.kt` | Matched. |
