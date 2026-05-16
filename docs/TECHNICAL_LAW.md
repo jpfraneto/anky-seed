@@ -227,7 +227,7 @@ For iOS, use DeviceCheck or App Attest.
 
 For Android, use Play Integrity / device recall when available.
 
-If device-bound proof is unavailable, automatic grants should be disabled or treated as a limited beta risk.
+If device-bound proof is unavailable, automatic grants must remain disabled.
 
 The public key remains the RevenueCat App User ID, mirror identity, credit account key, and free-credit grant target.
 

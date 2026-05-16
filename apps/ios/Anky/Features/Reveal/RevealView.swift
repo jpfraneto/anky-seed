@@ -7,6 +7,7 @@ struct RevealView: View {
     @State private var confirmDelete = false
     @State private var activeSection: RevealCopySection = .writing
     @State private var copiedSection: RevealCopySection?
+    @State private var didTapReflectionPrompt = false
     private let onDeleted: () -> Void
 
     init(viewModel: RevealViewModel, onDeleted: @escaping () -> Void = {}) {
@@ -80,25 +81,26 @@ struct RevealView: View {
                         updateActiveSection(with: positions)
                     }
                 }
-                .overlay(alignment: .trailing) {
+                .overlay(alignment: .topTrailing) {
                     FloatingCopyButton(section: activeCopySection, isCopied: copiedSection == activeCopySection) {
                         copyActiveSection()
                     }
                     .padding(.trailing, 16)
+                    .padding(.top, 20)
                 }
                 .overlay(alignment: .bottom) {
-                    RevealFloatingStatus(
-                        activeSection: activeSection,
-                        canAskAnky: viewModel.canAskAnky,
-                        hasReflection: viewModel.reflection != nil,
-                        isAskingAnky: viewModel.isAskingAnky
-                    ) {
-                        withAnimation(.snappy(duration: 0.45)) {
-                            proxy.scrollTo(RevealScrollTarget.askAnky, anchor: .bottom)
+                    if viewModel.canAskAnky && !didTapReflectionPrompt {
+                        AskReflectionFloatingButton(isAskingAnky: viewModel.isAskingAnky) {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                didTapReflectionPrompt = true
+                            }
+                            withAnimation(.snappy(duration: 0.45)) {
+                                proxy.scrollTo(RevealScrollTarget.askAnky, anchor: .bottom)
+                            }
                         }
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 18)
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 18)
                 }
             }
         }
@@ -386,7 +388,7 @@ private struct RevealActions: View {
                 ThreadedActionButton(
                     title: viewModel.isAskingAnky ? "asking anky" : "ask anky",
                     systemImage: "sparkles",
-                    badge: "reflection",
+                    badge: "8 free reflections included",
                     isLoading: viewModel.isAskingAnky,
                     action: {
                         Task {
@@ -430,6 +432,8 @@ private struct ThreadedActionButton: View {
                         Text(badge)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(RevealPalette.goldSoft)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
                             .background(Color.black.opacity(0.2), in: Capsule())
@@ -528,36 +532,9 @@ private struct FloatingCopyButton: View {
     }
 }
 
-private struct RevealFloatingStatus: View {
-    let activeSection: RevealCopySection
-    let canAskAnky: Bool
-    let hasReflection: Bool
+private struct AskReflectionFloatingButton: View {
     let isAskingAnky: Bool
     let action: () -> Void
-
-    private var title: String {
-        if canAskAnky {
-            return isAskingAnky ? "asking anky" : "ask anky for reflection"
-        }
-        switch activeSection {
-        case .writing:
-            return "writing"
-        case .reflection:
-            return "reflection"
-        }
-    }
-
-    private var systemImage: String {
-        if canAskAnky {
-            return "sparkles"
-        }
-        switch activeSection {
-        case .writing:
-            return "text.alignleft"
-        case .reflection:
-            return "quote.bubble"
-        }
-    }
 
     var body: some View {
         Button(action: action) {
@@ -566,33 +543,42 @@ private struct RevealFloatingStatus: View {
                     ProgressView()
                         .tint(RevealPalette.paper)
                 } else {
-                    Image(systemName: systemImage)
+                    Image(systemName: "sparkles")
                         .font(.system(size: 13, weight: .semibold))
                 }
 
-                Text(title)
+                Text(isAskingAnky ? "asking anky" : "ask anky")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
-                if canAskAnky {
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 11, weight: .semibold))
-                }
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 11, weight: .semibold))
             }
-            .foregroundStyle(RevealPalette.paper.opacity(canAskAnky ? 0.92 : 0.62))
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .background(Color.black.opacity(0.34), in: Capsule())
+            .foregroundStyle(RevealPalette.ink)
+            .padding(.horizontal, 16)
+            .frame(height: 46)
+            .background(
+                LinearGradient(
+                    colors: [
+                        RevealPalette.gold,
+                        RevealPalette.copiedPaper,
+                        RevealPalette.gold
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: Capsule()
+            )
             .overlay(
                 Capsule()
-                    .stroke(RevealPalette.gold.opacity(canAskAnky ? 0.34 : 0.12), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
             )
-            .shadow(color: RevealPalette.gold.opacity(canAskAnky ? 0.16 : 0.05), radius: 16, y: 5)
+            .shadow(color: RevealPalette.gold.opacity(0.38), radius: 18, y: 6)
         }
         .buttonStyle(.plain)
-        .disabled(!canAskAnky)
-        .accessibilityLabel(title)
+        .disabled(isAskingAnky)
+        .accessibilityLabel("Ask Anky for reflection")
     }
 }
 
@@ -608,6 +594,12 @@ private struct SavedReflectionPanel: View {
                 .tracking(0)
 
             SelectableReflectionText(text: reflection.reflection, isHighlighted: isHighlighted)
+
+            if let creditsRemaining = reflection.creditsRemaining {
+                Text("\(creditsRemaining) \(creditsRemaining == 1 ? "reflection" : "reflections") left")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(RevealPalette.goldSoft.opacity(0.78))
+            }
         }
         .padding(.horizontal, isHighlighted ? 12 : 0)
         .padding(.vertical, isHighlighted ? 12 : 0)

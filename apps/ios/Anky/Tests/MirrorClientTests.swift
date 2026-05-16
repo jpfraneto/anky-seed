@@ -19,6 +19,8 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "text/plain; charset=utf-8")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Trial-Proof"), "trial-proof")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Public-Key"), identity.publicKey)
             XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Anky-Signature"))
             XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Anky-Request-Time"))
@@ -41,10 +43,22 @@ final class MirrorClientTests: XCTestCase {
         let session = URLSession(configuration: configuration)
         let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
 
-        let response = try await client.askAnky(bytes: body, identity: identity)
+        let response = try await client.askAnky(
+            bytes: body,
+            identity: identity,
+            trialProof: "trial-proof",
+            appVersion: "1.0(1)"
+        )
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.title, "Small Thread")
+    }
+
+    func testDeviceCheckProofProviderDoesNotCrashWhenUnavailable() async {
+        let token = await DeviceCheckTrialProofProvider.makeToken()
+        if token != nil {
+            XCTAssertFalse(token!.isEmpty)
+        }
     }
 }
 

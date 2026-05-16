@@ -34,3 +34,5 @@ DerivedData/
 # Local protocol scratch output
 *.local.anky
 tmp/
+
+*.p8

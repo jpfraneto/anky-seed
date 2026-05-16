@@ -43,6 +43,8 @@ The request body remains the exact `.anky` bytes. The dev flags only bypass cred
 
 ## Environment
 
+The root `.env.example` is the only committed environment template for this repo. Keep the real root `.env` local/uncommitted and set production values through Railway variables; the mirror service should not carry a separate subfolder env file.
+
 Common:
 
 - `PORT`: Railway-provided port, defaults to `3000`.
@@ -65,12 +67,35 @@ Production:
 - `OPENROUTER_PRIVACY_CONFIRMED=true`
 - `REVENUECAT_SECRET_KEY`
 - `REVENUECAT_PROJECT_ID`
+- `REVENUECAT_CREDIT_CODE`, defaults to `CRD`.
+- `ANKY_AUTO_TRIAL_ENABLED=false`, safe default.
+- `ANKY_TRIAL_CREDITS=8`.
+- `ANKY_IOS_TRIAL_ENABLED=false`, safe default.
+- `ANKY_IOS_DEVICECHECK_REQUIRED=true`, safe default.
+- `APPLE_DEVICECHECK_TEAM_ID`, required only when iOS automatic trials are enabled and DeviceCheck is required.
+- `APPLE_DEVICECHECK_KEY_ID`, required only when iOS automatic trials are enabled and DeviceCheck is required.
+- `APPLE_DEVICECHECK_PRIVATE_KEY`, required only when iOS automatic trials are enabled and DeviceCheck is required.
+- `APPLE_DEVICECHECK_ENV=production`, or `development` for sandbox testing.
+- `ANKY_ANDROID_TRIAL_ENABLED=false`; keep disabled until Play Integrity/device recall is implemented.
+- `ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=true`.
 
-Production startup fails loudly if dev bypass/mock is enabled, OpenRouter config is missing, RevenueCat config is missing, or OpenRouter privacy confirmation is not set. `ANKY_MIRROR_DISABLED=true` is the documented emergency mode that allows health checks without model/credit configuration; it does not make `POST /anky` useful.
+Production startup fails loudly if dev bypass/mock is enabled, OpenRouter config is missing, RevenueCat config is missing, OpenRouter privacy confirmation is not set, iOS trials require DeviceCheck but Apple credentials are missing, or Android trials are enabled before Play Integrity/device recall exists. `ANKY_MIRROR_DISABLED=true` is the documented emergency mode that allows health checks without model/credit configuration; it does not make `POST /anky` useful.
 
 OpenRouter privacy note: the adapter does not log prompts or responses. The exact no-data-collection routing flag must be verified against the current OpenRouter account/API configuration before setting `OPENROUTER_PRIVACY_CONFIRMED=true`.
 
-RevenueCat note: RevenueCat is intended to be the credit ledger with public key as customer identity and `publicKey + ankyHash` as the idempotency basis. The adapter is isolated and does not create a custom credit database. Until real spend wiring is completed, production requests without dev bypass will fail closed instead of silently granting credits.
+RevenueCat note: RevenueCat is the credit ledger with public key as customer identity. Reflection spend, trial grant, and refund all use server-derived idempotency keys and safe references that never include writing, prompts, reflections, private keys, seed phrases, or raw DeviceCheck tokens. The adapter is isolated and does not create a custom credit database.
+
+Automatic iOS trial ordering is fail-closed and database-free:
+
+1. Validate the signed `POST /anky` request and complete `.anky`.
+2. Read RevenueCat balance.
+3. If balance is zero or unknown and iOS trial is enabled, query DeviceCheck bit 0.
+4. If bit 0 is unclaimed, mark bit 0 claimed.
+5. Grant `ANKY_TRIAL_CREDITS` in RevenueCat.
+6. Spend one reflection credit.
+7. Only then call the model.
+
+If DeviceCheck marking succeeds but RevenueCat grant fails, the device may need support/manual credit help. The server does not create a local trial database to paper over that edge case.
 
 ## Railway
 
@@ -88,6 +113,10 @@ railway variables set OPENROUTER_MODEL=...
 railway variables set OPENROUTER_PRIVACY_CONFIRMED=true
 railway variables set REVENUECAT_SECRET_KEY=...
 railway variables set REVENUECAT_PROJECT_ID=...
+railway variables set REVENUECAT_CREDIT_CODE=CRD
+railway variables set ANKY_AUTO_TRIAL_ENABLED=false
+railway variables set ANKY_IOS_TRIAL_ENABLED=false
+railway variables set ANKY_ANDROID_TRIAL_ENABLED=false
 railway variables set ANKY_DEV_BYPASS_CREDITS=false
 railway variables set ANKY_DEV_MOCK_MIRROR=false
 railway up
@@ -101,6 +130,22 @@ curl https://<railway-domain>/health
 ```
 
 Do not commit secrets. Do not enable dev bypass/mock in production.
+
+## Manual QA
+
+iOS real-device automatic trial QA:
+
+1. Configure RevenueCat env: `REVENUECAT_SECRET_KEY`, `REVENUECAT_PROJECT_ID`, `REVENUECAT_CREDIT_CODE=CRD`.
+2. Configure trial env: `ANKY_AUTO_TRIAL_ENABLED=true`, `ANKY_IOS_TRIAL_ENABLED=true`, `ANKY_IOS_DEVICECHECK_REQUIRED=true`, Apple DeviceCheck credentials, and `APPLE_DEVICECHECK_ENV`.
+3. Fresh install on a real iPhone and confirm the app has a local public key.
+4. Complete a valid 8-minute `.anky`, tap `Ask Anky`, and confirm the request has the exact `text/plain` body, existing signature headers, `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
+5. Confirm the backend validates signature and `.anky`, sees zero balance, verifies DeviceCheck unclaimed, marks bit 0 claimed, grants `+8 CRD`, spends `-1 CRD`, calls the model, returns a reflection, and reports `creditsRemaining: 7`.
+6. Confirm the app stores the reflection locally and no writing, prompt, reflection, or raw DeviceCheck token appears in logs.
+7. Reinstall or create a new local key on the same device and confirm there is no second automatic trial grant.
+
+Failure QA: force model failure after spend and confirm the server attempts a `+1 CRD` refund while keeping the DeviceCheck trial claim closed.
+
+Android QA: confirm paid RevenueCat credits still work, automatic trials remain disabled, and Android never receives public-key-only automatic grants.
 
 Current deployment:
 

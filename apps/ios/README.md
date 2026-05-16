@@ -26,7 +26,7 @@ Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -
 - `Ask Anky` sends the exact `.anky` UTF-8 bytes to `POST /anky` with signature headers.
 - Returned reflections are stored locally by `.anky` hash.
 - Map shows the local trail by day, with today state, complete/fragment/reflection counts, previews, day detail, and Reveal navigation.
-- You shows public key, recovery phrase reveal/copy after local auth, Face ID app lock, daily local reminders, local export, free-credit/WhatsApp contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
+- You shows public key, recovery phrase reveal/copy after local auth, Face ID app lock, daily local reminders, local export, support/manual-credit contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
 
 ## Build And Run
 
@@ -82,6 +82,14 @@ OPENROUTER_PRIVACY_CONFIRMED=true
 REVENUECAT_SECRET_KEY=...
 REVENUECAT_PROJECT_ID=...
 REVENUECAT_CREDIT_CODE=CRD
+ANKY_AUTO_TRIAL_ENABLED=false
+ANKY_TRIAL_CREDITS=8
+ANKY_IOS_TRIAL_ENABLED=false
+ANKY_IOS_DEVICECHECK_REQUIRED=true
+APPLE_DEVICECHECK_TEAM_ID=
+APPLE_DEVICECHECK_KEY_ID=
+APPLE_DEVICECHECK_PRIVATE_KEY=
+APPLE_DEVICECHECK_ENV=production
 ANKY_MIRROR_DISABLED=false
 ANKY_DEV_BYPASS_CREDITS=false
 ANKY_DEV_MOCK_MIRROR=false
@@ -121,6 +129,17 @@ Use the base URL only, not `/anky`; the app appends `/anky`.
 
 Fragments intentionally do not show `Ask Anky`.
 
+## Trial QA
+
+On a real iPhone with backend trial flags and Apple DeviceCheck credentials enabled:
+
+1. Fresh install and confirm the app has a local public key.
+2. Complete a valid 8-minute `.anky`.
+3. Tap `Ask Anky`.
+4. Confirm the request keeps the exact `text/plain` `.anky` body and existing signature headers, and also includes `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
+5. Confirm the backend grants `+8 CRD`, spends `-1 CRD`, returns the reflection, and the local saved reflection shows `7 reflections left` when the balance is known.
+6. Reinstall or reset local identity on the same device and confirm DeviceCheck prevents a second automatic trial grant.
+
 ## Local Storage
 
 - Active draft: Application Support, `Anky/active-draft.anky`
@@ -145,7 +164,7 @@ You is the local control surface:
 - Optional biometric confirmation for sensitive identity settings.
 - Local daily reminder scheduling with `UserNotifications`.
 - Native export/share of individual `.anky` files and reflection JSON files.
-- Safe DM JP / WhatsApp message containing only public key, platform, and app version.
+- Support/WhatsApp message containing only public key, platform, and app version.
 - WhatsApp opens JP directly at `+56 9 8549 1126`.
 - RevenueCat-backed credit balance, credit packs, purchase buttons, and manual refresh.
 - `$ANKY` contract address copy and link to `https://anky.app/ankycoin`.
@@ -169,12 +188,13 @@ The tests cover parser/reconstruction/duration/hash, generated writer output, ca
 - The request body is the exact `.anky` bytes, not JSON.
 - The app does not log raw `.anky`, reconstructed writing, or reflection text.
 - Reflections are stored locally on device.
-- DM JP free-credit message includes only public key, platform, and app version.
+- Support/manual-credit message includes only public key, platform, and app version.
 
 ## Known Limitations
 
 - No Android implementation in this pass.
 - RevenueCat purchases require the App Store Connect products, RevenueCat offering, and virtual currency grant rules to remain aligned with the product IDs in `RevenueCatCreditsClient.swift`.
+- iOS automatic trial grants require a real device, DeviceCheck support, backend Apple DeviceCheck credentials, and the backend trial flags. The app sends a DeviceCheck token opportunistically on Ask Anky; paid reflections must still work if token generation fails.
 - No production OpenRouter tuning in iOS; local mirror dev mode is supported.
 - Recovery phrase identity is implemented with the BIP39 English word list and deterministic ANKY Ed25519 key derivation.
 - Identity is Ed25519 with Solana-style base58 public key/signature, but not yet Solana BIP44 path compatible.
@@ -191,7 +211,7 @@ The gap: this is recovery-phrase backed, but not yet Solana BIP44 path compatibl
 ## Next Steps
 
 - Add seed phrase generation/recovery when identity UX is ready.
-- Add RevenueCat-backed credits.
+- Add App Attest or a stronger attestation path if DeviceCheck is not enough for future abuse pressure.
 - Improve export with a zip archive.
 - Wire shared protocol fixtures directly into Swift tests.
 - Add Android after the iOS loop remains stable.

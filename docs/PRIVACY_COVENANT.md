@@ -24,6 +24,10 @@ The server may temporarily hold writing in memory during one reflection request.
 
 A new writer may receive 8 automatic trial reflection credits.
 
+The automatic trial grant is device-bound, app-bound, platform-bound, and backed by RevenueCat.
+
+The grant happens inside `POST /anky`, only for a valid complete `.anky` reflection request.
+
 The trial grant must not include writing.
 
 The trial grant must not require screenshots, `.anky` files, reconstructed text, private reflections, prompts, or journal content.
@@ -38,6 +42,8 @@ The trial grant may use:
 - minimal abuse-prevention metadata
 
 The trial grant must not turn Anky into a cloud journal.
+
+The trial grant must not create an Anky user account, Anky database, writing archive, prompt archive, reflection archive, or analytics over writing content.
 
 The server still receives writing only when the writer explicitly asks for reflection.
 

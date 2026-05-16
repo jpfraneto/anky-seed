@@ -4,7 +4,12 @@ struct MirrorClient {
     let baseURL: URL
     var session: URLSession = .shared
 
-    func askAnky(bytes: Data, identity: WriterIdentity) async throws -> MirrorResponsePayload {
+    func askAnky(
+        bytes: Data,
+        identity: WriterIdentity,
+        trialProof: String? = nil,
+        appVersion: String? = nil
+    ) async throws -> MirrorResponsePayload {
         let signed = try AnkyPostSigner.sign(body: bytes, identity: identity)
         var request = URLRequest(url: baseURL.appendingPathComponent("anky"))
         request.httpMethod = "POST"
@@ -15,6 +20,12 @@ struct MirrorClient {
         request.setValue(signed.signature, forHTTPHeaderField: "X-Anky-Signature")
         request.setValue(signed.requestTime, forHTTPHeaderField: "X-Anky-Request-Time")
         request.setValue("ios", forHTTPHeaderField: "X-Anky-Client")
+        if let appVersion {
+            request.setValue(appVersion, forHTTPHeaderField: "X-Anky-App-Version")
+        }
+        if let trialProof {
+            request.setValue(trialProof, forHTTPHeaderField: "X-Anky-Trial-Proof")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {

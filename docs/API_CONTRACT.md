@@ -231,7 +231,7 @@ The writer does not have enough credits.
 {
   "error": {
     "code": "INSUFFICIENT_CREDITS",
-    "message": "You need one credit to ask Anky for a reflection."
+    "message": "You need one credit to ask Anky for a reflection. Writing is still free."
   }
 }
 409 DUPLICATE_IN_PROGRESS
@@ -336,11 +336,14 @@ request_id
 public_key_hash
 anky_hash
 client
+app_version
 duration_ms
 status_code
 latency_ms
 model_provider
 credit_result
+trial_result
+devicecheck_proof_hash
 
 Forbidden logs:
 
@@ -348,6 +351,7 @@ raw .anky
 reconstructed text
 reflection text
 prompt text
+raw DeviceCheck token
 seed phrase
 private key
 11. CORS / Client Access

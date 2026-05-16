@@ -79,7 +79,7 @@ struct YouView: View {
                             NavigationLink {
                                 CreditsPage(viewModel: viewModel)
                             } label: {
-                                YouMenuRow(icon: "you-icon-credits", title: "credits", subtitle: "reflections and free credits")
+                                YouMenuRow(icon: "you-icon-credits", title: "credits", subtitle: "reflections and trial credits")
                             }
 
                             YouDivider()
@@ -96,7 +96,7 @@ struct YouView: View {
                                 Button {
                                     openURL(whatsappURL)
                                 } label: {
-                                    YouMenuRow(icon: "you-icon-credits", title: "dm jp", subtitle: "ask for free credits")
+                                    YouMenuRow(icon: "you-icon-credits", title: "support", subtitle: "manual credit help")
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -500,16 +500,16 @@ private struct CreditsPage: View {
 
             YouPanel {
                 ShareLink(item: viewModel.freeCreditMessage) {
-                    YouActionLabel("share credit request")
+                    YouActionLabel("share support request")
                 }
 
                 if let whatsappURL = viewModel.freeCreditWhatsAppURL {
-                    YouActionButton("dm jp") {
+                    YouActionButton("contact jp / support") {
                         openURL(whatsappURL)
                     }
                 }
 
-                Text("manual free credits still use your public key. no writing is included.")
+                Text("support credit requests use your public key only. no writing is included.")
                     .youBody()
             }
         }

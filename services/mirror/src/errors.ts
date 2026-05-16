@@ -17,7 +17,7 @@ const messages: Record<ErrorCode, string> = {
   MISSING_SIGNATURE: "This request is missing Anky signature headers.",
   INVALID_SIGNATURE: "The request signature could not be verified.",
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
-  INSUFFICIENT_CREDITS: "You need one credit to ask Anky for a reflection.",
+  INSUFFICIENT_CREDITS: "You need one credit to ask Anky for a reflection. Writing is still free.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
   RATE_LIMITED: "Too many mirror requests. Try again soon.",
   MIRROR_FAILED: "Anky could not return a reflection right now.",

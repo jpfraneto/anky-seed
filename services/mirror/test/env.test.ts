@@ -2,6 +2,17 @@ import { describe, expect, test } from "bun:test";
 import { assertProductionSafe, loadEnv } from "../src/env";
 
 describe("production environment guard", () => {
+  test("defaults automatic trials to disabled and 8 credits", () => {
+    const env = loadEnv({});
+
+    expect(env.autoTrialEnabled).toBe(false);
+    expect(env.trialCredits).toBe(8);
+    expect(env.iosTrialEnabled).toBe(false);
+    expect(env.iosDeviceCheckRequired).toBe(true);
+    expect(env.androidTrialEnabled).toBe(false);
+    expect(env.androidPlayIntegrityRequired).toBe(true);
+  });
+
   test("rejects dev credit bypass in production", () => {
     const env = loadEnv({
       NODE_ENV: "production",
@@ -51,5 +62,50 @@ describe("production environment guard", () => {
     });
 
     expect(() => assertProductionSafe(env)).toThrow("OPENROUTER_API_KEY");
+  });
+
+  test("production fails closed if iOS trial requires DeviceCheck config", () => {
+    const env = loadEnv({
+      NODE_ENV: "production",
+      OPENROUTER_API_KEY: "key",
+      OPENROUTER_MODEL: "model",
+      OPENROUTER_PRIVACY_CONFIRMED: "true",
+      REVENUECAT_SECRET_KEY: "secret",
+      REVENUECAT_PROJECT_ID: "project",
+      ANKY_AUTO_TRIAL_ENABLED: "true",
+      ANKY_IOS_TRIAL_ENABLED: "true",
+      ANKY_IOS_DEVICECHECK_REQUIRED: "true",
+    });
+
+    expect(() => assertProductionSafe(env)).toThrow("Apple DeviceCheck credentials");
+  });
+
+  test("production does not require Apple config when automatic trial is disabled", () => {
+    const env = loadEnv({
+      NODE_ENV: "production",
+      OPENROUTER_API_KEY: "key",
+      OPENROUTER_MODEL: "model",
+      OPENROUTER_PRIVACY_CONFIRMED: "true",
+      REVENUECAT_SECRET_KEY: "secret",
+      REVENUECAT_PROJECT_ID: "project",
+      ANKY_AUTO_TRIAL_ENABLED: "false",
+      ANKY_IOS_TRIAL_ENABLED: "true",
+    });
+
+    expect(() => assertProductionSafe(env)).not.toThrow();
+  });
+
+  test("production rejects Android automatic trial until Play Integrity is implemented", () => {
+    const env = loadEnv({
+      NODE_ENV: "production",
+      OPENROUTER_API_KEY: "key",
+      OPENROUTER_MODEL: "model",
+      OPENROUTER_PRIVACY_CONFIRMED: "true",
+      REVENUECAT_SECRET_KEY: "secret",
+      REVENUECAT_PROJECT_ID: "project",
+      ANKY_ANDROID_TRIAL_ENABLED: "true",
+    });
+
+    expect(() => assertProductionSafe(env)).toThrow("ANKY_ANDROID_TRIAL_ENABLED");
   });
 });

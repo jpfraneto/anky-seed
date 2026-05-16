@@ -369,11 +369,11 @@ private fun YouHome(state: YouState, onOpen: (YouPage) -> Unit, onFreeCredits: (
             Divider()
             MenuRow(R.drawable.you_icon_export, "export data", "back up and restore local writing", { onOpen(YouPage.Export) })
             Divider()
-            MenuRow(R.drawable.you_icon_credits, "credits", "reflections and free credits", { onOpen(YouPage.Credits) })
+            MenuRow(R.drawable.you_icon_credits, "credits", "reflections and trial credits", { onOpen(YouPage.Credits) })
             Divider()
             MenuRow(R.drawable.you_icon_settings, "\$ANKY", "the memetic layer", { onOpen(YouPage.Token) })
             Divider()
-            MenuRow(R.drawable.you_icon_credits, "dm jp", "ask for free credits", onFreeCredits)
+            MenuRow(R.drawable.you_icon_credits, "support", "manual credit help", onFreeCredits)
         }
         if (BuildConfig.DEBUG) {
             AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
@@ -657,9 +657,9 @@ private fun CreditsPage(
         AnkyActionButton("refresh credits", onClick = onRefresh)
     }
     AnkyPanel {
-        AnkyActionButton("share credit request", onClick = onShareFreeCredit)
-        AnkyActionButton("dm jp", onClick = onDmJp)
-        Text("manual free credits still use your public key. no writing is included.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        AnkyActionButton("share support request", onClick = onShareFreeCredit)
+        AnkyActionButton("contact jp / support", onClick = onDmJp)
+        Text("manual credit support uses your public key only. no writing is included. Android automatic trials require Play Integrity/device recall first.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
 }
 

@@ -9,3 +9,14 @@ export async function shortHash(value: string): Promise<string> {
     .join("")
     .slice(0, 16);
 }
+
+export function normalizeMetadataValue(value: string | undefined, maxLength = 64): string | undefined {
+  if (!value) return undefined;
+
+  const normalized = [...value]
+    .slice(0, maxLength)
+    .map((character) => (/[A-Za-z0-9._\-+()]/.test(character) ? character : "_"))
+    .join("");
+
+  return normalized.length > 0 ? normalized : undefined;
+}

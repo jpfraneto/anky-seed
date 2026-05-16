@@ -52,6 +52,7 @@
 		8A0000050000000000000004 /* AnkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001004 /* AnkyTheme.swift */; };
 		8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000060000000000001001 /* RevenueCatCreditsClient.swift */; };
 		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
+		8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -100,6 +101,7 @@
 		8A0000050000000000001003 /* AnkySpriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySpriteView.swift; sourceTree = "<group>"; };
 		8A0000050000000000001004 /* AnkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTheme.swift; sourceTree = "<group>"; };
 		8A0000060000000000001001 /* RevenueCatCreditsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatCreditsClient.swift; sourceTree = "<group>"; };
+		8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCheckTrialProofProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -259,10 +261,11 @@
 			isa = PBXGroup;
 			children = (
 				8A0000020000000000001005 /* AnkyPostSigner.swift */,
-				8A0000020000000000001006 /* MirrorConfiguration.swift */,
-				8A0000020000000000001007 /* MirrorEligibility.swift */,
-				8A0000020000000000001008 /* MirrorClient.swift */,
-			);
+					8A0000020000000000001006 /* MirrorConfiguration.swift */,
+					8A0000020000000000001007 /* MirrorEligibility.swift */,
+					8A0000020000000000001008 /* MirrorClient.swift */,
+					8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */,
+				);
 			path = Mirror;
 			sourceTree = "<group>";
 		};
@@ -414,9 +417,10 @@
 				8A0000050000000000000001 /* AnkyPresenceOverlay.swift in Sources */,
 				8A0000050000000000000002 /* AnkyWitnessView.swift in Sources */,
 				8A0000050000000000000003 /* AnkySpriteView.swift in Sources */,
-				8A0000050000000000000004 /* AnkyTheme.swift in Sources */,
-				8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */,
-			);
+					8A0000050000000000000004 /* AnkyTheme.swift in Sources */,
+					8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */,
+					8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

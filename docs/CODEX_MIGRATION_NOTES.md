@@ -253,24 +253,23 @@ The prompt can evolve.
 
 The product surface should not fragment.
 
-12. Free Credits
+12. Trial Credits
 
-Do not implement automatic free credits.
+Do not grant credits on app install.
 
-Do not grant first credits on app install.
+Do not grant credits during onboarding.
 
-Do not grant first credits on first request.
+Do not grant credits by public key alone.
 
-Instead:
+Official mobile clients may receive one automatic 8-credit trial grant only when a valid complete `.anky` asks for reflection through `POST /anky`.
 
-no credits
-→ buy credits
-or
-→ DM JP for free credits
+The grant must be device-bound, app-bound, platform-bound, and RevenueCat-backed.
 
-This protects the mirror budget.
+If device-bound proof is unavailable, automatic grants stay disabled.
 
-It also turns early onboarding into conversation.
+Fallback support may still use JP/manual credit help with public key, platform, and app version only.
+
+This protects the mirror budget without making the first reflection require a conversation.
 
 13. Agent Compatibility
 

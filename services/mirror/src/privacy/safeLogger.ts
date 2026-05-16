@@ -3,6 +3,7 @@ export type SafeLogFields = {
   publicKeyHash?: string;
   ankyHash?: string;
   client?: string;
+  appVersion?: string;
   durationMs?: number;
   statusCode: number;
   latencyMs: number;

@@ -70,7 +70,7 @@ class MirrorClientTest {
         server.start()
         try {
             val client = MirrorClient(MirrorConfiguration(server.url("/").toString()))
-            val response = client.askAnky(body, identity)
+            val response = client.askAnky(body, identity, appVersion = "1.0(1)")
             val request = server.takeRequest()
 
             assertEquals("Small Steady Thread", response.title)
@@ -81,6 +81,8 @@ class MirrorClientTest {
             assertEquals("application/json", request.getHeader("Accept"))
             assertEquals(identity.publicKey, request.getHeader("X-Anky-Public-Key"))
             assertEquals("android", request.getHeader("X-Anky-Client"))
+            assertEquals("1.0(1)", request.getHeader("X-Anky-App-Version"))
+            assertEquals(null, request.getHeader("X-Anky-Trial-Proof"))
             val signature = request.getHeader("X-Anky-Signature")!!
             val requestTime = request.getHeader("X-Anky-Request-Time")!!
             assertTrue(signature.isNotBlank())

@@ -294,9 +294,15 @@ The automatic trial grant is:
 - not a writing database
 - not a login ceremony
 
+The grant happens lazily inside `POST /anky`, only after a valid complete `.anky` reflection request.
+
+Automatic free credits without device-bound abuse protection remain forbidden.
+
 The trial grant exists only to let the writer experience Anky’s reflection.
 
 The grant must not require the writer to share writing with JP.
+
+“DM JP for free credits” may remain only as fallback/support, not primary onboarding.
 
 The grant must not create a new onboarding database.
 

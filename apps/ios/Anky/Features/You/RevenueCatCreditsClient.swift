@@ -103,6 +103,11 @@ final class RevenueCatCreditsClient {
     }
 
     @MainActor
+    func invalidateCreditBalanceCache() {
+        Purchases.shared.invalidateVirtualCurrenciesCache()
+    }
+
+    @MainActor
     private func fetchOfferings() async throws -> Offerings {
         try await withCheckedThrowingContinuation { continuation in
             Purchases.shared.getOfferings { offerings, error in

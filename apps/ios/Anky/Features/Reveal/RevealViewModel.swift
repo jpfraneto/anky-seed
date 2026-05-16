@@ -128,9 +128,12 @@ final class RevealViewModel: ObservableObject {
 
         do {
             let identity = try identityStore.loadOrCreate()
+            let trialProof = await DeviceCheckTrialProofProvider.makeToken()
             let response = try await MirrorClient(baseURL: baseURL).askAnky(
                 bytes: Data(artifact.text.utf8),
-                identity: identity
+                identity: identity,
+                trialProof: trialProof,
+                appVersion: AnkyAppVersion.headerValue
             )
 
             guard response.hash == artifact.hash else {
@@ -146,6 +149,10 @@ final class RevealViewModel: ObservableObject {
             )
             try reflectionStore.save(saved)
             try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title)
+            if response.creditsRemaining != nil {
+                try? await RevenueCatCreditsClient().identify(publicKey: identity.publicKey)
+                RevenueCatCreditsClient().invalidateCreditBalanceCache()
+            }
             reflection = saved
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Anky could not return a reflection right now."

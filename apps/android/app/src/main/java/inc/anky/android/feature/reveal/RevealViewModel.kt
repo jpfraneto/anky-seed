@@ -2,6 +2,7 @@ package inc.anky.android.feature.reveal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import inc.anky.android.BuildConfig
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
@@ -85,7 +86,11 @@ class RevealViewModel(
         viewModelScope.launch(dispatcher) {
             runCatching {
                 val identity = identityProvider()
-                val payload = mirrorClientProvider().askAnky(artifact.text.toByteArray(Charsets.UTF_8), identity)
+                val payload = mirrorClientProvider().askAnky(
+                    artifact.text.toByteArray(Charsets.UTF_8),
+                    identity,
+                    appVersion = "${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})",
+                )
                 if (payload.hash != artifact.hash) throw MirrorClientError.HashMismatch
                 val reflection = LocalReflection(
                     hash = payload.hash,

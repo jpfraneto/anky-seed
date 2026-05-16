@@ -14,7 +14,11 @@ class MirrorClient(
     private val configuration: MirrorConfiguration,
     private val client: OkHttpClient = OkHttpClient(),
 ) {
-    fun askAnky(bytes: ByteArray, identity: WriterIdentity): MirrorResponsePayload {
+    fun askAnky(
+        bytes: ByteArray,
+        identity: WriterIdentity,
+        appVersion: String? = null,
+    ): MirrorResponsePayload {
         val signed = AnkyPostSigner.sign(body = bytes, identity = identity)
         val base = configuration.effectiveBaseUrl().trimEnd('/')
         if (!base.startsWith("http://") && !base.startsWith("https://")) {
@@ -30,6 +34,11 @@ class MirrorClient(
             .header("X-Anky-Signature", signed.signature)
             .header("X-Anky-Request-Time", signed.requestTime)
             .header("X-Anky-Client", "android")
+            .apply {
+                if (!appVersion.isNullOrBlank()) {
+                    header("X-Anky-App-Version", appVersion)
+                }
+            }
             .build()
 
         client.newCall(request).execute().use { response ->

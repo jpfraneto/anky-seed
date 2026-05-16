@@ -1,19 +1,20 @@
 import { Hono } from "hono";
 import { assertProductionSafe, loadEnv } from "./env";
-import { createAnkyRoute } from "./routes/anky";
+import { createAnkyRoute, type AnkyRouteDeps } from "./routes/anky";
 import { healthRoute } from "./routes/health";
 import { createSafeLogger } from "./privacy/safeLogger";
 
 export function createApp(input: {
   env?: ReturnType<typeof loadEnv>;
   logger?: ReturnType<typeof createSafeLogger>;
+  ankyRouteDeps?: AnkyRouteDeps;
 } = {}) {
   const env = input.env ?? loadEnv();
   const logger = input.logger ?? createSafeLogger();
   const app = new Hono();
 
   app.route("/", healthRoute);
-  app.route("/", createAnkyRoute(env, logger));
+  app.route("/", createAnkyRoute(env, logger, input.ankyRouteDeps));
 
   return app;
 }

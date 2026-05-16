@@ -63,6 +63,8 @@ Signature verification is implemented with Ed25519 using `@noble/curves` and Sol
 
 The service listens on `process.env.PORT` and `0.0.0.0` for Railway. It has a production guard: when `ANKY_ENV=production` or `NODE_ENV=production`, dev credit bypass and mock mirror are forbidden, OpenRouter and RevenueCat configuration are required, and startup fails loudly if the mirror is unsafe.
 
+The root `.env.example` is the only committed environment template. Keep the real root `.env` local/uncommitted and set production values through Railway variables; do not create per-subfolder env files.
+
 For local iOS testing with a mock reflection:
 
 ```sh
@@ -94,6 +96,7 @@ railway link
 railway variables set ANKY_ENV=production NODE_ENV=production
 railway variables set OPENROUTER_API_KEY=... OPENROUTER_MODEL=... OPENROUTER_PRIVACY_CONFIRMED=true
 railway variables set REVENUECAT_SECRET_KEY=... REVENUECAT_PROJECT_ID=... REVENUECAT_CREDIT_CODE=CRD
+railway variables set ANKY_AUTO_TRIAL_ENABLED=false ANKY_IOS_TRIAL_ENABLED=false ANKY_ANDROID_TRIAL_ENABLED=false
 railway variables set ANKY_MIRROR_DISABLED=false ANKY_DEV_BYPASS_CREDITS=false ANKY_DEV_MOCK_MIRROR=false
 railway up
 railway domain
@@ -112,7 +115,7 @@ The native iOS v0 loop is implemented:
 - Ask Anky signs `POST /anky` and sends the exact `.anky` bytes.
 - Reflections are stored locally by hash.
 - Map shows the local trail grouped by day with complete/fragment/reflection state.
-- You exposes public key, recovery phrase reveal/copy after local auth, Face ID app lock, reminders, export, safe free-credit/WhatsApp contact, `$ANKY` CA copy, privacy, and DEBUG mirror tools.
+- You exposes public key, recovery phrase reveal/copy after local auth, Face ID app lock, reminders, export, support/manual-credit contact, `$ANKY` CA copy, privacy, and DEBUG mirror tools.
 
 See `apps/ios/README.md` for build, test, storage, and privacy details.
 
@@ -146,5 +149,4 @@ This reads from disk, prints derived facts, and never uploads writing.
 - `/register`, `/session`, `/me`, `/v1/reflections`, or any product endpoint besides `POST /anky`
 - Server-side persistence of raw `.anky`, reconstructed writing, prompts, or reflections
 - Solana sealing, NFTs, Looms, proofs, Helius, Privy, social feed, chat, cloud sync, or AI memory
-- Android app implementation
-- Automatic free credits
+- Android automatic trial credits before Play Integrity/device recall

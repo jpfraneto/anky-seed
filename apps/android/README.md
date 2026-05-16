@@ -39,7 +39,7 @@ Release signing reads only from uncommitted `local.properties` or environment va
 - Write opens as the first tab, captures forward-only glyph input, saves an active local draft, appends terminal silence after 8 seconds, saves a canonical `.anky`, indexes it, and opens Reveal.
 - Reveal loads the `.anky` file by hash, reconstructs text from protocol bytes, shows stats, supports copy actions, gates Ask Anky to complete sessions, signs exact bytes, and stores returned reflections locally.
 - Map rebuilds from the local archive and reflection files, groups sessions by day, distinguishes complete sessions from fragments, and opens Reveal.
-- You shows/copies the public key, gates recovery phrase reveal behind local authentication, exposes app lock, local daily reminders, mirror URL, archive export/share, free-credit copy, `$ANKY` info/contract copy, privacy text, and RevenueCat credits/purchases when the Android public SDK key and offerings are configured.
+- You shows/copies the public key, gates recovery phrase reveal behind local authentication, exposes app lock, local daily reminders, mirror URL, archive export/share, support/manual-credit copy, `$ANKY` info/contract copy, privacy text, and RevenueCat credits/purchases when the Android public SDK key and offerings are configured.
 
 ## Local Storage
 
@@ -59,5 +59,13 @@ Identity material is encrypted with an Android Keystore AES-GCM key. Android aut
 ## Known Gaps
 
 - RevenueCat Android products require `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY` plus the `credits DEV` offering and CRD virtual currency. Without that public-key-only configuration, purchases are disabled honestly.
+- Android automatic trial credits remain disabled until Play Integrity/device recall is implemented. They must not be implemented as public-key-only grants.
 - Daily reminders use inexact local alarms and require Android notification permission on Android 13+.
 - Instrumentation tests compile/package but require a connected device or emulator to execute.
+
+## Trial QA
+
+- Confirm Android paid RevenueCat credit purchase and spend paths still work.
+- Confirm mirror requests include `X-Anky-App-Version` and do not include a fake `X-Anky-Trial-Proof`.
+- Confirm backend `ANKY_ANDROID_TRIAL_ENABLED=false` in production.
+- Confirm Android does not receive public-key-only automatic free grants.
