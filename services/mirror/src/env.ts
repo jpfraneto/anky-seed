@@ -25,6 +25,7 @@ export type Env = {
   appleDeviceCheckEnv: "production" | "development";
   androidTrialEnabled: boolean;
   androidPlayIntegrityRequired: boolean;
+  androidPublicKeyTrialsConfirmed: boolean;
 };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -56,6 +57,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       source.APPLE_DEVICECHECK_ENV === "development" ? "development" : "production",
     androidTrialEnabled: source.ANKY_ANDROID_TRIAL_ENABLED === "true",
     androidPlayIntegrityRequired: source.ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED !== "false",
+    androidPublicKeyTrialsConfirmed: source.ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED === "true",
   };
 }
 
@@ -91,8 +93,13 @@ export function assertProductionSafe(env: Env): void {
     ) {
       failures.push("Apple DeviceCheck credentials are required when iOS automatic trials are enabled");
     }
-    if (env.androidTrialEnabled) {
-      failures.push("ANKY_ANDROID_TRIAL_ENABLED must remain false until Play Integrity/device recall is implemented");
+    if (
+      env.androidTrialEnabled &&
+      (!env.androidPublicKeyTrialsConfirmed || env.androidPlayIntegrityRequired)
+    ) {
+      failures.push(
+        "Android automatic trials require ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED=true and ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=false until Play Integrity/device recall is implemented",
+      );
     }
   }
 

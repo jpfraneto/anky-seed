@@ -85,6 +85,7 @@ export async function resolveReflectionCredit(input: {
 
   const eligibility = await evaluateTrialEligibility({
     env: input.env,
+    publicKey: input.publicKey,
     client: input.client,
     trialProof: input.trialProof,
     fetchImpl: input.fetchImpl,
@@ -94,21 +95,23 @@ export async function resolveReflectionCredit(input: {
     return trialFailureResult(eligibility.reason, spendIdempotencyKey);
   }
 
-  if (!input.trialProof) {
+  if (eligibility.platform === "ios" && !input.trialProof) {
     return trialFailureResult("missing_trial_proof", spendIdempotencyKey);
   }
 
-  const mark = await markDeviceCheckTrialClaimed({
-    env: input.env,
-    token: input.trialProof,
-    fetchImpl: input.fetchImpl,
-  });
+  if (eligibility.platform === "ios") {
+    const mark = await markDeviceCheckTrialClaimed({
+      env: input.env,
+      token: input.trialProof,
+      fetchImpl: input.fetchImpl,
+    });
 
-  if (!mark.ok) {
-    return trialFailureResult(
-      mark.reason === "invalid_token" ? "invalid_trial_proof" : "trial_check_unavailable",
-      spendIdempotencyKey,
-    );
+    if (!mark.ok) {
+      return trialFailureResult(
+        mark.reason === "invalid_token" ? "invalid_trial_proof" : "trial_check_unavailable",
+        spendIdempotencyKey,
+      );
+    }
   }
 
   const trialGrant = await grantRevenueCatCredits({

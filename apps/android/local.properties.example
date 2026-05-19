@@ -17,3 +17,8 @@ ANKY_ANDROID_KEY_PASSWORD=replace-me
 
 # Android public SDK key only. Never use RevenueCat secret keys in the app.
 ANKY_REVENUECAT_ANDROID_PUBLIC_KEY=
+
+# Debug builds default to the release applicationId so RevenueCat/Play Billing
+# can be tested against the Play-configured package. Set to .debug if you need
+# side-by-side debug and release installs without purchase testing.
+ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX=

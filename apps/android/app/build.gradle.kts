@@ -76,7 +76,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX") ?: ""
             versionNameSuffix = "-debug"
         }
         release {

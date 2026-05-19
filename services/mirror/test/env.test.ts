@@ -11,6 +11,7 @@ describe("production environment guard", () => {
     expect(env.iosDeviceCheckRequired).toBe(true);
     expect(env.androidTrialEnabled).toBe(false);
     expect(env.androidPlayIntegrityRequired).toBe(true);
+    expect(env.androidPublicKeyTrialsConfirmed).toBe(false);
   });
 
   test("rejects dev credit bypass in production", () => {
@@ -95,7 +96,7 @@ describe("production environment guard", () => {
     expect(() => assertProductionSafe(env)).not.toThrow();
   });
 
-  test("production rejects Android automatic trial until Play Integrity is implemented", () => {
+  test("production requires explicit Android public-key trial confirmation", () => {
     const env = loadEnv({
       NODE_ENV: "production",
       OPENROUTER_API_KEY: "key",
@@ -104,8 +105,25 @@ describe("production environment guard", () => {
       REVENUECAT_SECRET_KEY: "secret",
       REVENUECAT_PROJECT_ID: "project",
       ANKY_ANDROID_TRIAL_ENABLED: "true",
+      ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
     });
 
-    expect(() => assertProductionSafe(env)).toThrow("ANKY_ANDROID_TRIAL_ENABLED");
+    expect(() => assertProductionSafe(env)).toThrow("ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED");
+  });
+
+  test("production allows explicitly confirmed Android public-key trials", () => {
+    const env = loadEnv({
+      NODE_ENV: "production",
+      OPENROUTER_API_KEY: "key",
+      OPENROUTER_MODEL: "model",
+      OPENROUTER_PRIVACY_CONFIRMED: "true",
+      REVENUECAT_SECRET_KEY: "secret",
+      REVENUECAT_PROJECT_ID: "project",
+      ANKY_ANDROID_TRIAL_ENABLED: "true",
+      ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
+      ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED: "true",
+    });
+
+    expect(() => assertProductionSafe(env)).not.toThrow();
   });
 });

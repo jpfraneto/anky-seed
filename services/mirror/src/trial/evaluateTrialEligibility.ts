@@ -5,7 +5,7 @@ import { queryDeviceCheckTrialBit } from "./devicecheck";
 type TrialFetch = (url: string, init: RequestInit) => Promise<Response>;
 
 export type TrialEligibility =
-  | { eligible: true; platform: "ios"; proofHash: string }
+  | { eligible: true; platform: "ios" | "android"; proofHash: string }
   | {
       eligible: false;
       reason:
@@ -20,6 +20,7 @@ export type TrialEligibility =
 
 export async function evaluateTrialEligibility(input: {
   env: Env;
+  publicKey: string;
   client: string;
   trialProof?: string;
   fetchImpl?: TrialFetch;
@@ -33,10 +34,28 @@ export async function evaluateTrialEligibility(input: {
   }
 
   if (input.client === "android") {
-    return { eligible: false, reason: "platform_disabled" };
+    return evaluateAndroidTrialEligibility(input);
   }
 
   return { eligible: false, reason: "unsupported_platform" };
+}
+
+async function evaluateAndroidTrialEligibility(input: {
+  env: Env;
+  publicKey: string;
+}): Promise<TrialEligibility> {
+  if (!input.env.androidTrialEnabled) {
+    return { eligible: false, reason: "platform_disabled" };
+  }
+  if (input.env.androidPlayIntegrityRequired) {
+    return { eligible: false, reason: "missing_trial_proof" };
+  }
+
+  return {
+    eligible: true,
+    platform: "android",
+    proofHash: await shortHash(`android-public-key-trial-v1:${input.publicKey}`),
+  };
 }
 
 async function evaluateIosTrialEligibility(input: {

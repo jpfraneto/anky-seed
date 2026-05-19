@@ -7,6 +7,7 @@ describe("trial eligibility", () => {
     const env = await trialEnv();
     const result = await evaluateTrialEligibility({
       env,
+      publicKey: "writer",
       client: "ios",
       trialProof: "device-token",
       fetchImpl: async (url, init) => {
@@ -22,6 +23,7 @@ describe("trial eligibility", () => {
   test("iOS valid proof with missing bit0 is eligible", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "ios",
       trialProof: "device-token",
       fetchImpl: async () => jsonResponse({ bit1: false }),
@@ -33,6 +35,7 @@ describe("trial eligibility", () => {
   test("iOS valid proof with bit0 true is already claimed", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "ios",
       trialProof: "device-token",
       fetchImpl: async () => jsonResponse({ bit0: true }),
@@ -44,6 +47,7 @@ describe("trial eligibility", () => {
   test("iOS missing proof when required is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "ios",
     });
 
@@ -53,6 +57,7 @@ describe("trial eligibility", () => {
   test("iOS invalid proof is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "ios",
       trialProof: "bad-device-token",
       fetchImpl: async () => new Response("bad token", { status: 400 }),
@@ -64,6 +69,7 @@ describe("trial eligibility", () => {
   test("auto trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: loadEnv({}),
+      publicKey: "writer",
       client: "ios",
       trialProof: "device-token",
     });
@@ -74,6 +80,7 @@ describe("trial eligibility", () => {
   test("iOS trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: loadEnv({ ANKY_AUTO_TRIAL_ENABLED: "true" }),
+      publicKey: "writer",
       client: "ios",
       trialProof: "device-token",
     });
@@ -84,6 +91,7 @@ describe("trial eligibility", () => {
   test("Android trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "android",
       trialProof: "device-token",
     });
@@ -91,9 +99,38 @@ describe("trial eligibility", () => {
     expect(result).toEqual({ eligible: false, reason: "platform_disabled" });
   });
 
+  test("Android public-key trial is eligible when explicitly enabled without Play Integrity", async () => {
+    const result = await evaluateTrialEligibility({
+      env: loadEnv({
+        ANKY_AUTO_TRIAL_ENABLED: "true",
+        ANKY_ANDROID_TRIAL_ENABLED: "true",
+        ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
+      }),
+      publicKey: "android-writer",
+      client: "android",
+    });
+
+    expect(result).toMatchObject({ eligible: true, platform: "android" });
+    expect(JSON.stringify(result)).not.toContain("android-writer");
+  });
+
+  test("Android trial requiring Play Integrity stays proof-gated", async () => {
+    const result = await evaluateTrialEligibility({
+      env: loadEnv({
+        ANKY_AUTO_TRIAL_ENABLED: "true",
+        ANKY_ANDROID_TRIAL_ENABLED: "true",
+      }),
+      publicKey: "android-writer",
+      client: "android",
+    });
+
+    expect(result).toEqual({ eligible: false, reason: "missing_trial_proof" });
+  });
+
   test("unsupported client is ineligible", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "cli",
       trialProof: "device-token",
     });
@@ -104,6 +141,7 @@ describe("trial eligibility", () => {
   test("raw proof token is not returned for logging", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      publicKey: "writer",
       client: "ios",
       trialProof: "raw-secret-device-token",
       fetchImpl: async () => jsonResponse({ bit0: false }),

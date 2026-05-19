@@ -20,9 +20,11 @@ ANKY_ANDROID_KEY_PASSWORD=...
 ANKY_ANDROID_VERSION_CODE=1
 ANKY_ANDROID_VERSION_NAME=0.1.0
 ANKY_REVENUECAT_ANDROID_PUBLIC_KEY=...
+ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX=
 ```
 
 `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY` is optional until Android RevenueCat products are configured. Never put RevenueCat secret keys in the app.
+Debug builds default to the release `applicationId` for RevenueCat/Play Billing QA. Use `.debug` only when you need side-by-side installs and are not testing purchases.
 
 The release build reads only uncommitted local properties or environment variables. `.gitignore` excludes `local.properties`, `keystore.properties`, `*.jks`, and `*.keystore`.
 
