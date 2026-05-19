@@ -3,6 +3,7 @@ package inc.anky.android.feature.reveal
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorConfiguration
+import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.core.storage.ReflectionStore
@@ -159,6 +160,163 @@ class RevealViewModelTest {
         }
     }
 
+    @Test
+    fun askAnkyInvalidatesCreditCacheWhenCreditsRemainingIsReturned() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        stores.index.rebuild(stores.archive, stores.reflections)
+        server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = 7))
+        server.start()
+        var invalidationCount = 0
+        try {
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                creditBalanceCacheInvalidator = { invalidationCount += 1 },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+
+            assertEquals(1, invalidationCount)
+            assertEquals(7, stores.reflections.load(artifact.hash)?.creditsRemaining)
+            assertEquals(7, viewModel.state.value.creditBalance)
+            assertTrue(viewModel.state.value.hasClaimedFreeCredits)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun refreshCreditsShowsUnavailablePromptAfterFreeCreditsClaimed() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Ask Anky should be blocked with no reflections left.") },
+            creditBalanceFetcher = { 0 },
+            hasClaimedFreeCreditsProvider = { true },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+        assertEquals("No reflections left", viewModel.state.value.creditPromptMessage)
+        assertFalse(viewModel.state.value.canSubmitReflectionRequest)
+        viewModel.askAnky()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isAsking)
+    }
+
+    @Test
+    fun askAnkyCreditFailureMarksCreditsDenied() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(402)
+                .setBody("""{"error":{"code":"INSUFFICIENT_CREDITS","message":"You need one credit to ask Anky for a reflection."}}"""),
+        )
+        server.start()
+        try {
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                hasClaimedFreeCreditsProvider = { true },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.state.value.creditBalance)
+            assertTrue(viewModel.state.value.creditsDenied)
+            assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun askAnkyDoesNotInvalidateCreditCacheWhenCreditsRemainingIsNull() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        stores.index.rebuild(stores.archive, stores.reflections)
+        server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = null))
+        server.start()
+        var invalidationCount = 0
+        try {
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                creditBalanceCacheInvalidator = { invalidationCount += 1 },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+
+            assertEquals(0, invalidationCount)
+            assertEquals(null, stores.reflections.load(artifact.hash)?.creditsRemaining)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun deleteSessionRemovesLocalArchiveReflectionAndIndexOnly() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        stores.reflections.save(
+            LocalReflection(
+                hash = artifact.hash,
+                title = "Small Thread",
+                reflection = "Here is what I saw.",
+                createdAt = Instant.EPOCH,
+                creditsRemaining = 3,
+            ),
+        )
+        stores.index.rebuild(stores.archive, stores.reflections)
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Delete should not create a mirror client.") },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.deleteSession()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isDeleted)
+        assertEquals(null, stores.reflections.load(artifact.hash))
+        assertTrue(stores.index.load().isEmpty())
+        assertFalse(artifact.file.exists())
+    }
+
     private fun stores(): Stores {
         val root = temp.newFolder()
         return Stores(
@@ -174,7 +332,7 @@ class RevealViewModelTest {
     private fun identity(): WriterIdentity =
         WriterIdentity.fromSeed(ByteArray(32) { 7 })
 
-    private fun reflectionResponse(hash: String): MockResponse =
+    private fun reflectionResponse(hash: String, creditsRemaining: Int? = 3): MockResponse =
         MockResponse()
             .setResponseCode(200)
             .setBody(
@@ -183,7 +341,7 @@ class RevealViewModelTest {
                   "hash": "$hash",
                   "title": "Small Thread",
                   "reflection": "Here is what I saw.",
-                  "creditsRemaining": 3
+                  "creditsRemaining": ${creditsRemaining ?: "null"}
                 }
                 """.trimIndent(),
             )

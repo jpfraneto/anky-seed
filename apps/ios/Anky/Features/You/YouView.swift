@@ -51,7 +51,7 @@ struct YouView: View {
                                     reminderBinding: reminderBinding
                                 )
                             } label: {
-                                YouMenuRow(icon: "you-icon-account", title: "account", subtitle: viewModel.identityStatus)
+                                YouMenuRow(icon: "you-icon-account", title: "local identity", subtitle: "private to this device")
                             }
 
                             YouDivider()
@@ -231,35 +231,35 @@ private struct AccountPage: View {
     let reminderBinding: Binding<Date>
 
     var body: some View {
-        YouDetailShell(title: "account", subtitle: "identity on this device") {
+        YouDetailShell(title: "local identity", subtitle: "private to this device") {
             YouPanel {
-                YouDetailRow(title: "status", value: viewModel.identityStatus)
-                YouDivider()
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("public key")
-                        .youCaption()
-                    Text(viewModel.publicKey)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(YouPalette.paperMuted)
-                        .textSelection(.enabled)
-                }
-                YouActionButton("copy public key") {
-                    ClipboardClient().copy(viewModel.publicKey)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }
+                Text("local identity")
+                    .youCaption()
+                Text("anky created a private identity for this device.")
+                    .font(.system(size: 17, weight: .semibold, design: .serif))
+                    .foregroundStyle(YouPalette.paper)
+                Text("your writing and identity live here unless you choose to export or recover them elsewhere.")
+                    .youBody()
             }
 
             YouPanel {
+                Text("advanced recovery")
+                    .youCaption()
+                Text("anyone with this recovery key can restore this identity. keep it private.")
+                    .youBody()
+
+                YouDivider()
+
                 Toggle("face id app lock", isOn: $biometricIdentityConfirmation)
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16, design: .serif))
 
-                Text("your recovery phrase can only be revealed after face id is enabled.")
+                Text("your recovery key can only be shown after face id is enabled.")
                     .youBody()
 
                 if viewModel.recoveryPhraseText.isEmpty {
-                    YouActionButton("reveal recovery phrase") {
+                    YouActionButton("show recovery key") {
                         Task {
                             await viewModel.revealRecoveryPhrase()
                         }
@@ -272,8 +272,8 @@ private struct AccountPage: View {
                         .foregroundStyle(YouPalette.paper)
                         .textSelection(.enabled)
 
-                    HStack {
-                        YouActionButton("copy") {
+                    VStack(spacing: 10) {
+                        YouActionButton("export recovery key") {
                             ClipboardClient().copy(viewModel.recoveryPhraseText)
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
@@ -283,9 +283,23 @@ private struct AccountPage: View {
                     }
                 }
 
-                YouActionButton("import recovery phrase") {
+                YouActionButton("recover identity") {
                     recoveryPhraseInput = ""
                     isImportingRecoveryPhrase = true
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("public identity")
+                        .youCaption()
+                    Text(viewModel.publicKey)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(YouPalette.paperMuted)
+                        .textSelection(.enabled)
+                }
+
+                YouActionButton("copy public identity") {
+                    ClipboardClient().copy(viewModel.publicKey)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
             }
 
@@ -309,7 +323,7 @@ private struct AccountPage: View {
             YouPanel {
                 Text("ownership note")
                     .youCaption()
-                Text("your seed phrase and writing belong to this device unless you choose to export or send them.")
+                Text("your writing belongs to this device unless you choose to export or recover it elsewhere.")
                     .youBody()
             }
         }
@@ -356,7 +370,7 @@ private struct PrivacyPolicyPage: View {
         .paragraph("anky computes a SHA-256 hash of the exact `.anky` bytes. the hash is for integrity. it is not encryption. if someone has the same `.anky` bytes, they can compute the same hash."),
         .paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/ios/Anky/Core/Protocol)."),
         .heading("local identity"),
-        .paragraph("anky creates or imports a local recovery phrase, stores it in device secure storage, and derives the writing identity locally. the seed phrase is not sent to anky."),
+        .paragraph("anky creates a local identity, stores its recovery key in device secure storage, and derives the writing identity locally. the recovery key is not sent to anky."),
         .paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/WriterIdentityStore.swift) and [keychain storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/KeychainClient.swift)."),
         .heading("when plaintext leaves"),
         .paragraph("writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
@@ -369,7 +383,7 @@ private struct PrivacyPolicyPage: View {
         .paragraph("exports and backups can contain plaintext writing, reflections, and related local metadata. keep them somewhere private."),
         .paragraph("deleting local writing data removes local `.anky` files, local reflections, and the local session index from this app's storage area. it does not automatically delete backend records already created by optional processing."),
         .heading("what this does not claim"),
-        .paragraph("anky does not claim that hashes encrypt writing. anky does not claim anonymity. timing, account identifiers, processing requests, purchases, and support requests can be linkable."),
+        .paragraph("anky does not claim that hashes encrypt writing. anky does not claim anonymity. timing, identity identifiers, processing requests, purchases, and support requests can be linkable."),
         .paragraph("anky does not claim optional processing is local-only. if you ask for a reflection, plaintext writing is sent for processing."),
         .paragraph("anky does claim the default direction of the app is local-first: the `.anky` file belongs first to the person who wrote it.")
     ]
@@ -452,7 +466,7 @@ private struct ExportDataPage: View {
     }
 }
 
-private struct CreditsPage: View {
+struct CreditsPage: View {
     @ObservedObject var viewModel: YouViewModel
     @Environment(\.openURL) private var openURL
 
@@ -509,7 +523,7 @@ private struct CreditsPage: View {
                     }
                 }
 
-                Text("support credit requests use your public key only. no writing is included.")
+                Text("support credit requests use your public identity only. no writing is included.")
                     .youBody()
             }
         }
@@ -721,14 +735,14 @@ private struct ImportRecoveryPhraseSheet: View {
                         .background(YouPalette.panel, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(YouPalette.goldDim, lineWidth: 1))
 
-                    Text("importing replaces the local signing identity used for ask anky and future account-linked credits. local .anky files stay on this device.")
+                    Text("recovering replaces the local identity used for ask anky and future credit balances. local .anky files stay on this device.")
                         .youBody()
 
                     Spacer()
                 }
                 .padding(20)
             }
-            .navigationTitle("import phrase")
+            .navigationTitle("recover identity")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("cancel") {
@@ -737,7 +751,7 @@ private struct ImportRecoveryPhraseSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("import") {
+                    Button("recover") {
                         Task {
                             if await viewModel.importRecoveryPhrase(recoveryPhraseInput) {
                                 isPresented = false

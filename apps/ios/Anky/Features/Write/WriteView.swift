@@ -34,7 +34,8 @@ struct WriteView: View {
                 elapsedMs: viewModel.elapsedMs,
                 silenceElapsedMs: viewModel.silenceElapsedMs,
                 silenceRemainingMs: viewModel.silenceRemainingMs,
-                lastCharacter: viewModel.lastCharacter
+                lastCharacter: viewModel.lastCharacter,
+                isRitualComplete: viewModel.hasReachedRitualMark
             )
 
             if let errorMessage = viewModel.errorMessage {
@@ -43,6 +44,30 @@ struct WriteView: View {
                     .foregroundStyle(.red)
                     .padding(16)
                     .background(.background)
+            }
+
+            if viewModel.hasReachedRitualMark {
+                VStack {
+                    HStack {
+                        Text(AnkyDuration.clock(viewModel.elapsedMs))
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary.opacity(0.72))
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(Color(.systemBackground).opacity(0.64), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
+                            )
+                            .accessibilityLabel("Writing time \(AnkyDuration.clock(viewModel.elapsedMs))")
+
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(.top, 12)
+                .padding(.leading, 14)
+                .transition(.opacity)
             }
 
             if !viewModel.hasStarted {
@@ -101,6 +126,7 @@ private struct RitualRingsView: View {
     let silenceElapsedMs: Int64
     let silenceRemainingMs: Int64
     let lastCharacter: Character?
+    let isRitualComplete: Bool
 
     private let colors: [Color] = [
         .red, .orange, .yellow, .green, .blue, .indigo, .purple, .white
@@ -120,6 +146,21 @@ private struct RitualRingsView: View {
 
     var body: some View {
         ZStack {
+            if isRitualComplete {
+                TimelineView(.animation) { timeline in
+                    let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.2) + 1) / 2
+                    Circle()
+                        .stroke(
+                            AnkyTheme.gold.opacity(0.30 + pulse * 0.34),
+                            style: StrokeStyle(lineWidth: 15, lineCap: .round)
+                        )
+                        .frame(width: 186, height: 186)
+                        .shadow(color: AnkyTheme.gold.opacity(0.50 + pulse * 0.24), radius: 18 + pulse * 10)
+                        .shadow(color: Color.white.opacity(0.18 + pulse * 0.14), radius: 6 + pulse * 5)
+                }
+                .transition(.opacity)
+            }
+
             ForEach(colors.indices, id: \.self) { index in
                 RingSegment(
                     index: index,
@@ -164,6 +205,7 @@ private struct RitualRingsView: View {
             }
         }
         .frame(width: 190, height: 190)
+        .animation(.easeInOut(duration: 0.4), value: isRitualComplete)
         .allowsHitTesting(false)
     }
 }

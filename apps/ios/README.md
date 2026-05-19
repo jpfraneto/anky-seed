@@ -26,7 +26,7 @@ Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -
 - `Ask Anky` sends the exact `.anky` UTF-8 bytes to `POST /anky` with signature headers.
 - Returned reflections are stored locally by `.anky` hash.
 - Map shows the local trail by day, with today state, complete/fragment/reflection counts, previews, day detail, and Reveal navigation.
-- You shows public key, recovery phrase reveal/copy after local auth, Face ID app lock, daily local reminders, local export, support/manual-credit contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
+- You shows local identity, advanced recovery key show/export/recover actions after local auth, Face ID app lock, daily local reminders, local export, support/manual-credit contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
 
 ## Build And Run
 
@@ -133,7 +133,7 @@ Fragments intentionally do not show `Ask Anky`.
 
 On a real iPhone with backend trial flags and Apple DeviceCheck credentials enabled:
 
-1. Fresh install and confirm the app has a local public key.
+1. Fresh install and confirm the app has a local identity with a public identity value.
 2. Complete a valid 8-minute `.anky`.
 3. Tap `Ask Anky`.
 4. Confirm the request keeps the exact `text/plain` `.anky` body and existing signature headers, and also includes `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
@@ -159,12 +159,12 @@ Map is local-only. It rebuilds a session index from local `.anky` files, joins l
 
 You is the local control surface:
 
-- Identity public key and copy action.
-- 12-word recovery phrase generated on first app open, stored in Keychain, and revealable only after local auth.
+- Local identity status and advanced public identity copy action.
+- 12-word recovery key generated on first app open, stored in Keychain, and revealable only after local auth.
 - Optional biometric confirmation for sensitive identity settings.
 - Local daily reminder scheduling with `UserNotifications`.
 - Native export/share of individual `.anky` files and reflection JSON files.
-- Support/WhatsApp message containing only public key, platform, and app version.
+- Support/WhatsApp message containing only public identity, platform, and app version.
 - WhatsApp opens JP directly at `+56 9 8549 1126`.
 - RevenueCat-backed credit balance, credit packs, purchase buttons, and manual refresh.
 - `$ANKY` contract address copy and link to `https://anky.app/ankycoin`.
@@ -188,7 +188,7 @@ The tests cover parser/reconstruction/duration/hash, generated writer output, ca
 - The request body is the exact `.anky` bytes, not JSON.
 - The app does not log raw `.anky`, reconstructed writing, or reflection text.
 - Reflections are stored locally on device.
-- Support/manual-credit message includes only public key, platform, and app version.
+- Support/manual-credit message includes only public identity, platform, and app version.
 
 ## Known Limitations
 
@@ -196,7 +196,7 @@ The tests cover parser/reconstruction/duration/hash, generated writer output, ca
 - RevenueCat purchases require the App Store Connect products, RevenueCat offering, and virtual currency grant rules to remain aligned with the product IDs in `RevenueCatCreditsClient.swift`.
 - iOS automatic trial grants require a real device, DeviceCheck support, backend Apple DeviceCheck credentials, and the backend trial flags. The app sends a DeviceCheck token opportunistically on Ask Anky; paid reflections must still work if token generation fails.
 - No production OpenRouter tuning in iOS; local mirror dev mode is supported.
-- Recovery phrase identity is implemented with the BIP39 English word list and deterministic ANKY Ed25519 key derivation.
+- Local identity recovery is implemented with the BIP39 English word list and deterministic ANKY Ed25519 key derivation.
 - Identity is Ed25519 with Solana-style base58 public key/signature, but not yet Solana BIP44 path compatible.
 - Face ID app lock is local and simple; it is not a full enterprise security boundary.
 - No cloud sync, database, analytics, Map geospatial view, or newline support.
@@ -210,7 +210,7 @@ The gap: this is recovery-phrase backed, but not yet Solana BIP44 path compatibl
 
 ## Next Steps
 
-- Add seed phrase generation/recovery when identity UX is ready.
+- Keep recovery-key UX calm while preserving deterministic local identity recovery.
 - Add App Attest or a stronger attestation path if DeviceCheck is not enough for future abuse pressure.
 - Improve export with a zip archive.
 - Wire shared protocol fixtures directly into Swift tests.

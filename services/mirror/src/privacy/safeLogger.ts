@@ -8,6 +8,7 @@ export type SafeLogFields = {
   statusCode: number;
   latencyMs: number;
   modelProvider?: "openrouter" | "mock" | "none";
+  modelFailure?: string;
   creditResult?: string;
 };
 

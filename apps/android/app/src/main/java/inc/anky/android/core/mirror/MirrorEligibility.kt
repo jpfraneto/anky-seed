@@ -22,3 +22,43 @@ object MirrorEligibility {
         }
     }
 }
+
+sealed interface ReflectionCreditPromptState {
+    data class Available(val count: Int) : ReflectionCreditPromptState
+    data class FreeGift(val count: Int) : ReflectionCreditPromptState
+    data object Unavailable : ReflectionCreditPromptState
+    data object Unknown : ReflectionCreditPromptState
+}
+
+object ReflectionCreditPresentation {
+    const val FirstGiftCount = 8
+
+    fun state(
+        creditsRemaining: Int?,
+        hasClaimedFreeCredits: Boolean,
+        creditsDenied: Boolean = false,
+    ): ReflectionCreditPromptState {
+        if (creditsDenied) return ReflectionCreditPromptState.Unavailable
+        creditsRemaining?.let { balance ->
+            if (balance > 0) return ReflectionCreditPromptState.Available(balance)
+            return if (hasClaimedFreeCredits) {
+                ReflectionCreditPromptState.Unavailable
+            } else {
+                ReflectionCreditPromptState.FreeGift(FirstGiftCount)
+            }
+        }
+        return if (hasClaimedFreeCredits) {
+            ReflectionCreditPromptState.Unknown
+        } else {
+            ReflectionCreditPromptState.FreeGift(FirstGiftCount)
+        }
+    }
+
+    fun messageFor(state: ReflectionCreditPromptState): String =
+        when (state) {
+            is ReflectionCreditPromptState.Available -> "You have ${state.count} ${if (state.count == 1) "reflection" else "reflections"} left"
+            is ReflectionCreditPromptState.FreeGift -> "Anky gives you ${state.count} free reflections"
+            ReflectionCreditPromptState.Unavailable -> "No reflections left"
+            ReflectionCreditPromptState.Unknown -> "Checking reflections"
+        }
+}

@@ -21,4 +21,19 @@ public enum AnkyDuration {
         let seconds = totalSeconds % 60
         return "\(minutes)m \(String(format: "%02d", seconds))s"
     }
+
+    public static func clock(_ durationMs: Int64) -> String {
+        let totalSeconds = max(0, durationMs / 1000)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return "\(minutes):\(String(format: "%02d", seconds))"
+    }
+
+    public static func utcDayProgress(at date: Date, secondsPerDay: TimeInterval = 86_400) -> Double {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let start = calendar.startOfDay(for: date)
+        let elapsed = date.timeIntervalSince(start)
+        return min(1, max(0, elapsed / secondsPerDay))
+    }
 }

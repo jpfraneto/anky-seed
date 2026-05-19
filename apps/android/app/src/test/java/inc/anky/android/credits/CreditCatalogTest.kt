@@ -71,6 +71,14 @@ class CreditCatalogTest {
         assertEquals("Could not complete that credit purchase.", CreditCatalog.purchaseFailureMessage(RuntimeException("boom")))
     }
 
+    @Test
+    fun restoreCopyIsScopedToCurrentAnkyIdentity() {
+        assertEquals("Purchases restored for this Anky identity.", CreditCatalog.RestoreSuccessMessage)
+        assertEquals("Could not restore purchases for this Anky identity.", CreditCatalog.RestoreFailureMessage)
+        assertTrue(CreditCatalog.RestoreIdentityNote.contains("Anky public identity"))
+        assertTrue(CreditCatalog.RestoreIdentityNote.contains("Spent credits may not reappear"))
+    }
+
     private fun offering(identifier: String): Offering =
         Offering(
             identifier,

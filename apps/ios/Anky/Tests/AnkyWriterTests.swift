@@ -37,4 +37,16 @@ final class AnkyWriterTests: XCTestCase {
         XCTAssertEqual(parsed.startEpochMs, 1_770_000_000_000)
         XCTAssertEqual(parsed.events, [AnkyEvent(deltaMs: 0, character: "a")])
     }
+
+    func testUtcDayProgressGrowsWithTheDay() {
+        XCTAssertEqual(AnkyDuration.utcDayProgress(at: Date(timeIntervalSince1970: 6 * 60 * 60)), 0.25, accuracy: 0.001)
+        XCTAssertEqual(AnkyDuration.utcDayProgress(at: Date(timeIntervalSince1970: 12 * 60 * 60)), 0.50, accuracy: 0.001)
+        XCTAssertEqual(AnkyDuration.utcDayProgress(at: Date(timeIntervalSince1970: 18 * 60 * 60)), 0.75, accuracy: 0.001)
+    }
+
+    func testClockFormatsPostRitualWritingTime() {
+        XCTAssertEqual(AnkyDuration.clock(480_000), "8:00")
+        XCTAssertEqual(AnkyDuration.clock(481_000), "8:01")
+        XCTAssertEqual(AnkyDuration.clock(552_000), "9:12")
+    }
 }

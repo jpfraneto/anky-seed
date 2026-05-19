@@ -318,25 +318,29 @@ Use one fragment and one complete session.
 
 1. Open a saved session in `Reveal`.
 2. Verify reconstructed text matches accepted glyphs.
-3. Tap `Copy text` and paste into a private scratch field.
-4. Tap `Copy .anky` and paste into a private scratch field.
-5. Verify duration/hash/status are visible.
-6. For the fragment, confirm the privacy reminder says fragments are local and cannot Ask Anky.
-7. For the complete session, confirm the privacy reminder says writing stays local unless Ask Anky is tapped.
+3. Tap the floating `copy writing` control and paste into a private scratch field.
+4. Open a saved reflection and scroll until the floating copy control switches to `copy reflection`; tap it and confirm the pasted text contains the reflection title plus body.
+5. Confirm copied-state feedback appears briefly as `copied writing` or `copied reflection`.
+6. Verify duration/hash/status are visible.
+7. For the fragment, confirm the privacy reminder says fragments are local and cannot Ask Anky.
+8. For the complete session before reflection, confirm the bottom floating `ask anky` prompt appears, tapping it scrolls to the inline Ask Anky action, and the inline badge says `8 free reflections included`.
+9. For a saved reflection with local `creditsRemaining`, confirm `N reflection(s) left` appears under the reflection.
+10. Tap the Reveal delete control, confirm the dialog says `delete forever?`, cancel once, then repeat and confirm deletion removes the local session from Reveal/Map.
 
 Pass:
 
 - Reconstructed text matches the intended accepted glyph sequence.
-- `.anky` copy is protocol text, not JSON.
 - Fragment Reveal has no Ask Anky button.
 - Complete Reveal has Ask Anky only before a reflection exists.
 - Copy actions are explicit user actions.
+- Delete removes only local archive/reflection/index state and makes no network request.
 
 Fail:
 
 - Reconstruction differs from typed glyphs.
-- `.anky` export/copy wraps protocol bytes in JSON.
 - Ask Anky is available for fragments.
+- Copy controls copy writing/reflection without a user tap.
+- Reveal deletion makes a network request or leaves the deleted session visible in Map.
 
 ## Map
 

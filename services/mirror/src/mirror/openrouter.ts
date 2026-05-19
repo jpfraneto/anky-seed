@@ -31,7 +31,7 @@ export async function callOpenRouter(input: {
     }),
   });
 
-  if (!response.ok) throw new Error("OPENROUTER_FAILED");
+  if (!response.ok) throw new Error(`OPENROUTER_HTTP_${response.status}`);
   const json = await response.json();
   const content = json?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new Error("OPENROUTER_EMPTY");

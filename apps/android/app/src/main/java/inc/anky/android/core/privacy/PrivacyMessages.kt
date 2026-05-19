@@ -10,7 +10,7 @@ object PrivacyMessages {
         buildList {
             add("hey jp, i'd love to try anky reflections.")
             add("")
-            add("my public key is:")
+            add("my public identity is:")
             add(publicKey)
             add("")
             add("platform: android")

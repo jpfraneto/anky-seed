@@ -184,7 +184,11 @@ class SourceInvariantTest {
             "OkHttpClient" to setOf("apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt"),
             "Request.Builder" to setOf("apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt"),
             "newCall(" to setOf("apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt"),
-            "Purchases" to setOf("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt"),
+            "Purchases" to setOf(
+                "apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt",
+                "apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt",
+                "apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt",
+            ),
             "PurchasesConfiguration" to setOf("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt"),
             "PurchaseParams" to setOf("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt"),
             "RevenueCatCreditsClient" to setOf(
@@ -202,6 +206,29 @@ class SourceInvariantTest {
             }
 
         assertEquals(emptyList<String>(), violations)
+    }
+
+    @Test
+    fun revenueCatRestoreIsUserTriggeredAndDoesNotProgrammaticallySyncPurchases() {
+        val creditsClient = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt")
+            .readText()
+        val youScreen = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val youViewModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val appRoot = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+
+        assertTrue(creditsClient.contains("override suspend fun restorePurchases()"))
+        assertTrue(creditsClient.contains("purchases.awaitRestorePurchases()"))
+        assertTrue(youScreen.contains("onRestorePurchases = viewModel::restorePurchases"))
+        assertTrue(!creditsClient.contains("syncPurchases"))
+        assertTrue(!youViewModel.substringBefore("fun restorePurchases()").contains("restorePurchases()"))
+        assertTrue(!appRoot.contains("restorePurchases"))
     }
 
     @Test

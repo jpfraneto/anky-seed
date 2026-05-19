@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anky Sprite Previews</title>
+  <style>
+    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; padding: 24px; background: Canvas; color: CanvasText; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    h2 { margin: 0 0 8px; font-size: 18px; }
+    h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0; color: color-mix(in srgb, CanvasText 70%, transparent); }
+    p { margin: 0 0 12px; color: color-mix(in srgb, CanvasText 72%, transparent); }
+    section { margin: 0 0 28px; }
+    .animation { border-top: 1px solid color-mix(in srgb, CanvasText 18%, transparent); padding-top: 18px; }
+    .pad-warning { color: #a15c00; font-weight: 600; }
+    .checker {
+      background-color: #fff;
+      background-image:
+        linear-gradient(45deg, #d9d9d9 25%, transparent 25%),
+        linear-gradient(-45deg, #d9d9d9 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d9d9d9 75%),
+        linear-gradient(-45deg, transparent 75%, #d9d9d9 75%);
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+    }
+    .toolbar { display: flex; align-items: center; gap: 12px; margin: 18px 0 24px; }
+    .preview-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+    .player, .gif-wrap { position: relative; display: grid; place-items: center; min-width: 160px; min-height: 160px; padding: 12px; border: 1px solid color-mix(in srgb, CanvasText 16%, transparent); border-radius: 6px; }
+    img { display: block; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 180px; height: auto; }
+    .strip { overflow-x: auto; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+    .strip img { max-width: none; height: 160px; }
+    .frame-number { position: absolute; top: 6px; right: 6px; padding: 2px 5px; background: rgba(0,0,0,.72); color: #fff; border-radius: 4px; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    body.hide-numbers .frame-number, body.hide-numbers figcaption { display: none; }
+    .fps { display: flex; align-items: center; gap: 8px; min-height: 34px; margin-top: 8px; }
+    .frames { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 12px; border-radius: 6px; }
+    figure { position: relative; margin: 0; padding: 8px; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 6px; background: rgba(255,255,255,.28); }
+    figcaption { margin-top: 6px; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: #111; }
+    ul { color: #a15c00; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Anky Sprite Previews</h1>
+    <p>14 animations, 112 frames. Generated 2026-05-17T12:47:23.021Z.</p>
+    <p><code>apps/ios/Assets/AnkySprites/raw</code> -> <code>apps/ios/Assets/AnkySprites/processed</code></p>
+    <label class="toolbar"><input id="toggle-numbers" type="checkbox" checked> Show frame numbers</label>
+  </header>
+  <section><h2>Warnings</h2><ul><li>anky_acknowledge_8_minutes: Source width 3546 was padded to normalized width 3552 for 8 integer columns.</li><li>anky_auth_failed: Source width 3546 was padded to normalized width 3552 for 8 integer columns.</li><li>anky_auth_progress: Source width 3546 was padded to normalized width 3552 for 8 integer columns.</li><li>anky_auth_progress: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_completion_glow: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_completion_glow: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_concern: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_concern: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_go_get_reflection_loading: Source width 3546 was padded to normalized width 3552 for 8 integer columns.</li><li>anky_go_get_reflection_loading: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_idle_presence: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_idle_presence: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_reflecting_mirror: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_reflecting_mirror: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_settings_machine: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_settings_machine: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_subtle_joy: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_subtle_joy: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_thinking: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_thinking: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_transforms_into_sigil: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_transforms_into_sigil: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_welcome: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_welcome: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li><li>anky_witnessing_sigil: Source width 2172 was padded to normalized width 2176 for 8 integer columns.</li><li>anky_witnessing_sigil: Visible pixels touch at least one frame edge; inspect for possible cut-off art.</li></ul></section>
+  <section class="animation" data-animation="anky_acknowledge_8_minutes" data-fps="8" data-frames='[&quot;../frames/anky_acknowledge_8_minutes/000.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/001.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/002.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/003.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/004.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/005.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/006.png&quot;,&quot;../frames/anky_acknowledge_8_minutes/007.png&quot;]'>
+  <header>
+    <h2>anky_acknowledge_8_minutes</h2>
+    <p>8 frames, source 3546x443, normalized 3552x443, frame 444x443</p>
+    <p class="pad-warning">Source was padded from 3546x443 to 3552x443.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_acknowledge_8_minutes.gif" alt="anky_acknowledge_8_minutes GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_acknowledge_8_minutes animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_acknowledge_8_minutes.png" alt="anky_acknowledge_8_minutes normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_acknowledge_8_minutes/000.png" alt="anky_acknowledge_8_minutes frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_acknowledge_8_minutes/001.png" alt="anky_acknowledge_8_minutes frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_acknowledge_8_minutes/002.png" alt="anky_acknowledge_8_minutes frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_acknowledge_8_minutes/003.png" alt="anky_acknowledge_8_minutes frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_acknowledge_8_minutes/004.png" alt="anky_acknowledge_8_minutes frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_acknowledge_8_minutes/005.png" alt="anky_acknowledge_8_minutes frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_acknowledge_8_minutes/006.png" alt="anky_acknowledge_8_minutes frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_acknowledge_8_minutes/007.png" alt="anky_acknowledge_8_minutes frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_auth_failed" data-fps="8" data-frames='[&quot;../frames/anky_auth_failed/000.png&quot;,&quot;../frames/anky_auth_failed/001.png&quot;,&quot;../frames/anky_auth_failed/002.png&quot;,&quot;../frames/anky_auth_failed/003.png&quot;,&quot;../frames/anky_auth_failed/004.png&quot;,&quot;../frames/anky_auth_failed/005.png&quot;,&quot;../frames/anky_auth_failed/006.png&quot;,&quot;../frames/anky_auth_failed/007.png&quot;]'>
+  <header>
+    <h2>anky_auth_failed</h2>
+    <p>8 frames, source 3546x443, normalized 3552x443, frame 444x443</p>
+    <p class="pad-warning">Source was padded from 3546x443 to 3552x443.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_auth_failed.gif" alt="anky_auth_failed GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_auth_failed animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_auth_failed.png" alt="anky_auth_failed normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_auth_failed/000.png" alt="anky_auth_failed frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_auth_failed/001.png" alt="anky_auth_failed frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_auth_failed/002.png" alt="anky_auth_failed frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_auth_failed/003.png" alt="anky_auth_failed frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_auth_failed/004.png" alt="anky_auth_failed frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_auth_failed/005.png" alt="anky_auth_failed frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_auth_failed/006.png" alt="anky_auth_failed frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_auth_failed/007.png" alt="anky_auth_failed frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_auth_progress" data-fps="8" data-frames='[&quot;../frames/anky_auth_progress/000.png&quot;,&quot;../frames/anky_auth_progress/001.png&quot;,&quot;../frames/anky_auth_progress/002.png&quot;,&quot;../frames/anky_auth_progress/003.png&quot;,&quot;../frames/anky_auth_progress/004.png&quot;,&quot;../frames/anky_auth_progress/005.png&quot;,&quot;../frames/anky_auth_progress/006.png&quot;,&quot;../frames/anky_auth_progress/007.png&quot;]'>
+  <header>
+    <h2>anky_auth_progress</h2>
+    <p>8 frames, source 3546x443, normalized 3552x443, frame 444x443</p>
+    <p class="pad-warning">Source was padded from 3546x443 to 3552x443.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_auth_progress.gif" alt="anky_auth_progress GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_auth_progress animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_auth_progress.png" alt="anky_auth_progress normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_auth_progress/000.png" alt="anky_auth_progress frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_auth_progress/001.png" alt="anky_auth_progress frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_auth_progress/002.png" alt="anky_auth_progress frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_auth_progress/003.png" alt="anky_auth_progress frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_auth_progress/004.png" alt="anky_auth_progress frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_auth_progress/005.png" alt="anky_auth_progress frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_auth_progress/006.png" alt="anky_auth_progress frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_auth_progress/007.png" alt="anky_auth_progress frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_completion_glow" data-fps="8" data-frames='[&quot;../frames/anky_completion_glow/000.png&quot;,&quot;../frames/anky_completion_glow/001.png&quot;,&quot;../frames/anky_completion_glow/002.png&quot;,&quot;../frames/anky_completion_glow/003.png&quot;,&quot;../frames/anky_completion_glow/004.png&quot;,&quot;../frames/anky_completion_glow/005.png&quot;,&quot;../frames/anky_completion_glow/006.png&quot;,&quot;../frames/anky_completion_glow/007.png&quot;]'>
+  <header>
+    <h2>anky_completion_glow</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_completion_glow.gif" alt="anky_completion_glow GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_completion_glow animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_completion_glow.png" alt="anky_completion_glow normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_completion_glow/000.png" alt="anky_completion_glow frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_completion_glow/001.png" alt="anky_completion_glow frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_completion_glow/002.png" alt="anky_completion_glow frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_completion_glow/003.png" alt="anky_completion_glow frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_completion_glow/004.png" alt="anky_completion_glow frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_completion_glow/005.png" alt="anky_completion_glow frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_completion_glow/006.png" alt="anky_completion_glow frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_completion_glow/007.png" alt="anky_completion_glow frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_concern" data-fps="8" data-frames='[&quot;../frames/anky_concern/000.png&quot;,&quot;../frames/anky_concern/001.png&quot;,&quot;../frames/anky_concern/002.png&quot;,&quot;../frames/anky_concern/003.png&quot;,&quot;../frames/anky_concern/004.png&quot;,&quot;../frames/anky_concern/005.png&quot;,&quot;../frames/anky_concern/006.png&quot;,&quot;../frames/anky_concern/007.png&quot;]'>
+  <header>
+    <h2>anky_concern</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_concern.gif" alt="anky_concern GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_concern animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_concern.png" alt="anky_concern normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_concern/000.png" alt="anky_concern frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_concern/001.png" alt="anky_concern frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_concern/002.png" alt="anky_concern frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_concern/003.png" alt="anky_concern frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_concern/004.png" alt="anky_concern frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_concern/005.png" alt="anky_concern frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_concern/006.png" alt="anky_concern frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_concern/007.png" alt="anky_concern frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_go_get_reflection_loading" data-fps="8" data-frames='[&quot;../frames/anky_go_get_reflection_loading/000.png&quot;,&quot;../frames/anky_go_get_reflection_loading/001.png&quot;,&quot;../frames/anky_go_get_reflection_loading/002.png&quot;,&quot;../frames/anky_go_get_reflection_loading/003.png&quot;,&quot;../frames/anky_go_get_reflection_loading/004.png&quot;,&quot;../frames/anky_go_get_reflection_loading/005.png&quot;,&quot;../frames/anky_go_get_reflection_loading/006.png&quot;,&quot;../frames/anky_go_get_reflection_loading/007.png&quot;]'>
+  <header>
+    <h2>anky_go_get_reflection_loading</h2>
+    <p>8 frames, source 3546x443, normalized 3552x443, frame 444x443</p>
+    <p class="pad-warning">Source was padded from 3546x443 to 3552x443.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_go_get_reflection_loading.gif" alt="anky_go_get_reflection_loading GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_go_get_reflection_loading animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_go_get_reflection_loading.png" alt="anky_go_get_reflection_loading normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_go_get_reflection_loading/000.png" alt="anky_go_get_reflection_loading frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_go_get_reflection_loading/001.png" alt="anky_go_get_reflection_loading frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_go_get_reflection_loading/002.png" alt="anky_go_get_reflection_loading frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_go_get_reflection_loading/003.png" alt="anky_go_get_reflection_loading frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_go_get_reflection_loading/004.png" alt="anky_go_get_reflection_loading frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_go_get_reflection_loading/005.png" alt="anky_go_get_reflection_loading frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_go_get_reflection_loading/006.png" alt="anky_go_get_reflection_loading frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_go_get_reflection_loading/007.png" alt="anky_go_get_reflection_loading frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_idle_presence" data-fps="8" data-frames='[&quot;../frames/anky_idle_presence/000.png&quot;,&quot;../frames/anky_idle_presence/001.png&quot;,&quot;../frames/anky_idle_presence/002.png&quot;,&quot;../frames/anky_idle_presence/003.png&quot;,&quot;../frames/anky_idle_presence/004.png&quot;,&quot;../frames/anky_idle_presence/005.png&quot;,&quot;../frames/anky_idle_presence/006.png&quot;,&quot;../frames/anky_idle_presence/007.png&quot;]'>
+  <header>
+    <h2>anky_idle_presence</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_idle_presence.gif" alt="anky_idle_presence GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_idle_presence animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_idle_presence.png" alt="anky_idle_presence normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_idle_presence/000.png" alt="anky_idle_presence frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_idle_presence/001.png" alt="anky_idle_presence frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_idle_presence/002.png" alt="anky_idle_presence frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_idle_presence/003.png" alt="anky_idle_presence frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_idle_presence/004.png" alt="anky_idle_presence frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_idle_presence/005.png" alt="anky_idle_presence frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_idle_presence/006.png" alt="anky_idle_presence frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_idle_presence/007.png" alt="anky_idle_presence frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_reflecting_mirror" data-fps="8" data-frames='[&quot;../frames/anky_reflecting_mirror/000.png&quot;,&quot;../frames/anky_reflecting_mirror/001.png&quot;,&quot;../frames/anky_reflecting_mirror/002.png&quot;,&quot;../frames/anky_reflecting_mirror/003.png&quot;,&quot;../frames/anky_reflecting_mirror/004.png&quot;,&quot;../frames/anky_reflecting_mirror/005.png&quot;,&quot;../frames/anky_reflecting_mirror/006.png&quot;,&quot;../frames/anky_reflecting_mirror/007.png&quot;]'>
+  <header>
+    <h2>anky_reflecting_mirror</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_reflecting_mirror.gif" alt="anky_reflecting_mirror GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_reflecting_mirror animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_reflecting_mirror.png" alt="anky_reflecting_mirror normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_reflecting_mirror/000.png" alt="anky_reflecting_mirror frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_reflecting_mirror/001.png" alt="anky_reflecting_mirror frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_reflecting_mirror/002.png" alt="anky_reflecting_mirror frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_reflecting_mirror/003.png" alt="anky_reflecting_mirror frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_reflecting_mirror/004.png" alt="anky_reflecting_mirror frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_reflecting_mirror/005.png" alt="anky_reflecting_mirror frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_reflecting_mirror/006.png" alt="anky_reflecting_mirror frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_reflecting_mirror/007.png" alt="anky_reflecting_mirror frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_settings_machine" data-fps="8" data-frames='[&quot;../frames/anky_settings_machine/000.png&quot;,&quot;../frames/anky_settings_machine/001.png&quot;,&quot;../frames/anky_settings_machine/002.png&quot;,&quot;../frames/anky_settings_machine/003.png&quot;,&quot;../frames/anky_settings_machine/004.png&quot;,&quot;../frames/anky_settings_machine/005.png&quot;,&quot;../frames/anky_settings_machine/006.png&quot;,&quot;../frames/anky_settings_machine/007.png&quot;]'>
+  <header>
+    <h2>anky_settings_machine</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_settings_machine.gif" alt="anky_settings_machine GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_settings_machine animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_settings_machine.png" alt="anky_settings_machine normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_settings_machine/000.png" alt="anky_settings_machine frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_settings_machine/001.png" alt="anky_settings_machine frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_settings_machine/002.png" alt="anky_settings_machine frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_settings_machine/003.png" alt="anky_settings_machine frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_settings_machine/004.png" alt="anky_settings_machine frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_settings_machine/005.png" alt="anky_settings_machine frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_settings_machine/006.png" alt="anky_settings_machine frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_settings_machine/007.png" alt="anky_settings_machine frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_subtle_joy" data-fps="8" data-frames='[&quot;../frames/anky_subtle_joy/000.png&quot;,&quot;../frames/anky_subtle_joy/001.png&quot;,&quot;../frames/anky_subtle_joy/002.png&quot;,&quot;../frames/anky_subtle_joy/003.png&quot;,&quot;../frames/anky_subtle_joy/004.png&quot;,&quot;../frames/anky_subtle_joy/005.png&quot;,&quot;../frames/anky_subtle_joy/006.png&quot;,&quot;../frames/anky_subtle_joy/007.png&quot;]'>
+  <header>
+    <h2>anky_subtle_joy</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_subtle_joy.gif" alt="anky_subtle_joy GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_subtle_joy animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_subtle_joy.png" alt="anky_subtle_joy normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_subtle_joy/000.png" alt="anky_subtle_joy frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_subtle_joy/001.png" alt="anky_subtle_joy frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_subtle_joy/002.png" alt="anky_subtle_joy frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_subtle_joy/003.png" alt="anky_subtle_joy frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_subtle_joy/004.png" alt="anky_subtle_joy frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_subtle_joy/005.png" alt="anky_subtle_joy frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_subtle_joy/006.png" alt="anky_subtle_joy frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_subtle_joy/007.png" alt="anky_subtle_joy frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_thinking" data-fps="8" data-frames='[&quot;../frames/anky_thinking/000.png&quot;,&quot;../frames/anky_thinking/001.png&quot;,&quot;../frames/anky_thinking/002.png&quot;,&quot;../frames/anky_thinking/003.png&quot;,&quot;../frames/anky_thinking/004.png&quot;,&quot;../frames/anky_thinking/005.png&quot;,&quot;../frames/anky_thinking/006.png&quot;,&quot;../frames/anky_thinking/007.png&quot;]'>
+  <header>
+    <h2>anky_thinking</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_thinking.gif" alt="anky_thinking GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_thinking animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_thinking.png" alt="anky_thinking normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_thinking/000.png" alt="anky_thinking frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_thinking/001.png" alt="anky_thinking frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_thinking/002.png" alt="anky_thinking frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_thinking/003.png" alt="anky_thinking frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_thinking/004.png" alt="anky_thinking frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_thinking/005.png" alt="anky_thinking frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_thinking/006.png" alt="anky_thinking frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_thinking/007.png" alt="anky_thinking frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_transforms_into_sigil" data-fps="8" data-frames='[&quot;../frames/anky_transforms_into_sigil/000.png&quot;,&quot;../frames/anky_transforms_into_sigil/001.png&quot;,&quot;../frames/anky_transforms_into_sigil/002.png&quot;,&quot;../frames/anky_transforms_into_sigil/003.png&quot;,&quot;../frames/anky_transforms_into_sigil/004.png&quot;,&quot;../frames/anky_transforms_into_sigil/005.png&quot;,&quot;../frames/anky_transforms_into_sigil/006.png&quot;,&quot;../frames/anky_transforms_into_sigil/007.png&quot;]'>
+  <header>
+    <h2>anky_transforms_into_sigil</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_transforms_into_sigil.gif" alt="anky_transforms_into_sigil GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_transforms_into_sigil animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_transforms_into_sigil.png" alt="anky_transforms_into_sigil normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_transforms_into_sigil/000.png" alt="anky_transforms_into_sigil frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_transforms_into_sigil/001.png" alt="anky_transforms_into_sigil frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_transforms_into_sigil/002.png" alt="anky_transforms_into_sigil frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_transforms_into_sigil/003.png" alt="anky_transforms_into_sigil frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_transforms_into_sigil/004.png" alt="anky_transforms_into_sigil frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_transforms_into_sigil/005.png" alt="anky_transforms_into_sigil frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_transforms_into_sigil/006.png" alt="anky_transforms_into_sigil frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_transforms_into_sigil/007.png" alt="anky_transforms_into_sigil frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_welcome" data-fps="8" data-frames='[&quot;../frames/anky_welcome/000.png&quot;,&quot;../frames/anky_welcome/001.png&quot;,&quot;../frames/anky_welcome/002.png&quot;,&quot;../frames/anky_welcome/003.png&quot;,&quot;../frames/anky_welcome/004.png&quot;,&quot;../frames/anky_welcome/005.png&quot;,&quot;../frames/anky_welcome/006.png&quot;,&quot;../frames/anky_welcome/007.png&quot;]'>
+  <header>
+    <h2>anky_welcome</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_welcome.gif" alt="anky_welcome GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_welcome animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_welcome.png" alt="anky_welcome normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_welcome/000.png" alt="anky_welcome frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_welcome/001.png" alt="anky_welcome frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_welcome/002.png" alt="anky_welcome frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_welcome/003.png" alt="anky_welcome frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_welcome/004.png" alt="anky_welcome frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_welcome/005.png" alt="anky_welcome frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_welcome/006.png" alt="anky_welcome frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_welcome/007.png" alt="anky_welcome frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+<section class="animation" data-animation="anky_witnessing_sigil" data-fps="8" data-frames='[&quot;../frames/anky_witnessing_sigil/000.png&quot;,&quot;../frames/anky_witnessing_sigil/001.png&quot;,&quot;../frames/anky_witnessing_sigil/002.png&quot;,&quot;../frames/anky_witnessing_sigil/003.png&quot;,&quot;../frames/anky_witnessing_sigil/004.png&quot;,&quot;../frames/anky_witnessing_sigil/005.png&quot;,&quot;../frames/anky_witnessing_sigil/006.png&quot;,&quot;../frames/anky_witnessing_sigil/007.png&quot;]'>
+  <header>
+    <h2>anky_witnessing_sigil</h2>
+    <p>8 frames, source 2172x724, normalized 2176x724, frame 272x724</p>
+    <p class="pad-warning">Source was padded from 2172x724 to 2176x724.</p>
+  </header>
+  <div class="preview-row">
+    <div>
+      <h3>Animated GIF</h3>
+      <div class="gif-wrap checker"><img class="gif" src="../preview/gifs/anky_witnessing_sigil.gif" alt="anky_witnessing_sigil GIF preview"></div>
+    </div>
+    <div>
+      <h3>Interactive Preview</h3>
+      <div class="player checker"><img class="player-frame" alt="anky_witnessing_sigil animation preview"><span class="frame-number">000</span></div>
+      <label class="fps">FPS <input type="range" min="1" max="24" step="1" value="8"><output>8</output></label>
+    </div>
+  </div>
+  <h3>Normalized Strip</h3>
+  <div class="strip checker"><img src="../normalized/anky_witnessing_sigil.png" alt="anky_witnessing_sigil normalized strip"></div>
+  <h3>Frames</h3>
+  <div class="frames checker"><figure class="frame" data-frame="0"><img src="../frames/anky_witnessing_sigil/000.png" alt="anky_witnessing_sigil frame 0"><figcaption>000</figcaption></figure><figure class="frame" data-frame="1"><img src="../frames/anky_witnessing_sigil/001.png" alt="anky_witnessing_sigil frame 1"><figcaption>001</figcaption></figure><figure class="frame" data-frame="2"><img src="../frames/anky_witnessing_sigil/002.png" alt="anky_witnessing_sigil frame 2"><figcaption>002</figcaption></figure><figure class="frame" data-frame="3"><img src="../frames/anky_witnessing_sigil/003.png" alt="anky_witnessing_sigil frame 3"><figcaption>003</figcaption></figure><figure class="frame" data-frame="4"><img src="../frames/anky_witnessing_sigil/004.png" alt="anky_witnessing_sigil frame 4"><figcaption>004</figcaption></figure><figure class="frame" data-frame="5"><img src="../frames/anky_witnessing_sigil/005.png" alt="anky_witnessing_sigil frame 5"><figcaption>005</figcaption></figure><figure class="frame" data-frame="6"><img src="../frames/anky_witnessing_sigil/006.png" alt="anky_witnessing_sigil frame 6"><figcaption>006</figcaption></figure><figure class="frame" data-frame="7"><img src="../frames/anky_witnessing_sigil/007.png" alt="anky_witnessing_sigil frame 7"><figcaption>007</figcaption></figure></div>
+</section>
+  <script>
+    const toggle = document.getElementById("toggle-numbers");
+    toggle.addEventListener("change", () => document.body.classList.toggle("hide-numbers", !toggle.checked));
+
+    for (const section of document.querySelectorAll(".animation")) {
+      const frames = JSON.parse(section.dataset.frames);
+      const img = section.querySelector(".player-frame");
+      const number = section.querySelector(".frame-number");
+      const fpsInput = section.querySelector("input[type=range]");
+      const fpsOutput = section.querySelector("output");
+      let frame = 0;
+      let last = 0;
+
+      img.src = frames[0];
+      function tick(now) {
+        const fps = Number(fpsInput.value);
+        if (now - last >= 1000 / fps) {
+          frame = (frame + 1) % frames.length;
+          img.src = frames[frame];
+          number.textContent = String(frame).padStart(3, "0");
+          last = now;
+        }
+        requestAnimationFrame(tick);
+      }
+      fpsInput.addEventListener("input", () => { fpsOutput.textContent = fpsInput.value; });
+      requestAnimationFrame(tick);
+    }
+  </script>
+</body>
+</html>

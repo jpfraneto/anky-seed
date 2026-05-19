@@ -35,6 +35,13 @@ class ReflectionStore private constructor(
             ?.sortedBy { it.name }
             ?: emptyList()
 
+    fun delete(hash: String) {
+        val file = urlFor(hash)
+        if (file.exists() && !file.delete()) {
+            throw IllegalStateException("Could not delete reflection file.")
+        }
+    }
+
     fun clear() {
         fileList().forEach { it.delete() }
     }

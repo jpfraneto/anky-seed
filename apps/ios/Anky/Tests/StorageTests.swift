@@ -172,9 +172,55 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(days.count, 3)
         XCTAssertEqual(days.first?.completeCount, 1)
         XCTAssertEqual(days[1].activitySummary, "No writing")
-        XCTAssertEqual(days.last?.date, Calendar.current.startOfDay(for: currentDay))
+        XCTAssertEqual(days.last?.date, Calendar.ankyUTC.startOfDay(for: currentDay))
         XCTAssertEqual(days.last?.trailActivitySummary, "No writing")
         XCTAssertTrue(days.last?.isToday == true)
+    }
+
+    func testTrailCompletionMarkerIsBinaryAndIgnoresFragments() throws {
+        let root = temporaryDirectory()
+        let day = Date(timeIntervalSince1970: 1_770_000_000)
+        let fragment = SessionSummary(
+            hash: "fragment",
+            createdAt: day,
+            localFileURL: root.appendingPathComponent("fragment.anky"),
+            durationMs: 8_000,
+            isComplete: false,
+            preview: "fragment",
+            hasReflection: false,
+            reflectionTitle: nil
+        )
+        let oneComplete = SessionSummary(
+            hash: "complete-1",
+            createdAt: day,
+            localFileURL: root.appendingPathComponent("complete-1.anky"),
+            durationMs: 488_000,
+            isComplete: true,
+            preview: "complete",
+            hasReflection: false,
+            reflectionTitle: nil
+        )
+        let manyComplete = (0..<8).map { index in
+            SessionSummary(
+                hash: "complete-\(index)",
+                createdAt: day.addingTimeInterval(Double(index)),
+                localFileURL: root.appendingPathComponent("complete-\(index).anky"),
+                durationMs: 488_000,
+                isComplete: true,
+                preview: "complete",
+                hasReflection: false,
+                reflectionTitle: nil
+            )
+        }
+
+        let fragmentDay = [fragment].groupedByContinuousDays(firstOpenDate: day, now: day).first
+        let oneDay = [oneComplete].groupedByContinuousDays(firstOpenDate: day, now: day).first
+        let manyDay = manyComplete.groupedByContinuousDays(firstOpenDate: day, now: day).first
+
+        XCTAssertFalse(fragmentDay?.showsTrailCompletionMarker ?? true)
+        XCTAssertTrue(oneDay?.showsTrailCompletionMarker == true)
+        XCTAssertEqual(oneDay?.showsTrailCompletionMarker, manyDay?.showsTrailCompletionMarker)
+        XCTAssertEqual(oneDay?.trailActivitySummary, manyDay?.trailActivitySummary)
     }
 
     func testBackupImporterImportsZipBackupAnkysAndReflections() throws {

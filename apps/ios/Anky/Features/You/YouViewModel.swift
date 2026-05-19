@@ -8,7 +8,7 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var backupZipURL: URL?
     @Published private(set) var errorMessage: String?
     @Published private(set) var statusMessage: String?
-    @Published private(set) var identityStatus = "Recovery phrase identity"
+    @Published private(set) var identityStatus = "Local identity"
     @Published private(set) var sensitiveIdentityConfirmed = false
     @Published private(set) var recoveryPhraseText = ""
     @Published private(set) var completeAnkyCount = 0
@@ -65,14 +65,14 @@ final class YouViewModel: ObservableObject {
             ankyFileURLs = archive.fileURLs()
             reflectionFileURLs = reflectionStore.fileURLs()
             backupZipURL = try backupExporter.exportBackup()
-            identityStatus = identityStore.hasRecoveryPhrase() ? "Recovery phrase identity" : "Local Keychain identity"
+            identityStatus = "Local identity"
             updateStats()
             errorMessage = nil
             Task {
                 try? await creditsClient.identify(publicKey: publicKey)
             }
         } catch {
-            errorMessage = "Could not load the local writer identity."
+            errorMessage = "Could not load the local identity."
         }
     }
 
@@ -91,7 +91,7 @@ final class YouViewModel: ObservableObject {
     }
 
     func revealRecoveryPhrase() async {
-        guard await biometricAuth.confirm(reason: "Reveal your ANKY recovery phrase.") else {
+        guard await biometricAuth.confirm(reason: "Show your ANKY recovery key.") else {
             errorMessage = "Could not confirm identity."
             return
         }
@@ -101,12 +101,12 @@ final class YouViewModel: ObservableObject {
             sensitiveIdentityConfirmed = true
             errorMessage = nil
         } catch {
-            errorMessage = "Could not load the recovery phrase."
+            errorMessage = "Could not load the recovery key."
         }
     }
 
     func importRecoveryPhrase(_ phraseText: String) async -> Bool {
-        guard await biometricAuth.confirm(reason: "Replace the local ANKY recovery phrase.") else {
+        guard await biometricAuth.confirm(reason: "Recover your ANKY local identity.") else {
             errorMessage = "Could not confirm identity."
             return false
         }
@@ -118,17 +118,17 @@ final class YouViewModel: ObservableObject {
             recoveryPhraseText = ""
             sensitiveIdentityConfirmed = false
             refresh()
-            statusMessage = "Recovery phrase imported."
+            statusMessage = "Identity recovered."
             errorMessage = nil
             return true
         } catch RecoveryPhraseError.invalidWordCount {
-            errorMessage = "Recovery phrase must be 12 words."
+            errorMessage = "Recovery key must be 12 words."
             return false
         } catch RecoveryPhraseError.unknownWord {
-            errorMessage = "Recovery phrase contains a word that is not in the BIP39 English word list."
+            errorMessage = "Recovery key contains an unrecognized word."
             return false
         } catch {
-            errorMessage = "Could not import the recovery phrase."
+            errorMessage = "Could not recover that identity."
             return false
         }
     }
@@ -232,7 +232,7 @@ final class YouViewModel: ObservableObject {
             statusMessage = "Local identity reset."
             errorMessage = nil
         } catch {
-            errorMessage = "Could not reset the local writer identity."
+            errorMessage = "Could not reset the local identity."
         }
     }
 
@@ -302,21 +302,22 @@ final class YouViewModel: ObservableObject {
 
     private func updateStats() {
         let sessions = sessionIndexStore.load()
-        completeAnkyCount = sessions.filter(\.isComplete).count
+        let completeSessions = sessions.filter(\.isComplete)
+        completeAnkyCount = completeSessions.count
         let totalDurationMs = sessions.reduce(Int64(0)) { $0 + $1.durationMs }
         totalWritingMinutes = sessions.isEmpty ? 0 : max(1, Int((totalDurationMs + 59_999) / 60_000))
-        currentStreak = Self.currentStreak(from: sessions.map(\.createdAt))
+        currentStreak = Self.currentStreak(from: completeSessions.map(\.createdAt))
     }
 
-    private static func currentStreak(from dates: [Date], calendar: Calendar = .current) -> Int {
+    private static func currentStreak(from dates: [Date], calendar: Calendar = .ankyUTC, now: Date = Date()) -> Int {
         let activeDays = Set(dates.map { calendar.startOfDay(for: $0) })
         guard !activeDays.isEmpty else {
             return 0
         }
 
-        var day = calendar.startOfDay(for: Date())
-        if !activeDays.contains(day), let yesterday = calendar.date(byAdding: .day, value: -1, to: day), activeDays.contains(yesterday) {
-            day = yesterday
+        var day = calendar.startOfDay(for: now)
+        guard activeDays.contains(day) else {
+            return 0
         }
 
         var streak = 0

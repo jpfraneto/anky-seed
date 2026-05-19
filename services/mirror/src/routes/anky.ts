@@ -37,6 +37,7 @@ export function createAnkyRoute(env: Env, logger: SafeLogger, deps: AnkyRouteDep
     let durationMs: number | undefined;
     let creditResult: string | undefined;
     let modelProvider: "openrouter" | "mock" | "none" = "none";
+    let modelFailure: string | undefined;
 
     try {
       const contentType = c.req.header("content-type") ?? "";
@@ -138,7 +139,8 @@ export function createAnkyRoute(env: Env, logger: SafeLogger, deps: AnkyRouteDep
         try {
           const rawMirror = await mirrorCall({ env, prompt });
           mirror = parseMirrorResponse(rawMirror);
-        } catch {
+        } catch (error) {
+          modelFailure = safeModelFailure(error);
           if (credit.spentCredit) {
             const refund = await refundCredit({ env, publicKey, publicKeyHash: keyHash, ankyHash });
             creditResult = refund.ok
@@ -171,6 +173,7 @@ export function createAnkyRoute(env: Env, logger: SafeLogger, deps: AnkyRouteDep
         statusCode,
         latencyMs: Date.now() - startedAt,
         modelProvider,
+        modelFailure,
         creditResult,
       });
     }
@@ -187,4 +190,15 @@ function requestBodyTooLarge(contentLength: string | undefined, maxBodyBytes: nu
   if (!contentLength) return false;
   const parsed = Number(contentLength);
   return Number.isFinite(parsed) && parsed > maxBodyBytes;
+}
+
+function safeModelFailure(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown";
+  if (/^OPENROUTER_HTTP_\d{3}$/.test(error.message)) return error.message;
+  if (error.message === "OPENROUTER_NOT_CONFIGURED") return error.message;
+  if (error.message === "OPENROUTER_EMPTY") return error.message;
+  if (error.message === "INVALID_MIRROR_RESPONSE") return error.message;
+  if (error.name === "SyntaxError") return "INVALID_MIRROR_JSON";
+  if (error.name === "TimeoutError" || error.name === "AbortError") return "OPENROUTER_TIMEOUT";
+  return "MODEL_FAILED";
 }

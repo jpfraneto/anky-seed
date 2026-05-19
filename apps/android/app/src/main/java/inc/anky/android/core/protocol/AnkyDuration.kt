@@ -1,5 +1,8 @@
 package inc.anky.android.core.protocol
 
+import java.time.Instant
+import java.time.ZoneOffset
+
 object AnkyDuration {
     const val CompleteRitualMs: Long = 8 * 60 * 1000
     const val TerminalSilenceMs: Long = 8000
@@ -15,5 +18,18 @@ object AnkyDuration {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return "${minutes}m ${seconds.toString().padStart(2, '0')}s"
+    }
+
+    fun clock(durationMs: Long): String {
+        val totalSeconds = maxOf(0, durationMs / 1000)
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return "$minutes:${seconds.toString().padStart(2, '0')}"
+    }
+
+    fun utcDayProgress(at: Instant, secondsPerDay: Long = 86_400): Double {
+        val start = at.atZone(ZoneOffset.UTC).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant()
+        val elapsed = at.epochSecond - start.epochSecond
+        return (elapsed.toDouble() / secondsPerDay.toDouble()).coerceIn(0.0, 1.0)
     }
 }

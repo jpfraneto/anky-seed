@@ -15,6 +15,7 @@ class YouViewModelStateTest {
             publicKey = "old-key",
             recoveryPhrase = "able about above absent",
             purchasingCreditPackageId = "inc.dev.anky.credits.22",
+            isRestoringPurchases = true,
             exportedFile = exportedFile,
             statusMessage = "exported backup.",
             error = "previous error",
@@ -40,6 +41,7 @@ class YouViewModelStateTest {
         assertEquals(1, merged.reflectionCount)
         assertEquals(previous.recoveryPhrase, merged.recoveryPhrase)
         assertEquals(previous.purchasingCreditPackageId, merged.purchasingCreditPackageId)
+        assertEquals(previous.isRestoringPurchases, merged.isRestoringPurchases)
         assertSame(exportedFile, merged.exportedFile)
         assertEquals(previous.statusMessage, merged.statusMessage)
         assertEquals(previous.error, merged.error)
@@ -63,15 +65,15 @@ class YouViewModelStateTest {
             ),
         )
 
-        assertEquals("Could not load the local writer identity.", failed.error)
+        assertEquals("Could not load the local identity.", failed.error)
         assertEquals(false, failed.creditState.isLoading)
         assertEquals("no credit packs available", failed.creditState.message)
     }
 
     @Test
     fun identityStatusMatchesIosDefaultWhilePublicKeyLoads() {
-        assertEquals("Recovery phrase identity", identityStatus(YouState(publicKey = "")))
-        assertEquals("Recovery phrase identity", identityStatus(YouState(publicKey = "PUBLIC_KEY")))
+        assertEquals("Local identity", identityStatus(YouState(publicKey = "")))
+        assertEquals("Local identity", identityStatus(YouState(publicKey = "PUBLIC_KEY")))
     }
 
     @Test
@@ -98,15 +100,15 @@ class YouViewModelStateTest {
 
     @Test
     fun statusCopyMatchesIosSentenceCasing() {
-        assertEquals("Recovery phrase imported.", YouStatusCopy.RecoveryPhraseImported)
+        assertEquals("Identity recovered.", YouStatusCopy.RecoveryPhraseImported)
         assertEquals("Map index repaired.", YouStatusCopy.MapIndexRepaired)
         assertEquals("Local reflections cleared.", YouStatusCopy.LocalReflectionsCleared)
         assertEquals("Local .anky archive cleared.", YouStatusCopy.LocalAnkyArchiveCleared)
         assertEquals("Local writing data cleared.", YouStatusCopy.LocalWritingDataCleared)
         assertEquals("Local identity reset.", YouStatusCopy.LocalIdentityReset)
         assertEquals("Could not create a backup zip.", YouStatusCopy.CouldNotCreateBackupZip)
-        assertEquals("Could not load the local writer identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
-        assertEquals("Could not load the recovery phrase.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
+        assertEquals("Could not load the local identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
+        assertEquals("Could not load the recovery key.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
         assertEquals("Could not schedule the daily reminder.", YouStatusCopy.CouldNotScheduleDailyReminder)
         assertEquals("Could not load credits.", YouStatusCopy.CouldNotLoadCredits)
     }

@@ -2,6 +2,7 @@ package inc.anky.android.core.credits
 
 import android.app.Activity
 import android.content.Context
+import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Offering
 import com.revenuecat.purchases.Offerings
@@ -9,12 +10,18 @@ import com.revenuecat.purchases.Package as RevenueCatPackage
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
+import com.revenuecat.purchases.PurchasesError
+import com.revenuecat.purchases.PurchasesException
 import com.revenuecat.purchases.PurchasesTransactionException
 import com.revenuecat.purchases.awaitGetVirtualCurrencies
 import com.revenuecat.purchases.awaitLogIn
 import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
+import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
 import inc.anky.android.BuildConfig
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 data class CreditPackage(
     val packageId: String,
@@ -36,6 +43,8 @@ interface CreditsClient {
     suspend fun configure(appUserId: String)
     suspend fun refresh(): CreditState
     suspend fun purchase(packageId: String, activity: Activity?): CreditState
+    suspend fun restorePurchases(): CreditState
+    suspend fun invalidateCreditBalanceCache()
 }
 
 class RevenueCatCreditsClient(
@@ -131,6 +140,24 @@ class RevenueCatCreditsClient(
         }
     }
 
+    override suspend fun restorePurchases(): CreditState {
+        if (!configured) return unconfiguredState()
+        return runCatching {
+            val purchases = Purchases.sharedInstance
+            purchases.awaitRestorePurchases()
+            purchases.invalidateVirtualCurrenciesCache()
+            refresh().copy(message = CreditCatalog.RestoreSuccessMessage)
+        }.getOrElse {
+            refresh().copy(message = CreditCatalog.RestoreFailureMessage)
+        }
+    }
+
+    override suspend fun invalidateCreditBalanceCache() {
+        if (configured) {
+            runCatching { Purchases.sharedInstance.invalidateVirtualCurrenciesCache() }
+        }
+    }
+
     private suspend fun loadCreditPackages(purchases: Purchases): List<RevenueCatPackage> {
         val offering = CreditCatalog.selectOffering(purchases.awaitOfferings())
             ?: return emptyList<RevenueCatPackage>().also { revenueCatPackages.clear() }
@@ -160,11 +187,29 @@ class RevenueCatCreditsClient(
             balance = null,
             message = "no credit packs available",
         )
+
+    private suspend fun Purchases.awaitRestorePurchases(): Unit =
+        suspendCancellableCoroutine { continuation ->
+            restorePurchases(
+                object : ReceiveCustomerInfoCallback {
+                    override fun onReceived(customerInfo: CustomerInfo) {
+                        if (continuation.isActive) continuation.resume(Unit)
+                    }
+
+                    override fun onError(error: PurchasesError) {
+                        if (continuation.isActive) continuation.resumeWithException(PurchasesException(error))
+                    }
+                },
+            )
+        }
 }
 
 internal object CreditCatalog {
     const val CurrencyCode = "CRD"
     const val OfferingIdentifier = "credits DEV"
+    const val RestoreSuccessMessage = "Purchases restored for this Anky identity."
+    const val RestoreFailureMessage = "Could not restore purchases for this Anky identity."
+    const val RestoreIdentityNote = "Restores purchases linked to this Anky public identity. Spent credits may not reappear if this is not the same Anky identity used to buy them."
     val ProductOrder = listOf(
         "inc.dev.anky.credits.22",
         "inc.dev.anky.credits.88_bonus_11",

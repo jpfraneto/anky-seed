@@ -3,6 +3,14 @@ import Foundation
 import AnkyProtocol
 #endif
 
+extension Calendar {
+    static var ankyUTC: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        return calendar
+    }
+}
+
 struct SessionSummary: Codable, Hashable, Identifiable {
     var id: String { hash }
 
@@ -116,6 +124,10 @@ struct SessionDay: Hashable, Identifiable {
         ankyCount > 0
     }
 
+    var showsTrailCompletionMarker: Bool {
+        completeCount > 0
+    }
+
     var writingSessionCount: Int {
         fragmentCount
     }
@@ -143,10 +155,10 @@ struct SessionDay: Hashable, Identifiable {
     }
 
     var trailActivitySummary: String {
-        guard ankyCount > 0 || writingSessionCount > 0 else {
+        if sessions.isEmpty {
             return "No writing"
         }
-        return "\(ankyCount) \(ankyCount == 1 ? "anky" : "ankys") · \(writingSessionCount) \(writingSessionCount == 1 ? "fragment" : "fragments")"
+        return showsTrailCompletionMarker ? "Showed up" : "No complete anky"
     }
 
     private static func pluralize(_ count: Int, singular: String, plural: String) -> String {
@@ -234,7 +246,7 @@ struct SessionIndexStore {
 
 extension Array where Element == SessionSummary {
     func groupedByDay(
-        calendar: Calendar = .current,
+        calendar: Calendar = .ankyUTC,
         firstOpenDate: Date,
         now: Date = Date()
     ) -> [SessionDay] {
@@ -264,7 +276,7 @@ extension Array where Element == SessionSummary {
     }
 
     func groupedByContinuousDays(
-        calendar: Calendar = .current,
+        calendar: Calendar = .ankyUTC,
         firstOpenDate: Date,
         now: Date = Date()
     ) -> [SessionDay] {

@@ -45,6 +45,14 @@ class LocalAnkyArchive private constructor(
             ?.sortedBy { it.name }
             ?: emptyList()
 
+    fun delete(hash: String) {
+        require(hash.matches(Sha256Hex)) { "Invalid .anky hash." }
+        val file = File(directory, "$hash.anky")
+        if (file.exists() && !file.delete()) {
+            throw IllegalStateException("Could not delete .anky file.")
+        }
+    }
+
     fun clear() {
         fileList().forEach { it.delete() }
     }

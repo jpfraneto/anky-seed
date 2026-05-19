@@ -1,0 +1,3227 @@
+{
+  "generatedAt": "2026-05-17T12:47:23.021Z",
+  "rawDir": "apps/ios/Assets/AnkySprites/raw",
+  "outputDir": "apps/ios/Assets/AnkySprites/processed",
+  "animationCount": 14,
+  "frameCount": 112,
+  "warnings": [
+    "anky_acknowledge_8_minutes: Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+    "anky_auth_failed: Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+    "anky_auth_progress: Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+    "anky_auth_progress: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_completion_glow: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_completion_glow: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_concern: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_concern: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_go_get_reflection_loading: Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+    "anky_go_get_reflection_loading: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_idle_presence: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_idle_presence: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_reflecting_mirror: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_reflecting_mirror: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_settings_machine: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_settings_machine: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_subtle_joy: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_subtle_joy: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_thinking: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_thinking: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_transforms_into_sigil: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_transforms_into_sigil: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_welcome: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_welcome: Visible pixels touch at least one frame edge; inspect for possible cut-off art.",
+    "anky_witnessing_sigil: Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+    "anky_witnessing_sigil: Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+  ],
+  "animations": [
+    {
+      "name": "anky_acknowledge_8_minutes",
+      "file": "anky_acknowledge_8_minutes.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_acknowledge_8_minutes.png",
+      "normalizedPath": "normalized/anky_acknowledge_8_minutes.png",
+      "sourceWidth": 3546,
+      "sourceHeight": 443,
+      "normalizedWidth": 3552,
+      "normalizedHeight": 443,
+      "targetFrameWidth": 444,
+      "sourceSize": {
+        "width": 3546,
+        "height": 443
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 444,
+        "height": 443
+      },
+      "outputFrameSize": {
+        "width": 444,
+        "height": 443
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1187833,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": false,
+      "gifPath": "preview/gifs/anky_acknowledge_8_minutes.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_acknowledge_8_minutes/000.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 444,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 154315,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_acknowledge_8_minutes/001.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 444,
+            "top": 0,
+            "right": 888,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 153970,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_acknowledge_8_minutes/002.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 888,
+            "top": 0,
+            "right": 1332,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 155050,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_acknowledge_8_minutes/003.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1332,
+            "top": 0,
+            "right": 1776,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 126451,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_acknowledge_8_minutes/004.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1776,
+            "top": 0,
+            "right": 2220,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 159298,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_acknowledge_8_minutes/005.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2220,
+            "top": 0,
+            "right": 2664,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147772,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_acknowledge_8_minutes/006.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2664,
+            "top": 0,
+            "right": 3108,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 142978,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_acknowledge_8_minutes/007.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 3108,
+            "top": 0,
+            "right": 3552,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147999,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 3546 was padded to normalized width 3552 for 8 integer columns."
+      ]
+    },
+    {
+      "name": "anky_auth_failed",
+      "file": "anky_auth_failed.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_auth_failed.png",
+      "normalizedPath": "normalized/anky_auth_failed.png",
+      "sourceWidth": 3546,
+      "sourceHeight": 443,
+      "normalizedWidth": 3552,
+      "normalizedHeight": 443,
+      "targetFrameWidth": 444,
+      "sourceSize": {
+        "width": 3546,
+        "height": 443
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 444,
+        "height": 443
+      },
+      "outputFrameSize": {
+        "width": 444,
+        "height": 443
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1185858,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": false,
+      "gifPath": "preview/gifs/anky_auth_failed.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_auth_failed/000.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 444,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 150315,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_auth_failed/001.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 444,
+            "top": 0,
+            "right": 888,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 150528,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_auth_failed/002.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 888,
+            "top": 0,
+            "right": 1332,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 141622,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_auth_failed/003.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1332,
+            "top": 0,
+            "right": 1776,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 146441,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_auth_failed/004.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1776,
+            "top": 0,
+            "right": 2220,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 150203,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_auth_failed/005.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2220,
+            "top": 0,
+            "right": 2664,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 148734,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_auth_failed/006.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2664,
+            "top": 0,
+            "right": 3108,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 150666,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_auth_failed/007.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 3108,
+            "top": 0,
+            "right": 3552,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147349,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 3546 was padded to normalized width 3552 for 8 integer columns."
+      ]
+    },
+    {
+      "name": "anky_auth_progress",
+      "file": "anky_auth_progress.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_auth_progress.png",
+      "normalizedPath": "normalized/anky_auth_progress.png",
+      "sourceWidth": 3546,
+      "sourceHeight": 443,
+      "normalizedWidth": 3552,
+      "normalizedHeight": 443,
+      "targetFrameWidth": 444,
+      "sourceSize": {
+        "width": 3546,
+        "height": 443
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 444,
+        "height": 443
+      },
+      "outputFrameSize": {
+        "width": 444,
+        "height": 443
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1166150,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_auth_progress.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_auth_progress/000.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 444,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147948,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_auth_progress/001.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 444,
+            "top": 0,
+            "right": 888,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 146538,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_auth_progress/002.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 888,
+            "top": 0,
+            "right": 1332,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 149382,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_auth_progress/003.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1332,
+            "top": 0,
+            "right": 1776,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 135186,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 20,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_auth_progress/004.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1776,
+            "top": 0,
+            "right": 2220,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147740,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 17,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_auth_progress/005.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2220,
+            "top": 0,
+            "right": 2664,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 142777,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_auth_progress/006.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2664,
+            "top": 0,
+            "right": 3108,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 151399,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_auth_progress/007.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 3108,
+            "top": 0,
+            "right": 3552,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 145180,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_completion_glow",
+      "file": "anky_completion_glow.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_completion_glow.png",
+      "normalizedPath": "normalized/anky_completion_glow.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1177640,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_completion_glow.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_completion_glow/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 145782,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 39,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_completion_glow/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 146902,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 34,
+            "right": 37,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_completion_glow/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 147448,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 32,
+            "right": 31,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_completion_glow/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 147171,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 26,
+            "right": 24,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_completion_glow/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148033,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 22,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_completion_glow/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149018,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_completion_glow/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148149,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 43,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_completion_glow/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 145137,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 43,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_concern",
+      "file": "anky_concern.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_concern.png",
+      "normalizedPath": "normalized/anky_concern.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1192187,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_concern.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_concern/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 144525,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 46,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_concern/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148696,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 45,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_concern/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 151144,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 35,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_concern/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 151251,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 28,
+            "right": 40,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_concern/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149352,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 42,
+            "right": 46,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_concern/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149201,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 46,
+            "right": 47,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_concern/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 151103,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 42,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_concern/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 146915,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_go_get_reflection_loading",
+      "file": "anky_go_get_reflection_loading.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_go_get_reflection_loading.png",
+      "normalizedPath": "normalized/anky_go_get_reflection_loading.png",
+      "sourceWidth": 3546,
+      "sourceHeight": 443,
+      "normalizedWidth": 3552,
+      "normalizedHeight": 443,
+      "targetFrameWidth": 444,
+      "sourceSize": {
+        "width": 3546,
+        "height": 443
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 444,
+        "height": 443
+      },
+      "outputFrameSize": {
+        "width": 444,
+        "height": 443
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1062398,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_go_get_reflection_loading.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_go_get_reflection_loading/000.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 444,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 143745,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_go_get_reflection_loading/001.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 444,
+            "top": 0,
+            "right": 888,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 114852,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_go_get_reflection_loading/002.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 888,
+            "top": 0,
+            "right": 1332,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 122584,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 146,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_go_get_reflection_loading/003.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1332,
+            "top": 0,
+            "right": 1776,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 132556,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 138,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_go_get_reflection_loading/004.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 1776,
+            "top": 0,
+            "right": 2220,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 147253,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_go_get_reflection_loading/005.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2220,
+            "top": 0,
+            "right": 2664,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 129492,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_go_get_reflection_loading/006.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 2664,
+            "top": 0,
+            "right": 3108,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 132256,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_go_get_reflection_loading/007.png",
+          "width": 444,
+          "height": 443,
+          "sourceRect": {
+            "left": 3108,
+            "top": 0,
+            "right": 3552,
+            "bottom": 443
+          },
+          "sourceColumnWidth": 444,
+          "cleanup": {
+            "removedPixels": 139660,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 3546 was padded to normalized width 3552 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_idle_presence",
+      "file": "anky_idle_presence.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_idle_presence.png",
+      "normalizedPath": "normalized/anky_idle_presence.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1266286,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_idle_presence.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_idle_presence/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 165358,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 41,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_idle_presence/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 161326,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 42,
+            "right": 222,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_idle_presence/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154142,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 225,
+            "right": 267,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_idle_presence/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154961,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 267,
+            "right": 138,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_idle_presence/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 164380,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 137,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_idle_presence/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 159083,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 255,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_idle_presence/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149636,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 256,
+            "right": 218,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_idle_presence/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 157400,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 215,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_reflecting_mirror",
+      "file": "anky_reflecting_mirror.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_reflecting_mirror.png",
+      "normalizedPath": "normalized/anky_reflecting_mirror.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1403745,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_reflecting_mirror.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_reflecting_mirror/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 178551,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 8,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_reflecting_mirror/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 176790,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 14,
+            "right": 56,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_reflecting_mirror/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 176089,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 44,
+            "right": 105,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_reflecting_mirror/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 172095,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 108,
+            "right": 182,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_reflecting_mirror/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 170854,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 178,
+            "right": 102,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_reflecting_mirror/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 175702,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 88,
+            "right": 12,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_reflecting_mirror/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 178124,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 13,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_reflecting_mirror/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 175540,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_settings_machine",
+      "file": "anky_settings_machine.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_settings_machine.png",
+      "normalizedPath": "normalized/anky_settings_machine.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1253770,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_settings_machine.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_settings_machine/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 157760,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 29,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_settings_machine/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 159007,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 25,
+            "right": 52,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_settings_machine/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 156961,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 57,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_settings_machine/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154830,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 30,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_settings_machine/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 157046,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 41,
+            "right": 46,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_settings_machine/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 156003,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 27,
+            "right": 108,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_settings_machine/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 155872,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 107,
+            "right": 118,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_settings_machine/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 156291,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 116,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_subtle_joy",
+      "file": "anky_subtle_joy.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_subtle_joy.png",
+      "normalizedPath": "normalized/anky_subtle_joy.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1192152,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_subtle_joy.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_subtle_joy/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148782,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 23,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_subtle_joy/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148025,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 19,
+            "right": 18,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_subtle_joy/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148905,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 15,
+            "right": 17,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_subtle_joy/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149116,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 16,
+            "right": 16,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_subtle_joy/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 152232,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 16,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_subtle_joy/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 150092,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_subtle_joy/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148872,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_subtle_joy/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 146128,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_thinking",
+      "file": "anky_thinking.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_thinking.png",
+      "normalizedPath": "normalized/anky_thinking.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1234069,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_thinking.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_thinking/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154009,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 49,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_thinking/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 153949,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 45,
+            "right": 25,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_thinking/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154663,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 23,
+            "right": 11,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_thinking/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 155224,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 10,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_thinking/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 155077,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_thinking/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154262,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_thinking/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 154671,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 5,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_thinking/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 152214,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 9,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_transforms_into_sigil",
+      "file": "anky_transforms_into_sigil.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_transforms_into_sigil.png",
+      "normalizedPath": "normalized/anky_transforms_into_sigil.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1278416,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_transforms_into_sigil.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_transforms_into_sigil/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 156436,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_transforms_into_sigil/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 156489,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 13,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_transforms_into_sigil/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 158146,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 12,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_transforms_into_sigil/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 158401,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_transforms_into_sigil/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 158398,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_transforms_into_sigil/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 171877,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 4,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_transforms_into_sigil/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 161337,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 4,
+            "right": 13,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_transforms_into_sigil/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 157332,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 24,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_welcome",
+      "file": "anky_welcome.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_welcome.png",
+      "normalizedPath": "normalized/anky_welcome.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1189393,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_welcome.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_welcome/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 144733,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 65,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_welcome/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 152196,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 61,
+            "right": 48,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_welcome/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 152382,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 47,
+            "right": 17,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_welcome/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 150575,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 18,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_welcome/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 146369,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_welcome/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 149119,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_welcome/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 148241,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_welcome/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 145778,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    },
+    {
+      "name": "anky_witnessing_sigil",
+      "file": "anky_witnessing_sigil.png",
+      "sourceFile": "apps/ios/Assets/AnkySprites/raw/anky_witnessing_sigil.png",
+      "normalizedPath": "normalized/anky_witnessing_sigil.png",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "normalizedWidth": 2176,
+      "normalizedHeight": 724,
+      "targetFrameWidth": 272,
+      "sourceSize": {
+        "width": 2172,
+        "height": 724
+      },
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard",
+      "anchor": "bottom_center",
+      "wasPadded": true,
+      "columnSize": {
+        "width": 272,
+        "height": 724
+      },
+      "outputFrameSize": {
+        "width": 272,
+        "height": 724
+      },
+      "checkerboardCleanup": {
+        "removedPixels": 1404775,
+        "remainingLightCheckerPixels": 0,
+        "happened": true
+      },
+      "edgeClippingDetected": true,
+      "gifPath": "preview/gifs/anky_witnessing_sigil.gif",
+      "frames": [
+        {
+          "index": 0,
+          "path": "frames/anky_witnessing_sigil/000.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 0,
+            "top": 0,
+            "right": 272,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 180975,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 0,
+            "right": 65,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 1,
+          "path": "frames/anky_witnessing_sigil/001.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 272,
+            "top": 0,
+            "right": 544,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 171624,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 73,
+            "right": 96,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 2,
+          "path": "frames/anky_witnessing_sigil/002.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 544,
+            "top": 0,
+            "right": 816,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 177574,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 92,
+            "right": 11,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 3,
+          "path": "frames/anky_witnessing_sigil/003.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 816,
+            "top": 0,
+            "right": 1088,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 172252,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 13,
+            "right": 161,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 4,
+          "path": "frames/anky_witnessing_sigil/004.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1088,
+            "top": 0,
+            "right": 1360,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 174272,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 160,
+            "right": 3,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 5,
+          "path": "frames/anky_witnessing_sigil/005.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1360,
+            "top": 0,
+            "right": 1632,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 178212,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 1,
+            "right": 101,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 6,
+          "path": "frames/anky_witnessing_sigil/006.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1632,
+            "top": 0,
+            "right": 1904,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 171725,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 104,
+            "right": 50,
+            "top": 0,
+            "bottom": 0
+          }
+        },
+        {
+          "index": 7,
+          "path": "frames/anky_witnessing_sigil/007.png",
+          "width": 272,
+          "height": 724,
+          "sourceRect": {
+            "left": 1904,
+            "top": 0,
+            "right": 2176,
+            "bottom": 724
+          },
+          "sourceColumnWidth": 272,
+          "cleanup": {
+            "removedPixels": 178141,
+            "remainingLightCheckerPixels": 0
+          },
+          "edgeClipping": {
+            "left": 43,
+            "right": 0,
+            "top": 0,
+            "bottom": 0
+          }
+        }
+      ],
+      "warnings": [
+        "Source width 2172 was padded to normalized width 2176 for 8 integer columns.",
+        "Visible pixels touch at least one frame edge; inspect for possible cut-off art."
+      ]
+    }
+  ]
+}

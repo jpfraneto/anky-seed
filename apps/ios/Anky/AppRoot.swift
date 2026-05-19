@@ -8,6 +8,7 @@ struct AppRoot: View {
     @State private var isUnlocked = false
     @State private var authFailed = false
     @State private var isAuthenticating = false
+    @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
 
     private func showMap() {
@@ -24,7 +25,7 @@ struct AppRoot: View {
             TabView(selection: $selectedTab) {
                 NavigationStack {
                     WriteView(
-                        viewModel: WriteViewModel(),
+                        viewModel: writeViewModel,
                         shouldFocus: selectedTab == 0 && (!faceIDLockEnabled || isUnlocked),
                         onCompleted: revealOnMap,
                         onCloseToMap: {
@@ -58,7 +59,11 @@ struct AppRoot: View {
                 }
             }
 
-            AnkyPresenceOverlay(defaultSequence: presenceSequence)
+            AnkyPresenceOverlay(
+                defaultSequence: presenceSequence,
+                goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
+                transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark
+            )
                 .zIndex(40)
         }
         .onAppear {
@@ -127,7 +132,7 @@ struct AppRoot: View {
     private var presenceSequence: AnkySequenceName {
         switch selectedTab {
         case 0:
-            return .findingThread
+            return writeViewModel.hasReachedRitualMark ? .celebrate : .findingThread
         case 1:
             return .walkRight
         case 2:

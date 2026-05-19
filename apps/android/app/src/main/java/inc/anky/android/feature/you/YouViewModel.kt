@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import android.net.Uri
 import inc.anky.android.BuildConfig
 import inc.anky.android.app.UserSettingsStore
+import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditState
 import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.identity.BiometricGate
@@ -33,6 +34,7 @@ data class YouState(
     val mirrorBaseUrl: String = BuildConfig.DEFAULT_MIRROR_BASE_URL,
     val creditState: CreditState = CreditState(false, null, "loading credit packs", isLoading = true),
     val purchasingCreditPackageId: String? = null,
+    val isRestoringPurchases: Boolean = false,
     val exportedFile: File? = null,
     val localAnkyFileCount: Int = 0,
     val completeAnkyCount: Int = 0,
@@ -94,7 +96,7 @@ class YouViewModel(
                     localAnkyFileCount = sessions.size,
                     completeAnkyCount = sessions.count { it.isComplete },
                     totalWritingMinutes = totalWritingMinutes(sessions),
-                    currentStreak = currentStreak(sessions.map { it.createdAt }),
+                    currentStreak = currentStreak(sessions.filter { it.isComplete }.map { it.createdAt }),
                     reflectionCount = localReflectionCount(),
                 )
             }.collect { refreshed ->
@@ -105,7 +107,7 @@ class YouViewModel(
 
     fun revealRecoveryPhrase() {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Reveal your ANKY recovery phrase.")) {
+            if (!biometricGate.authenticate("Show your ANKY recovery key.")) {
                 _state.update { it.copy(error = "Could not confirm identity.") }
                 return@launch
             }
@@ -130,7 +132,7 @@ class YouViewModel(
 
     fun importRecoveryPhrase(text: String, onImported: () -> Unit = {}) {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Replace the local ANKY recovery phrase.")) {
+            if (!biometricGate.authenticate("Recover your ANKY local identity.")) {
                 _state.update { it.copy(error = "Could not confirm identity.") }
                 return@launch
             }
@@ -251,6 +253,28 @@ class YouViewModel(
         }
     }
 
+    fun restorePurchases() {
+        viewModelScope.launch {
+            if (_state.value.isRestoringPurchases) return@launch
+            _state.update { it.copy(isRestoringPurchases = true, statusMessage = null, error = null) }
+            try {
+                creditState.value = creditState.value.copy(message = "restoring purchases", isLoading = true)
+                val restored = creditsClient.restorePurchases()
+                creditState.value = restored
+                when (restored.message) {
+                    CreditCatalog.RestoreSuccessMessage -> _state.update {
+                        it.copy(statusMessage = CreditCatalog.RestoreSuccessMessage, error = null)
+                    }
+                    CreditCatalog.RestoreFailureMessage -> _state.update {
+                        it.copy(error = CreditCatalog.RestoreFailureMessage)
+                    }
+                }
+            } finally {
+                _state.update { it.copy(isRestoringPurchases = false) }
+            }
+        }
+    }
+
     fun exportArchive() {
         viewModelScope.launch {
             runCatching {
@@ -284,7 +308,7 @@ class YouViewModel(
                         localAnkyFileCount = sessions.size,
                         completeAnkyCount = sessions.count { session -> session.isComplete },
                         totalWritingMinutes = totalWritingMinutes(sessions),
-                        currentStreak = currentStreak(sessions.map { session -> session.createdAt }),
+                        currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = localReflectionCount(),
                         statusMessage = "Imported ${pluralize(result.ankyCount, ".anky file", ".anky files")} and ${pluralize(result.reflectionCount, "reflection", "reflections")}.",
                         error = null,
@@ -303,7 +327,7 @@ class YouViewModel(
                 completeAnkyCount = sessions.count { session -> session.isComplete },
                 localAnkyFileCount = sessions.size,
                 totalWritingMinutes = totalWritingMinutes(sessions),
-                currentStreak = currentStreak(sessions.map { session -> session.createdAt }),
+                currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                 reflectionCount = localReflectionCount(),
             )
         }
@@ -344,7 +368,7 @@ class YouViewModel(
                         localAnkyFileCount = sessions.size,
                         completeAnkyCount = sessions.count { session -> session.isComplete },
                         totalWritingMinutes = totalWritingMinutes(sessions),
-                        currentStreak = currentStreak(sessions.map { session -> session.createdAt }),
+                        currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = localReflectionCount(),
                         statusMessage = YouStatusCopy.MapIndexRepaired,
                         error = null,
@@ -367,7 +391,7 @@ class YouViewModel(
                         localAnkyFileCount = sessions.size,
                         completeAnkyCount = sessions.count { session -> session.isComplete },
                         totalWritingMinutes = totalWritingMinutes(sessions),
-                        currentStreak = currentStreak(sessions.map { session -> session.createdAt }),
+                        currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = 0,
                         statusMessage = YouStatusCopy.LocalReflectionsCleared,
                         error = null,
@@ -421,20 +445,17 @@ class YouViewModel(
                     )
                 }
             }.onFailure {
-                _state.update { it.copy(error = "Could not reset the local writer identity.") }
+                _state.update { it.copy(error = "Could not reset the local identity.") }
             }
         }
     }
 
     private fun currentStreak(instants: List<java.time.Instant>): Int {
-        val zone = java.time.ZoneId.systemDefault()
+        val zone = java.time.ZoneOffset.UTC
         val days = instants.map { it.atZone(zone).toLocalDate() }.toSet()
         if (days.isEmpty()) return 0
         var cursor = java.time.LocalDate.now(zone)
-        val yesterday = cursor.minusDays(1)
-        if (!days.contains(cursor) && days.contains(yesterday)) {
-            cursor = yesterday
-        }
+        if (!days.contains(cursor)) return 0
         var streak = 0
         while (days.contains(cursor)) {
             streak += 1
@@ -456,9 +477,9 @@ class YouViewModel(
 
     private fun recoveryImportErrorMessage(error: Throwable): String =
         when (error.message) {
-            "Recovery phrase must contain 12 words." -> "Recovery phrase must be 12 words."
-            "Recovery phrase contains an unsupported word." -> "Recovery phrase contains a word that is not in the BIP39 English word list."
-            else -> "Could not import the recovery phrase."
+            "Recovery phrase must contain 12 words." -> "Recovery key must be 12 words."
+            "Recovery phrase contains an unsupported word." -> "Recovery key contains an unrecognized word."
+            else -> "Could not recover that identity."
         }
 
     companion object {
@@ -474,6 +495,7 @@ internal fun mergeRefreshedYouState(previous: YouState, refreshed: YouState): Yo
     refreshed.copy(
         recoveryPhrase = previous.recoveryPhrase,
         purchasingCreditPackageId = previous.purchasingCreditPackageId,
+        isRestoringPurchases = previous.isRestoringPurchases,
         exportedFile = previous.exportedFile,
         statusMessage = previous.statusMessage,
         error = previous.error,
@@ -489,15 +511,15 @@ internal fun creditLoadFailureState(): CreditState =
     CreditState(false, null, YouStatusCopy.CouldNotLoadCredits)
 
 internal object YouStatusCopy {
-    const val RecoveryPhraseImported = "Recovery phrase imported."
+    const val RecoveryPhraseImported = "Identity recovered."
     const val MapIndexRepaired = "Map index repaired."
     const val LocalReflectionsCleared = "Local reflections cleared."
     const val LocalAnkyArchiveCleared = "Local .anky archive cleared."
     const val LocalWritingDataCleared = "Local writing data cleared."
     const val LocalIdentityReset = "Local identity reset."
     const val CouldNotCreateBackupZip = "Could not create a backup zip."
-    const val CouldNotLoadLocalWriterIdentity = "Could not load the local writer identity."
-    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery phrase."
+    const val CouldNotLoadLocalWriterIdentity = "Could not load the local identity."
+    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery key."
     const val CouldNotScheduleDailyReminder = "Could not schedule the daily reminder."
     const val CouldNotLoadCredits = "Could not load credits."
 }

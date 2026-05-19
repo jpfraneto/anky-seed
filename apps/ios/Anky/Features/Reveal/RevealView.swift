@@ -311,28 +311,43 @@ private struct RevealBackgroundTexture: View {
 }
 
 private struct PrivacyDivider: View {
+    @State private var disclosure = PrivacyLockDisclosure()
+
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                Rectangle()
-                    .fill(RevealPalette.gold.opacity(0.22))
-                    .frame(height: 1)
+            Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    disclosure.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Rectangle()
+                        .fill(RevealPalette.gold.opacity(0.22))
+                        .frame(height: 1)
 
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(RevealPalette.goldSoft)
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(RevealPalette.goldSoft)
+                        .frame(width: 28, height: 28)
+                        .background(Color.black.opacity(0.18), in: Circle())
 
-                Rectangle()
-                    .fill(RevealPalette.gold.opacity(0.22))
-                    .frame(height: 1)
+                    Rectangle()
+                        .fill(RevealPalette.gold.opacity(0.22))
+                        .frame(height: 1)
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(disclosure.isExpanded ? "Hide privacy note" : "Show privacy note")
 
-            Text("your writing is yours. it only leaves your device if you ask for a reflection. it is deleted after processing and not stored anywhere. anky does not have a database")
-                .font(.system(size: 13))
-                .lineSpacing(3)
-                .foregroundStyle(RevealPalette.paper.opacity(0.62))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
+            if disclosure.isExpanded {
+                Text("your writing only leaves this device if you ask for a reflection. the mirror processes it transiently and does not keep a writing archive.")
+                    .font(.system(size: 13))
+                    .lineSpacing(3)
+                    .foregroundStyle(RevealPalette.paper.opacity(0.62))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
     }
 }
@@ -396,17 +411,30 @@ private struct RevealActions: View {
                 .fill(RevealPalette.gold.opacity(0.13))
                 .frame(height: 1)
 
-            Text(viewModel.reflectionActionStatus)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(RevealPalette.paper.opacity(0.52))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .multilineTextAlignment(.center)
+            if viewModel.isAskingAnky {
+                MirrorWitnessLoadingView()
+                    .padding(.top, 4)
+            }
+
+            if !viewModel.reflectionActionStatus.isEmpty {
+                Text(viewModel.reflectionActionStatus)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(RevealPalette.paper.opacity(0.52))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+            }
 
             if viewModel.canAskAnky {
+                Text(viewModel.creditPromptMessage)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(creditTextColor)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+
                 ThreadedActionButton(
-                    title: viewModel.isAskingAnky ? "asking anky" : "ask anky",
+                    title: viewModel.isAskingAnky ? "anky is reflecting" : "ask anky",
                     systemImage: "sparkles",
-                    badge: "8 free reflections included",
+                    badge: nil,
                     isLoading: viewModel.isAskingAnky,
                     action: {
                         Task {
@@ -414,9 +442,55 @@ private struct RevealActions: View {
                         }
                     }
                 )
-                .disabled(viewModel.isAskingAnky)
+                .disabled(!viewModel.canSubmitReflectionRequest)
+                .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.52)
+
+                if viewModel.shouldShowCreditsLink {
+                    NavigationLink {
+                        CreditsPage(viewModel: YouViewModel())
+                    } label: {
+                        Text("open credits")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(RevealPalette.goldSoft)
+                            .padding(.top, 2)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
+    }
+
+    private var creditTextColor: Color {
+        switch viewModel.creditPromptState {
+        case .unavailable:
+            return Color.red.opacity(0.82)
+        default:
+            return RevealPalette.goldSoft.opacity(0.82)
+        }
+    }
+}
+
+private struct MirrorWitnessLoadingView: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                AnkyWitnessView(mood: .warm, size: .small, sequence: .idleBlink)
+
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(RevealPalette.goldSoft.opacity(0.82), lineWidth: 1.4)
+                    .background(RevealPalette.paper.opacity(0.10), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .frame(width: 18, height: 24)
+                    .rotationEffect(.degrees(-8))
+                    .offset(x: 22, y: 6)
+            }
+            .frame(width: 70, height: 54)
+
+            Text("Anky is reflecting...")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(RevealPalette.paper.opacity(0.62))
+        }
+        .frame(maxWidth: .infinity)
+        .transition(.opacity.combined(with: .scale(scale: 0.96)))
     }
 }
 

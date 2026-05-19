@@ -3,6 +3,8 @@ import UIKit
 
 struct AnkyPresenceOverlay: View {
     let defaultSequence: AnkySequenceName
+    let goldenGlow: Bool
+    let transformToSigil: Bool
 
     @AppStorage("ankyPresenceX") private var storedX = -1.0
     @AppStorage("ankyPresenceY") private var storedY = -1.0
@@ -13,8 +15,14 @@ struct AnkyPresenceOverlay: View {
     @State private var sequence: AnkySequenceName
     @State private var keyboardHeight: CGFloat = 0
 
-    init(defaultSequence: AnkySequenceName = .idleFront) {
+    init(
+        defaultSequence: AnkySequenceName = .idleFront,
+        goldenGlow: Bool = false,
+        transformToSigil: Bool = false
+    ) {
         self.defaultSequence = defaultSequence
+        self.goldenGlow = goldenGlow
+        self.transformToSigil = transformToSigil
         _sequence = State(initialValue: defaultSequence)
     }
 
@@ -24,19 +32,32 @@ struct AnkyPresenceOverlay: View {
             let point = resolvedPoint(in: geometry.size, presenceSize: size)
 
             ZStack {
+                if showsCompanion && goldenGlow {
+                    TimelineView(.animation) { timeline in
+                        let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.0) + 1) / 2
+                        Circle()
+                            .fill(AnkyTheme.gold.opacity(0.12 + pulse * 0.08))
+                            .frame(width: size * 1.18, height: size * 1.18)
+                            .blur(radius: 7 + pulse * 4)
+                    }
+                    .transition(.opacity)
+                }
+
                 AnkyWitnessView(mood: .warm, size: .companion, sequence: sequence)
                     .frame(width: size, height: size)
-                    .scaleEffect(isVisible ? (breathing ? 1.025 : 0.985) : 0.86)
-                    .opacity(isVisible ? 1 : 0)
+                    .scaleEffect(showsCompanion ? (breathing ? 1.025 : 0.985) : 0.86)
+                    .opacity(showsCompanion ? 1 : 0)
 
                 Image("AnkySigil")
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)
-                    .scaleEffect(isVisible ? 0.72 : 1)
-                    .opacity(isVisible ? 0 : 1)
+                    .scaleEffect(showsCompanion ? 0.72 : 1)
+                    .opacity(showsCompanion ? 0 : 1)
             }
             .frame(width: size, height: size)
+            .animation(.easeInOut(duration: 0.4), value: goldenGlow)
+            .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
             .contentShape(Circle())
             .position(point)
             .gesture(dragGesture(in: geometry.size, presenceSize: size))
@@ -108,6 +129,10 @@ struct AnkyPresenceOverlay: View {
             keyboardHeight = 0
         }
         .ignoresSafeArea(.keyboard)
+    }
+
+    private var showsCompanion: Bool {
+        isVisible && !transformToSigil
     }
 
     private func dragGesture(in containerSize: CGSize, presenceSize: CGFloat) -> some Gesture {

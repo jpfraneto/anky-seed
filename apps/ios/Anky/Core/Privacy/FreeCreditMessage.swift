@@ -5,7 +5,7 @@ enum FreeCreditMessage {
         var lines = [
             "hey jp, i'd love to try anky reflections.",
             "",
-            "my public key is:",
+            "my public identity is:",
             publicKey,
             "",
             "platform: ios"
@@ -17,5 +17,13 @@ enum FreeCreditMessage {
         }
 
         return lines.joined(separator: "\n")
+    }
+}
+
+struct PrivacyLockDisclosure: Equatable {
+    private(set) var isExpanded = false
+
+    mutating func toggle() {
+        isExpanded.toggle()
     }
 }

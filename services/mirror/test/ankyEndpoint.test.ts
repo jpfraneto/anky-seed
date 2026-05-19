@@ -381,10 +381,11 @@ describe("POST /anky", () => {
 
   test("model failure after spend attempts refund", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const lines: string[] = [];
     let refundCalls = 0;
     const app = createApp({
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
-      logger: createSafeLogger({ log() {} }),
+      logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         resolveReflectionCredit: async () => ({
           ok: true,
@@ -412,6 +413,7 @@ describe("POST /anky", () => {
     expect(response.status).toBe(500);
     expect(json.error.code).toBe("MIRROR_FAILED");
     expect(refundCalls).toBe(1);
+    expect(lines.join("\n")).toContain('"modelFailure":"MODEL_FAILED"');
   });
 
   test("model failure after trial grant only refunds spent reflection credit", async () => {

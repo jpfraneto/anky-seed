@@ -1,0 +1,147 @@
+{
+  "rawDir": "apps/ios/Assets/AnkySprites/raw",
+  "outputDir": "apps/ios/Assets/AnkySprites/processed",
+  "gifPreviews": true,
+  "animations": {
+    "anky_acknowledge_8_minutes": {
+      "file": "anky_acknowledge_8_minutes.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_auth_failed": {
+      "file": "anky_auth_failed.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_auth_progress": {
+      "file": "anky_auth_progress.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_completion_glow": {
+      "file": "anky_completion_glow.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_concern": {
+      "file": "anky_concern.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_go_get_reflection_loading": {
+      "file": "anky_go_get_reflection_loading.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_idle_presence": {
+      "file": "anky_idle_presence.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_reflecting_mirror": {
+      "file": "anky_reflecting_mirror.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_settings_machine": {
+      "file": "anky_settings_machine.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_subtle_joy": {
+      "file": "anky_subtle_joy.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_thinking": {
+      "file": "anky_thinking.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_transforms_into_sigil": {
+      "file": "anky_transforms_into_sigil.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_welcome": {
+      "file": "anky_welcome.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    },
+    "anky_witnessing_sigil": {
+      "file": "anky_witnessing_sigil.png",
+      "frameCount": 8,
+      "fps": 8,
+      "loop": true,
+      "splitMode": "equal_width",
+      "anchor": "bottom_center",
+      "cropMode": "none",
+      "backgroundMode": "light_checkerboard"
+    }
+  }
+}

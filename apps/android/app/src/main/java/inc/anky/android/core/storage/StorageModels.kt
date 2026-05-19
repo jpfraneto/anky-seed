@@ -67,8 +67,22 @@ data class SessionDay(
     val completeCount: Int,
     val fragmentCount: Int,
     val reflectionCount: Int,
+    val dayIndex: Int,
     val dayInRegion: Int,
-)
+) {
+    val hasAnky: Boolean
+        get() = completeCount > 0
+
+    val showsTrailCompletionMarker: Boolean
+        get() = completeCount > 0
+
+    val trailActivitySummary: String
+        get() = when {
+            sessions.isEmpty() -> "No writing"
+            showsTrailCompletionMarker -> "Showed up"
+            else -> "No complete anky"
+        }
+}
 
 private data class SwiftCharacterPrefix(
     val text: String,

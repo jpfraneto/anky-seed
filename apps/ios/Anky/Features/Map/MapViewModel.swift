@@ -6,7 +6,7 @@ final class MapViewModel: ObservableObject {
     @Published private(set) var spatialDays: [SessionDay] = []
     @Published private(set) var firstOpenDate: Date = Date()
     @Published private(set) var mapStartDate: Date = Date()
-    @Published private(set) var todayDate: Date = Calendar.current.startOfDay(for: Date())
+    @Published private(set) var todayDate: Date = Calendar.ankyUTC.startOfDay(for: Date())
 
     private let archive: LocalAnkyArchive
     private let reflectionStore: ReflectionStore
@@ -19,7 +19,7 @@ final class MapViewModel: ObservableObject {
         reflectionStore: ReflectionStore = ReflectionStore(),
         sessionIndexStore: SessionIndexStore = SessionIndexStore(),
         appOpenStore: AppOpenStore = AppOpenStore(),
-        calendar: Calendar = .current
+        calendar: Calendar = .ankyUTC
     ) {
         self.archive = archive
         self.reflectionStore = reflectionStore
@@ -50,11 +50,11 @@ final class MapViewModel: ObservableObject {
     }
 
     var today: SessionDay? {
-        spatialDays.first { calendar.isDateInToday($0.date) }
+        spatialDays.first { calendar.isDate($0.date, inSameDayAs: todayDate) }
     }
 
     var trailDays: [SessionDay] {
-        days.filter { !calendar.isDateInToday($0.date) }
+        days.filter { !calendar.isDate($0.date, inSameDayAs: todayDate) }
     }
 
     func day(for date: Date) -> SessionDay? {

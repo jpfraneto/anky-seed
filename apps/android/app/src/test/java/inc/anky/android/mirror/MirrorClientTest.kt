@@ -9,6 +9,8 @@ import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.mirror.MirrorErrorCode
+import inc.anky.android.core.mirror.ReflectionCreditPresentation
+import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.mirror.effectiveBaseUrl
 import inc.anky.android.core.protocol.AnkyHasher
 import okhttp3.mockwebserver.MockResponse
@@ -31,6 +33,34 @@ class MirrorClientTest {
         assertFalse(MirrorEligibility.canAsk(isComplete = false, hasReflection = false))
         assertTrue(MirrorEligibility.canAsk(isComplete = true, hasReflection = false))
         assertFalse(MirrorEligibility.canAsk(isComplete = true, hasReflection = true))
+    }
+
+    @Test
+    fun firstFreeCreditStateShowsGiftUntilClaimed() {
+        val state = ReflectionCreditPresentation.state(
+            creditsRemaining = null,
+            hasClaimedFreeCredits = false,
+        )
+
+        assertEquals(ReflectionCreditPromptState.FreeGift(8), state)
+        assertEquals("Anky gives you 8 free reflections", ReflectionCreditPresentation.messageFor(state))
+    }
+
+    @Test
+    fun creditPromptShowsBalanceAndUnavailableState() {
+        val available = ReflectionCreditPresentation.state(
+            creditsRemaining = 2,
+            hasClaimedFreeCredits = true,
+        )
+        val unavailable = ReflectionCreditPresentation.state(
+            creditsRemaining = 0,
+            hasClaimedFreeCredits = true,
+        )
+
+        assertEquals(ReflectionCreditPromptState.Available(2), available)
+        assertEquals("You have 2 reflections left", ReflectionCreditPresentation.messageFor(available))
+        assertEquals(ReflectionCreditPromptState.Unavailable, unavailable)
+        assertEquals("No reflections left", ReflectionCreditPresentation.messageFor(unavailable))
     }
 
     @Test

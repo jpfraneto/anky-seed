@@ -52,6 +52,35 @@ final class MirrorClientTests: XCTestCase {
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.title, "Small Thread")
+        XCTAssertNil(response.creditsRemaining)
+    }
+
+    func testMirrorResponseParsesUpdatedCreditBalance() async throws {
+        let body = Data("1770000000000 h\n472000 i\n8000".utf8)
+        let expectedHash = AnkyHasher.sha256Hex(body)
+        let identity = WriterIdentity.generate()
+
+        MockURLProtocol.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            let payload = Data("""
+            {"hash":"\(expectedHash)","title":"Small Thread","reflection":"Here is what I saw.","creditsRemaining":7}
+            """.utf8)
+            return (response, payload)
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
+
+        let response = try await client.askAnky(bytes: body, identity: identity)
+
+        XCTAssertEqual(response.creditsRemaining, 7)
     }
 
     func testDeviceCheckProofProviderDoesNotCrashWhenUnavailable() async {

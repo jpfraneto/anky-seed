@@ -17,6 +17,10 @@ final class WriteViewModel: ObservableObject {
         writer.isStarted
     }
 
+    var hasReachedRitualMark: Bool {
+        elapsedMs >= AnkyDuration.completeRitualMs
+    }
+
     private var writer = AnkyWriter()
     private let draftStore: ActiveDraftStore
     private let archive: LocalAnkyArchive

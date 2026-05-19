@@ -5,6 +5,7 @@ struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
     @Binding private var revealAfterWriting: SavedAnky?
     @State private var path: [MapRoute] = []
+    private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     init(revealAfterWriting: Binding<SavedAnky?> = .constant(nil)) {
         _revealAfterWriting = revealAfterWriting
@@ -38,6 +39,9 @@ struct MapView: View {
             }
             .onChange(of: revealAfterWriting) { _, _ in
                 openPendingRevealIfNeeded()
+            }
+            .onReceive(refreshTimer) { _ in
+                viewModel.refresh()
             }
         }
     }
@@ -239,12 +243,9 @@ private struct TrailDayNode: View {
                     nodeIcon
                         .frame(width: 86, height: 86)
 
-                    if day.sessions.isEmpty {
-                        SilentDayMark()
+                    if day.showsTrailCompletionMarker {
+                        DayCompletionMarker()
                             .offset(x: 56)
-                    } else {
-                        DayActivityDots(day: day)
-                            .offset(x: 68)
                     }
                 }
                 .frame(width: 190, height: 86)
@@ -261,7 +262,7 @@ private struct TrailDayNode: View {
     }
 
     private var accessibilityLabel: String {
-        let date = day.isToday ? "Today" : day.date.formatted(date: .abbreviated, time: .omitted)
+        let date = day.isToday ? "Today" : formattedUTCDate(day.date, dateFormat: nil)
         return "\(date), \(day.trailActivitySummary)"
     }
 
@@ -285,8 +286,8 @@ private struct TrailDayNode: View {
                         .foregroundStyle(.white)
                 }
                 .overlay(
-                    Circle()
-                        .stroke(nodeStroke, lineWidth: 3)
+                    CurrentDayProgressRing()
+                        .frame(width: 78, height: 78)
                 )
                 .shadow(color: nodeShadow, radius: 16, y: 6)
             } else {
@@ -300,17 +301,16 @@ private struct TrailDayNode: View {
     private func dayCircle(size: CGFloat, fontSize: CGFloat) -> some View {
         ZStack {
             Circle()
-                .fill(nodeFill)
+                .fill(Color.black.opacity(day.hasAnky ? 0.76 : 0.58))
                 .frame(width: size, height: size)
-                .opacity(dayOpacity)
 
             Circle()
                 .fill(nodeTexture)
                 .frame(width: size, height: size)
-                .opacity(day.isToday ? 0.52 : 0.42)
+                .opacity(day.isToday ? 0.30 : 0.22)
 
             CircleTextureLines()
-                .stroke(nodeSymbolColor.opacity(day.hasAnky ? 0.18 : 0.10), lineWidth: 1)
+                .stroke(Color.white.opacity(day.hasAnky ? 0.08 : 0.05), lineWidth: 1)
                 .frame(width: size, height: size)
                 .clipShape(Circle())
 
@@ -318,7 +318,7 @@ private struct TrailDayNode: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.white.opacity(day.hasAnky ? 0.22 : 0.10),
+                            Color.white.opacity(day.hasAnky ? 0.10 : 0.05),
                             Color.clear
                         ],
                         center: .topLeading,
@@ -329,9 +329,9 @@ private struct TrailDayNode: View {
                 .frame(width: size, height: size)
                 .overlay(
                     Circle()
-                        .stroke(nodeStroke, lineWidth: day.isToday ? 3 : 1.5)
+                        .stroke(nodeStroke, lineWidth: day.isToday ? 3 : 2)
                 )
-                .shadow(color: nodeShadow, radius: day.isToday ? 12 : 5, y: 4)
+                .shadow(color: nodeShadow, radius: day.isToday ? 10 : 3, y: 3)
 
             Text("\(day.ankyversePosition.dayIndex)")
                 .font(.system(size: fontSize, weight: .heavy, design: .rounded).monospacedDigit())
@@ -347,9 +347,9 @@ private struct TrailDayNode: View {
     private var nodeTexture: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.22),
+                Color.white.opacity(0.10),
                 Color.clear,
-                Color.black.opacity(day.hasAnky ? 0.16 : 0.30)
+                Color.black.opacity(day.hasAnky ? 0.22 : 0.34)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -360,65 +360,54 @@ private struct TrailDayNode: View {
         if day.isToday {
             return nodeFill
         }
-        return day.hasAnky ? nodeFill.opacity(0.82) : Color.white.opacity(0.24)
+        return day.hasAnky ? nodeFill.opacity(0.76) : Color.white.opacity(0.18)
     }
 
     private var nodeShadow: Color {
-        nodeFill.opacity(day.hasAnky || day.isToday ? 0.32 : 0.08)
-    }
-
-    private var dayOpacity: Double {
-        day.hasAnky || day.isToday ? 1 : 0.36
+        nodeFill.opacity(day.hasAnky || day.isToday ? 0.20 : 0.04)
     }
 
     private var nodeSymbolColor: Color {
-        AnkyverseDayPalette.symbolColor(for: day.ankyversePosition.dayInRegion)
+        day.hasAnky ? Color.white.opacity(0.82) : Color.white.opacity(0.42)
     }
 }
 
-private struct DayActivityDots: View {
-    let day: SessionDay
-
+private struct CurrentDayProgressRing: View {
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<min(day.ankyCount, 4), id: \.self) { _ in
-                Circle()
-                    .fill(MapDayPalette.gold)
-                    .frame(width: 7, height: 7)
-                    .shadow(color: MapDayPalette.gold.opacity(0.78), radius: 5)
-            }
+        TimelineView(.periodic(from: .now, by: 60)) { timeline in
+            let progress = AnkyDuration.utcDayProgress(at: timeline.date)
 
-            ForEach(0..<min(day.writingSessionCount, 4), id: \.self) { _ in
+            ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.36))
-                    .frame(width: 6, height: 6)
-            }
+                    .stroke(
+                        Color.black.opacity(0.68),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
 
-            if day.ankyCount + day.writingSessionCount > 8 {
                 Circle()
-                    .fill(Color.white.opacity(0.24))
-                    .frame(width: 4, height: 4)
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AnkyTheme.gold.opacity(0.54),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.black.opacity(0.18), in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-        )
+        .accessibilityLabel("UTC day progress")
     }
 }
 
-private struct SilentDayMark: View {
+private struct DayCompletionMarker: View {
     var body: some View {
         Circle()
-            .fill(Color.white.opacity(0.16))
-            .frame(width: 5, height: 5)
+            .fill(MapDayPalette.gold.opacity(0.88))
+            .frame(width: 8, height: 8)
             .overlay(
                 Circle()
-                    .stroke(Color.white.opacity(0.16), lineWidth: 5)
+                    .stroke(Color.black.opacity(0.62), lineWidth: 3)
             )
+            .shadow(color: MapDayPalette.gold.opacity(0.38), radius: 6)
+            .accessibilityLabel("showed up")
     }
 }
 
@@ -466,7 +455,7 @@ private struct DayDetailView: View {
     let day: SessionDay
 
     private var title: String {
-        day.date.formatted(.dateTime.month(.wide).day().year()).lowercased()
+        formattedUTCDate(day.date, dateFormat: "MMMM d, yyyy").lowercased()
     }
 
     var body: some View {
@@ -534,63 +523,43 @@ private struct SessionRow: View {
         "\(session.wordCount) \(session.wordCount == 1 ? "word" : "words")"
     }
 
+    private var metadataText: String {
+        var items = [
+            timeText,
+            AnkyDuration.formatted(session.durationMs),
+            wordText
+        ]
+        if isAnky {
+            items.append("anky")
+        }
+        if session.hasReflection {
+            items.append("reflected")
+        }
+        return items.joined(separator: " · ")
+    }
+
     var body: some View {
-        ZStack {
-            if isAnky {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(MapDayPalette.gold.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(MapDayPalette.gold.opacity(0.24), lineWidth: 1)
-                    )
-                    .shadow(color: MapDayPalette.gold.opacity(0.12), radius: 13, y: 5)
+        VStack(alignment: .leading, spacing: 10) {
+            if let reflectedTitle {
+                Text(reflectedTitle)
+                    .font(.custom("Georgia", size: 19).weight(.semibold))
+                    .foregroundStyle(MapDayPalette.gold)
+                    .lineLimit(2)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    if isAnky {
-                        Label("anky", systemImage: "sparkles")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(MapDayPalette.ink)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(MapDayPalette.gold, in: Capsule())
-                    }
-
-                    if let reflectedTitle {
-                        Text(reflectedTitle)
-                            .font(.custom("Georgia", size: 19).weight(.semibold))
-                            .foregroundStyle(MapDayPalette.gold)
-                            .lineLimit(2)
-                    }
-                }
-
-                Text(session.preview)
-                    .font(.custom("Georgia", size: 16))
-                    .lineSpacing(4)
-                    .foregroundStyle(MapDayPalette.paper)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 8) {
-                    Text(timeText)
-                    MapDayMetadataDot()
-                    Text(AnkyDuration.formatted(session.durationMs))
-                    MapDayMetadataDot()
-                    Text(wordText)
-                }
-                .font(.system(size: 12, weight: .medium, design: .serif))
-                .foregroundStyle(MapDayPalette.paperMuted)
-            }
-            .padding(.horizontal, isAnky ? 14 : 0)
-            .padding(.vertical, isAnky ? 14 : 15)
+            Text(session.preview)
+                .font(.custom("Georgia", size: isAnky ? 17 : 16).weight(reflectedTitle == nil && isAnky ? .semibold : .regular))
+                .lineSpacing(4)
+                .foregroundStyle(isAnky ? MapDayPalette.paper : MapDayPalette.paperMuted)
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, isAnky ? 7 : 0)
+        .padding(.vertical, 18)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(MapDayPalette.gold.opacity(0.16))
-                .frame(height: 1)
+                .fill(MapDayPalette.gold.opacity(0.34))
+                .frame(height: 1.5)
         }
         .contentShape(Rectangle())
         .accessibilityLabel(accessibilityLabel)
@@ -600,9 +569,7 @@ private struct SessionRow: View {
         [
             reflectedTitle,
             session.preview,
-            timeText,
-            AnkyDuration.formatted(session.durationMs),
-            wordText
+            metadataText
         ]
         .compactMap { $0 }
         .joined(separator: ", ")
@@ -646,6 +613,19 @@ private struct DayCenterPreferenceKey: PreferenceKey {
     static func reduce(value: inout [Date: CGFloat], nextValue: () -> [Date: CGFloat]) {
         value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
+}
+
+private func formattedUTCDate(_ date: Date, dateFormat: String?) -> String {
+    let formatter = DateFormatter()
+    formatter.calendar = .ankyUTC
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    if let dateFormat {
+        formatter.dateFormat = dateFormat
+    } else {
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+    }
+    return formatter.string(from: date)
 }
 
 private extension Color {
