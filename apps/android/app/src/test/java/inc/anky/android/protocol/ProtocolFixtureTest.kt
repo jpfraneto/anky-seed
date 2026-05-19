@@ -6,7 +6,9 @@ import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyValidation
 import inc.anky.android.core.protocol.AnkyValidator
 import inc.anky.android.core.protocol.AnkyWriter
+import inc.anky.android.core.protocol.protocolGlyphsOrNull
 import java.io.File
+import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -75,10 +77,32 @@ class ProtocolFixtureTest {
     }
 
     @Test
+    fun committedSwipeTextCanBeSplitIntoProtocolGlyphs() {
+        assertEquals(listOf("s", "w", "i", "p", "e"), "swipe".protocolGlyphsOrNull(maxGlyphs = 64))
+        assertEquals(listOf("e\u0301", "👍🏽", "👨‍👩‍👧‍👦", "🇨🇱"), "e\u0301👍🏽👨‍👩‍👧‍👦🇨🇱".protocolGlyphsOrNull(maxGlyphs = 64))
+        assertEquals(null, "too long".protocolGlyphsOrNull(maxGlyphs = 2))
+        assertEquals(null, "line\nbreak".protocolGlyphsOrNull(maxGlyphs = 64))
+    }
+
+    @Test
     fun durationFormattingMatchesIosClampingAndShape() {
         assertEquals("0m 00s", AnkyDuration.formatted(-1_000))
         assertEquals("0m 00s", AnkyDuration.formatted(999))
         assertEquals("1m 01s", AnkyDuration.formatted(61_999))
+    }
+
+    @Test
+    fun clockFormatsPostRitualWritingTime() {
+        assertEquals("8:00", AnkyDuration.clock(480_000))
+        assertEquals("8:01", AnkyDuration.clock(481_000))
+        assertEquals("9:12", AnkyDuration.clock(552_000))
+    }
+
+    @Test
+    fun utcDayProgressGrowsWithTheDay() {
+        assertEquals(0.25, AnkyDuration.utcDayProgress(Instant.ofEpochSecond(6 * 60 * 60)), 0.001)
+        assertEquals(0.50, AnkyDuration.utcDayProgress(Instant.ofEpochSecond(12 * 60 * 60)), 0.001)
+        assertEquals(0.75, AnkyDuration.utcDayProgress(Instant.ofEpochSecond(18 * 60 * 60)), 0.001)
     }
 
     @Test

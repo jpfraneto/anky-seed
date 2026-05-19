@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,6 +74,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.BuildConfig
 import inc.anky.android.R
+import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.privacy.PrivacyMessages
 import inc.anky.android.ui.theme.AnkyActionButton
@@ -137,9 +139,9 @@ fun YouScreen(viewModel: YouViewModel) {
                 when (page.value!!) {
                     YouPage.Account -> AccountPage(
                         state = state,
-                        onCopyPublicKey = { context.copyText("Anky public key", state.publicKey) },
+                        onCopyPublicKey = { context.copyText("Anky public identity", state.publicKey) },
                         onRevealRecovery = viewModel::revealRecoveryPhrase,
-                        onCopyRecovery = { state.recoveryPhrase?.let { context.copyText("Anky recovery phrase", it) } },
+                        onCopyRecovery = { state.recoveryPhrase?.let { context.copyText("Anky recovery key", it) } },
                         onHideRecovery = viewModel::hideRecoveryPhrase,
                         onImportPhrase = {
                             phraseInput.value = ""
@@ -170,6 +172,7 @@ fun YouScreen(viewModel: YouViewModel) {
                     YouPage.Credits -> CreditsPage(
                         state = state,
                         onRefresh = viewModel::refreshCredits,
+                        onRestorePurchases = viewModel::restorePurchases,
                         onPurchase = { packageId -> viewModel.purchaseCredits(packageId, context.findActivity()) },
                         onShareFreeCredit = { context.shareText(state.freeCreditMessage, "share credit request") },
                         onDmJp = { context.openUrl(state.freeCreditWhatsAppUrl) },
@@ -196,7 +199,7 @@ fun YouScreen(viewModel: YouViewModel) {
     if (showImportPhrase.value) {
         AlertDialog(
             onDismissRequest = { showImportPhrase.value = false },
-            title = { Text("import phrase", style = AnkyType.Heading) },
+            title = { Text("recover identity", style = AnkyType.Heading) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
@@ -204,9 +207,9 @@ fun YouScreen(viewModel: YouViewModel) {
                         onValueChange = { phraseInput.value = it },
                         textStyle = AnkyType.Mono,
                         minLines = 4,
-                        label = { Text("recovery phrase") },
+                        label = { Text("recovery key") },
                     )
-                    Text("importing replaces the local signing identity used for ask anky and future account-linked credits. local .anky files stay on this device.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+                    Text("recovering replaces the local identity used for ask anky and future credit balances. local .anky files stay on this device.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
                 }
             },
             confirmButton = {
@@ -218,7 +221,7 @@ fun YouScreen(viewModel: YouViewModel) {
                         }
                     },
                     enabled = phraseInput.value.isNotBlank(),
-                ) { Text("import") }
+                ) { Text("recover") }
             },
             dismissButton = {
                 TextButton(onClick = { showImportPhrase.value = false }) { Text("cancel") }
@@ -363,7 +366,7 @@ private fun YouHome(state: YouState, onOpen: (YouPage) -> Unit, onFreeCredits: (
         YouStats(state)
         YouStatusMessages(state)
         AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-            MenuRow(R.drawable.you_icon_account, "account", identityStatus(state), { onOpen(YouPage.Account) })
+            MenuRow(R.drawable.you_icon_account, "local identity", "private to this device", { onOpen(YouPage.Account) })
             Divider()
             MenuRow(R.drawable.you_icon_privacy, "privacy", "local-first. private. sovereign.", { onOpen(YouPage.Privacy) })
             Divider()
@@ -529,26 +532,39 @@ private fun AccountPage(
     onReminder: (Boolean) -> Unit,
     onReminderTime: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val lockLabel = remember(context) { biometricLockLabel(context) }
     AnkyPanel {
-        DetailRow("status", identityStatus(state))
-        Divider()
-        Text("public key", style = AnkyType.Caption)
-        Text(state.publicKey, style = AnkyType.Mono)
-        AnkyActionButton("copy public key", onClick = onCopyPublicKey)
+        Text("local identity", style = AnkyType.Caption)
+        Text(
+            "anky created a private identity for this device.",
+            style = AnkyType.Body.copy(
+                fontSize = 17.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = AnkyColors.Paper,
+            ),
+        )
+        Text("your writing and identity live here unless you choose to export or recover them elsewhere.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
     AnkyPanel {
-        SwitchRow("face id app lock", state.appLockEnabled, onAppLock)
-        Text("your recovery phrase can only be revealed after face id is enabled.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("advanced recovery", style = AnkyType.Caption)
+        Text("anyone with this recovery key can restore this identity. keep it private.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Divider()
+        SwitchRow("$lockLabel app lock", state.appLockEnabled, onAppLock)
+        Text("your recovery key can only be shown after $lockLabel lock is enabled.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         if (state.recoveryPhrase == null) {
-            AnkyActionButton("reveal recovery phrase", enabled = state.appLockEnabled, onClick = onRevealRecovery)
+            AnkyActionButton("show recovery key", enabled = state.appLockEnabled, onClick = onRevealRecovery)
         } else {
             Text(state.recoveryPhrase, style = AnkyType.Mono.copy(color = AnkyColors.Paper))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnkyActionButton("copy", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
+                AnkyActionButton("export recovery key", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
                 AnkyActionButton("hide", modifier = Modifier.weight(1f), onClick = onHideRecovery)
             }
         }
-        AnkyActionButton("import recovery phrase", onClick = onImportPhrase)
+        AnkyActionButton("recover identity", onClick = onImportPhrase)
+        Text("public identity", style = AnkyType.Caption)
+        Text(state.publicKey, style = AnkyType.Mono.copy(color = AnkyColors.PaperMuted))
+        AnkyActionButton("copy public identity", onClick = onCopyPublicKey)
     }
     AnkyPanel {
         SwitchRow("daily reminder", state.dailyReminderEnabled, onReminder)
@@ -557,7 +573,7 @@ private fun AccountPage(
     }
     AnkyPanel {
         Text("ownership note", style = AnkyType.Caption)
-        Text("your seed phrase and writing belong to this device unless you choose to export or send them.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("your writing belongs to this device unless you choose to export or recover it elsewhere.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
 }
 
@@ -619,6 +635,7 @@ private fun YouDangerPanel(content: @Composable () -> Unit) {
 private fun CreditsPage(
     state: YouState,
     onRefresh: () -> Unit,
+    onRestorePurchases: () -> Unit,
     onPurchase: (String) -> Unit,
     onShareFreeCredit: () -> Unit,
     onDmJp: () -> Unit,
@@ -655,11 +672,17 @@ private fun CreditsPage(
             }
         }
         AnkyActionButton("refresh credits", onClick = onRefresh)
+        AnkyActionButton(
+            if (state.isRestoringPurchases) "restoring purchases" else "restore purchases",
+            enabled = !state.isRestoringPurchases,
+            onClick = onRestorePurchases,
+        )
+        Text(CreditCatalog.RestoreIdentityNote, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
     AnkyPanel {
         AnkyActionButton("share support request", onClick = onShareFreeCredit)
         AnkyActionButton("contact jp / support", onClick = onDmJp)
-        Text("manual credit support uses your public key only. no writing is included. Android automatic trials require Play Integrity/device recall first.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("support credit requests use your public identity only. no writing is included.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
 }
 
@@ -700,6 +723,23 @@ private fun DisabledRow(text: String) {
             .background(AnkyColors.PanelStrong.copy(alpha = 0.72f))
             .padding(horizontal = 14.dp, vertical = 12.dp),
     )
+}
+
+private fun biometricLockLabel(context: Context): String {
+    val packageManager = context.packageManager
+    val hasFingerprint = packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
+    val hasFace = Build.VERSION.SDK_INT >= 29 && packageManager.hasSystemFeature(PackageManager.FEATURE_FACE)
+    val hasIris = Build.VERSION.SDK_INT >= 29 && packageManager.hasSystemFeature(PackageManager.FEATURE_IRIS)
+    val canUseBiometric = BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
+        BiometricManager.BIOMETRIC_SUCCESS
+
+    return when {
+        hasFingerprint && !hasFace -> "fingerprint"
+        hasFace && !hasFingerprint -> "face"
+        hasIris && !hasFingerprint && !hasFace -> "iris"
+        canUseBiometric -> "biometric"
+        else -> "device"
+    }
 }
 
 @Composable
@@ -842,7 +882,7 @@ private val PrivacyCopy = listOf(
     ArticleItem.Paragraph("anky computes a SHA-256 hash of the exact `.anky` bytes. the hash is for integrity. it is not encryption. if someone has the same `.anky` bytes, they can compute the same hash."),
     ArticleItem.Paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/ios/Anky/Core/Protocol)."),
     ArticleItem.Heading("local identity"),
-    ArticleItem.Paragraph("anky creates or imports a local recovery phrase, stores it in device secure storage, and derives the writing identity locally. the seed phrase is not sent to anky."),
+    ArticleItem.Paragraph("anky creates a local identity, stores its recovery key in device secure storage, and derives the writing identity locally. the recovery key is not sent to anky."),
     ArticleItem.Paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/WriterIdentityStore.swift) and [keychain storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/KeychainClient.swift)."),
     ArticleItem.Heading("when plaintext leaves"),
     ArticleItem.Paragraph("writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
@@ -855,7 +895,7 @@ private val PrivacyCopy = listOf(
     ArticleItem.Paragraph("exports and backups can contain plaintext writing, reflections, and related local metadata. keep them somewhere private."),
     ArticleItem.Paragraph("deleting local writing data removes local `.anky` files, local reflections, and the local session index from this app's storage area. it does not automatically delete backend records already created by optional processing."),
     ArticleItem.Heading("what this does not claim"),
-    ArticleItem.Paragraph("anky does not claim that hashes encrypt writing. anky does not claim anonymity. timing, account identifiers, processing requests, purchases, and support requests can be linkable."),
+    ArticleItem.Paragraph("anky does not claim that hashes encrypt writing. anky does not claim anonymity. timing, identity identifiers, processing requests, purchases, and support requests can be linkable."),
     ArticleItem.Paragraph("anky does not claim optional processing is local-only. if you ask for a reflection, plaintext writing is sent for processing."),
     ArticleItem.Paragraph("anky does claim the default direction of the app is local-first: the `.anky` file belongs first to the person who wrote it."),
 )
@@ -872,7 +912,7 @@ private val TokenCopy = listOf(
     ArticleItem.Paragraph("the mirror doesn't care about the price. the practice remains free. write for 8 minutes. meet yourself. whether the token is worth a penny or a dollar, the words you wrote are still yours."),
 )
 
-internal fun identityStatus(state: YouState): String = "Recovery phrase identity"
+internal fun identityStatus(state: YouState): String = "Local identity"
 
 internal fun exportBackupAction(state: YouState): ExportBackupAction =
     if (state.exportedFile != null) ExportBackupAction.Share else ExportBackupAction.Empty
@@ -883,7 +923,7 @@ internal enum class ExportBackupAction {
 }
 
 private enum class YouPage(val title: String, val subtitle: String) {
-    Account("account", "identity on this device"),
+    Account("local identity", "private to this device"),
     Privacy("privacy", "local-first. private. sovereign."),
     Export("export data", "your archive is yours"),
     Credits("credits", "reflection fuel"),

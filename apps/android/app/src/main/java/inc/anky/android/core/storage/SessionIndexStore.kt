@@ -7,6 +7,7 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 class SessionIndexStore private constructor(
@@ -55,6 +56,10 @@ class SessionIndexStore private constructor(
         })
     }
 
+    fun delete(hash: String) {
+        save(load().filter { it.hash != hash })
+    }
+
     fun clear() {
         if (file.exists()) file.delete()
     }
@@ -62,7 +67,7 @@ class SessionIndexStore private constructor(
     companion object {
         fun forFile(file: File): SessionIndexStore = SessionIndexStore(file)
 
-        fun groupByDay(sessions: List<SessionSummary>, zoneId: ZoneId = ZoneId.systemDefault()): List<SessionDay> {
+        fun groupByDay(sessions: List<SessionSummary>, zoneId: ZoneId = ZoneOffset.UTC): List<SessionDay> {
             val grouped = sessions.groupBy { it.createdAt.atZone(zoneId).toLocalDate() }
             val startDate = grouped.keys.minOrNull() ?: LocalDate.now(zoneId)
             return grouped
@@ -74,6 +79,7 @@ class SessionIndexStore private constructor(
                         completeCount = sorted.count { it.isComplete },
                         fragmentCount = sorted.count { !it.isComplete },
                         reflectionCount = sorted.count { it.hasReflection },
+                        dayIndex = dayIndex(startDate, day),
                         dayInRegion = dayInRegion(startDate, day),
                     )
                 }
@@ -84,15 +90,20 @@ class SessionIndexStore private constructor(
             sessions: List<SessionSummary>,
             firstOpen: Instant,
             now: Instant = Instant.now(),
-            zoneId: ZoneId = ZoneId.systemDefault(),
+            zoneId: ZoneId = ZoneOffset.UTC,
         ): List<SessionDay> {
             val grouped = sessions.groupBy { it.createdAt.atZone(zoneId).toLocalDate() }
             val firstOpenDate = firstOpen.atZone(zoneId).toLocalDate()
             val earliestSessionDate = grouped.keys.minOrNull()
             val latestSessionDate = grouped.keys.maxOrNull()
             val today = now.atZone(zoneId).toLocalDate()
-            val startDate = listOfNotNull(firstOpenDate, earliestSessionDate).minOrNull() ?: firstOpenDate
+            val requestedStartDate = listOfNotNull(firstOpenDate, earliestSessionDate).minOrNull() ?: firstOpenDate
             val endDate = listOfNotNull(today, latestSessionDate).maxOrNull() ?: today
+            val startDate = if (ChronoUnit.DAYS.between(requestedStartDate, endDate) > MaxContinuousTrailDays) {
+                endDate.minusDays(MaxContinuousTrailDays)
+            } else {
+                requestedStartDate
+            }
             val dayCount = ChronoUnit.DAYS.between(startDate, endDate).coerceAtLeast(0)
 
             return (0..dayCount).map { offset ->
@@ -104,15 +115,20 @@ class SessionIndexStore private constructor(
                     completeCount = sorted.count { it.isComplete },
                     fragmentCount = sorted.count { !it.isComplete },
                     reflectionCount = sorted.count { it.hasReflection },
+                    dayIndex = dayIndex(startDate, day),
                     dayInRegion = dayInRegion(startDate, day),
                 )
             }
         }
 
+        private fun dayIndex(startDate: LocalDate, day: LocalDate): Int =
+            ChronoUnit.DAYS.between(startDate, day).coerceAtLeast(0).toInt() + 1
+
         private fun dayInRegion(startDate: LocalDate, day: LocalDate): Int {
-            val dayIndex = ChronoUnit.DAYS.between(startDate, day).coerceAtLeast(0)
-            return ((dayIndex % 8) + 1).toInt()
+            return (((dayIndex(startDate, day) - 1) % 8) + 1)
         }
+
+        private const val MaxContinuousTrailDays = 3650L
     }
 }
 

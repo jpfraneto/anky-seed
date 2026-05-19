@@ -18,6 +18,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -177,6 +178,17 @@ class StorageTest {
     }
 
     @Test
+    fun continuousSessionDaysClampCorruptVeryOldFirstOpenDates() {
+        val firstDay = Instant.parse("1970-01-01T12:00:00Z")
+        val currentDay = Instant.parse("2026-02-03T12:00:00Z")
+
+        val days = SessionIndexStore.groupByContinuousDays(emptyList(), firstDay, currentDay, ZoneOffset.UTC)
+
+        assertEquals(3651, days.size)
+        assertEquals(currentDay.atZone(ZoneOffset.UTC).toLocalDate(), Instant.ofEpochMilli(days.last().dayEpochMs).atZone(ZoneOffset.UTC).toLocalDate())
+    }
+
+    @Test
     fun continuousSessionDaysCountCompleteFragmentsAndReflections() {
         val day = Instant.parse("2026-02-01T12:00:00Z")
         val sessions = listOf(
@@ -211,6 +223,26 @@ class StorageTest {
         assertEquals(1, days.single().fragmentCount)
         assertEquals(1, days.single().reflectionCount)
         assertEquals(listOf("a", "b"), days.single().sessions.map { it.hash })
+    }
+
+    @Test
+    fun trailCompletionMarkerIsBinaryAndIgnoresFragments() {
+        val day = Instant.parse("2026-02-01T12:00:00Z")
+        val fragment = sessionSummary("fragment", day, isComplete = false)
+        val oneComplete = sessionSummary("complete-1", day, isComplete = true)
+        val manyComplete = (0 until 8).map { index ->
+            sessionSummary("complete-$index", day.plusSeconds(index.toLong()), isComplete = true)
+        }
+
+        val fragmentDay = SessionIndexStore.groupByContinuousDays(listOf(fragment), day, day, ZoneOffset.UTC).first()
+        val oneDay = SessionIndexStore.groupByContinuousDays(listOf(oneComplete), day, day, ZoneOffset.UTC).first()
+        val manyDay = SessionIndexStore.groupByContinuousDays(manyComplete, day, day, ZoneOffset.UTC).first()
+
+        assertFalse(fragmentDay.showsTrailCompletionMarker)
+        assertEquals("No complete anky", fragmentDay.trailActivitySummary)
+        assertTrue(oneDay.showsTrailCompletionMarker)
+        assertEquals(oneDay.showsTrailCompletionMarker, manyDay.showsTrailCompletionMarker)
+        assertEquals(oneDay.trailActivitySummary, manyDay.trailActivitySummary)
     }
 
     @Test
@@ -513,6 +545,19 @@ class StorageTest {
         '0'.code.toByte(),
         '0'.code.toByte(),
     )
+
+    private fun sessionSummary(hash: String, createdAt: Instant, isComplete: Boolean): SessionSummary =
+        SessionSummary(
+            hash = hash,
+            createdAt = createdAt,
+            localFilePath = File(temp.root, "$hash.anky").absolutePath,
+            durationMs = if (isComplete) 488_000 else 8_000,
+            isComplete = isComplete,
+            preview = hash,
+            wordCount = 1,
+            hasReflection = false,
+            reflectionTitle = null,
+        )
 
     private fun ZipOutputStream.putTextEntry(path: String, text: String) {
         putNextEntry(ZipEntry(path))

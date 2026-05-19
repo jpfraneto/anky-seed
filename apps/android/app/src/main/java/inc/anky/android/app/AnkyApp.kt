@@ -69,6 +69,9 @@ fun AnkyApp(container: AppContainer) {
         val biometricGate = remember(context) {
             DeviceBiometricGate { context.findFragmentActivity() }
         }
+        val freeCreditPromptPrefs = remember(context) {
+            context.getSharedPreferences("anky-credit-prompt", Context.MODE_PRIVATE)
+        }
         val lifecycleOwner = LocalLifecycleOwner.current
         val lockState = remember { mutableStateOf(LockState.Locked) }
         val unlockAttempt = remember { mutableIntStateOf(0) }
@@ -156,6 +159,16 @@ fun AnkyApp(container: AppContainer) {
             }
         }
 
+        val writeViewModel = remember {
+            WriteViewModel(
+                activeDraftStore = container.activeDraftStore,
+                archive = container.archive,
+                reflectionStore = container.reflectionStore,
+                indexStore = container.sessionIndexStore,
+            )
+        }
+        val writeState = writeViewModel.state.collectAsStateWithLifecycle().value
+
         Box(Modifier.fillMaxSize()) {
             Scaffold(
                 containerColor = AnkyColors.Background,
@@ -200,16 +213,8 @@ fun AnkyApp(container: AppContainer) {
                     modifier = Modifier.padding(padding),
                 ) {
                     composable(AnkyRoute.Write.route) {
-                        val viewModel = remember {
-                            WriteViewModel(
-                                activeDraftStore = container.activeDraftStore,
-                                archive = container.archive,
-                                reflectionStore = container.reflectionStore,
-                                indexStore = container.sessionIndexStore,
-                            )
-                        }
                         WriteScreen(
-                            viewModel = viewModel,
+                            viewModel = writeViewModel,
                             onReveal = { hash ->
                                 navController.navigate(AnkyRoute.Map.route) {
                                     launchSingleTop = true
@@ -261,6 +266,18 @@ fun AnkyApp(container: AppContainer) {
                                 indexStore = container.sessionIndexStore,
                                 identityStore = container.identityStore,
                                 mirrorClientProvider = { container.mirrorClient(settings.mirrorBaseUrl) },
+                                creditBalanceCacheInvalidator = { container.creditsClient.invalidateCreditBalanceCache() },
+                                creditBalanceFetcher = {
+                                    val identity = container.identityStore.loadOrCreate()
+                                    container.creditsClient.configure(identity.publicKey)
+                                    container.creditsClient.refresh().balance
+                                },
+                                hasClaimedFreeCreditsProvider = {
+                                    freeCreditPromptPrefs.getBoolean("hasClaimedFreeReflections", false)
+                                },
+                                markFreeCreditsClaimed = {
+                                    freeCreditPromptPrefs.edit().putBoolean("hasClaimedFreeReflections", true).apply()
+                                },
                             )
                         }
                         RevealScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
@@ -268,7 +285,9 @@ fun AnkyApp(container: AppContainer) {
                 }
             }
             AnkyPresenceOverlay(
-                defaultSequence = presenceSequence(currentRoute),
+                defaultSequence = presenceSequence(currentRoute, writeState.hasReachedRitualMark),
+                goldenGlow = currentRoute == AnkyRoute.Write.route && writeState.hasReachedRitualMark,
+                transformToSigil = currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -282,9 +301,9 @@ private enum class LockState {
     Failed,
 }
 
-private fun presenceSequence(route: String?): AnkySequenceName =
+private fun presenceSequence(route: String?, writeRitualComplete: Boolean): AnkySequenceName =
     when (route) {
-        AnkyRoute.Write.route, null -> AnkySequenceName.FindingThread
+        AnkyRoute.Write.route, null -> if (writeRitualComplete) AnkySequenceName.Celebrate else AnkySequenceName.FindingThread
         AnkyRoute.Map.route -> AnkySequenceName.WalkRight
         AnkyRoute.You.route -> AnkySequenceName.WaveFront
         else -> AnkySequenceName.IdleFront

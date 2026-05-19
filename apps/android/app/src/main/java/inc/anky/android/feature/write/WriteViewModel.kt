@@ -33,7 +33,10 @@ data class WriteState(
     val completedHash: String? = null,
     val acceptedGlyphCount: Int = 0,
     val errorMessage: String? = null,
-)
+) {
+    val hasReachedRitualMark: Boolean
+        get() = elapsedMs >= AnkyDuration.CompleteRitualMs
+}
 
 class WriteViewModel(
     private val activeDraftStore: ActiveDraftStore,
@@ -62,6 +65,26 @@ class WriteViewModel(
 
     fun acceptGlyph(glyph: String) {
         val now = nowMs()
+        acceptGlyphAt(glyph, now)
+    }
+
+    fun acceptGlyphs(glyphs: List<String>) {
+        if (glyphs.isEmpty()) return
+        val now = nowMs()
+        val previousAcceptedMs = writer.lastAcceptedMs
+        if (previousAcceptedMs == null) {
+            glyphs.forEach { glyph -> acceptGlyphAt(glyph, now) }
+            return
+        }
+
+        val elapsedSinceLastGlyph = maxOf(0, now - previousAcceptedMs)
+        glyphs.forEachIndexed { index, glyph ->
+            val distributedElapsed = elapsedSinceLastGlyph * (index + 1) / glyphs.size
+            acceptGlyphAt(glyph, previousAcceptedMs + distributedElapsed)
+        }
+    }
+
+    private fun acceptGlyphAt(glyph: String, now: Long) {
         if (!writer.isStarted) sessionStartMs = now
         if (!writer.accept(glyph, now)) return
         displayedText += glyph

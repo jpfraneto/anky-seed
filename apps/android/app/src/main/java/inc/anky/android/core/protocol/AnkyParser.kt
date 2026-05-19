@@ -62,6 +62,59 @@ private fun List<String>.dropLastWhileIndexedOnce(predicate: (String) -> Boolean
 internal fun String.isSingleProtocolGlyph(): Boolean =
     isSingleGraphemeCluster()
 
+internal fun String.protocolGlyphsOrNull(maxGlyphs: Int = Int.MAX_VALUE): List<String>? {
+    if (isEmpty() || contains('\n') || contains('\r')) return null
+
+    val glyphs = mutableListOf<String>()
+    val cluster = StringBuilder()
+    var joinsNext = false
+    var regionalIndicatorOpen = false
+
+    fun pushCluster() {
+        if (cluster.isEmpty()) return
+        val glyph = cluster.toString()
+        if (!glyph.isSingleProtocolGlyph()) {
+            glyphs += ""
+        } else {
+            glyphs += glyph
+        }
+        cluster.clear()
+        joinsNext = false
+        regionalIndicatorOpen = false
+    }
+
+    val codePoints = codePoints().toArray()
+    for (codePoint in codePoints) {
+        val startsNewCluster = cluster.isNotEmpty() &&
+            codePoint != ZeroWidthJoiner &&
+            !codePoint.isAttachedMark() &&
+            !joinsNext &&
+            !(regionalIndicatorOpen && isRegionalIndicator(codePoint))
+
+        if (startsNewCluster) pushCluster()
+
+        cluster.appendCodePoint(codePoint)
+        joinsNext = when {
+            codePoint == ZeroWidthJoiner -> true
+            joinsNext -> false
+            else -> false
+        }
+        regionalIndicatorOpen = when {
+            isRegionalIndicator(codePoint) && !regionalIndicatorOpen -> true
+            isRegionalIndicator(codePoint) && regionalIndicatorOpen -> false
+            codePoint.isAttachedMark() -> regionalIndicatorOpen
+            codePoint == ZeroWidthJoiner || joinsNext -> false
+            else -> false
+        }
+
+        if (glyphs.size > maxGlyphs) return null
+        if (glyphs.any { it.isEmpty() }) return null
+    }
+    pushCluster()
+
+    return glyphs.takeIf { it.isNotEmpty() && it.size <= maxGlyphs && it.none(String::isEmpty) }
+}
+
 private fun String.isSingleGraphemeCluster(): Boolean {
     if (isEmpty() || contains('\n') || contains('\r')) return false
 

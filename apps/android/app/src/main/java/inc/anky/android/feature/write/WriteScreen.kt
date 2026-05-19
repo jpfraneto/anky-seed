@@ -4,17 +4,26 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.border
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
@@ -45,6 +54,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.ui.theme.AnkyColors
 import kotlin.math.min
 
 @Composable
@@ -74,51 +84,91 @@ fun WriteScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(Color.Black)
             .testTag("write-screen"),
     ) {
         HiddenTextInput(
             onGlyph = viewModel::acceptGlyph,
+            onGlyphs = viewModel::acceptGlyphs,
             onRejectedMutation = viewModel::ignoreBackspaceOrReplacement,
             modifier = Modifier.fillMaxSize().testTag("write-input"),
         )
-        if (!state.isClosing) {
-            IconButton(
-                onClick = {
-                    viewModel.abandonIfEmpty()
-                    onCloseToMap()
-                },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 10.dp, end = 12.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Map,
-                    contentDescription = "Open Map",
-                    tint = Color.Black.copy(alpha = 0.46f),
-                    modifier = Modifier.size(22.dp),
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
+        ) {
+            if (state.displayedText.isNotEmpty()) {
+                Text(
+                    text = state.displayedText,
+                    color = AnkyColors.Paper.copy(alpha = 0.82f),
+                    fontSize = 20.sp,
+                    lineHeight = 28.sp,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                 )
             }
-        }
-        RitualRings(
-            elapsedMs = state.elapsedMs,
-            silenceElapsedMs = state.silenceElapsedMs,
-            silenceRemainingMs = state.silenceRemainingMs,
-            latestGlyph = state.latestGlyph,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .testTag("ritual-glyph"),
-        )
-        state.errorMessage?.let { errorMessage ->
-            Text(
-                errorMessage,
-                color = Color.Red,
-                fontSize = 13.sp,
+
+            if (!state.isClosing) {
+                IconButton(
+                    onClick = {
+                        viewModel.abandonIfEmpty()
+                        onCloseToMap()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 10.dp, end = 12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Map,
+                        contentDescription = "Open Map",
+                        tint = AnkyColors.PaperMuted.copy(alpha = 0.72f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            RitualRings(
+                elapsedMs = state.elapsedMs,
+                silenceElapsedMs = state.silenceElapsedMs,
+                silenceRemainingMs = state.silenceRemainingMs,
+                latestGlyph = state.latestGlyph,
+                isRitualComplete = state.hasReachedRitualMark,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .background(Color.White)
-                    .padding(16.dp),
+                    .testTag("ritual-glyph"),
             )
+
+            if (state.hasReachedRitualMark) {
+                Text(
+                    AnkyDuration.clock(state.elapsedMs),
+                    color = AnkyColors.PaperMuted.copy(alpha = 0.72f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 12.dp, start = 14.dp)
+                        .background(AnkyColors.Panel.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
+                        .border(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                )
+            }
+
+            state.errorMessage?.let { errorMessage ->
+                Text(
+                    errorMessage,
+                    color = Color.Red,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(AnkyColors.Background)
+                        .padding(16.dp),
+                )
+            }
         }
     }
 }
@@ -132,7 +182,9 @@ private fun WriteHaptics(state: WriteState) {
 
     LaunchedEffect(state.acceptedGlyphCount) {
         if (state.acceptedGlyphCount > lastGlyphCount) {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (state.acceptedGlyphCount <= 2 || state.acceptedGlyphCount % 4 == 0) {
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
             lastGlyphCount = state.acceptedGlyphCount
         }
     }
@@ -140,7 +192,7 @@ private fun WriteHaptics(state: WriteState) {
     val minute = (state.elapsedMs / 60_000L).toInt().coerceIn(0, 8)
     LaunchedEffect(minute) {
         if (minute > lastMinuteHaptic) {
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             lastMinuteHaptic = minute
         }
     }
@@ -149,8 +201,8 @@ private fun WriteHaptics(state: WriteState) {
     LaunchedEffect(alarmSecond, state.silenceElapsedMs) {
         if (state.silenceElapsedMs < 1000L) {
             lastAlarmSecond = 0
-        } else if (alarmSecond >= 5 && alarmSecond > lastAlarmSecond) {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        } else if (alarmSecond >= 7 && lastAlarmSecond == 0) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             lastAlarmSecond = alarmSecond
         }
     }
@@ -162,6 +214,7 @@ private fun RitualRings(
     silenceElapsedMs: Long,
     silenceRemainingMs: Long,
     latestGlyph: String,
+    isRitualComplete: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val ritualProgress by animateFloatAsState(
@@ -171,6 +224,15 @@ private fun RitualRings(
     )
     val silenceProgress = min(1f, ((silenceElapsedMs - 3000).toFloat() / 5000f).coerceAtLeast(0f))
     val keyOpacity = (silenceRemainingMs.toFloat() / AnkyDuration.TerminalSilenceMs).coerceIn(0f, 1f)
+    val pulse by rememberInfiniteTransition(label = "ritual-pulse").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "ritual-pulse-value",
+    )
     val colors = listOf(
         Color.Red,
         Color(0xFFFF9800),
@@ -183,6 +245,14 @@ private fun RitualRings(
     )
 
     Box(modifier = modifier.size(190.dp), contentAlignment = Alignment.Center) {
+        if (isRitualComplete) {
+            Canvas(Modifier.size(186.dp)) {
+                drawCircle(
+                    color = AnkyColors.Gold.copy(alpha = 0.30f + pulse * 0.34f),
+                    style = Stroke(width = 15.dp.toPx(), cap = StrokeCap.Round),
+                )
+            }
+        }
         Canvas(Modifier.size(186.dp)) {
             val stroke = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Butt)
             val arcSize = Size(size.width, size.height)
@@ -226,7 +296,7 @@ private fun RitualRings(
                 Modifier
                     .size(width = 3.dp, height = 54.dp)
                     .offset(y = 0.dp)
-                    .background(Color.Black.copy(alpha = 0.58f), CircleShape),
+                    .background(AnkyColors.Paper.copy(alpha = if (pulse > 0.5f) 0.72f else 0.24f), CircleShape),
             )
         } else {
             Text(
@@ -234,7 +304,7 @@ private fun RitualRings(
                 fontSize = 58.sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = FontFamily.SansSerif,
-                color = Color.Black.copy(alpha = keyOpacity.coerceAtLeast(0.08f)),
+                color = AnkyColors.Paper.copy(alpha = keyOpacity.coerceAtLeast(0.08f)),
             )
         }
     }

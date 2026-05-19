@@ -1,10 +1,16 @@
 package inc.anky.android.ui.components
 
 import android.content.Context
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -35,6 +41,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import inc.anky.android.R
+import inc.anky.android.ui.theme.AnkyColors
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -67,6 +74,8 @@ private val nextSequenceOrder = listOf(
 @Composable
 fun AnkyPresenceOverlay(
     defaultSequence: AnkySequenceName,
+    goldenGlow: Boolean = false,
+    transformToSigil: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -81,15 +90,29 @@ fun AnkyPresenceOverlay(
     var sequence by remember { mutableStateOf(defaultSequence) }
     var visible by remember { mutableStateOf(true) }
     var showMenu by remember { mutableStateOf(false) }
+    var forceCompanion by remember { mutableStateOf(false) }
     var cursor by remember { mutableIntStateOf(0) }
     var breath by remember { mutableStateOf(false) }
     var offsetX by remember { mutableStateOf(preferences.getFloat("x", -1f).takeIf { it >= 0f }) }
     var offsetY by remember { mutableStateOf(preferences.getFloat("y", -1f).takeIf { it >= 0f }) }
     var followsHomePosition by remember { mutableStateOf(!hasStoredPosition) }
+    val glowPulse by rememberInfiniteTransition(label = "anky-glow").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "anky-glow-pulse",
+    )
 
     LaunchedEffect(defaultSequence) {
         sequence = defaultSequence
         cursor = 0
+    }
+
+    LaunchedEffect(transformToSigil) {
+        if (!transformToSigil) forceCompanion = false
     }
 
     LaunchedEffect(sequence) {
@@ -111,18 +134,19 @@ fun AnkyPresenceOverlay(
         val keyboardHeightPx = WindowInsets.ime.getBottom(density).toFloat()
         val bottomLimit = (maxHeightPx - keyboardHeightPx - sizePx - 12f).coerceAtLeast(8f)
         val homeX = defaultOffsetX(maxWidthPx, sizePx, density)
-        val homeY = defaultOffsetY(maxHeightPx, 0f, sizePx, density)
+        val homeY = defaultOffsetY(maxHeightPx, keyboardHeightPx, sizePx, density)
         if (offsetX == null || offsetY == null) {
             offsetX = homeX
             offsetY = homeY
-        } else if (followsHomePosition && keyboardHeightPx == 0f) {
+        } else if (followsHomePosition) {
             offsetX = homeX
             offsetY = homeY
         } else if ((offsetY ?: 0f) > bottomLimit) {
             offsetY = bottomLimit
         }
 
-        val frameId = if (visible) {
+        val showsCompanion = visible && (!transformToSigil || forceCompanion)
+        val frameId = if (showsCompanion) {
             sequence.frames().getOrElse(cursor) { R.drawable.anky001 }
         } else {
             R.drawable.anky_sigil_smal
@@ -137,12 +161,16 @@ fun AnkyPresenceOverlay(
                     )
                 }
                 .size(sizeDp)
-                .scale(if (visible && breath) 1.025f else if (visible) 0.985f else 0.86f)
+                .scale(if (showsCompanion && breath) 1.025f else if (showsCompanion) 0.985f else 1f)
                 .alpha(1f)
                 .combinedClickable(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        visible = !visible
+                        if (transformToSigil && visible && !forceCompanion) {
+                            forceCompanion = true
+                        } else {
+                            visible = !visible
+                        }
                     },
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -166,6 +194,14 @@ fun AnkyPresenceOverlay(
                     }
                 },
         ) {
+            if (showsCompanion && goldenGlow) {
+                Canvas(Modifier.size(sizeDp)) {
+                    drawCircle(
+                        color = AnkyColors.Gold.copy(alpha = 0.12f + glowPulse * 0.08f),
+                        radius = size.minDimension * (0.54f + glowPulse * 0.07f),
+                    )
+                }
+            }
             Image(
                 painter = painterResource(frameId),
                 contentDescription = "Anky",

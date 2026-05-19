@@ -180,6 +180,29 @@ class WriteViewModelTest {
     }
 
     @Test
+    fun committedSwipeGlyphsDistributeElapsedTimeAcrossTheWord() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 120
+        viewModel.acceptGlyphs(listOf("e", "y", "!"))
+
+        assertEquals(
+            "1770000000000 h\n40 e\n40 y\n40 !",
+            stores.draft.load(),
+        )
+    }
+
+    @Test
     fun abandonIfEmptyClearsDraftButStartedSessionPersists() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000

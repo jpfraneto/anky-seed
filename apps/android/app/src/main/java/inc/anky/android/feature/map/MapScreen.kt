@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -44,9 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,9 +58,9 @@ import inc.anky.android.ui.theme.AnkyMapBackground
 import inc.anky.android.ui.theme.AnkyType
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,11 +68,26 @@ fun MapScreen(
     viewModel: MapViewModel,
     onOpenReveal: (String) -> Unit,
 ) {
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(Unit) {
+        while (true) {
+            viewModel.refresh()
+            delay(60_000)
+        }
+    }
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val selectedDay = remember { mutableStateOf<SessionDay?>(null) }
 
     AnkyMapBackground(modifier = Modifier.testTag("map-screen")) {
+        state.errorMessage?.let { error ->
+            Text(
+                error,
+                style = AnkyType.Body.copy(color = AnkyColors.Paper),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 72.dp, start = 24.dp, end = 24.dp),
+            )
+        }
         if (selectedDay.value == null) {
             TrailMap(
                 days = state.days,
@@ -98,6 +109,7 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val todayIndex = displayDays.indexOfFirst { isToday(it.dayEpochMs) }
+    val rowHeight = 104.dp
     val showCurrentDayButton = remember(todayIndex, listState) {
         derivedStateOf {
             todayIndex >= 0 && listState.layoutInfo.visibleItemsInfo.none { it.index == todayIndex }
@@ -114,25 +126,21 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
             if (displayDays.isEmpty()) return@Canvas
-            val row = 124.dp.toPx()
-            val points = displayDays.indices.map { index ->
-                Offset(x = trailX(index, size.width), y = 86.dp.toPx() + row * index)
-            }
-            for (i in 1 until points.size) {
-                drawLine(
-                    color = Color.White.copy(alpha = 0.15f),
-                    start = points[i - 1],
-                    end = points[i],
-                    strokeWidth = 18.dp.toPx(),
-                )
-                drawLine(
-                    color = AnkyColors.Accent.copy(alpha = 0.24f),
-                    start = points[i - 1],
-                    end = points[i],
-                    strokeWidth = 3.dp.toPx(),
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(1f, 18f)),
-                )
-            }
+            val x = size.width / 2f
+            drawLine(
+                color = Color.White.copy(alpha = 0.13f),
+                start = Offset(x, 48.dp.toPx()),
+                end = Offset(x, size.height),
+                strokeWidth = 10.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.28f),
+                start = Offset(x, 48.dp.toPx()),
+                end = Offset(x, size.height),
+                strokeWidth = 1.2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(vertical = 48.dp),
@@ -150,7 +158,7 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
                 }
             }
             itemsIndexed(displayDays, key = { _, day -> day.dayEpochMs }) { index, day ->
-                TrailDayNode(day = day, index = index, onOpenDay = onOpenDay)
+                TrailDayNode(day = day, rowHeight = rowHeight, onOpenDay = onOpenDay)
             }
         }
         if (showCurrentDayButton.value) {
@@ -172,106 +180,116 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
 }
 
 @Composable
-private fun TrailDayNode(day: SessionDay, index: Int, onOpenDay: (SessionDay) -> Unit) {
+private fun TrailDayNode(day: SessionDay, rowHeight: androidx.compose.ui.unit.Dp, onOpenDay: (SessionDay) -> Unit) {
     val today = isToday(day.dayEpochMs)
-    BoxWithConstraints(Modifier.fillMaxWidth().height(124.dp)) {
-        val density = LocalDensity.current
-        val maxWidthPx = with(density) { maxWidth.toPx() }
-        val nodeWidthPx = with(density) { 150.dp.toPx() }
-        val x = (trailX(index, maxWidthPx) - nodeWidthPx / 2f).roundToInt()
-        Column(
-            modifier = Modifier
-                .width(150.dp)
-                .height(124.dp)
-                .offset { androidx.compose.ui.unit.IntOffset(x, 0) }
-                .clickable { onOpenDay(day) },
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .clickable { onOpenDay(day) },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier.size(width = 190.dp, height = 86.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.TopEnd) {
-                if (today) {
+            if (today) {
+                Box(contentAlignment = Alignment.Center) {
                     Image(
                         painter = painterResource(R.drawable.today_anky_icon),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, dayColor(day.dayInRegion), CircleShape),
+                            .size(68.dp)
+                            .clip(CircleShape),
                     )
-                } else {
                     Box(
                         Modifier
-                            .size(48.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
-                            .background(dayColor(day.dayInRegion))
-                            .border(1.5.dp, dayColor(day.dayInRegion).copy(alpha = 0.72f), CircleShape)
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            if (day.completeCount > 0) "✦" else if (day.fragmentCount > 0) "∙" else "○",
-                            color = daySymbolColor(day.dayInRegion),
-                        )
-                    }
+                            .background(Color.Black.copy(alpha = 0.42f)),
+                    )
+                    Text(
+                        day.dayIndex.toString(),
+                        style = AnkyType.Heading.copy(
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                        ),
+                    )
+                    CurrentDayProgressRing(Modifier.size(78.dp))
                 }
-                ActivityPips(day, Modifier.offset(x = 20.dp, y = (-8).dp))
+            } else {
+                DayCircle(day = day, size = 48.dp, fontSize = 16.sp)
             }
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(Color.Black.copy(alpha = 0.22f))
-                    .border(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.18f), RoundedCornerShape(percent = 50))
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    if (today) "Today" else DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(day.dayEpochMs)),
-                    style = AnkyType.Caption.copy(
-                        fontWeight = if (today) FontWeight.SemiBold else FontWeight.Medium,
-                        color = AnkyColors.Paper,
-                    ),
-                )
-                Text(
-                    trailSummary(day),
-                    style = AnkyType.Caption.copy(fontSize = 10.sp, color = AnkyColors.PaperMuted),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            if (day.showsTrailCompletionMarker) {
+                DayCompletionMarker(Modifier.offset(x = 56.dp))
             }
         }
     }
 }
 
 @Composable
-private fun ActivityPips(day: SessionDay, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.24f))
-            .border(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.18f), CircleShape)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        repeat(day.completeCount.coerceAtMost(3)) {
-            Box(Modifier.size(6.dp).clip(CircleShape).background(AnkyColors.Success))
-        }
-        repeat(day.fragmentCount.coerceAtMost(3)) {
-            Box(Modifier.size(5.dp).background(Color(0xFFF97316)))
-        }
-        val overflowCount = day.completeCount + day.fragmentCount - 6
-        if (overflowCount > 0) {
-            Text(
-                "+$overflowCount",
-                style = AnkyType.Caption.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold, color = AnkyColors.PaperMuted),
+private fun DayCircle(day: SessionDay, size: androidx.compose.ui.unit.Dp, fontSize: androidx.compose.ui.unit.TextUnit) {
+    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
+            val hasAnky = day.hasAnky
+            val nodeFill = dayColor(day.dayInRegion)
+            drawCircle(Color.Black.copy(alpha = if (hasAnky) 0.76f else 0.58f))
+            drawCircle(nodeFill.copy(alpha = if (hasAnky) 0.18f else 0.08f))
+            val spacing = maxOf(7.dp.toPx(), this.size.width / 7f)
+            var x = -this.size.height
+            while (x < this.size.width + this.size.height) {
+                drawLine(
+                    color = Color.White.copy(alpha = if (hasAnky) 0.08f else 0.05f),
+                    start = Offset(x, this.size.height),
+                    end = Offset(x + this.size.height, 0f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+                x += spacing
+            }
+            drawCircle(Color.White.copy(alpha = if (hasAnky) 0.10f else 0.05f), radius = this.size.minDimension * 0.42f, center = Offset(this.size.width * 0.30f, this.size.height * 0.26f))
+            drawCircle(
+                color = if (hasAnky) nodeFill.copy(alpha = 0.76f) else Color.White.copy(alpha = 0.18f),
+                style = Stroke(width = 2.dp.toPx()),
             )
         }
-        if (day.completeCount == 0 && day.fragmentCount == 0) {
-            Canvas(Modifier.size(6.dp)) {
-                drawCircle(Color.White.copy(alpha = 0.34f), style = Stroke(1.dp.toPx()))
-            }
-        }
+        Text(
+            day.dayIndex.toString(),
+            style = AnkyType.Heading.copy(
+                fontSize = fontSize,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (day.hasAnky) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.42f),
+            ),
+        )
     }
+}
+
+@Composable
+private fun CurrentDayProgressRing(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.68f),
+            style = Stroke(width = 4.dp.toPx()),
+        )
+        drawArc(
+            color = AnkyColors.Gold.copy(alpha = 0.54f),
+            startAngle = -90f,
+            sweepAngle = (AnkyDuration.utcDayProgress(Instant.now()) * 360.0).toFloat(),
+            useCenter = false,
+            style = Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+        )
+    }
+}
+
+@Composable
+private fun DayCompletionMarker(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(8.dp)
+            .clip(CircleShape)
+            .background(AnkyColors.Gold.copy(alpha = 0.88f))
+            .border(3.dp, Color.Black.copy(alpha = 0.62f), CircleShape),
+    )
 }
 
 @Composable
@@ -301,7 +319,7 @@ private fun DayDetail(day: SessionDay, onBack: () -> Unit, onOpenReveal: (String
                     )
                 }
                 Text(
-                    DateTimeFormatter.ofPattern("MMMM d, yyyy").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(day.dayEpochMs)).lowercase(),
+                    DateTimeFormatter.ofPattern("MMMM d, yyyy").withZone(ZoneOffset.UTC).format(Instant.ofEpochMilli(day.dayEpochMs)).lowercase(),
                     style = AnkyType.Heading,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
@@ -311,34 +329,20 @@ private fun DayDetail(day: SessionDay, onBack: () -> Unit, onOpenReveal: (String
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp, vertical = 24.dp),
             ) {
-                val ankys = day.sessions.filter { it.isComplete }
-                val fragments = day.sessions.filter { !it.isComplete }
                 if (day.sessions.isEmpty()) item {
                     Text("no writing saved", style = AnkyType.Heading.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted), modifier = Modifier.fillMaxWidth().padding(top = 96.dp), textAlign = TextAlign.Center)
                 }
-                if (ankys.isNotEmpty()) {
-                    item { SectionTitle("ankys") }
-                    items(ankys, key = { it.hash }) { SessionRow(it, onOpenReveal) }
-                }
-                if (fragments.isNotEmpty()) {
-                    item { SectionTitle("fragments") }
-                    items(fragments, key = { it.hash }) { SessionRow(it, onOpenReveal) }
-                }
+                items(day.sessions, key = { it.hash }) { SessionRow(it, onOpenReveal) }
             }
         }
     }
 }
 
 @Composable
-private fun SectionTitle(title: String) {
-    Text(title, style = AnkyType.Heading.copy(fontSize = 24.sp), modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
-}
-
-@Composable
 private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().clickable { onOpenReveal(session.hash) }.padding(vertical = 15.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onOpenReveal(session.hash) }.padding(vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (session.hasReflection && !session.reflectionTitle.isNullOrBlank()) {
             Text(
@@ -348,32 +352,18 @@ private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) 
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(session.preview, style = AnkyType.Body, maxLines = 3, overflow = TextOverflow.Ellipsis)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(timeText(session), style = metadataStyle())
-            MetadataDot()
-            Text(AnkyDuration.formatted(session.durationMs), style = metadataStyle())
-            MetadataDot()
-            Text("${session.wordCount} ${if (session.wordCount == 1) "word" else "words"}", style = metadataStyle())
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.16f)))
+        Text(
+            session.preview,
+            style = AnkyType.Body.copy(
+                fontSize = if (session.isComplete) 17.sp else 16.sp,
+                fontWeight = if (session.isComplete && session.reflectionTitle.isNullOrBlank()) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (session.isComplete) AnkyColors.Paper else AnkyColors.PaperMuted,
+            ),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Box(Modifier.fillMaxWidth().height(1.5.dp).background(AnkyColors.Gold.copy(alpha = 0.34f)))
     }
-}
-
-@Composable private fun MetadataDot() = Box(Modifier.size(3.dp).clip(CircleShape).background(AnkyColors.Gold.copy(alpha = 0.44f)))
-
-private fun metadataStyle() = androidx.compose.ui.text.TextStyle(
-    fontFamily = FontFamily.Serif,
-    fontWeight = FontWeight.Medium,
-    fontSize = 12.sp,
-    color = AnkyColors.PaperMuted,
-)
-
-private fun trailX(index: Int, width: Float): Float {
-    val pattern = listOf(-0.28f, 0.04f, 0.31f, 0.17f, -0.12f, -0.35f, -0.08f, 0.24f)
-    val usable = maxOf(120f, width - 108f)
-    val center = width / 2f
-    return (center + pattern[index % pattern.size] * usable).coerceIn(76f, width - 76f)
 }
 
 private fun dayColor(dayInRegion: Int): Color = when (((dayInRegion.coerceAtLeast(1) - 1) % 8) + 1) {
@@ -387,23 +377,7 @@ private fun dayColor(dayInRegion: Int): Color = when (((dayInRegion.coerceAtLeas
     else -> Color(0xFFFFF7E0)
 }
 
-private fun daySymbolColor(dayInRegion: Int): Color = when (((dayInRegion.coerceAtLeast(1) - 1) % 8) + 1) {
-    3, 8 -> Color.Black.copy(alpha = 0.76f)
-    else -> Color.White
-}
-
-private fun trailSummary(day: SessionDay): String {
-    if (day.completeCount == 0 && day.fragmentCount == 0) return "No writing"
-    val ankyWord = if (day.completeCount == 1) "anky" else "ankys"
-    val fragmentWord = if (day.fragmentCount == 1) "fragment" else "fragments"
-    return "${day.completeCount} $ankyWord · ${day.fragmentCount} $fragmentWord"
-}
-
 private fun isToday(epochMs: Long): Boolean {
-    val zone = ZoneId.systemDefault()
-    val today = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+    val today = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
     return epochMs == today
 }
-
-private fun timeText(session: SessionSummary): String =
-    DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(session.createdAt).lowercase()
