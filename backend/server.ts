@@ -1,16 +1,20 @@
 /**
- * ANKY MIRROR
+ * ANKY
  *
- * This is the whole backend for Anky.
+ * This file is the backend of Anky. There are no more dependencies. It is the only file in the backend directory.
+ *
+ * There is ONE endpoint: POST /anky. the payload is a .anky string compliant to the protocol: https://anky.app/protocol.md
  *
  * A client writes a `.anky` file locally. When the writer asks to be witnessed,
  * the client signs the exact bytes and sends them to POST /anky. The server
- * verifies the Base identity, checks credit or x402 payment, reflects once,
- * returns JSON, and forgets the writing.
+ * verifies the users identity, checks if they have available credits (or if they included a x402 payment receipt)
+ * , reflects once, returns JSON, and forgets the writing.
  *
  * This server is not memory.
  * This server is not a journal.
  * This server is not a user database.
+ *
+ * It is a mirror.
  *
  * "The light shineth in darkness." John 1:5
  * "Light upon light." Qur'an 24:35
@@ -45,10 +49,10 @@ This file is the Anky backend.
 It is intentionally one file so a developer can read it, send it to an LLM,
 and understand how to create a client.
 
-The client creates exact .anky bytes.
-The writer signs those bytes.
-POST /anky receives text/plain.
-The server verifies, reflects, charges only after success, and forgets.
+The client creates exact .anky bytes following the protocol: https://anky.app/protocol.md
+The writer signs those bytes using their base wallet.
+POST /anky receives text/plain and verifies headers.
+And then Anky reflects, charges only after success, and forgets.
 `;
 
 export const mapOfThisFile = {
@@ -61,20 +65,96 @@ export const mapOfThisFile = {
   creditsAndTrials: "prepareReflectionCredit -> spendPreparedReflectionCredit",
   x402: "verifyX402Payment -> settleX402Payment",
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
-  providers: "routeReflection -> openRouterProvider -> defaultReflectionProvider",
+  providers:
+    "routeReflection -> openRouterProvider -> defaultReflectionProvider",
   prompt: "buildStorytellerPrompt",
   endpoint: "handleAnkyReflection",
   startServer: "import.meta.main",
 } as const;
 
 export const clientCreationIndex = {
-  write: "Capture textarea deltas into one .anky artifact.",
+  write:
+    "Capture textarea deltas into one .anky artifact using the ankyProtocol javascript function.",
   finish: "End exactly at 480000 ms of writing or 8000 ms of idle time.",
   sign: "Sign AnkyMirrorRequest with a Base EOA or embedded Ethereum wallet.",
   post: "Send exact bytes to POST /anky as text/plain; charset=utf-8.",
   pay: "If 402 arrives, read PAYMENT-REQUIRED, build x402 payment, retry with PAYMENT-SIGNATURE.",
   keep: "Store the .anky and reflection locally. The server stores neither.",
 } as const;
+
+export const ankyProtocolInOneBreath = {
+  firstLine: "<start_epoch_ms> <first_character>",
+  nextLines: "<delta_ms_since_previous_character> <next_character>",
+  terminalLine: "8000",
+  serverBody: "the exact .anky string, sent as text/plain",
+  endingRule: "send when active writing reaches 8 minutes or idle silence reaches 8 seconds",
+  identityRule: "headers prove the writer signed these exact bytes",
+} as const;
+
+export const tinyTextareaClientSketch = String.raw`
+let dotAnky = "";
+let previousValue = "";
+let previousAcceptedMs = 0;
+let activeWritingMs = 0;
+let idleTimer = 0;
+let sent = false;
+
+function onTextareaInput(event) {
+  if (sent) return;
+
+  const now = Date.now();
+  const textarea = event.currentTarget;
+  const nextValue = textarea.value;
+  const insertedText = nextValue.slice(previousValue.length);
+  previousValue = nextValue;
+
+  for (const character of insertedText) {
+    const isFirstCharacter = dotAnky.length === 0;
+    const deltaMs = isFirstCharacter ? now : now - previousAcceptedMs;
+    dotAnky += isFirstCharacter ? \`\${now} \${character}\n\` : \`\${deltaMs} \${character}\n\`;
+    activeWritingMs += isFirstCharacter ? 0 : deltaMs;
+    previousAcceptedMs = now;
+  }
+
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(endAnkyBecauseSilenceArrived, 8000);
+
+  if (activeWritingMs >= 480000) {
+    endAnkyBecauseEightMinutesArrived();
+  }
+}
+
+async function endAnkyBecauseSilenceArrived() {
+  await sendAnky(dotAnky + "8000\n");
+}
+
+async function endAnkyBecauseEightMinutesArrived() {
+  await sendAnky(dotAnky + "8000\n");
+}
+
+async function sendAnky(ankyString) {
+  if (sent) return;
+  sent = true;
+
+  const signedHeaders = await buildAnkyIdentityHeadersForExactBytes(ankyString);
+  const response = await fetch("https://mirror-production-a23c.up.railway.app/anky", {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...signedHeaders,
+    },
+    body: ankyString,
+  });
+
+  if (response.status === 402) {
+    const paymentRequired = response.headers.get("PAYMENT-REQUIRED");
+    const paymentSignature = await buildX402Payment(paymentRequired);
+    return sendAnkyWithPayment(ankyString, signedHeaders, paymentSignature);
+  }
+
+  return response.json();
+}
+`;
 
 // -----------------------------------------------------------------------------
 // Public Constants
@@ -90,8 +170,8 @@ export const anky = {
   baseChainId: 8453,
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
-  providerOrder: ["openrouter", "bankr", "poiesis", "default"] as const,
-  openrouterModel: "anthropic/claude-3.5-sonnet",
+  providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
+  openrouterModel: "anthropic/claude-sonnet-4.6",
   openrouterTimeoutMs: 45_000,
   privacyRequiresZdr: true,
   revenueCatCreditCode: "CRD",
@@ -142,18 +222,25 @@ export type AnkyRouteDeps = {
   settleX402Payment?: typeof settleX402Payment;
 };
 
-export function createApp(input: {
-  env?: AnkyWorld;
-  logger?: SafeLogger;
-  ankyRouteDeps?: AnkyRouteDeps;
-  diagnostics?: DiagnosticsSink;
-} = {}) {
+export function createApp(
+  input: {
+    env?: AnkyWorld;
+    logger?: SafeLogger;
+    ankyRouteDeps?: AnkyRouteDeps;
+    diagnostics?: DiagnosticsSink;
+  } = {},
+) {
   const env = input.env ?? ankyWorld();
   const logger = input.logger ?? createSafeLogger();
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true }));
-  app.post("/anky", (c) => handleAnkyReflection(c, env, logger, { ...input.ankyRouteDeps, diagnostics: input.diagnostics }));
+  app.post("/anky", (c) =>
+    handleAnkyReflection(c, env, logger, {
+      ...input.ankyRouteDeps,
+      diagnostics: input.diagnostics,
+    }),
+  );
 
   return app;
 }
@@ -187,23 +274,31 @@ export type ErrorCode =
 const errorMessages: Record<ErrorCode, string> = {
   INVALID_ANKY: "This does not appear to be a valid .anky file.",
   INCOMPLETE_RITUAL: "Only complete 8-minute ankys can ask for reflection.",
-  MISSING_IDENTITY_VERSION: "This request is missing the Anky identity version header.",
-  UNSUPPORTED_IDENTITY_VERSION: "This Anky identity version is not supported by the mirror.",
+  MISSING_IDENTITY_VERSION:
+    "This request is missing the Anky identity version header.",
+  UNSUPPORTED_IDENTITY_VERSION:
+    "This Anky identity version is not supported by the mirror.",
   MISSING_ACCOUNT: "This request is missing the Anky Base account header.",
-  INVALID_ACCOUNT: "The Anky account header is not a valid Base account identity.",
+  INVALID_ACCOUNT:
+    "The Anky account header is not a valid Base account identity.",
   UNSUPPORTED_CHAIN: "This Anky account is not on the configured Base chain.",
   INVALID_SIGNATURE_TYPE: "This request must use an EIP-712 signature.",
   MISSING_SIGNATURE: "This request is missing Anky signature headers.",
   INVALID_SIGNATURE: "The request signature could not be verified.",
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
-  INSUFFICIENT_CREDITS: "You need one credit to ask Anky for a reflection. Writing is still free.",
+  INSUFFICIENT_CREDITS:
+    "You need one credit to ask Anky for a reflection. Writing is still free.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
-  DUPLICATE_SUCCEEDED: "This anky has already been reflected for this Anky address.",
+  DUPLICATE_SUCCEEDED:
+    "This anky has already been reflected for this Anky address.",
   RATE_LIMITED: "Too many mirror requests. Try again soon.",
   MIRROR_FAILED: "Anky could not return a reflection right now.",
 };
 
-const errorStatuses: Record<ErrorCode, 400 | 401 | 402 | 409 | 413 | 429 | 500> = {
+const errorStatuses: Record<
+  ErrorCode,
+  400 | 401 | 402 | 409 | 413 | 429 | 500
+> = {
   INVALID_ANKY: 400,
   INCOMPLETE_RITUAL: 400,
   MISSING_IDENTITY_VERSION: 401,
@@ -223,7 +318,10 @@ const errorStatuses: Record<ErrorCode, 400 | 401 | 402 | 409 | 413 | 429 | 500> 
 };
 
 export function errorJson(c: Context, code: ErrorCode) {
-  return c.json({ error: { code, message: errorMessages[code] } }, errorStatuses[code]);
+  return c.json(
+    { error: { code, message: errorMessages[code] } },
+    errorStatuses[code],
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -297,8 +395,10 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     appleDeviceCheckKeyId: privateKeys.appleDeviceCheckKeyId,
     appleDeviceCheckPrivateKey: privateKeys.appleDeviceCheckPrivateKey,
     androidTrialEnabled: anky.automaticTrials.android,
-    androidPlayIntegrityRequired: anky.automaticTrials.androidPlayIntegrityRequired,
-    androidAddressTrialsConfirmed: anky.automaticTrials.androidAddressTrialsConfirmed,
+    androidPlayIntegrityRequired:
+      anky.automaticTrials.androidPlayIntegrityRequired,
+    androidAddressTrialsConfirmed:
+      anky.automaticTrials.androidAddressTrialsConfirmed,
     x402: anky.x402,
     ...overrides,
   };
@@ -333,7 +433,9 @@ export type SafeLogger = {
   info(fields: SafeLogFields): void;
 };
 
-export function createSafeLogger(sink: Pick<Console, "log"> = console): SafeLogger {
+export function createSafeLogger(
+  sink: Pick<Console, "log"> = console,
+): SafeLogger {
   return {
     info(fields) {
       sink.log(JSON.stringify(fields));
@@ -377,19 +479,27 @@ export async function addressHash(address: string): Promise<string> {
 }
 
 export async function shortHash(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")
     .slice(0, 16);
 }
 
-export function normalizeMetadataValue(value: string | undefined, maxLength = 64): string | undefined {
+export function normalizeMetadataValue(
+  value: string | undefined,
+  maxLength = 64,
+): string | undefined {
   if (!value) return undefined;
 
   const normalized = [...value]
     .slice(0, maxLength)
-    .map((character) => (/[A-Za-z0-9._\-+()]/.test(character) ? character : "_"))
+    .map((character) =>
+      /[A-Za-z0-9._\-+()]/.test(character) ? character : "_",
+    )
     .join("");
 
   return normalized.length > 0 ? normalized : undefined;
@@ -450,7 +560,8 @@ export async function verifyAnkyBaseRequest(input: {
     throw new AnkyAuthError("UNSUPPORTED_CHAIN");
   }
 
-  if (!headers.identityVersion) throw new AnkyAuthError("MISSING_IDENTITY_VERSION");
+  if (!headers.identityVersion)
+    throw new AnkyAuthError("MISSING_IDENTITY_VERSION");
   if (headers.identityVersion !== ANKY_BASE_EOA_IDENTITY_VERSION) {
     throw new AnkyAuthError("UNSUPPORTED_IDENTITY_VERSION");
   }
@@ -458,9 +569,12 @@ export async function verifyAnkyBaseRequest(input: {
   if (!headers.signature) throw new AnkyAuthError("MISSING_SIGNATURE");
   if (!headers.requestTime) throw new AnkyAuthError("MISSING_SIGNATURE");
   if (!headers.client) throw new AnkyAuthError("MISSING_SIGNATURE");
-  if (headers.signatureType !== "eip712") throw new AnkyAuthError("INVALID_SIGNATURE_TYPE");
-  if (!isKnownClient(headers.client)) throw new AnkyAuthError("INVALID_SIGNATURE");
-  if (!/^0x[0-9a-fA-F]+$/.test(headers.signature)) throw new AnkyAuthError("INVALID_SIGNATURE");
+  if (headers.signatureType !== "eip712")
+    throw new AnkyAuthError("INVALID_SIGNATURE_TYPE");
+  if (!isKnownClient(headers.client))
+    throw new AnkyAuthError("INVALID_SIGNATURE");
+  if (!/^0x[0-9a-fA-F]+$/.test(headers.signature))
+    throw new AnkyAuthError("INVALID_SIGNATURE");
 
   let parsed: ReturnType<typeof parseBaseAccountId>;
   try {
@@ -504,14 +618,23 @@ function isKnownClient(client: string): client is AnkyClient {
 
 const replayMemory = new Map<string, number>();
 
-export function isFreshRequestTime(requestTime: string, toleranceMs: number, now = Date.now()): boolean {
+export function isFreshRequestTime(
+  requestTime: string,
+  toleranceMs: number,
+  now = Date.now(),
+): boolean {
   if (!/^\d+$/.test(requestTime)) return false;
   const parsed = Number(requestTime);
   if (!Number.isSafeInteger(parsed)) return false;
   return Math.abs(now - parsed) <= toleranceMs;
 }
 
-export function rememberRequest(signature: string, requestTime: string, ttlMs: number, now = Date.now()): boolean {
+export function rememberRequest(
+  signature: string,
+  requestTime: string,
+  ttlMs: number,
+  now = Date.now(),
+): boolean {
   for (const [key, expiresAt] of replayMemory) {
     if (expiresAt <= now) replayMemory.delete(key);
   }
@@ -549,19 +672,32 @@ export type IdempotencyBeginResult =
   | { acquired: false; record: IdempotencyRecord };
 
 export interface IdempotencyStore {
-  begin(input: { key: string; addressHash: string; ankyHash: string; now?: number }): Promise<IdempotencyBeginResult>;
+  begin(input: {
+    key: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult>;
   markSucceeded(key: string, now?: number): Promise<void>;
   markFailed(key: string, now?: number): Promise<void>;
 }
 
-export async function mirrorIdempotencyKey(address: string, ankyHash: string): Promise<string> {
+export async function mirrorIdempotencyKey(
+  address: string,
+  ankyHash: string,
+): Promise<string> {
   return sha256Hex(`${address}:${ankyHash}`);
 }
 
 export class MemoryIdempotencyStore implements IdempotencyStore {
   private records = new Map<string, IdempotencyRecord>();
 
-  async begin(input: { key: string; addressHash: string; ankyHash: string; now?: number }): Promise<IdempotencyBeginResult> {
+  async begin(input: {
+    key: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult> {
     const now = input.now ?? Date.now();
     const existing = this.records.get(input.key);
     if (existing?.status === "processing" || existing?.status === "succeeded") {
@@ -662,7 +798,15 @@ export type X402Payment = {
 
 export type X402Result =
   | { ok: true; payment: X402Payment }
-  | { ok: false; reason: "missing" | "invalid_payload" | "verification_failed" | "facilitator_unavailable"; response?: unknown };
+  | {
+      ok: false;
+      reason:
+        | "missing"
+        | "invalid_payload"
+        | "verification_failed"
+        | "facilitator_unavailable";
+      response?: unknown;
+    };
 
 export type PreparedReflectionCredit =
   | {
@@ -697,7 +841,10 @@ export type TrialEligibility =
 
 export type DeviceCheckResult =
   | { ok: true; claimed: boolean }
-  | { ok: false; reason: "not_configured" | "invalid_token" | "apple_unavailable" };
+  | {
+      ok: false;
+      reason: "not_configured" | "invalid_token" | "apple_unavailable";
+    };
 
 export async function prepareReflectionCredit(input: {
   env: Env;
@@ -709,7 +856,10 @@ export async function prepareReflectionCredit(input: {
   trialProof?: string;
   fetchImpl?: CreditFetch;
 }): Promise<PreparedReflectionCredit> {
-  const spendIdempotencyKey = await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash);
+  const spendIdempotencyKey = await reflectionSpendIdempotencyKey(
+    input.accountId,
+    input.ankyHash,
+  );
   const balance = await getRevenueCatCreditBalance({
     secretKey: input.env.revenueCatSecretKey,
     projectId: input.env.revenueCatProjectId,
@@ -767,19 +917,29 @@ export async function verifyX402Payment(input: {
   if (!payload.ok) return { ok: false, reason: "invalid_payload" };
 
   try {
-    const response = await (input.fetchImpl ?? fetch)(`${input.env.x402.facilitatorUrl}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentPayload: payload.value,
-        paymentDetails: x402PaymentDetails(input.env),
-      }),
-    });
+    const response = await (input.fetchImpl ?? fetch)(
+      `${input.env.x402.facilitatorUrl}/verify`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentPayload: payload.value,
+          paymentDetails: x402PaymentDetails(input.env),
+        }),
+      },
+    );
     const body = await response.json().catch(() => null);
     if (!response.ok || !x402LooksValid(body)) {
       return { ok: false, reason: "verification_failed", response: body };
     }
-    return { ok: true, payment: { signature: input.paymentSignature, payload: payload.value, verification: body } };
+    return {
+      ok: true,
+      payment: {
+        signature: input.paymentSignature,
+        payload: payload.value,
+        verification: body,
+      },
+    };
   } catch {
     return { ok: false, reason: "facilitator_unavailable" };
   }
@@ -789,16 +949,21 @@ export async function settleX402Payment(input: {
   env: Env;
   payment: X402Payment;
   fetchImpl?: CreditFetch;
-}): Promise<{ ok: true; response: unknown } | { ok: false; response: unknown }> {
+}): Promise<
+  { ok: true; response: unknown } | { ok: false; response: unknown }
+> {
   try {
-    const response = await (input.fetchImpl ?? fetch)(`${input.env.x402.facilitatorUrl}/settle`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentPayload: input.payment.payload,
-        paymentDetails: x402PaymentDetails(input.env),
-      }),
-    });
+    const response = await (input.fetchImpl ?? fetch)(
+      `${input.env.x402.facilitatorUrl}/settle`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentPayload: input.payment.payload,
+          paymentDetails: x402PaymentDetails(input.env),
+        }),
+      },
+    );
     const body = await response.json().catch(() => null);
     return { ok: response.ok && x402LooksValid(body), response: body };
   } catch {
@@ -821,15 +986,29 @@ export async function spendPreparedReflectionCredit(input: {
 
   const source = preparedSource(input.prepared);
   if (source === "bypass") {
-    return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
+    return {
+      ok: true,
+      creditsRemaining: null,
+      result: "bypassed",
+      spentCredit: false,
+    };
   }
 
-  const spendIdempotencyKey = input.prepared.spendIdempotencyKey ?? await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash);
+  const spendIdempotencyKey =
+    input.prepared.spendIdempotencyKey ??
+    (await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash));
   const spendReference = `anky-reflection-v1:${input.accountIdHash}:${input.ankyHash}`;
 
   if (source === "trial") {
     const trial = input.prepared.trial;
-    if (!trial) return { ok: false, creditsRemaining: null, result: "unavailable", spentCredit: false, spendIdempotencyKey };
+    if (!trial)
+      return {
+        ok: false,
+        creditsRemaining: null,
+        result: "unavailable",
+        spentCredit: false,
+        spendIdempotencyKey,
+      };
     if (trial.platform === "ios" && !input.trialProof) {
       return trialFailureResult("missing_trial_proof", spendIdempotencyKey);
     }
@@ -843,7 +1022,9 @@ export async function spendPreparedReflectionCredit(input: {
 
       if (!mark.ok) {
         return trialFailureResult(
-          mark.reason === "invalid_token" ? "invalid_trial_proof" : "trial_check_unavailable",
+          mark.reason === "invalid_token"
+            ? "invalid_trial_proof"
+            : "trial_check_unavailable",
           spendIdempotencyKey,
         );
       }
@@ -855,7 +1036,11 @@ export async function spendPreparedReflectionCredit(input: {
       accountId: input.accountId,
       creditCode: input.env.revenueCatCreditCode,
       amount: input.env.trialCredits,
-      idempotencyKey: await trialGrantIdempotencyKey(input.accountId, trial.platform, trial.proofHash),
+      idempotencyKey: await trialGrantIdempotencyKey(
+        input.accountId,
+        trial.platform,
+        trial.proofHash,
+      ),
       reference: `anky-trial-v1:${trial.platform}:${input.accountIdHash}:${trial.proofHash}`,
       fetchImpl: input.fetchImpl,
     });
@@ -864,7 +1049,10 @@ export async function spendPreparedReflectionCredit(input: {
       return {
         ok: false,
         creditsRemaining: trialGrant.creditsRemaining,
-        result: trialGrant.result === "not_configured" ? "not_configured" : "unavailable",
+        result:
+          trialGrant.result === "not_configured"
+            ? "not_configured"
+            : "unavailable",
         spentCredit: false,
         spendIdempotencyKey,
       };
@@ -884,13 +1072,19 @@ export async function spendPreparedReflectionCredit(input: {
   return {
     ok: spend.ok,
     creditsRemaining: spend.creditsRemaining,
-    result: spend.ok ? (source === "trial" ? "trial_granted_spent" : "spent") : spend.result,
+    result: spend.ok
+      ? source === "trial"
+        ? "trial_granted_spent"
+        : "spent"
+      : spend.result,
     spentCredit: spend.ok,
     spendIdempotencyKey,
   };
 }
 
-export async function resolveReflectionCredit(input: Parameters<typeof prepareReflectionCredit>[0]): Promise<ReflectionCreditResult> {
+export async function resolveReflectionCredit(
+  input: Parameters<typeof prepareReflectionCredit>[0],
+): Promise<ReflectionCreditResult> {
   const prepared = await prepareReflectionCredit(input);
   return spendPreparedReflectionCredit({ ...input, prepared });
 }
@@ -907,7 +1101,10 @@ export async function refundReflectionCredit(input: {
     projectId: input.env.revenueCatProjectId,
     accountId: input.accountId,
     creditCode: input.env.revenueCatCreditCode,
-    idempotencyKey: await reflectionRefundIdempotencyKey(input.accountId, input.ankyHash),
+    idempotencyKey: await reflectionRefundIdempotencyKey(
+      input.accountId,
+      input.ankyHash,
+    ),
     reference: `anky-reflection-refund-v1:${input.accountIdHash}:${input.ankyHash}`,
     fetchImpl: input.fetchImpl,
   });
@@ -919,7 +1116,10 @@ export async function getRevenueCatCreditBalance(input: {
   accountId: string;
   creditCode: string;
   fetchImpl?: RevenueCatFetch;
-}): Promise<{ ok: true; balance: number | null } | { ok: false; result: "not_configured" | "unavailable" }> {
+}): Promise<
+  | { ok: true; balance: number | null }
+  | { ok: false; result: "not_configured" | "unavailable" }
+> {
   if (!input.secretKey || !input.projectId || !input.creditCode) {
     return { ok: false, result: "not_configured" };
   }
@@ -927,20 +1127,26 @@ export async function getRevenueCatCreditBalance(input: {
   const fetcher = input.fetchImpl ?? fetch;
 
   try {
-    const response = await fetcher(`${revenueCatVirtualCurrencyURL(input.projectId, input.accountId)}?include_empty_balances=true`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${input.secretKey}`,
-        "Content-Type": "application/json",
+    const response = await fetcher(
+      `${revenueCatVirtualCurrencyURL(input.projectId, input.accountId)}?include_empty_balances=true`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${input.secretKey}`,
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       return { ok: false, result: "unavailable" };
     }
 
     const body = await response.json().catch(() => null);
-    return { ok: true, balance: balanceFromVirtualCurrencies(body, input.creditCode) };
+    return {
+      ok: true,
+      balance: balanceFromVirtualCurrencies(body, input.creditCode),
+    };
   } catch {
     return { ok: false, result: "unavailable" };
   }
@@ -956,7 +1162,11 @@ export async function grantRevenueCatCredits(input: {
   reference: string;
   fetchImpl?: RevenueCatFetch;
 }): Promise<CreditOperationResult> {
-  return adjustRevenueCatCredits({ ...input, amount: Math.max(0, input.amount), result: "trial_granted_spent" });
+  return adjustRevenueCatCredits({
+    ...input,
+    amount: Math.max(0, input.amount),
+    result: "trial_granted_spent",
+  });
 }
 
 export async function spendRevenueCatCredit(input: {
@@ -1019,7 +1229,9 @@ export async function queryDeviceCheckTrialBit(input: {
     body: request.body,
     fetchImpl: input.fetchImpl,
     parse: async (response) => {
-      const body = await response.json().catch(() => null) as { bit0?: boolean } | null;
+      const body = (await response.json().catch(() => null)) as {
+        bit0?: boolean;
+      } | null;
       return { ok: true, claimed: body?.bit0 === true };
     },
   });
@@ -1029,7 +1241,13 @@ export async function markDeviceCheckTrialClaimed(input: {
   env: Env;
   token: string;
   fetchImpl?: DeviceCheckFetch;
-}): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "invalid_token" | "apple_unavailable" }> {
+}): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "not_configured" | "invalid_token" | "apple_unavailable";
+    }
+> {
   const request = await makeDeviceCheckRequest(input.env, input.token);
   if (!request.ok) return request;
 
@@ -1064,20 +1282,26 @@ async function adjustRevenueCatCredits(input: {
   const fetcher = input.fetchImpl ?? fetch;
 
   try {
-    const response = await fetcher(revenueCatVirtualCurrencyTransactionsURL(input.projectId, input.accountId), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${input.secretKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": input.idempotencyKey,
-      },
-      body: JSON.stringify({
-        adjustments: {
-          [input.creditCode]: input.amount,
+    const response = await fetcher(
+      revenueCatVirtualCurrencyTransactionsURL(
+        input.projectId,
+        input.accountId,
+      ),
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.secretKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": input.idempotencyKey,
         },
-        reference: input.reference,
-      }),
-    });
+        body: JSON.stringify({
+          adjustments: {
+            [input.creditCode]: input.amount,
+          },
+          reference: input.reference,
+        }),
+      },
+    );
 
     if (response.status === 422) {
       return { ok: false, creditsRemaining: null, result: "insufficient" };
@@ -1098,16 +1322,30 @@ async function adjustRevenueCatCredits(input: {
   }
 }
 
-function revenueCatVirtualCurrencyURL(projectId: string, accountId: string): string {
+function revenueCatVirtualCurrencyURL(
+  projectId: string,
+  accountId: string,
+): string {
   return `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(accountId)}/virtual_currencies`;
 }
 
-function revenueCatVirtualCurrencyTransactionsURL(projectId: string, accountId: string): string {
+function revenueCatVirtualCurrencyTransactionsURL(
+  projectId: string,
+  accountId: string,
+): string {
   return `${revenueCatVirtualCurrencyURL(projectId, accountId)}/transactions`;
 }
 
-function balanceFromVirtualCurrencies(body: unknown, creditCode: string): number | null {
-  if (!body || typeof body !== "object" || !("items" in body) || !Array.isArray(body.items)) {
+function balanceFromVirtualCurrencies(
+  body: unknown,
+  creditCode: string,
+): number | null {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("items" in body) ||
+    !Array.isArray(body.items)
+  ) {
     return null;
   }
 
@@ -1120,7 +1358,12 @@ function balanceFromVirtualCurrencies(body: unknown, creditCode: string): number
     );
   });
 
-  if (!match || typeof match !== "object" || !("balance" in match) || typeof match.balance !== "number") {
+  if (
+    !match ||
+    typeof match !== "object" ||
+    !("balance" in match) ||
+    typeof match.balance !== "number"
+  ) {
     return null;
   }
 
@@ -1158,7 +1401,9 @@ function x402LooksValid(value: unknown): boolean {
   return false;
 }
 
-function base64Json(value: string): { ok: true; value: unknown } | { ok: false } {
+function base64Json(
+  value: string,
+): { ok: true; value: unknown } | { ok: false } {
   try {
     const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
@@ -1178,7 +1423,8 @@ function trialFailureResult(
     | "already_claimed"
     | "trial_check_unavailable",
   spendIdempotencyKey: string,
-): Extract<PreparedReflectionCredit, { ok: false }> & Pick<ReflectionCreditResult, "spentCredit"> {
+): Extract<PreparedReflectionCredit, { ok: false }> &
+  Pick<ReflectionCreditResult, "spentCredit"> {
   const result = (() => {
     switch (reason) {
       case "auto_trial_disabled":
@@ -1196,24 +1442,43 @@ function trialFailureResult(
     }
   })();
 
-  return { ok: false, creditsRemaining: null, result, spentCredit: false, spendIdempotencyKey };
+  return {
+    ok: false,
+    creditsRemaining: null,
+    result,
+    spentCredit: false,
+    spendIdempotencyKey,
+  };
 }
 
-function reflectionSpendIdempotencyKey(accountId: string, ankyHash: string): Promise<string> {
+function reflectionSpendIdempotencyKey(
+  accountId: string,
+  ankyHash: string,
+): Promise<string> {
   return sha256Hex(`anky-reflection-v1:${accountId}:${ankyHash}`);
 }
 
-function trialGrantIdempotencyKey(accountId: string, platform: string, proofHash: string): Promise<string> {
+function trialGrantIdempotencyKey(
+  accountId: string,
+  platform: string,
+  proofHash: string,
+): Promise<string> {
   return sha256Hex(`anky-trial-v1:${platform}:${accountId}:${proofHash}`);
 }
 
-function reflectionRefundIdempotencyKey(accountId: string, ankyHash: string): Promise<string> {
+function reflectionRefundIdempotencyKey(
+  accountId: string,
+  ankyHash: string,
+): Promise<string> {
   return sha256Hex(`anky-reflection-refund-v1:${accountId}:${ankyHash}`);
 }
 
-function preparedSource(prepared: Extract<PreparedReflectionCredit, { ok: true }>): "balance" | "trial" | "bypass" {
+function preparedSource(
+  prepared: Extract<PreparedReflectionCredit, { ok: true }>,
+): "balance" | "trial" | "bypass" {
   if (prepared.source) return prepared.source;
-  if (prepared.result === "bypassed" || prepared.spentCredit === false) return "bypass";
+  if (prepared.result === "bypassed" || prepared.spentCredit === false)
+    return "bypass";
   if (prepared.result === "trial_granted_spent") return "trial";
   return "balance";
 }
@@ -1270,7 +1535,11 @@ async function evaluateIosTrialEligibility(input: {
     return { eligible: false, reason: "already_claimed" };
   }
 
-  return { eligible: true, platform: "ios", proofHash: await shortHash(input.trialProof) };
+  return {
+    eligible: true,
+    platform: "ios",
+    proofHash: await shortHash(input.trialProof),
+  };
 }
 
 async function callAppleDeviceCheck<T>(input: {
@@ -1284,14 +1553,17 @@ async function callAppleDeviceCheck<T>(input: {
   const jwt = await makeAppleJwt(input.env);
 
   try {
-    const response = await fetcher(`${deviceCheckBaseURL(input.env)}/v1/${input.path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-        "Content-Type": "application/json",
+    const response = await fetcher(
+      `${deviceCheckBaseURL(input.env)}/v1/${input.path}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input.body),
       },
-      body: JSON.stringify(input.body),
-    });
+    );
 
     if (response.status === 400 || response.status === 401) {
       return { ok: false, reason: "invalid_token" };
@@ -1311,10 +1583,17 @@ async function makeDeviceCheckRequest(
   env: Env,
   token: string,
 ): Promise<
-  | { ok: true; body: { device_token: string; transaction_id: string; timestamp: number } }
+  | {
+      ok: true;
+      body: { device_token: string; transaction_id: string; timestamp: number };
+    }
   | { ok: false; reason: "not_configured" | "invalid_token" }
 > {
-  if (!env.appleDeviceCheckTeamId || !env.appleDeviceCheckKeyId || !env.appleDeviceCheckPrivateKey) {
+  if (
+    !env.appleDeviceCheckTeamId ||
+    !env.appleDeviceCheckKeyId ||
+    !env.appleDeviceCheckPrivateKey
+  ) {
     return { ok: false, reason: "not_configured" };
   }
   if (!token.trim()) {
@@ -1332,7 +1611,10 @@ async function makeDeviceCheckRequest(
 }
 
 async function makeAppleJwt(env: Env): Promise<string> {
-  const header = base64UrlJson({ alg: "ES256", kid: env.appleDeviceCheckKeyId });
+  const header = base64UrlJson({
+    alg: "ES256",
+    kid: env.appleDeviceCheckKeyId,
+  });
   const claims = base64UrlJson({
     iss: env.appleDeviceCheckTeamId,
     iat: Math.floor(Date.now() / 1000),
@@ -1362,7 +1644,9 @@ function base64UrlJson(value: unknown): string {
 }
 
 function base64HeaderJson(value: unknown): string {
-  return btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))));
+  return btoa(
+    String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))),
+  );
 }
 
 function base64Url(bytes: Uint8Array): string {
@@ -1414,7 +1698,11 @@ export type ReflectionProviderResult = MirrorResponse & {
 export type ReflectionProvider = {
   name: string;
   privacy: ProviderPrivacy;
-  reflect(input: { env: Env; prompt: string; fetchImpl?: ProviderFetch }): Promise<ReflectionProviderResult>;
+  reflect(input: {
+    env: Env;
+    prompt: string;
+    fetchImpl?: ProviderFetch;
+  }): Promise<ReflectionProviderResult>;
 };
 
 export async function routeReflection(input: {
@@ -1432,7 +1720,11 @@ export async function routeReflection(input: {
       continue;
     }
     try {
-      return await provider.reflect({ env: input.env, prompt: input.prompt, fetchImpl: input.fetchImpl });
+      return await provider.reflect({
+        env: input.env,
+        prompt: input.prompt,
+        fetchImpl: input.fetchImpl,
+      });
     } catch (error) {
       failures.push(`${provider.name}:${safeProviderFailure(error)}`);
     }
@@ -1448,11 +1740,17 @@ export function providersForEnv(env: Env): ReflectionProvider[] {
     poiesis: providerWithPrivacy(poiesisProvider, env.poiesisZdrConfirmed),
     default: defaultFallbackProvider,
   };
-  return env.providerOrder.map((name) => byName[name]).filter((provider): provider is ReflectionProvider => Boolean(provider));
+  return env.providerOrder
+    .map((name) => byName[name])
+    .filter((provider): provider is ReflectionProvider => Boolean(provider));
 }
 
 export function providerMeetsZdr(privacy: ProviderPrivacy): boolean {
-  return privacy.zeroDataRetentionConfirmed && privacy.contentLoggingDisabled && privacy.trainingDisabled;
+  return (
+    privacy.zeroDataRetentionConfirmed &&
+    privacy.contentLoggingDisabled &&
+    privacy.trainingDisabled
+  );
 }
 
 export const openRouterProvider: ReflectionProvider = {
@@ -1468,28 +1766,37 @@ export const openRouterProvider: ReflectionProvider = {
     }
 
     const fetcher = input.fetchImpl ?? fetch;
-    const response = await fetcher("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: AbortSignal.timeout(input.env.openrouterTimeoutMs),
-      headers: {
-        Authorization: `Bearer ${input.env.openrouterApiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://anky.app",
-        "X-Title": "Anky Mirror",
+    const response = await fetcher(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        signal: AbortSignal.timeout(input.env.openrouterTimeoutMs),
+        headers: {
+          Authorization: `Bearer ${input.env.openrouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://anky.app",
+          "X-Title": "Anky Mirror",
+        },
+        body: JSON.stringify({
+          model: input.env.openrouterModel,
+          messages: [{ role: "user", content: input.prompt }],
+          response_format: { type: "json_object" },
+          provider: { data_collection: "deny", zdr: true },
+        }),
       },
-      body: JSON.stringify({
-        model: input.env.openrouterModel,
-        messages: [{ role: "user", content: input.prompt }],
-        response_format: { type: "json_object" },
-        provider: { data_collection: "deny", zdr: true },
-      }),
-    });
+    );
 
     if (!response.ok) throw new Error(`OPENROUTER_HTTP_${response.status}`);
-    const json = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+    const json = (await response.json()) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+    };
     const content = json?.choices?.[0]?.message?.content;
     if (typeof content !== "string") throw new Error("OPENROUTER_EMPTY");
-    return { ...parseMirrorResponse(content), provider: "openrouter", chargeable: true };
+    return {
+      ...parseMirrorResponse(content),
+      provider: "openrouter",
+      chargeable: true,
+    };
   },
 };
 
@@ -1501,8 +1808,10 @@ export const bankrProvider: ReflectionProvider = {
     trainingDisabled: false,
   },
   async reflect(input) {
-    if (!input.env.bankrZdrConfirmed) throw new Error("BANKR_ZDR_NOT_CONFIRMED");
-    if (!input.env.bankrLlmGatewayUrl || !input.env.bankrLlmGatewayApiKey) throw new Error("BANKR_NOT_CONFIGURED");
+    if (!input.env.bankrZdrConfirmed)
+      throw new Error("BANKR_ZDR_NOT_CONFIRMED");
+    if (!input.env.bankrLlmGatewayUrl || !input.env.bankrLlmGatewayApiKey)
+      throw new Error("BANKR_NOT_CONFIGURED");
     throw new Error("BANKR_ADAPTER_STAGED");
   },
 };
@@ -1515,8 +1824,10 @@ export const poiesisProvider: ReflectionProvider = {
     trainingDisabled: false,
   },
   async reflect(input) {
-    if (!input.env.poiesisZdrConfirmed) throw new Error("POIESIS_ZDR_NOT_CONFIRMED");
-    if (!input.env.poiesisLlmUrl || !input.env.poiesisLlmApiKey) throw new Error("POIESIS_NOT_CONFIGURED");
+    if (!input.env.poiesisZdrConfirmed)
+      throw new Error("POIESIS_ZDR_NOT_CONFIRMED");
+    if (!input.env.poiesisLlmUrl || !input.env.poiesisLlmApiKey)
+      throw new Error("POIESIS_NOT_CONFIGURED");
     throw new Error("POIESIS_ADAPTER_STAGED");
   },
 };
@@ -1533,14 +1844,18 @@ export const defaultFallbackProvider: ReflectionProvider = {
       provider: "default",
       chargeable: false,
       title: "mirror unavailable",
-      reflection: "hey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
+      reflection:
+        "hey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
     };
   },
 };
 
 export function parseMirrorResponse(raw: string): MirrorResponse {
   const parsed = JSON.parse(jsonPayload(raw));
-  if (typeof parsed.title !== "string" || typeof parsed.reflection !== "string") {
+  if (
+    typeof parsed.title !== "string" ||
+    typeof parsed.reflection !== "string"
+  ) {
     throw new Error("INVALID_MIRROR_RESPONSE");
   }
 
@@ -1560,7 +1875,7 @@ export function buildStorytellerPrompt(writing: string): string {
     "",
     "Read for deeper meaning and emotional undercurrent. Make new connections for them. Comfort, validate, and challenge. Notice what they are reaching toward, what they are hiding from, and what kind of life is trying to assemble itself in the middle of the mess.",
     "",
-    "Be willing to say a lot, but keep it earned. Casual, intimate, lucid. Not clinical. Not diagnostic. Not corporate. Never say \"yo\". Use vivid metaphors and strong imagery when they help the person finally see themselves.",
+    'Be willing to say a lot, but keep it earned. Casual, intimate, lucid. Not clinical. Not diagnostic. Not corporate. Never say "yo". Use vivid metaphors and strong imagery when they help the person finally see themselves.',
     "",
     "Go beyond product concepts, plans, or surface narratives to the emotional core. If they are talking about work, code, art, systems, or ambition, name the hunger living underneath it. If they are circling a contradiction, expose the pattern with precision and warmth.",
     "",
@@ -1569,7 +1884,7 @@ export function buildStorytellerPrompt(writing: string): string {
     "Respond in the same language they wrote in.",
     "",
     "Return only valid JSON with this exact shape:",
-    "{\"title\":\"3-5 lowercase words naming what this session is really about\",\"reflection\":\"markdown reflection body\"}",
+    '{"title":"3-5 lowercase words naming what this session is really about","reflection":"markdown reflection body"}',
     "",
     "The title must be 3-5 words, lowercase, and name what this session is really about: not what they said, but the thing under the thing.",
     "",
@@ -1606,7 +1921,7 @@ function jsonPayload(raw: string): string {
       escaped = inString;
       continue;
     }
-    if (char === "\"") {
+    if (char === '"') {
       inString = !inString;
       continue;
     }
@@ -1625,11 +1940,15 @@ function safeProviderFailure(error: unknown): string {
   if (!(error instanceof Error)) return "UNKNOWN";
   if (/^[A-Z0-9_]+$/.test(error.message)) return error.message;
   if (/^OPENROUTER_HTTP_\d{3}$/.test(error.message)) return error.message;
-  if (error.name === "TimeoutError" || error.name === "AbortError") return "PROVIDER_TIMEOUT";
+  if (error.name === "TimeoutError" || error.name === "AbortError")
+    return "PROVIDER_TIMEOUT";
   return "PROVIDER_FAILED";
 }
 
-function providerWithPrivacy(provider: ReflectionProvider, confirmed: boolean): ReflectionProvider {
+function providerWithPrivacy(
+  provider: ReflectionProvider,
+  confirmed: boolean,
+): ReflectionProvider {
   return {
     ...provider,
     privacy: {
@@ -1659,8 +1978,14 @@ export type WalletCreditFundingQuote = {
 };
 
 export interface WalletCreditFundingProvider {
-  quote(input: { address: string; credits: number }): Promise<WalletCreditFundingQuote>;
-  reconcile(input: { address: string; transactionHash: string }): Promise<{ creditsGranted: number; reference: string }>;
+  quote(input: {
+    address: string;
+    credits: number;
+  }): Promise<WalletCreditFundingQuote>;
+  reconcile(input: {
+    address: string;
+    transactionHash: string;
+  }): Promise<{ creditsGranted: number; reference: string }>;
 }
 
 export class VeilCashFundingProviderPlaceholder implements WalletCreditFundingProvider {
@@ -1689,11 +2014,20 @@ export async function handleAnkyReflection(
   deps: AnkyRouteDeps = {},
 ) {
   const prepareCredit = deps.prepareReflectionCredit ?? prepareReflectionCredit;
-  const spendCredit = deps.spendPreparedReflectionCredit ?? (deps.prepareReflectionCredit ? testSpendPreparedReflectionCredit : spendPreparedReflectionCredit);
+  const spendCredit =
+    deps.spendPreparedReflectionCredit ??
+    (deps.prepareReflectionCredit
+      ? testSpendPreparedReflectionCredit
+      : spendPreparedReflectionCredit);
   const reflectionRouter =
     deps.routeReflection ??
-    (deps.callMirror ? legacyMirrorRouter(deps.callMirror) : deps.prepareReflectionCredit ? injectedCreditReflectionRouter : routeReflection);
-  const idempotencyStore = deps.idempotencyStore ?? railwayMemoryIdempotencyStore;
+    (deps.callMirror
+      ? legacyMirrorRouter(deps.callMirror)
+      : deps.prepareReflectionCredit
+        ? injectedCreditReflectionRouter
+        : routeReflection);
+  const idempotencyStore =
+    deps.idempotencyStore ?? railwayMemoryIdempotencyStore;
   const startedAt = Date.now();
   const startedAtIso = new Date(startedAt).toISOString();
   const requestId = crypto.randomUUID();
@@ -1734,7 +2068,9 @@ export async function handleAnkyReflection(
     const signature = c.req.header("x-anky-signature");
     const requestTime = c.req.header("x-anky-request-time");
     client = c.req.header("x-anky-client") ?? undefined;
-    appVersion = normalizeMetadataValue(c.req.header("x-anky-app-version") ?? undefined);
+    appVersion = normalizeMetadataValue(
+      c.req.header("x-anky-app-version") ?? undefined,
+    );
     const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
     const paymentSignature = c.req.header("payment-signature") ?? undefined;
     if (!signature || !requestTime) {
@@ -1763,7 +2099,14 @@ export async function handleAnkyReflection(
     ankyHash = await sha256Hex(bodyBytes);
 
     const identity = await verifyAnkyBaseRequest({
-      headers: { identityVersion, account, signatureType, signature, requestTime, client },
+      headers: {
+        identityVersion,
+        account,
+        signatureType,
+        signature,
+        requestTime,
+        client,
+      },
       bodyBytes,
       allowedChainId: env.baseChainId,
     }).catch((error) => {
@@ -1779,7 +2122,9 @@ export async function handleAnkyReflection(
     chainIdForDiagnostics = identity.chainId;
     identityHash = await addressHash(accountId);
 
-    const bodyText = new TextDecoder("utf-8", { fatal: true }).decode(bodyBytes);
+    const bodyText = new TextDecoder("utf-8", { fatal: true }).decode(
+      bodyBytes,
+    );
     const validation = validateAnky(bodyText);
     if (!validation.isValid) {
       statusCode = 400;
@@ -1794,7 +2139,11 @@ export async function handleAnkyReflection(
     durationMs = validation.durationMs;
 
     idempotencyKey = await mirrorIdempotencyKey(accountId, ankyHash);
-    const idempotency = await idempotencyStore.begin({ key: idempotencyKey, addressHash: identityHash, ankyHash });
+    const idempotency = await idempotencyStore.begin({
+      key: idempotencyKey,
+      addressHash: identityHash,
+      ankyHash,
+    });
     if (!idempotency.acquired && idempotency.record.status === "succeeded") {
       statusCode = 409;
       errorCode = "DUPLICATE_SUCCEEDED";
@@ -1828,7 +2177,13 @@ export async function handleAnkyReflection(
           statusCode = 402;
           errorCode = "INSUFFICIENT_CREDITS";
           return c.json(
-            { error: { code: "INSUFFICIENT_CREDITS", message: errorMessages.INSUFFICIENT_CREDITS }, x402: payment.reason },
+            {
+              error: {
+                code: "INSUFFICIENT_CREDITS",
+                message: errorMessages.INSUFFICIENT_CREDITS,
+              },
+              x402: payment.reason,
+            },
             402,
             { "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env) },
           );
@@ -1863,7 +2218,9 @@ export async function handleAnkyReflection(
         throw new Error("MIRROR_FAILED");
       }
 
-      let creditsRemaining = preparedCredit.ok ? preparedCredit.creditsRemaining : null;
+      let creditsRemaining = preparedCredit.ok
+        ? preparedCredit.creditsRemaining
+        : null;
       if (mirror.chargeable) {
         if (x402Payment) {
           const x402Settler = deps.settleX402Payment ?? settleX402Payment;
@@ -1873,7 +2230,12 @@ export async function handleAnkyReflection(
             statusCode = 402;
             errorCode = "INSUFFICIENT_CREDITS";
             return c.json(
-              { error: { code: "INSUFFICIENT_CREDITS", message: "The x402 payment could not be settled." } },
+              {
+                error: {
+                  code: "INSUFFICIENT_CREDITS",
+                  message: "The x402 payment could not be settled.",
+                },
+              },
               402,
               {
                 "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env),
@@ -1895,7 +2257,8 @@ export async function handleAnkyReflection(
           creditResult = credit.result;
           if (!credit.ok) {
             statusCode = credit.result === "insufficient" ? 402 : 500;
-            errorCode = statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
+            errorCode =
+              statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
             return errorJson(c, errorCode);
           }
           creditsRemaining = credit.creditsRemaining;
@@ -1915,7 +2278,9 @@ export async function handleAnkyReflection(
       return c.json(
         responseBody,
         200,
-        x402Settlement ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) } : undefined,
+        x402Settlement
+          ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
+          : undefined,
       );
     } finally {
       if (idempotencyAcquired && idempotencyKey) {
@@ -1959,13 +2324,18 @@ export async function handleAnkyReflection(
   }
 }
 
-function requestBodyTooLarge(contentLength: string | undefined, maxBodyBytes: number): boolean {
+function requestBodyTooLarge(
+  contentLength: string | undefined,
+  maxBodyBytes: number,
+): boolean {
   if (!contentLength) return false;
   const parsed = Number(contentLength);
   return Number.isFinite(parsed) && parsed > maxBodyBytes;
 }
 
-function legacyMirrorRouter(callMirror: (input: { env: Env; prompt: string }) => Promise<string>): typeof routeReflection {
+function legacyMirrorRouter(
+  callMirror: (input: { env: Env; prompt: string }) => Promise<string>,
+): typeof routeReflection {
   return async (input) => {
     const raw = await callMirror(input);
     return { ...parseMirrorResponse(raw), provider: "test", chargeable: true };
@@ -1977,11 +2347,14 @@ async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResul
     provider: "mock",
     chargeable: true,
     title: "Small Steady Thread",
-    reflection: "Here is what I saw: the writing kept returning to the same living thread.",
+    reflection:
+      "Here is what I saw: the writing kept returning to the same living thread.",
   };
 }
 
-function isDiagnosticClient(value: string | undefined): value is "ios" | "android" | "other" {
+function isDiagnosticClient(
+  value: string | undefined,
+): value is "ios" | "android" | "other" {
   return value === "ios" || value === "android" || value === "other";
 }
 
@@ -1991,10 +2364,18 @@ async function testSpendPreparedReflectionCredit(input: {
   if (!input.prepared.ok) return { ...input.prepared, spentCredit: false };
   const source =
     input.prepared.source ??
-    (input.prepared.result === "trial_granted_spent" ? "trial" :
-      input.prepared.result === "bypassed" || input.prepared.spentCredit === false ? "bypass" :
-      "balance");
-  const result = source === "trial" ? "trial_granted_spent" : source === "balance" ? "spent" : "bypassed";
+    (input.prepared.result === "trial_granted_spent"
+      ? "trial"
+      : input.prepared.result === "bypassed" ||
+          input.prepared.spentCredit === false
+        ? "bypass"
+        : "balance");
+  const result =
+    source === "trial"
+      ? "trial_granted_spent"
+      : source === "balance"
+        ? "spent"
+        : "bypassed";
   return {
     ok: true,
     creditsRemaining: input.prepared.creditsRemaining,
@@ -2011,7 +2392,8 @@ function safeModelFailure(error: unknown): string {
   if (error.message === "OPENROUTER_EMPTY") return error.message;
   if (error.message === "INVALID_MIRROR_RESPONSE") return error.message;
   if (error.name === "SyntaxError") return "INVALID_MIRROR_JSON";
-  if (error.name === "TimeoutError" || error.name === "AbortError") return "OPENROUTER_TIMEOUT";
+  if (error.name === "TimeoutError" || error.name === "AbortError")
+    return "OPENROUTER_TIMEOUT";
   return "MODEL_FAILED";
 }
 
