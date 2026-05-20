@@ -67,7 +67,7 @@ export const anky = {
     scheme: "exact",
     price: "$0.01",
     network: "eip155:8453",
-    payTo: "0x0000000000000000000000000000000000000000",
+    payTo: "0x3D45a97C4f76D43e810Ff107cB6dad3e5AF64641",
     description: "Reflect one complete .anky writing ritual.",
     mimeType: "application/json",
   },
