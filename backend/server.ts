@@ -87,7 +87,8 @@ export const ankyProtocolInOneBreath = {
   nextLines: "<delta_ms_since_previous_character> <next_character>",
   terminalLine: "8000",
   serverBody: "the exact .anky string, sent as text/plain",
-  endingRule: "send when active writing reaches 8 minutes or idle silence reaches 8 seconds",
+  endingRule:
+    "send when active writing reaches 8 minutes or idle silence reaches 8 seconds",
   identityRule: "headers prove the writer signed these exact bytes",
 } as const;
 
@@ -148,11 +149,22 @@ async function sendAnky(ankyString) {
 
   if (response.status === 402) {
     const paymentRequired = response.headers.get("PAYMENT-REQUIRED");
+    if (!paymentRequired) throw new Error("ANKY_PAYMENT_REQUIRED_HEADER_MISSING");
     const paymentSignature = await buildX402Payment(paymentRequired);
     return sendAnkyWithPayment(ankyString, signedHeaders, paymentSignature);
   }
 
-  return response.json();
+  if (!response.ok) {
+    const failure = await response.json().catch(() => ({ error: { code: "ANKY_HTTP_ERROR" } }));
+    throw new Error(failure.error?.code ?? "ANKY_HTTP_ERROR");
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/plain")) {
+    throw new Error("ANKY_EXPECTED_MARKDOWN_TEXT");
+  }
+
+  return response.text();
 }
 `;
 
@@ -177,8 +189,8 @@ export const anky = {
   revenueCatCreditCode: "CRD",
   trialCredits: 8,
   automaticTrials: {
-    ios: false,
-    android: false,
+    ios: true,
+    android: true,
     iosDeviceCheckRequired: true,
     androidPlayIntegrityRequired: true,
     androidAddressTrialsConfirmed: false,
@@ -186,11 +198,18 @@ export const anky = {
   x402: {
     facilitatorUrl: "https://x402.org/facilitator",
     scheme: "exact",
-    price: "$0.01",
     network: "eip155:8453",
     payTo: "0x3D45a97C4f76D43e810Ff107cB6dad3e5AF64641",
     description: "Reflect one complete .anky writing ritual.",
     mimeType: "application/json",
+    prices: {
+      defaultFallback: "$0",
+      openrouter: "$0.01",
+      bankr: "$0.015",
+      poiesis: "$0.01",
+      scarce: "$0.02",
+      max: "$0.05",
+    },
   },
 } as const;
 
@@ -209,7 +228,7 @@ const privateKeys = {
 // -----------------------------------------------------------------------------
 
 // The whole backend is this tiny surface. A client sends exact .anky bytes to
-// POST /anky. Infrastructure checks GET /health. Everything else is below.
+// POST /anky with the required headers. Infrastructure checks GET /health. Everything that powers this is below.
 
 export type AnkyRouteDeps = {
   prepareReflectionCredit?: typeof prepareReflectionCredit;
@@ -790,10 +809,36 @@ export type ReflectionCreditResult = {
   spendIdempotencyKey?: string;
 };
 
+export type ReflectionEndpointName =
+  | "bankr"
+  | "openrouter"
+  | "poiesis"
+  | "default";
+
+export type ReflectionEndpointStatus = {
+  name: ReflectionEndpointName;
+  ready: boolean;
+  chargeable: boolean;
+  reason: string;
+};
+
+export type X402Quote = {
+  scheme: typeof anky.x402.scheme;
+  price: string;
+  network: typeof anky.x402.network;
+  payTo: typeof anky.x402.payTo;
+  description: string;
+  mimeType: typeof anky.x402.mimeType;
+  provider: ReflectionEndpointName;
+  chargeable: boolean;
+  status: string;
+};
+
 export type X402Payment = {
   signature: string;
   payload: unknown;
   verification: unknown;
+  quote: X402Quote;
 };
 
 export type X402Result =
@@ -907,8 +952,125 @@ export async function prepareReflectionCredit(input: {
   };
 }
 
+export function currentReflectionEndpointStatuses(
+  env: Env,
+): ReflectionEndpointStatus[] {
+  return env.providerOrder.map((name) =>
+    reflectionEndpointStatus(env, name as ReflectionEndpointName),
+  );
+}
+
+export function quoteAnkyReflection(env: Env): X402Quote {
+  const statuses = currentReflectionEndpointStatuses(env);
+  const selected =
+    statuses.find((status) => status.ready) ??
+    reflectionEndpointStatus(env, "default");
+
+  return {
+    scheme: env.x402.scheme,
+    price: selected.chargeable
+      ? x402PriceForEndpoint(env, selected.name)
+      : env.x402.prices.defaultFallback,
+    network: env.x402.network,
+    payTo: env.x402.payTo,
+    description: `${env.x402.description} Provider: ${selected.name}.`,
+    mimeType: env.x402.mimeType,
+    provider: selected.name,
+    chargeable: selected.chargeable,
+    status: selected.reason,
+  };
+}
+
+function reflectionEndpointStatus(
+  env: Env,
+  name: ReflectionEndpointName,
+): ReflectionEndpointStatus {
+  switch (name) {
+    case "bankr":
+      if (env.requireZdr && !env.bankrZdrConfirmed) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "BANKR_ZDR_NOT_CONFIRMED",
+        };
+      }
+      if (!env.bankrLlmGatewayUrl || !env.bankrLlmGatewayApiKey) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "BANKR_NOT_CONFIGURED",
+        };
+      }
+      return {
+        name,
+        ready: false,
+        chargeable: true,
+        reason: "BANKR_ADAPTER_STAGED",
+      };
+    case "openrouter":
+      if (env.requireZdr && !providerMeetsZdr(openRouterProvider.privacy)) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "OPENROUTER_ZDR_NOT_CONFIRMED",
+        };
+      }
+      if (!env.openrouterApiKey || !env.openrouterModel) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "OPENROUTER_NOT_CONFIGURED",
+        };
+      }
+      return { name, ready: true, chargeable: true, reason: "READY" };
+    case "poiesis":
+      if (env.requireZdr && !env.poiesisZdrConfirmed) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "POIESIS_ZDR_NOT_CONFIRMED",
+        };
+      }
+      if (!env.poiesisLlmUrl || !env.poiesisLlmApiKey) {
+        return {
+          name,
+          ready: false,
+          chargeable: true,
+          reason: "POIESIS_NOT_CONFIGURED",
+        };
+      }
+      return {
+        name,
+        ready: false,
+        chargeable: true,
+        reason: "POIESIS_ADAPTER_STAGED",
+      };
+    case "default":
+      return { name, ready: true, chargeable: false, reason: "READY" };
+  }
+}
+
+function x402PriceForEndpoint(env: Env, name: ReflectionEndpointName): string {
+  switch (name) {
+    case "bankr":
+      return env.x402.prices.bankr;
+    case "openrouter":
+      return env.x402.prices.openrouter;
+    case "poiesis":
+      return env.x402.prices.poiesis;
+    case "default":
+      return env.x402.prices.defaultFallback;
+  }
+}
+
 export async function verifyX402Payment(input: {
   env: Env;
+  quote: X402Quote;
   paymentSignature?: string;
   fetchImpl?: CreditFetch;
 }): Promise<X402Result> {
@@ -924,7 +1086,7 @@ export async function verifyX402Payment(input: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentPayload: payload.value,
-          paymentDetails: x402PaymentDetails(input.env),
+          paymentDetails: x402PaymentDetails(input.quote),
         }),
       },
     );
@@ -938,6 +1100,7 @@ export async function verifyX402Payment(input: {
         signature: input.paymentSignature,
         payload: payload.value,
         verification: body,
+        quote: input.quote,
       },
     };
   } catch {
@@ -960,7 +1123,7 @@ export async function settleX402Payment(input: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentPayload: input.payment.payload,
-          paymentDetails: x402PaymentDetails(input.env),
+          paymentDetails: x402PaymentDetails(input.payment.quote),
         }),
       },
     );
@@ -1370,21 +1533,26 @@ function balanceFromVirtualCurrencies(
   return match.balance;
 }
 
-function x402PaymentDetails(env: Env) {
+function x402PaymentDetails(quote: X402Quote) {
   return {
-    scheme: env.x402.scheme,
-    price: env.x402.price,
-    network: env.x402.network,
-    payTo: env.x402.payTo,
+    scheme: quote.scheme,
+    price: quote.price,
+    network: quote.network,
+    payTo: quote.payTo,
   };
 }
 
-function x402PaymentRequiredHeader(env: Env): string {
+function x402PaymentRequiredHeader(quote: X402Quote): string {
   return base64HeaderJson({
     x402Version: 2,
-    accepts: [x402PaymentDetails(env)],
-    description: env.x402.description,
-    mimeType: env.x402.mimeType,
+    accepts: [x402PaymentDetails(quote)],
+    description: quote.description,
+    mimeType: quote.mimeType,
+    anky: {
+      provider: quote.provider,
+      chargeable: quote.chargeable,
+      status: quote.status,
+    },
   });
 }
 
@@ -2046,8 +2214,10 @@ export async function handleAnkyReflection(
   let modelFailure: string | undefined;
   let idempotencyKey: string | undefined;
   let idempotencyAcquired = false;
+  let x402Quote: X402Quote | undefined;
   let x402Payment: X402Payment | undefined;
   let x402Settlement: unknown;
+  let freeFallbackWithoutCredit = false;
 
   try {
     const contentType = c.req.header("content-type") ?? "";
@@ -2090,7 +2260,8 @@ export async function handleAnkyReflection(
       return errorJson(c, "INVALID_SIGNATURE");
     }
 
-    const bodyBytes = new Uint8Array(await c.req.arrayBuffer());
+    const dotAnky = await c.req.text();
+    const bodyBytes = new TextEncoder().encode(dotAnky);
     if (bodyBytes.byteLength > env.maxBodyBytes) {
       statusCode = 413;
       errorCode = "BODY_TOO_LARGE";
@@ -2122,10 +2293,7 @@ export async function handleAnkyReflection(
     chainIdForDiagnostics = identity.chainId;
     identityHash = await addressHash(accountId);
 
-    const bodyText = new TextDecoder("utf-8", { fatal: true }).decode(
-      bodyBytes,
-    );
-    const validation = validateAnky(bodyText);
+    const validation = validateAnky(dotAnky);
     if (!validation.isValid) {
       statusCode = 400;
       errorCode = "INVALID_ANKY";
@@ -2168,29 +2336,42 @@ export async function handleAnkyReflection(
       });
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
-        const x402Verifier = deps.verifyX402Payment ?? verifyX402Payment;
-        const payment = await x402Verifier({ env, paymentSignature });
-        if (payment.ok) {
-          x402Payment = payment.payment;
-          creditResult = "x402_verified";
-        } else {
-          statusCode = 402;
-          errorCode = "INSUFFICIENT_CREDITS";
-          return c.json(
-            {
-              error: {
-                code: "INSUFFICIENT_CREDITS",
-                message: errorMessages.INSUFFICIENT_CREDITS,
+        x402Quote = quoteAnkyReflection(env);
+        const canReturnFreeFallbackWithoutCredit =
+          preparedCredit.result === "not_configured" ||
+          preparedCredit.result === "unavailable";
+        if (!x402Quote.chargeable && canReturnFreeFallbackWithoutCredit) {
+          freeFallbackWithoutCredit = true;
+          creditResult = "x402_not_required_default_fallback";
+        } else if (x402Quote.chargeable) {
+          const x402Verifier = deps.verifyX402Payment ?? verifyX402Payment;
+          const payment = await x402Verifier({
+            env,
+            quote: x402Quote,
+            paymentSignature,
+          });
+          if (payment.ok) {
+            x402Payment = payment.payment;
+            creditResult = "x402_verified";
+          } else {
+            statusCode = 402;
+            errorCode = "INSUFFICIENT_CREDITS";
+            return c.json(
+              {
+                error: {
+                  code: "INSUFFICIENT_CREDITS",
+                  message: errorMessages.INSUFFICIENT_CREDITS,
+                },
+                x402: payment.reason,
               },
-              x402: payment.reason,
-            },
-            402,
-            { "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env) },
-          );
+              402,
+              { "PAYMENT-REQUIRED": x402PaymentRequiredHeader(x402Quote) },
+            );
+          }
         }
       }
 
-      if (!preparedCredit.ok && !x402Payment) {
+      if (!preparedCredit.ok && !x402Payment && !freeFallbackWithoutCredit) {
         if (
           preparedCredit.result === "insufficient" ||
           preparedCredit.result === "trial_disabled" ||
@@ -2238,7 +2419,9 @@ export async function handleAnkyReflection(
               },
               402,
               {
-                "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env),
+                "PAYMENT-REQUIRED": x402PaymentRequiredHeader(
+                  x402Payment.quote,
+                ),
                 "PAYMENT-RESPONSE": x402SettlementHeader(settlement.response),
               },
             );
@@ -2267,21 +2450,18 @@ export async function handleAnkyReflection(
         creditResult = "not_spent_default_fallback";
       }
 
-      const responseBody = {
-        hash: ankyHash,
-        title: mirror.title,
-        reflection: mirror.reflection,
-        creditsRemaining,
-      };
+      const responseBody = reflectionMarkdown(mirror);
       await idempotencyStore.markSucceeded(idempotencyKey);
       idempotencyAcquired = false;
-      return c.json(
-        responseBody,
-        200,
-        x402Settlement
+      return c.text(responseBody, 200, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Anky-Hash": ankyHash,
+        "X-Anky-Credits-Remaining":
+          creditsRemaining === null ? "null" : String(creditsRemaining),
+        ...(x402Settlement
           ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
-          : undefined,
-      );
+          : {}),
+      });
     } finally {
       if (idempotencyAcquired && idempotencyKey) {
         await idempotencyStore.markFailed(idempotencyKey);
@@ -2340,6 +2520,12 @@ function legacyMirrorRouter(
     const raw = await callMirror(input);
     return { ...parseMirrorResponse(raw), provider: "test", chargeable: true };
   };
+}
+
+function reflectionMarkdown(
+  mirror: Pick<ReflectionProviderResult, "title" | "reflection">,
+): string {
+  return `# ${mirror.title}\n\n${mirror.reflection}`;
 }
 
 async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResult> {

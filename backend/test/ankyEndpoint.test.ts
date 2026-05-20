@@ -51,13 +51,14 @@ describe("POST /anky", () => {
       headers,
       body,
     });
-    const json = await response.json();
+    const text = await response.text();
 
     expect(response.status).toBe(200);
-    expect(json.hash).toHaveLength(64);
-    expect(json.title).toBe("Small Steady Thread");
-    expect(typeof json.reflection).toBe("string");
-    expect(json.creditsRemaining).toBeNull();
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(response.headers.get("X-Anky-Hash")).toHaveLength(64);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("null");
+    expect(text).toContain("# Small Steady Thread");
+    expect(text).toContain("Here is what I saw");
   });
 
   test("rejects JSON writing bodies", async () => {
@@ -315,7 +316,7 @@ describe("POST /anky", () => {
   test("asks for x402 payment when credits are not configured", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: ankyWorld(),
+      env: ankyWorld({ openrouterApiKey: "key" }),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -328,9 +329,30 @@ describe("POST /anky", () => {
 
     expect(response.status).toBe(402);
     const paymentRequired = JSON.parse(atob(response.headers.get("PAYMENT-REQUIRED") ?? ""));
-    expect(paymentRequired.accepts[0]).toMatchObject({ scheme: "exact", network: "eip155:8453" });
+    expect(paymentRequired.accepts[0]).toMatchObject({ scheme: "exact", price: "$0.01", network: "eip155:8453" });
+    expect(paymentRequired.anky).toMatchObject({ provider: "openrouter", chargeable: true });
     expect(paymentRequired.mimeType).toBe("application/json");
     expect(json.error.code).toBe("INSUFFICIENT_CREDITS");
+  });
+
+  test("returns no-charge fallback when no paid provider is configured", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("PAYMENT-REQUIRED")).toBeNull();
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("null");
+    expect(text).toContain("# mirror unavailable");
   });
 
   test("accepts x402 payment and settles only after reflection succeeds", async () => {
@@ -338,13 +360,13 @@ describe("POST /anky", () => {
     let verifyCalls = 0;
     let settleCalls = 0;
     const app = createApp({
-      env: ankyWorld(),
+      env: ankyWorld({ openrouterApiKey: "key" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({ ok: false, creditsRemaining: null, result: "not_configured" }),
-        verifyX402Payment: async ({ paymentSignature }) => {
+        verifyX402Payment: async ({ paymentSignature, quote }) => {
           verifyCalls += 1;
-          return { ok: true, payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true } } };
+          return { ok: true, payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true }, quote } };
         },
         routeReflection: async () => ({
           provider: "test",
@@ -365,10 +387,10 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body, { "PAYMENT-SIGNATURE": btoa(JSON.stringify({ signed: true })) }),
       body,
     });
-    const json = await response.json();
+    const text = await response.text();
 
     expect(response.status).toBe(200);
-    expect(json.title).toBe("paid thread");
+    expect(text).toContain("# paid thread");
     expect(response.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
     expect(verifyCalls).toBe(1);
     expect(settleCalls).toBe(1);
@@ -378,13 +400,13 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let settleCalls = 0;
     const app = createApp({
-      env: ankyWorld(),
+      env: ankyWorld({ openrouterApiKey: "key" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({ ok: false, creditsRemaining: null, result: "not_configured" }),
-        verifyX402Payment: async ({ paymentSignature }) => ({
+        verifyX402Payment: async ({ paymentSignature, quote }) => ({
           ok: true,
-          payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true } },
+          payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true }, quote },
         }),
         routeReflection: async () => {
           throw new Error("provider down");
@@ -427,10 +449,10 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body),
       body,
     });
-    const json = await response.json();
+    await response.text();
 
     expect(response.status).toBe(200);
-    expect(json.creditsRemaining).toBe(4);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("4");
   });
 
   test("eligible iOS trial grant spends and returns seven remaining credits", async () => {
@@ -463,10 +485,10 @@ describe("POST /anky", () => {
       }),
       body,
     });
-    const json = await response.json();
+    await response.text();
 
     expect(response.status).toBe(200);
-    expect(json.creditsRemaining).toBe(7);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("7");
   });
 
   test("ineligible trial returns insufficient credits and does not call model", async () => {
@@ -595,11 +617,11 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body, {}, String(now + 1)),
       body,
     });
-    const json = await second.json();
+    const text = await second.text();
 
     expect(first.status).toBe(500);
     expect(second.status).toBe(200);
-    expect(json.title).toBe("retry thread");
+    expect(text).toContain("# retry thread");
     expect(routerCalls).toBe(2);
     expect(spendCalls).toBe(1);
   });
@@ -652,10 +674,10 @@ describe("POST /anky", () => {
     });
 
     const response = await app.request("/anky", { method: "POST", headers: await signedHeaders(body), body });
-    const json = await response.json();
+    await response.text();
 
     expect(response.status).toBe(200);
-    expect(json.creditsRemaining).toBe(4);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("4");
     expect(spendCalls).toBe(0);
   });
 

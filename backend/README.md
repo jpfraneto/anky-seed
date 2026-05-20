@@ -2,7 +2,7 @@
 
 One file matters: [server.ts](server.ts).
 
-It defines public protocol values at the top, exposes `GET /health` and `POST /anky`, verifies Base EIP-712 identity, accepts x402 payment when credits are absent, asks the mirror provider, and forgets the writing.
+It defines public protocol values at the top, exposes `GET /health` and `POST /anky`, verifies Base EIP-712 identity, accepts x402 payment when credits are absent, asks the mirror provider, returns markdown text, and forgets the writing.
 
 ```sh
 bun install
@@ -28,7 +28,9 @@ When a writer has no available credit, the endpoint stays open through x402:
 1. Server returns `402` with `PAYMENT-REQUIRED`.
 2. Client signs a payment payload.
 3. Client retries with `PAYMENT-SIGNATURE`.
-4. Server verifies the payment, reflects, settles, and returns `PAYMENT-RESPONSE`.
+4. Server verifies the payment against the current provider quote, reflects, settles, and returns `PAYMENT-RESPONSE`.
+
+Successful reflections are `text/plain; charset=utf-8` markdown. Error responses are JSON.
 
 Only private integration keys are read from the host:
 

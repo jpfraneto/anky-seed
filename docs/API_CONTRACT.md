@@ -144,16 +144,20 @@ The API must not accept JSON writing bodies.
 
 ## Success Response
 
-```json
-{
-  "hash": "sha256_hex",
-  "title": "three word title",
-  "reflection": "reflection text",
-  "creditsRemaining": 7
-}
+```txt
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+X-Anky-Hash: <sha256_hex>
+X-Anky-Credits-Remaining: 7 | null
+
+# three word title
+
+markdown reflection text
 ```
 
-`hash` is SHA-256 of the exact request body bytes. The client uses it to attach the reflection to the local `.anky`.
+Success is always a markdown string. `X-Anky-Hash` is SHA-256 of the exact request body bytes. The client uses it to attach the reflection to the local `.anky`.
+
+Error responses remain JSON so clients can branch on stable error codes.
 
 ## Error Codes
 

@@ -67,7 +67,7 @@ describe("trial eligibility", () => {
 
   test("auto trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
-      env: ankyWorld({}),
+      env: ankyWorld({ autoTrialEnabled: false }),
       accountId: "writer",
       client: "ios",
       trialProof: "device-token",
@@ -78,7 +78,7 @@ describe("trial eligibility", () => {
 
   test("iOS trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
-      env: ankyWorld({ autoTrialEnabled: true }),
+      env: ankyWorld({ autoTrialEnabled: true, iosTrialEnabled: false }),
       accountId: "writer",
       client: "ios",
       trialProof: "device-token",
@@ -155,6 +155,7 @@ async function trialEnv() {
   return ankyWorld({
     autoTrialEnabled: true,
     iosTrialEnabled: true,
+    androidTrialEnabled: false,
     appleDeviceCheckTeamId: "TEAMID1234",
     appleDeviceCheckKeyId: "KEYID1234",
     appleDeviceCheckPrivateKey: await testP8PrivateKey(),
