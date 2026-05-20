@@ -1,15 +1,16 @@
 /**
  * ANKY MIRROR
  *
+ * This is the whole backend for Anky.
+ *
+ * A client writes a `.anky` file locally. When the writer asks to be witnessed,
+ * the client signs the exact bytes and sends them to POST /anky. The server
+ * verifies the Base identity, checks credit or x402 payment, reflects once,
+ * returns JSON, and forgets the writing.
+ *
  * This server is not memory.
  * This server is not a journal.
  * This server is not a user database.
- *
- * It receives one complete .anky artifact,
- * verifies that the writer asked to be witnessed,
- * reflects once,
- * returns the reflection,
- * and forgets.
  *
  * "The light shineth in darkness." John 1:5
  * "Light upon light." Qur'an 24:35
@@ -36,7 +37,47 @@ import {
 import { Hono, type Context } from "hono";
 
 // -----------------------------------------------------------------------------
-// Public Law
+// Start Here
+// -----------------------------------------------------------------------------
+
+export const whatThisFileIs = `
+This file is the Anky backend.
+It is intentionally one file so a developer can read it, send it to an LLM,
+and understand how to create a client.
+
+The client creates exact .anky bytes.
+The writer signs those bytes.
+POST /anky receives text/plain.
+The server verifies, reflects, charges only after success, and forgets.
+`;
+
+export const mapOfThisFile = {
+  constants: "anky",
+  routeSurface: "createApp",
+  requestPromise: "The Covenant",
+  world: "ankyWorld",
+  identity: "verifyAnkyBaseRequest",
+  duplicateProtection: "MemoryIdempotencyStore",
+  creditsAndTrials: "prepareReflectionCredit -> spendPreparedReflectionCredit",
+  x402: "verifyX402Payment -> settleX402Payment",
+  privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
+  providers: "routeReflection -> openRouterProvider -> defaultReflectionProvider",
+  prompt: "buildStorytellerPrompt",
+  endpoint: "handleAnkyReflection",
+  startServer: "import.meta.main",
+} as const;
+
+export const clientCreationIndex = {
+  write: "Capture textarea deltas into one .anky artifact.",
+  finish: "End exactly at 480000 ms of writing or 8000 ms of idle time.",
+  sign: "Sign AnkyMirrorRequest with a Base EOA or embedded Ethereum wallet.",
+  post: "Send exact bytes to POST /anky as text/plain; charset=utf-8.",
+  pay: "If 402 arrives, read PAYMENT-REQUIRED, build x402 payment, retry with PAYMENT-SIGNATURE.",
+  keep: "Store the .anky and reflection locally. The server stores neither.",
+} as const;
+
+// -----------------------------------------------------------------------------
+// Public Constants
 // -----------------------------------------------------------------------------
 
 // These are the public values of the Anky backend. There is no staging mode, no
