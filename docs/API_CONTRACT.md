@@ -50,6 +50,14 @@ PAYMENT-SIGNATURE: <base64_payment_payload>
 
 If the writer has no available credit, the endpoint returns `402 Payment Required` with `PAYMENT-REQUIRED`. The client creates a payment payload from that header and retries with `PAYMENT-SIGNATURE`. On success, the server returns `PAYMENT-RESPONSE`.
 
+Optional streaming response:
+
+```txt
+Accept: text/event-stream
+```
+
+With this header, `POST /anky` returns Server-Sent Events. `update` events describe safe processing stages such as identity verification, protocol validation, x402 quote creation, provider start, provider finish, settlement, and completion. The final `reflection` event contains the markdown string. The stream must never include raw writing, prompt text, signatures, or trial proofs.
+
 ## Identity
 
 Current identity version: `anky.base.eoa.v1`

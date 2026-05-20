@@ -239,7 +239,22 @@ export type AnkyRouteDeps = {
   diagnostics?: DiagnosticsSink;
   verifyX402Payment?: typeof verifyX402Payment;
   settleX402Payment?: typeof settleX402Payment;
+  progress?: AnkyProgressSink;
 };
+
+export type AnkyProgressEvent = {
+  stage: string;
+  message: string;
+  provider?: string;
+  chargeable?: boolean;
+  price?: string;
+  durationMs?: number;
+  status?: number;
+};
+
+export type AnkyProgressSink = (
+  event: AnkyProgressEvent,
+) => void | Promise<void>;
 
 export function createApp(
   input: {
@@ -254,12 +269,16 @@ export function createApp(
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true }));
-  app.post("/anky", (c) =>
-    handleAnkyReflection(c, env, logger, {
+  app.post("/anky", (c) => {
+    const deps = {
       ...input.ankyRouteDeps,
       diagnostics: input.diagnostics,
-    }),
-  );
+    };
+    if ((c.req.header("accept") ?? "").includes("text/event-stream")) {
+      return handleAnkyReflectionStream(c, env, logger, deps);
+    }
+    return handleAnkyReflection(c, env, logger, deps);
+  });
 
   return app;
 }
@@ -2175,6 +2194,72 @@ export class VeilCashFundingProviderPlaceholder implements WalletCreditFundingPr
 // reconstruct only in memory, ask a private provider, spend only after success,
 // return the reflection, and forget.
 
+export function handleAnkyReflectionStream(
+  c: Context,
+  env: Env,
+  logger: SafeLogger,
+  deps: AnkyRouteDeps = {},
+): Response {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      };
+
+      try {
+        send("update", {
+          stage: "stream_open",
+          message: "Anky opened a live reflection stream.",
+        });
+        const response = await handleAnkyReflection(c, env, logger, {
+          ...deps,
+          progress: (event) => send("update", event),
+        });
+        const body = await response.text();
+        const headers = responseHeadersObject(response.headers);
+
+        if (response.ok) {
+          send("reflection", {
+            markdown: body,
+            headers,
+          });
+        } else {
+          send("error", {
+            status: response.status,
+            body: jsonOrText(body),
+            headers,
+          });
+        }
+      } catch {
+        send("error", {
+          status: 500,
+          body: {
+            error: {
+              code: "MIRROR_FAILED",
+              message: errorMessages.MIRROR_FAILED,
+            },
+          },
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 export async function handleAnkyReflection(
   c: Context,
   env: Env,
@@ -2220,6 +2305,10 @@ export async function handleAnkyReflection(
   let freeFallbackWithoutCredit = false;
 
   try {
+    await deps.progress?.({
+      stage: "request_received",
+      message: "Anky received the .anky artifact.",
+    });
     const contentType = c.req.header("content-type") ?? "";
     if (!contentType.toLowerCase().startsWith("text/plain")) {
       statusCode = 400;
@@ -2262,12 +2351,20 @@ export async function handleAnkyReflection(
 
     const dotAnky = await c.req.text();
     const bodyBytes = new TextEncoder().encode(dotAnky);
+    await deps.progress?.({
+      stage: "dot_anky_read",
+      message: "Anky read the exact .anky string.",
+    });
     if (bodyBytes.byteLength > env.maxBodyBytes) {
       statusCode = 413;
       errorCode = "BODY_TOO_LARGE";
       return errorJson(c, "BODY_TOO_LARGE");
     }
     ankyHash = await sha256Hex(bodyBytes);
+    await deps.progress?.({
+      stage: "hash_computed",
+      message: "Anky computed the artifact hash without storing the writing.",
+    });
 
     const identity = await verifyAnkyBaseRequest({
       headers: {
@@ -2292,6 +2389,10 @@ export async function handleAnkyReflection(
     accountId = identity.accountId;
     chainIdForDiagnostics = identity.chainId;
     identityHash = await addressHash(accountId);
+    await deps.progress?.({
+      stage: "identity_verified",
+      message: "Anky verified the writer signature for these exact bytes.",
+    });
 
     const validation = validateAnky(dotAnky);
     if (!validation.isValid) {
@@ -2305,6 +2406,11 @@ export async function handleAnkyReflection(
       return errorJson(c, "INCOMPLETE_RITUAL");
     }
     durationMs = validation.durationMs;
+    await deps.progress?.({
+      stage: "protocol_validated",
+      message: "Anky validated a complete 8-minute ritual.",
+      durationMs,
+    });
 
     idempotencyKey = await mirrorIdempotencyKey(accountId, ankyHash);
     const idempotency = await idempotencyStore.begin({
@@ -2323,6 +2429,10 @@ export async function handleAnkyReflection(
       return errorJson(c, "DUPLICATE_IN_PROGRESS");
     }
     idempotencyAcquired = true;
+    await deps.progress?.({
+      stage: "duplicate_lock_acquired",
+      message: "Anky reserved this artifact so it is not reflected twice.",
+    });
 
     try {
       const preparedCredit = await prepareCredit({
@@ -2334,9 +2444,24 @@ export async function handleAnkyReflection(
         appVersion,
         trialProof,
       });
+      await deps.progress?.({
+        stage: "credit_checked",
+        message: preparedCredit.ok
+          ? "Anky found an available reflection credit path."
+          : "Anky did not find available credits and is checking x402.",
+      });
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
         x402Quote = quoteAnkyReflection(env);
+        await deps.progress?.({
+          stage: "x402_quote_created",
+          message: x402Quote.chargeable
+            ? "Anky created an x402 quote from current provider readiness."
+            : "Anky found no paid provider ready and will use the no-charge fallback.",
+          provider: x402Quote.provider,
+          chargeable: x402Quote.chargeable,
+          price: x402Quote.price,
+        });
         const canReturnFreeFallbackWithoutCredit =
           preparedCredit.result === "not_configured" ||
           preparedCredit.result === "unavailable";
@@ -2353,6 +2478,12 @@ export async function handleAnkyReflection(
           if (payment.ok) {
             x402Payment = payment.payment;
             creditResult = "x402_verified";
+            await deps.progress?.({
+              stage: "x402_verified",
+              message: "Anky verified the x402 payment authorization.",
+              provider: x402Quote.provider,
+              price: x402Quote.price,
+            });
           } else {
             statusCode = 402;
             errorCode = "INSUFFICIENT_CREDITS";
@@ -2390,10 +2521,25 @@ export async function handleAnkyReflection(
 
       const writing = reconstructText(validation.parsed);
       const prompt = buildStorytellerPrompt(writing);
+      await deps.progress?.({
+        stage: "reflection_prepared",
+        message: "Anky reconstructed the writing in memory and prepared the mirror prompt.",
+      });
       let mirror: ReflectionProviderResult;
       try {
+        await deps.progress?.({
+          stage: "provider_started",
+          message: "Anky is asking the reflection provider.",
+          provider: x402Quote?.provider,
+        });
         mirror = await reflectionRouter({ env, prompt });
         modelProvider = mirror.provider;
+        await deps.progress?.({
+          stage: "provider_finished",
+          message: "Anky received the reflection.",
+          provider: mirror.provider,
+          chargeable: mirror.chargeable,
+        });
       } catch (error) {
         modelFailure = safeModelFailure(error);
         throw new Error("MIRROR_FAILED");
@@ -2428,6 +2574,12 @@ export async function handleAnkyReflection(
           }
           creditResult = "x402_settled";
           creditsRemaining = null;
+          await deps.progress?.({
+            stage: "x402_settled",
+            message: "Anky settled the x402 payment after a successful reflection.",
+            provider: x402Payment.quote.provider,
+            price: x402Payment.quote.price,
+          });
         } else {
           const credit = await spendCredit({
             env,
@@ -2445,14 +2597,29 @@ export async function handleAnkyReflection(
             return errorJson(c, errorCode);
           }
           creditsRemaining = credit.creditsRemaining;
+          await deps.progress?.({
+            stage: "credit_spent",
+            message: "Anky spent one reflection credit after success.",
+          });
         }
       } else {
         creditResult = "not_spent_default_fallback";
+        await deps.progress?.({
+          stage: "credit_not_spent",
+          message: "Anky used the fallback reflection and did not charge.",
+        });
       }
 
       const responseBody = reflectionMarkdown(mirror);
       await idempotencyStore.markSucceeded(idempotencyKey);
       idempotencyAcquired = false;
+      await deps.progress?.({
+        stage: "complete",
+        message: "Anky is returning the markdown reflection and forgetting the writing.",
+        provider: mirror.provider,
+        chargeable: mirror.chargeable,
+        status: 200,
+      });
       return c.text(responseBody, 200, {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Anky-Hash": ankyHash,
@@ -2511,6 +2678,28 @@ function requestBodyTooLarge(
   if (!contentLength) return false;
   const parsed = Number(contentLength);
   return Number.isFinite(parsed) && parsed > maxBodyBytes;
+}
+
+function responseHeadersObject(headers: Headers): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const [key, value] of headers.entries()) {
+    if (
+      key.toLowerCase().startsWith("x-anky-") ||
+      key.toLowerCase().startsWith("payment-") ||
+      key.toLowerCase() === "content-type"
+    ) {
+      output[key] = value;
+    }
+  }
+  return output;
+}
+
+function jsonOrText(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 function legacyMirrorRouter(

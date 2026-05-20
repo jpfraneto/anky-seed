@@ -61,6 +61,34 @@ describe("POST /anky", () => {
     expect(text).toContain("Here is what I saw");
   });
 
+  test("streams safe progress updates before the markdown reflection", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { Accept: "text/event-stream" }),
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(text).toContain("event: update");
+    expect(text).toContain('"stage":"request_received"');
+    expect(text).toContain('"stage":"identity_verified"');
+    expect(text).toContain('"stage":"provider_finished"');
+    expect(text).toContain("event: reflection");
+    expect(text).toContain("# Small Steady Thread");
+    expect(text).not.toContain("1770000000000");
+  });
+
   test("rejects JSON writing bodies", async () => {
     const body = new TextEncoder().encode(JSON.stringify({ writing: "hello" }));
     const headers = await signedHeaders(body, { "Content-Type": "application/json" });
