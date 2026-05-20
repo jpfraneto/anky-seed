@@ -7,13 +7,13 @@ Technical simplicity is product integrity. The app is local-first, the server is
 The system has four layers:
 
 ```txt
-apps/ios
-apps/android
-services/mirror
+apps
+backend
+docs
 protocol
 ```
 
-iOS and Android are native clients. Do not use React Native. Do not share UI code. Share protocol law, API contract, test vectors, and mirror contract.
+iOS and Android are native clients. Browser clients are welcome. Share protocol law, API contract, test vectors, and the single backend contract.
 
 ## Canonical State
 
@@ -99,13 +99,14 @@ For `POST /anky`, the server must:
 6. Validate protocol and complete 8-minute duration.
 7. Use the checksum address as credit identity.
 8. Preflight credit eligibility without spending.
-9. Reconstruct writing in memory.
-10. Build the transient Anky storyteller prompt.
-11. Send to the provider router using ZDR-compatible routing.
-12. Parse model output.
-13. Spend 1 credit only if a real provider succeeded.
-14. Return reflection JSON.
-15. Forget raw `.anky`, prompt, and reconstructed writing.
+9. If credits are absent, verify x402 payment from `PAYMENT-SIGNATURE`.
+10. Reconstruct writing in memory.
+11. Build the transient Anky storyteller prompt.
+12. Send to the provider router using ZDR-compatible routing.
+13. Parse model output.
+14. Spend 1 credit or settle x402 only if a real provider succeeded.
+15. Return reflection JSON.
+16. Forget raw `.anky`, prompt, and reconstructed writing.
 
 ## Credit Law
 

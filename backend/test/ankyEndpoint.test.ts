@@ -7,11 +7,11 @@ import {
   clearReplayMemoryForTests,
   createApp,
   createSafeLogger,
-  loadEnv,
+  ankyWorld,
   normalizeMetadataValue,
-} from "../src";
+} from "../server";
 
-const fixtureRoot = resolve(import.meta.dir, "../../../protocol/fixtures");
+const fixtureRoot = resolve(import.meta.dir, "../../protocol/fixtures");
 const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
 beforeEach(() => {
@@ -22,7 +22,7 @@ beforeEach(() => {
 describe("GET /health", () => {
   test("returns operational health without requiring secrets", async () => {
     const app = createApp({
-      env: loadEnv({}),
+      env: ankyWorld({}),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -39,12 +39,11 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const headers = await signedHeaders(body);
     const app = createApp({
-      env: loadEnv({
-        ANKY_DEV_BYPASS_CREDITS: "true",
-        ANKY_DEV_MOCK_MIRROR: "true",
-        REQUEST_TIME_TOLERANCE_MS: "300000",
-      }),
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
+      },
     });
 
     const response = await app.request("/anky", {
@@ -65,7 +64,7 @@ describe("POST /anky", () => {
     const body = new TextEncoder().encode(JSON.stringify({ writing: "hello" }));
     const headers = await signedHeaders(body, { "Content-Type": "application/json" });
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -81,7 +80,7 @@ describe("POST /anky", () => {
     let creditCalls = 0;
     let modelCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -109,11 +108,7 @@ describe("POST /anky", () => {
   test("rejects bodies over the configured size limit without echoing content", async () => {
     const body = new TextEncoder().encode("1770000000000 secret-too-large-writing\n8000");
     const app = createApp({
-      env: loadEnv({
-        ANKY_DEV_BYPASS_CREDITS: "true",
-        ANKY_DEV_MOCK_MIRROR: "true",
-        ANKY_MAX_BODY_BYTES: "10",
-      }),
+      env: ankyWorld({ maxBodyBytes: 10 }),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -135,11 +130,7 @@ describe("POST /anky", () => {
   test("rejects stale request times", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({
-        ANKY_DEV_BYPASS_CREDITS: "true",
-        ANKY_DEV_MOCK_MIRROR: "true",
-        REQUEST_TIME_TOLERANCE_MS: "1000",
-      }),
+      env: ankyWorld({ requestTimeToleranceMs: 1000 }),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -158,7 +149,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -186,7 +177,7 @@ describe("POST /anky", () => {
     const tampered = new TextEncoder().encode(`${new TextDecoder().decode(body)} `);
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -210,7 +201,7 @@ describe("POST /anky", () => {
       "X-Anky-Account": "0x0000000000000000000000000000000000000001",
     });
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -225,7 +216,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const headers = await signedHeaders(body);
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true", ANKY_BASE_CHAIN_ID: "1" }),
+      env: ankyWorld({ baseChainId: 1 }),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -240,7 +231,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const headers = await signedHeaders(body, { "X-Anky-Identity-Version": "anky.base.erc1271.v1" });
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -255,7 +246,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -282,7 +273,7 @@ describe("POST /anky", () => {
     let creditCalls = 0;
     let modelCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -321,10 +312,10 @@ describe("POST /anky", () => {
     expect(json.error.code).toBe("MISSING_SIGNATURE");
   });
 
-  test("fails closed when RevenueCat is not configured", async () => {
+  test("asks for x402 payment when credits are not configured", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
     });
 
@@ -335,14 +326,90 @@ describe("POST /anky", () => {
     });
     const json = await response.json();
 
+    expect(response.status).toBe(402);
+    const paymentRequired = JSON.parse(atob(response.headers.get("PAYMENT-REQUIRED") ?? ""));
+    expect(paymentRequired.accepts[0]).toMatchObject({ scheme: "exact", network: "eip155:8453" });
+    expect(paymentRequired.mimeType).toBe("application/json");
+    expect(json.error.code).toBe("INSUFFICIENT_CREDITS");
+  });
+
+  test("accepts x402 payment and settles only after reflection succeeds", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let verifyCalls = 0;
+    let settleCalls = 0;
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: false, creditsRemaining: null, result: "not_configured" }),
+        verifyX402Payment: async ({ paymentSignature }) => {
+          verifyCalls += 1;
+          return { ok: true, payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true } } };
+        },
+        routeReflection: async () => ({
+          provider: "test",
+          chargeable: true,
+          title: "paid thread",
+          reflection: "hey, thanks for being who you are. my thoughts:",
+        }),
+        settleX402Payment: async ({ payment }) => {
+          settleCalls += 1;
+          expect(payment.payload).toEqual({ signed: true });
+          return { ok: true, response: { success: true, transaction: "0xabc" } };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { "PAYMENT-SIGNATURE": btoa(JSON.stringify({ signed: true })) }),
+      body,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.title).toBe("paid thread");
+    expect(response.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
+    expect(verifyCalls).toBe(1);
+    expect(settleCalls).toBe(1);
+  });
+
+  test("does not settle x402 payment when reflection fails", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let settleCalls = 0;
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: false, creditsRemaining: null, result: "not_configured" }),
+        verifyX402Payment: async ({ paymentSignature }) => ({
+          ok: true,
+          payment: { signature: paymentSignature ?? "", payload: { signed: true }, verification: { valid: true } },
+        }),
+        routeReflection: async () => {
+          throw new Error("provider down");
+        },
+        settleX402Payment: async () => {
+          settleCalls += 1;
+          return { ok: true, response: { success: true } };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { "PAYMENT-SIGNATURE": btoa(JSON.stringify({ signed: true })) }),
+      body,
+    });
+
     expect(response.status).toBe(500);
-    expect(json.error.code).toBe("MIRROR_FAILED");
+    expect(settleCalls).toBe(0);
   });
 
   test("balance sufficient spends one credit and returns reflection", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async ({ ankyHash }) => ({
@@ -369,7 +436,7 @@ describe("POST /anky", () => {
   test("eligible iOS trial grant spends and returns seven remaining credits", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async ({ client, appVersion, trialProof }) => {
@@ -406,7 +473,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let modelCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
@@ -445,7 +512,7 @@ describe("POST /anky", () => {
     });
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true", REQUEST_TIME_TOLERANCE_MS: "300000" }),
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -470,7 +537,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true", REQUEST_TIME_TOLERANCE_MS: "300000" }),
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -497,7 +564,7 @@ describe("POST /anky", () => {
     let routerCalls = 0;
     let spendCalls = 0;
     const app = createApp({
-      env: loadEnv({ REQUEST_TIME_TOLERANCE_MS: "300000" }),
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 4, result: "spent", spentCredit: true }),
@@ -541,7 +608,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let creditCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
@@ -567,7 +634,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let spendCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 4, result: "spent", spentCredit: true }),
@@ -597,7 +664,7 @@ describe("POST /anky", () => {
     const lines: string[] = [];
     let refundCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
@@ -629,7 +696,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let refundCalls = 0;
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
@@ -658,7 +725,7 @@ describe("POST /anky", () => {
     const lines: string[] = [];
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
@@ -691,7 +758,7 @@ describe("POST /anky", () => {
       "X-Anky-Trial-Proof": "raw-proof-token",
     });
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       diagnostics: {
         record(event) {
@@ -724,7 +791,7 @@ describe("POST /anky", () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const hostileVersion = "1.0(1){\"reflection\":\"inject\"}<script>bad</script>ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         prepareReflectionCredit: async ({ appVersion }) => {
@@ -758,7 +825,7 @@ describe("POST /anky", () => {
     const lines: string[] = [];
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         prepareReflectionCredit: async ({ appVersion }) => {

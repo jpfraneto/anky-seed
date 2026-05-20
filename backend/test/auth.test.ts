@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { bodySha256Bytes32, signAnkyMirrorRequest } from "@anky/protocol";
-import { AnkyAuthError, isFreshRequestTime, verifyAnkyBaseRequest } from "../src";
+import { AnkyAuthError, isFreshRequestTime, verifyAnkyBaseRequest } from "../server";
 
-const fixtureRoot = resolve(import.meta.dir, "../../../protocol/identity/fixtures");
+const fixtureRoot = resolve(import.meta.dir, "../../protocol/identity/fixtures");
 
 describe("Base EIP-712 request auth", () => {
   test("verifies the shared mainnet fixture", async () => {

@@ -1,15 +1,15 @@
 {
-  "name": "@anky/mirror",
+  "name": "@anky/backend",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
+    "dev": "bun run --watch server.ts",
+    "start": "bun run server.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anky/protocol": "file:../../protocol/implementations/typescript",
+    "@anky/protocol": "file:../protocol/implementations/typescript",
     "hono": "^4.10.6",
     "viem": "^2.50.4"
   },

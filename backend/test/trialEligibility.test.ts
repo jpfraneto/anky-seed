@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { evaluateTrialEligibility, loadEnv } from "../src";
+import { evaluateTrialEligibility, ankyWorld } from "../server";
 
 describe("trial eligibility", () => {
   test("iOS valid proof with bit0 false is eligible", async () => {
@@ -67,7 +67,7 @@ describe("trial eligibility", () => {
 
   test("auto trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
-      env: loadEnv({}),
+      env: ankyWorld({}),
       accountId: "writer",
       client: "ios",
       trialProof: "device-token",
@@ -78,7 +78,7 @@ describe("trial eligibility", () => {
 
   test("iOS trial disabled is ineligible", async () => {
     const result = await evaluateTrialEligibility({
-      env: loadEnv({ ANKY_AUTO_TRIAL_ENABLED: "true" }),
+      env: ankyWorld({ autoTrialEnabled: true }),
       accountId: "writer",
       client: "ios",
       trialProof: "device-token",
@@ -100,10 +100,10 @@ describe("trial eligibility", () => {
 
   test("Android account trial is eligible when explicitly enabled without Play Integrity", async () => {
     const result = await evaluateTrialEligibility({
-      env: loadEnv({
-        ANKY_AUTO_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
+      env: ankyWorld({
+        autoTrialEnabled: true,
+        androidTrialEnabled: true,
+        androidPlayIntegrityRequired: false,
       }),
       accountId: "android-writer",
       client: "android",
@@ -115,9 +115,9 @@ describe("trial eligibility", () => {
 
   test("Android trial requiring Play Integrity stays proof-gated", async () => {
     const result = await evaluateTrialEligibility({
-      env: loadEnv({
-        ANKY_AUTO_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_TRIAL_ENABLED: "true",
+      env: ankyWorld({
+        autoTrialEnabled: true,
+        androidTrialEnabled: true,
       }),
       accountId: "android-writer",
       client: "android",
@@ -152,12 +152,12 @@ describe("trial eligibility", () => {
 });
 
 async function trialEnv() {
-  return loadEnv({
-    ANKY_AUTO_TRIAL_ENABLED: "true",
-    ANKY_IOS_TRIAL_ENABLED: "true",
-    APPLE_DEVICECHECK_TEAM_ID: "TEAMID1234",
-    APPLE_DEVICECHECK_KEY_ID: "KEYID1234",
-    APPLE_DEVICECHECK_PRIVATE_KEY: await testP8PrivateKey(),
+  return ankyWorld({
+    autoTrialEnabled: true,
+    iosTrialEnabled: true,
+    appleDeviceCheckTeamId: "TEAMID1234",
+    appleDeviceCheckKeyId: "KEYID1234",
+    appleDeviceCheckPrivateKey: await testP8PrivateKey(),
   });
 }
 

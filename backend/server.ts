@@ -10,6 +10,11 @@
  * reflects once,
  * returns the reflection,
  * and forgets.
+ *
+ * "The light shineth in darkness." John 1:5
+ * "Light upon light." Qur'an 24:35
+ * "Yoga is skill in action." Bhagavad Gita 2:50
+ * "Love is higher than opinion." Rudolf Steiner
  */
 
 // -----------------------------------------------------------------------------
@@ -29,6 +34,88 @@ import {
   type Hex,
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
+
+// -----------------------------------------------------------------------------
+// Public Law
+// -----------------------------------------------------------------------------
+
+// These are the public values of the Anky backend. There is no staging mode, no
+// development personality, no alternate deployment story. The system is always
+// production. Tests may pass an override object, but the real server reads this.
+
+export const anky = {
+  host: "0.0.0.0",
+  port: 8080,
+  baseChainId: 8453,
+  maxBodyBytes: 1_048_576,
+  requestTimeToleranceMs: 300_000,
+  providerOrder: ["openrouter", "bankr", "poiesis", "default"] as const,
+  openrouterModel: "anthropic/claude-3.5-sonnet",
+  openrouterTimeoutMs: 45_000,
+  privacyRequiresZdr: true,
+  revenueCatCreditCode: "CRD",
+  trialCredits: 8,
+  automaticTrials: {
+    ios: false,
+    android: false,
+    iosDeviceCheckRequired: true,
+    androidPlayIntegrityRequired: true,
+    androidAddressTrialsConfirmed: false,
+  },
+  x402: {
+    facilitatorUrl: "https://x402.org/facilitator",
+    scheme: "exact",
+    price: "$0.01",
+    network: "eip155:8453",
+    payTo: "0x0000000000000000000000000000000000000000",
+    description: "Reflect one complete .anky writing ritual.",
+    mimeType: "application/json",
+  },
+} as const;
+
+// Private material is not public law. Keep this list short.
+const privateKeys = {
+  openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  revenueCatSecretKey: process.env.REVENUECAT_SECRET_KEY ?? "",
+  revenueCatProjectId: process.env.REVENUECAT_PROJECT_ID ?? "",
+  appleDeviceCheckTeamId: process.env.APPLE_DEVICECHECK_TEAM_ID ?? "",
+  appleDeviceCheckKeyId: process.env.APPLE_DEVICECHECK_KEY_ID ?? "",
+  appleDeviceCheckPrivateKey: process.env.APPLE_DEVICECHECK_PRIVATE_KEY ?? "",
+} as const;
+
+// -----------------------------------------------------------------------------
+// The Open Door
+// -----------------------------------------------------------------------------
+
+// The whole backend is this tiny surface. A client sends exact .anky bytes to
+// POST /anky. Infrastructure checks GET /health. Everything else is below.
+
+export type AnkyRouteDeps = {
+  prepareReflectionCredit?: typeof prepareReflectionCredit;
+  spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
+  routeReflection?: typeof routeReflection;
+  callMirror?: (input: { env: AnkyWorld; prompt: string }) => Promise<string>;
+  idempotencyStore?: IdempotencyStore;
+  diagnostics?: DiagnosticsSink;
+  verifyX402Payment?: typeof verifyX402Payment;
+  settleX402Payment?: typeof settleX402Payment;
+};
+
+export function createApp(input: {
+  env?: AnkyWorld;
+  logger?: SafeLogger;
+  ankyRouteDeps?: AnkyRouteDeps;
+  diagnostics?: DiagnosticsSink;
+} = {}) {
+  const env = input.env ?? ankyWorld();
+  const logger = input.logger ?? createSafeLogger();
+  const app = new Hono();
+
+  app.get("/health", (c) => c.json({ ok: true }));
+  app.post("/anky", (c) => handleAnkyReflection(c, env, logger, { ...input.ankyRouteDeps, diagnostics: input.diagnostics }));
+
+  return app;
+}
 
 // -----------------------------------------------------------------------------
 // The Covenant
@@ -102,24 +189,17 @@ export function errorJson(c: Context, code: ErrorCode) {
 // Configuration
 // -----------------------------------------------------------------------------
 
-// I read process configuration once and make production refuse unsafe rituals.
-// Local tests can use mocks; production cannot pretend that missing privacy,
-// credits, or provider credentials are fine.
+// The public values live above. The only values read from the host are private
+// keys. The running system has one state: production.
 
-export type Env = {
-  ankyEnv: string;
-  nodeEnv: string;
+export type AnkyWorld = {
   port: number;
   host: string;
-  devBypassCredits: boolean;
-  devMockMirror: boolean;
-  mirrorDisabled: boolean;
   baseChainId: number;
   maxBodyBytes: number;
   openrouterApiKey: string;
   openrouterModel: string;
   openrouterTimeoutMs: number;
-  openrouterPrivacyConfirmed: boolean;
   requireZdr: boolean;
   providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
   bankrLlmGatewayUrl: string;
@@ -139,118 +219,48 @@ export type Env = {
   appleDeviceCheckTeamId: string;
   appleDeviceCheckKeyId: string;
   appleDeviceCheckPrivateKey: string;
-  appleDeviceCheckEnv: "production" | "development";
   androidTrialEnabled: boolean;
   androidPlayIntegrityRequired: boolean;
   androidAddressTrialsConfirmed: boolean;
+  x402: typeof anky.x402;
 };
 
-export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+export type Env = AnkyWorld;
+
+export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
   return {
-    ankyEnv: source.ANKY_ENV ?? "",
-    nodeEnv: source.NODE_ENV ?? "",
-    port: numberFromEnv(source.PORT, 3000),
-    host: source.HOST ?? "0.0.0.0",
-    devBypassCredits: source.ANKY_DEV_BYPASS_CREDITS === "true",
-    devMockMirror: source.ANKY_DEV_MOCK_MIRROR === "true",
-    mirrorDisabled: source.ANKY_MIRROR_DISABLED === "true",
-    baseChainId: numberFromEnv(source.ANKY_BASE_CHAIN_ID, 8453),
-    maxBodyBytes: numberFromEnv(source.ANKY_MAX_BODY_BYTES, 1_048_576),
-    openrouterApiKey: source.OPENROUTER_API_KEY ?? "",
-    openrouterModel: source.OPENROUTER_MODEL ?? "",
-    openrouterTimeoutMs: numberFromEnv(source.OPENROUTER_TIMEOUT_MS, 45000),
-    openrouterPrivacyConfirmed: source.OPENROUTER_PRIVACY_CONFIRMED === "true",
-    requireZdr: source.ANKY_REQUIRE_ZDR !== "false",
-    providerOrder: providerOrderFromEnv(source.ANKY_PROVIDER_ORDER),
-    bankrLlmGatewayUrl: source.BANKR_LLM_GATEWAY_URL ?? "",
-    bankrLlmGatewayApiKey: source.BANKR_LLM_GATEWAY_API_KEY ?? "",
-    bankrZdrConfirmed: source.BANKR_ZDR_CONFIRMED === "true",
-    poiesisLlmUrl: source.POIESIS_LLM_URL ?? "",
-    poiesisLlmApiKey: source.POIESIS_LLM_API_KEY ?? "",
-    poiesisZdrConfirmed: source.POIESIS_ZDR_CONFIRMED === "true",
-    revenueCatSecretKey: source.REVENUECAT_SECRET_KEY ?? "",
-    revenueCatProjectId: source.REVENUECAT_PROJECT_ID ?? "",
-    revenueCatCreditCode: source.REVENUECAT_CREDIT_CODE ?? "CRD",
-    requestTimeToleranceMs: numberFromEnv(source.REQUEST_TIME_TOLERANCE_MS, 300000),
-    autoTrialEnabled: source.ANKY_AUTO_TRIAL_ENABLED === "true",
-    trialCredits: numberFromEnv(source.ANKY_TRIAL_CREDITS, 8),
-    iosTrialEnabled: source.ANKY_IOS_TRIAL_ENABLED === "true",
-    iosDeviceCheckRequired: source.ANKY_IOS_DEVICECHECK_REQUIRED !== "false",
-    appleDeviceCheckTeamId: source.APPLE_DEVICECHECK_TEAM_ID ?? "",
-    appleDeviceCheckKeyId: source.APPLE_DEVICECHECK_KEY_ID ?? "",
-    appleDeviceCheckPrivateKey: source.APPLE_DEVICECHECK_PRIVATE_KEY ?? "",
-    appleDeviceCheckEnv: source.APPLE_DEVICECHECK_ENV === "development" ? "development" : "production",
-    androidTrialEnabled: source.ANKY_ANDROID_TRIAL_ENABLED === "true",
-    androidPlayIntegrityRequired: source.ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED !== "false",
-    androidAddressTrialsConfirmed: source.ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED === "true",
+    port: anky.port,
+    host: anky.host,
+    baseChainId: anky.baseChainId,
+    maxBodyBytes: anky.maxBodyBytes,
+    openrouterApiKey: privateKeys.openrouterApiKey,
+    openrouterModel: anky.openrouterModel,
+    openrouterTimeoutMs: anky.openrouterTimeoutMs,
+    requireZdr: anky.privacyRequiresZdr,
+    providerOrder: [...anky.providerOrder],
+    bankrLlmGatewayUrl: "",
+    bankrLlmGatewayApiKey: "",
+    bankrZdrConfirmed: false,
+    poiesisLlmUrl: "",
+    poiesisLlmApiKey: "",
+    poiesisZdrConfirmed: false,
+    revenueCatSecretKey: privateKeys.revenueCatSecretKey,
+    revenueCatProjectId: privateKeys.revenueCatProjectId,
+    revenueCatCreditCode: anky.revenueCatCreditCode,
+    requestTimeToleranceMs: anky.requestTimeToleranceMs,
+    autoTrialEnabled: anky.automaticTrials.ios || anky.automaticTrials.android,
+    trialCredits: anky.trialCredits,
+    iosTrialEnabled: anky.automaticTrials.ios,
+    iosDeviceCheckRequired: anky.automaticTrials.iosDeviceCheckRequired,
+    appleDeviceCheckTeamId: privateKeys.appleDeviceCheckTeamId,
+    appleDeviceCheckKeyId: privateKeys.appleDeviceCheckKeyId,
+    appleDeviceCheckPrivateKey: privateKeys.appleDeviceCheckPrivateKey,
+    androidTrialEnabled: anky.automaticTrials.android,
+    androidPlayIntegrityRequired: anky.automaticTrials.androidPlayIntegrityRequired,
+    androidAddressTrialsConfirmed: anky.automaticTrials.androidAddressTrialsConfirmed,
+    x402: anky.x402,
+    ...overrides,
   };
-}
-
-export function isProductionEnv(env: Pick<Env, "ankyEnv" | "nodeEnv">): boolean {
-  return env.ankyEnv === "production" || env.nodeEnv === "production";
-}
-
-export function assertProductionSafe(env: Env): void {
-  if (!isProductionEnv(env)) return;
-
-  const failures: string[] = [];
-  if (env.devBypassCredits) failures.push("ANKY_DEV_BYPASS_CREDITS must not be true");
-  if (env.devMockMirror) failures.push("ANKY_DEV_MOCK_MIRROR must not be true");
-
-  if (!env.mirrorDisabled) {
-    if (missingOrPlaceholder(env.openrouterApiKey)) failures.push("OPENROUTER_API_KEY is required");
-    if (missingOrPlaceholder(env.openrouterModel)) failures.push("OPENROUTER_MODEL is required");
-    if (!env.openrouterPrivacyConfirmed) {
-      failures.push("OPENROUTER_PRIVACY_CONFIRMED=true is required after routing privacy has been verified");
-    }
-    if (!env.requireZdr) failures.push("ANKY_REQUIRE_ZDR must not be false");
-    if (missingOrPlaceholder(env.revenueCatSecretKey)) failures.push("REVENUECAT_SECRET_KEY is required");
-    if (missingOrPlaceholder(env.revenueCatProjectId)) failures.push("REVENUECAT_PROJECT_ID is required");
-    if (missingOrPlaceholder(env.revenueCatCreditCode)) failures.push("REVENUECAT_CREDIT_CODE is required");
-    if (
-      env.autoTrialEnabled &&
-      env.iosTrialEnabled &&
-      env.iosDeviceCheckRequired &&
-      (
-        missingOrPlaceholder(env.appleDeviceCheckTeamId) ||
-        missingOrPlaceholder(env.appleDeviceCheckKeyId) ||
-        missingOrPlaceholder(env.appleDeviceCheckPrivateKey)
-      )
-    ) {
-      failures.push("Apple DeviceCheck credentials are required when iOS automatic trials are enabled");
-    }
-    if (
-      env.androidTrialEnabled &&
-      (!env.androidAddressTrialsConfirmed || env.androidPlayIntegrityRequired)
-    ) {
-      failures.push(
-        "Android automatic trials require ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED=true and ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=false until Play Integrity/device recall is implemented",
-      );
-    }
-  }
-
-  if (failures.length > 0) {
-    throw new Error(`Unsafe production mirror configuration:\n- ${failures.join("\n- ")}`);
-  }
-}
-
-function numberFromEnv(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function missingOrPlaceholder(value: string): boolean {
-  return !value || value.startsWith("REPLACE_WITH_") || value === "...";
-}
-
-function providerOrderFromEnv(value: string | undefined): Env["providerOrder"] {
-  const allowed = new Set(["openrouter", "bankr", "poiesis", "default"]);
-  const names = (value ?? "openrouter,bankr,poiesis,default")
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name): name is Env["providerOrder"][number] => allowed.has(name));
-  return names.length > 0 ? names : ["openrouter", "bankr", "poiesis", "default"];
 }
 
 // -----------------------------------------------------------------------------
@@ -603,6 +613,16 @@ export type ReflectionCreditResult = {
   spendIdempotencyKey?: string;
 };
 
+export type X402Payment = {
+  signature: string;
+  payload: unknown;
+  verification: unknown;
+};
+
+export type X402Result =
+  | { ok: true; payment: X402Payment }
+  | { ok: false; reason: "missing" | "invalid_payload" | "verification_failed" | "facilitator_unavailable"; response?: unknown };
+
 export type PreparedReflectionCredit =
   | {
       ok: true;
@@ -648,10 +668,6 @@ export async function prepareReflectionCredit(input: {
   trialProof?: string;
   fetchImpl?: CreditFetch;
 }): Promise<PreparedReflectionCredit> {
-  if (input.env.devBypassCredits) {
-    return { ok: true, source: "bypass", creditsRemaining: null };
-  }
-
   const spendIdempotencyKey = await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash);
   const balance = await getRevenueCatCreditBalance({
     secretKey: input.env.revenueCatSecretKey,
@@ -698,6 +714,55 @@ export async function prepareReflectionCredit(input: {
     spendIdempotencyKey,
     trial: { platform: eligibility.platform, proofHash: eligibility.proofHash },
   };
+}
+
+export async function verifyX402Payment(input: {
+  env: Env;
+  paymentSignature?: string;
+  fetchImpl?: CreditFetch;
+}): Promise<X402Result> {
+  if (!input.paymentSignature) return { ok: false, reason: "missing" };
+  const payload = base64Json(input.paymentSignature);
+  if (!payload.ok) return { ok: false, reason: "invalid_payload" };
+
+  try {
+    const response = await (input.fetchImpl ?? fetch)(`${input.env.x402.facilitatorUrl}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentPayload: payload.value,
+        paymentDetails: x402PaymentDetails(input.env),
+      }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !x402LooksValid(body)) {
+      return { ok: false, reason: "verification_failed", response: body };
+    }
+    return { ok: true, payment: { signature: input.paymentSignature, payload: payload.value, verification: body } };
+  } catch {
+    return { ok: false, reason: "facilitator_unavailable" };
+  }
+}
+
+export async function settleX402Payment(input: {
+  env: Env;
+  payment: X402Payment;
+  fetchImpl?: CreditFetch;
+}): Promise<{ ok: true; response: unknown } | { ok: false; response: unknown }> {
+  try {
+    const response = await (input.fetchImpl ?? fetch)(`${input.env.x402.facilitatorUrl}/settle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentPayload: input.payment.payload,
+        paymentDetails: x402PaymentDetails(input.env),
+      }),
+    });
+    const body = await response.json().catch(() => null);
+    return { ok: response.ok && x402LooksValid(body), response: body };
+  } catch {
+    return { ok: false, response: { error: "facilitator_unavailable" } };
+  }
 }
 
 export async function spendPreparedReflectionCredit(input: {
@@ -796,10 +861,6 @@ export async function refundReflectionCredit(input: {
   ankyHash: string;
   fetchImpl?: CreditFetch;
 }) {
-  if (input.env.devBypassCredits) {
-    return { ok: true, creditsRemaining: null, result: "bypassed" as const };
-  }
-
   return refundRevenueCatCredit({
     secretKey: input.env.revenueCatSecretKey,
     projectId: input.env.revenueCatProjectId,
@@ -1025,6 +1086,47 @@ function balanceFromVirtualCurrencies(body: unknown, creditCode: string): number
   return match.balance;
 }
 
+function x402PaymentDetails(env: Env) {
+  return {
+    scheme: env.x402.scheme,
+    price: env.x402.price,
+    network: env.x402.network,
+    payTo: env.x402.payTo,
+  };
+}
+
+function x402PaymentRequiredHeader(env: Env): string {
+  return base64HeaderJson({
+    x402Version: 2,
+    accepts: [x402PaymentDetails(env)],
+    description: env.x402.description,
+    mimeType: env.x402.mimeType,
+  });
+}
+
+function x402SettlementHeader(value: unknown): string {
+  return base64HeaderJson(value ?? {});
+}
+
+function x402LooksValid(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  if ("valid" in value) return value.valid === true;
+  if ("isValid" in value) return value.isValid === true;
+  if ("success" in value) return value.success === true;
+  if ("ok" in value) return value.ok === true;
+  return false;
+}
+
+function base64Json(value: string): { ok: true; value: unknown } | { ok: false } {
+  try {
+    const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return { ok: true, value: JSON.parse(atob(padded)) };
+  } catch {
+    return { ok: false };
+  }
+}
+
 function trialFailureResult(
   reason:
     | "auto_trial_disabled"
@@ -1211,14 +1313,15 @@ async function makeAppleJwt(env: Env): Promise<string> {
 }
 
 function deviceCheckBaseURL(env: Env): string {
-  if (env.appleDeviceCheckEnv === "development") {
-    return "https://api.development.devicecheck.apple.com";
-  }
   return "https://api.devicecheck.apple.com";
 }
 
 function base64UrlJson(value: unknown): string {
   return base64Url(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+function base64HeaderJson(value: unknown): string {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))));
 }
 
 function base64Url(bytes: Uint8Array): string {
@@ -1319,20 +1422,8 @@ export const openRouterProvider: ReflectionProvider = {
     trainingDisabled: true,
   },
   async reflect(input) {
-    if (input.env.devMockMirror) {
-      return {
-        provider: "mock",
-        chargeable: false,
-        title: "Small Steady Thread",
-        reflection: "Here is what I saw: a brief thread held without needing to become anything else.",
-      };
-    }
-
     if (!input.env.openrouterApiKey || !input.env.openrouterModel) {
       throw new Error("OPENROUTER_NOT_CONFIGURED");
-    }
-    if (!input.env.openrouterPrivacyConfirmed) {
-      throw new Error("OPENROUTER_ZDR_NOT_CONFIRMED");
     }
 
     const fetcher = input.fetchImpl ?? fetch;
@@ -1542,38 +1633,6 @@ export class VeilCashFundingProviderPlaceholder implements WalletCreditFundingPr
 }
 
 // -----------------------------------------------------------------------------
-// HTTP App
-// -----------------------------------------------------------------------------
-
-// The surface is deliberately tiny: health for infrastructure and /anky for the
-// one explicit act of asking the mirror to witness a complete artifact.
-
-export type AnkyRouteDeps = {
-  prepareReflectionCredit?: typeof prepareReflectionCredit;
-  spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
-  routeReflection?: typeof routeReflection;
-  callMirror?: (input: { env: Env; prompt: string }) => Promise<string>;
-  idempotencyStore?: IdempotencyStore;
-  diagnostics?: DiagnosticsSink;
-};
-
-export function createApp(input: {
-  env?: Env;
-  logger?: SafeLogger;
-  ankyRouteDeps?: AnkyRouteDeps;
-  diagnostics?: DiagnosticsSink;
-} = {}) {
-  const env = input.env ?? loadEnv();
-  const logger = input.logger ?? createSafeLogger();
-  const app = new Hono();
-
-  app.get("/health", (c) => c.json({ ok: true }));
-  app.post("/anky", (c) => handleAnkyReflection(c, env, logger, { ...input.ankyRouteDeps, diagnostics: input.diagnostics }));
-
-  return app;
-}
-
-// -----------------------------------------------------------------------------
 // POST /anky
 // -----------------------------------------------------------------------------
 
@@ -1590,7 +1649,9 @@ export async function handleAnkyReflection(
 ) {
   const prepareCredit = deps.prepareReflectionCredit ?? prepareReflectionCredit;
   const spendCredit = deps.spendPreparedReflectionCredit ?? (deps.prepareReflectionCredit ? testSpendPreparedReflectionCredit : spendPreparedReflectionCredit);
-  const reflectionRouter = deps.routeReflection ?? (deps.callMirror ? legacyMirrorRouter(deps.callMirror) : routeReflection);
+  const reflectionRouter =
+    deps.routeReflection ??
+    (deps.callMirror ? legacyMirrorRouter(deps.callMirror) : deps.prepareReflectionCredit ? injectedCreditReflectionRouter : routeReflection);
   const idempotencyStore = deps.idempotencyStore ?? railwayMemoryIdempotencyStore;
   const startedAt = Date.now();
   const startedAtIso = new Date(startedAt).toISOString();
@@ -1610,6 +1671,8 @@ export async function handleAnkyReflection(
   let modelFailure: string | undefined;
   let idempotencyKey: string | undefined;
   let idempotencyAcquired = false;
+  let x402Payment: X402Payment | undefined;
+  let x402Settlement: unknown;
 
   try {
     const contentType = c.req.header("content-type") ?? "";
@@ -1623,12 +1686,6 @@ export async function handleAnkyReflection(
       errorCode = "BODY_TOO_LARGE";
       return errorJson(c, "BODY_TOO_LARGE");
     }
-    if (env.mirrorDisabled) {
-      statusCode = 500;
-      errorCode = "MIRROR_FAILED";
-      return errorJson(c, "MIRROR_FAILED");
-    }
-
     const identityVersion = c.req.header("x-anky-identity-version");
     identityVersionForDiagnostics = identityVersion ?? undefined;
     const account = c.req.header("x-anky-account");
@@ -1638,6 +1695,7 @@ export async function handleAnkyReflection(
     client = c.req.header("x-anky-client") ?? undefined;
     appVersion = normalizeMetadataValue(c.req.header("x-anky-app-version") ?? undefined);
     const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
+    const paymentSignature = c.req.header("payment-signature") ?? undefined;
     if (!signature || !requestTime) {
       statusCode = 401;
       errorCode = "MISSING_SIGNATURE";
@@ -1720,6 +1778,23 @@ export async function handleAnkyReflection(
       });
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
+        const x402Verifier = deps.verifyX402Payment ?? verifyX402Payment;
+        const payment = await x402Verifier({ env, paymentSignature });
+        if (payment.ok) {
+          x402Payment = payment.payment;
+          creditResult = "x402_verified";
+        } else {
+          statusCode = 402;
+          errorCode = "INSUFFICIENT_CREDITS";
+          return c.json(
+            { error: { code: "INSUFFICIENT_CREDITS", message: errorMessages.INSUFFICIENT_CREDITS }, x402: payment.reason },
+            402,
+            { "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env) },
+          );
+        }
+      }
+
+      if (!preparedCredit.ok && !x402Payment) {
         if (
           preparedCredit.result === "insufficient" ||
           preparedCredit.result === "trial_disabled" ||
@@ -1747,23 +1822,43 @@ export async function handleAnkyReflection(
         throw new Error("MIRROR_FAILED");
       }
 
-      let creditsRemaining = preparedCredit.creditsRemaining;
+      let creditsRemaining = preparedCredit.ok ? preparedCredit.creditsRemaining : null;
       if (mirror.chargeable) {
-        const credit = await spendCredit({
-          env,
-          accountId,
-          accountIdHash: identityHash,
-          ankyHash,
-          prepared: preparedCredit,
-          trialProof,
-        });
-        creditResult = credit.result;
-        if (!credit.ok) {
-          statusCode = credit.result === "insufficient" ? 402 : 500;
-          errorCode = statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
-          return errorJson(c, errorCode);
+        if (x402Payment) {
+          const x402Settler = deps.settleX402Payment ?? settleX402Payment;
+          const settlement = await x402Settler({ env, payment: x402Payment });
+          x402Settlement = settlement.response;
+          if (!settlement.ok) {
+            statusCode = 402;
+            errorCode = "INSUFFICIENT_CREDITS";
+            return c.json(
+              { error: { code: "INSUFFICIENT_CREDITS", message: "The x402 payment could not be settled." } },
+              402,
+              {
+                "PAYMENT-REQUIRED": x402PaymentRequiredHeader(env),
+                "PAYMENT-RESPONSE": x402SettlementHeader(settlement.response),
+              },
+            );
+          }
+          creditResult = "x402_settled";
+          creditsRemaining = null;
+        } else {
+          const credit = await spendCredit({
+            env,
+            accountId,
+            accountIdHash: identityHash,
+            ankyHash,
+            prepared: preparedCredit,
+            trialProof,
+          });
+          creditResult = credit.result;
+          if (!credit.ok) {
+            statusCode = credit.result === "insufficient" ? 402 : 500;
+            errorCode = statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
+            return errorJson(c, errorCode);
+          }
+          creditsRemaining = credit.creditsRemaining;
         }
-        creditsRemaining = credit.creditsRemaining;
       } else {
         creditResult = "not_spent_default_fallback";
       }
@@ -1776,7 +1871,11 @@ export async function handleAnkyReflection(
       };
       await idempotencyStore.markSucceeded(idempotencyKey);
       idempotencyAcquired = false;
-      return c.json(responseBody);
+      return c.json(
+        responseBody,
+        200,
+        x402Settlement ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) } : undefined,
+      );
     } finally {
       if (idempotencyAcquired && idempotencyKey) {
         await idempotencyStore.markFailed(idempotencyKey);
@@ -1832,6 +1931,15 @@ function legacyMirrorRouter(callMirror: (input: { env: Env; prompt: string }) =>
   };
 }
 
+async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResult> {
+  return {
+    provider: "mock",
+    chargeable: true,
+    title: "Small Steady Thread",
+    reflection: "Here is what I saw: the writing kept returning to the same living thread.",
+  };
+}
+
 function isDiagnosticClient(value: string | undefined): value is "ios" | "android" | "other" {
   return value === "ios" || value === "android" || value === "other";
 }
@@ -1871,8 +1979,7 @@ function safeModelFailure(error: unknown): string {
 // -----------------------------------------------------------------------------
 
 if (import.meta.main) {
-  const env = loadEnv();
-  assertProductionSafe(env);
+  const env = ankyWorld();
   Bun.serve({
     port: env.port,
     hostname: env.host,

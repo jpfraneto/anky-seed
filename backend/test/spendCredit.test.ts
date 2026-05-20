@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { loadEnv, resolveReflectionCredit } from "../src";
+import { ankyWorld, resolveReflectionCredit } from "../server";
 
 describe("reflection credit spending", () => {
   test("Android account trial grants once then spends one credit when explicitly enabled", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const result = await resolveReflectionCredit({
-      env: loadEnv({
-        ANKY_AUTO_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
-        REVENUECAT_SECRET_KEY: "secret",
-        REVENUECAT_PROJECT_ID: "project",
-        REVENUECAT_CREDIT_CODE: "CRD",
+      env: ankyWorld({
+        autoTrialEnabled: true,
+        androidTrialEnabled: true,
+        androidPlayIntegrityRequired: false,
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
       }),
       accountId: "AndroidWriterAccountId",
       accountIdHash: "publicHash",
@@ -38,11 +38,11 @@ describe("reflection credit spending", () => {
 
   test("Android trial stays unavailable when Play Integrity is still required", async () => {
     const result = await resolveReflectionCredit({
-      env: loadEnv({
-        ANKY_AUTO_TRIAL_ENABLED: "true",
-        ANKY_ANDROID_TRIAL_ENABLED: "true",
-        REVENUECAT_SECRET_KEY: "secret",
-        REVENUECAT_PROJECT_ID: "project",
+      env: ankyWorld({
+        autoTrialEnabled: true,
+        androidTrialEnabled: true,
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
       }),
       accountId: "AndroidWriterAccountId",
       accountIdHash: "publicHash",

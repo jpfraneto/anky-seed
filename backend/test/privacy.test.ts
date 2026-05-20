@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp, createSafeLogger, loadEnv } from "../src";
+import { createApp, createSafeLogger, ankyWorld } from "../server";
 
 describe("privacy logging", () => {
   test("safe logger does not receive writing, prompt, or reflection fields", () => {
@@ -29,7 +29,7 @@ describe("privacy logging", () => {
   test("endpoint errors and logs do not echo raw writing", async () => {
     const lines: string[] = [];
     const app = createApp({
-      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      env: ankyWorld(),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
     });
     const privateWriting = "1770000000000 secret-private-writing";

@@ -10,7 +10,7 @@ This endpoint receives one exact `.anky` artifact, verifies a Base/EVM identity 
 
 The server is a mirror, not memory.
 
-The current mirror runtime/product logic is intentionally consolidated in `services/mirror/src/index.ts`.
+The mirror runtime/product logic is intentionally consolidated in `backend/server.ts`.
 
 ## Endpoint
 
@@ -41,6 +41,14 @@ X-Anky-Trial-Proof: <platform_attestation_token>
 ```
 
 Trial proof must not contain writing and must not replace request signature verification.
+
+Optional x402 payment header:
+
+```txt
+PAYMENT-SIGNATURE: <base64_payment_payload>
+```
+
+If the writer has no available credit, the endpoint returns `402 Payment Required` with `PAYMENT-REQUIRED`. The client creates a payment payload from that header and retries with `PAYMENT-SIGNATURE`. On success, the server returns `PAYMENT-RESPONSE`.
 
 ## Identity
 
@@ -110,7 +118,7 @@ Verification rules:
 3. Require `X-Anky-Identity-Version: anky.base.eoa.v1`.
 4. Parse `X-Anky-Account` as an EIP-55-compatible `0x...` address.
 5. Normalize the address to EIP-55 checksum format.
-6. Require the configured Base chain (`ANKY_BASE_CHAIN_ID`, default `8453`) to be supported.
+6. Require Base mainnet chain ID `8453`.
 7. Reconstruct the EIP-712 domain, type, and message from server-derived values.
 8. Recover/verify the signer address from `X-Anky-Signature`.
 9. Reject if the recovered address does not equal the account address.

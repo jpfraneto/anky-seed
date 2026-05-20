@@ -12,7 +12,7 @@ Future direction:
 
 Current placeholder:
 
-- `services/mirror/src/index.ts`
+- `backend/server.ts`
 - `VeilCashFundingProviderPlaceholder` fails closed with `VEIL_CASH_INTEGRATION_NOT_CONFIGURED`.
 
 No production transaction flow is implemented here.

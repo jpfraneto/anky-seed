@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseMirrorResponse } from "../src";
+import { parseMirrorResponse } from "../server";
 
 describe("parseMirrorResponse", () => {
   test("accepts strict JSON", () => {

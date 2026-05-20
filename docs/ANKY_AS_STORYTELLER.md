@@ -13,11 +13,11 @@ No server memory:
 - no embeddings;
 - no login/session/profile.
 
-Provider routing lives inside the one-file mirror runtime, `services/mirror/src/index.ts`. Providers declare zero-data-retention, content logging, and training status. `ANKY_REQUIRE_ZDR=true` skips unconfirmed providers. The default fallback is no-charge and does not call a model.
+Provider routing lives inside the one-file mirror runtime, `backend/server.ts`. Providers declare zero-data-retention, content logging, and training status. The default fallback is no-charge and does not call a model.
 
 Storyteller entrypoint:
 
-- mirror runtime, prompt, provider router, route/core, identity verifier, credit ledger, diagnostics: `services/mirror/src/index.ts`
+- mirror runtime, prompt, provider router, route/core, identity verifier, x402, credit ledger, diagnostics: `backend/server.ts`
 - protocol: `protocol/implementations/typescript/src/identity.ts`
 - iOS request path: `apps/ios/Anky/Core/Mirror/AnkyPostSigner.swift`, `apps/ios/Anky/Core/Mirror/MirrorClient.swift`
 - Android request path: `apps/android/app/src/main/java/inc/anky/android/core/identity/AnkyPostSigner.kt`, `apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt`

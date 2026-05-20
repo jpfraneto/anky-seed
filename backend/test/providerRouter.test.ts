@@ -1,14 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { loadEnv, openRouterProvider, routeReflection } from "../src";
+import { ankyWorld, openRouterProvider, routeReflection } from "../server";
 
 describe("provider router", () => {
   test("OpenRouter requests deny data collection and require ZDR", async () => {
     let body: any;
     const result = await openRouterProvider.reflect({
-      env: loadEnv({
-        OPENROUTER_API_KEY: "key",
-        OPENROUTER_MODEL: "model",
-        OPENROUTER_PRIVACY_CONFIRMED: "true",
+      env: ankyWorld({
+        openrouterApiKey: "key",
+        openrouterModel: "model",
       }),
       prompt: "transient prompt",
       fetchImpl: async (_url, init) => {
@@ -25,7 +24,7 @@ describe("provider router", () => {
 
   test("unconfirmed providers are skipped when ZDR is required", async () => {
     const result = await routeReflection({
-      env: loadEnv({ ANKY_PROVIDER_ORDER: "bankr,poiesis,default", ANKY_REQUIRE_ZDR: "true" }),
+      env: ankyWorld({ providerOrder: ["bankr", "poiesis", "default"], requireZdr: true }),
       prompt: "not logged",
     });
 

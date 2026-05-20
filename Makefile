@@ -14,10 +14,10 @@ protocol-test:
 	cd protocol/implementations/typescript && bun install && bun test
 
 mirror-dev:
-	cd services/mirror && bun install && bun run dev
+	cd backend && bun install && bun run dev
 
 mirror-test:
-	cd services/mirror && bun install && bun test
+	cd backend && bun install && bun test
 
 android-test:
 	cd apps/android && $(ANDROID_ENV) ./gradlew :app:test
