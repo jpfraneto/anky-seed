@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveReflectionCredit } from "../src/credits/spendCredit";
-import { loadEnv } from "../src/env";
+import { loadEnv, resolveReflectionCredit } from "../src";
 
 describe("reflection credit spending", () => {
   test("Android account trial grants once then spends one credit when explicitly enabled", async () => {

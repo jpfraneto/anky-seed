@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { signAnkyMirrorRequest } from "@anky/protocol";
-import { clearReplayMemoryForTests } from "../src/auth/replayProtection";
-import { createApp } from "../src";
-import { loadEnv } from "../src/env";
-import { clearInFlightForTests } from "../src/routes/anky";
-import { createSafeLogger } from "../src/privacy/safeLogger";
-import { normalizeMetadataValue } from "../src/privacy/redaction";
+import {
+  clearInFlightForTests,
+  clearReplayMemoryForTests,
+  createApp,
+  createSafeLogger,
+  loadEnv,
+  normalizeMetadataValue,
+} from "../src";
 
 const fixtureRoot = resolve(import.meta.dir, "../../../protocol/fixtures");
 const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -15,6 +17,21 @@ const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon
 beforeEach(() => {
   clearReplayMemoryForTests();
   clearInFlightForTests();
+});
+
+describe("GET /health", () => {
+  test("returns operational health without requiring secrets", async () => {
+    const app = createApp({
+      env: loadEnv({}),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/health");
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ ok: true });
+  });
 });
 
 describe("POST /anky", () => {
@@ -474,6 +491,52 @@ describe("POST /anky", () => {
     expect(JSON.stringify(json)).not.toContain("Here is what I saw");
   });
 
+  test("failed reflection releases duplicate protection for a retry", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const now = Date.now();
+    let routerCalls = 0;
+    let spendCalls = 0;
+    const app = createApp({
+      env: loadEnv({ REQUEST_TIME_TOLERANCE_MS: "300000" }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 4, result: "spent", spentCredit: true }),
+        routeReflection: async () => {
+          routerCalls += 1;
+          if (routerCalls === 1) throw new Error("provider down");
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "retry thread",
+            reflection: "hey, thanks for being who you are. my thoughts:",
+          };
+        },
+        spendPreparedReflectionCredit: async () => {
+          spendCalls += 1;
+          return { ok: true, creditsRemaining: 3, result: "spent", spentCredit: true };
+        },
+      },
+    });
+
+    const first = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {}, String(now)),
+      body,
+    });
+    const second = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {}, String(now + 1)),
+      body,
+    });
+    const json = await second.json();
+
+    expect(first.status).toBe(500);
+    expect(second.status).toBe(200);
+    expect(json.title).toBe("retry thread");
+    expect(routerCalls).toBe(2);
+    expect(spendCalls).toBe(1);
+  });
+
   test("same .anky from different addresses uses separate duplicate keys", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let creditCalls = 0;
@@ -618,6 +681,42 @@ describe("POST /anky", () => {
     expect(logs).not.toContain("You are Anky");
     expect(logs).not.toContain("Here is what I saw");
     expect(logs).not.toContain("1770000000000");
+  });
+
+  test("diagnostics contain only safe mirror metadata", async () => {
+    const events: unknown[] = [];
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const headers = await signedHeaders(body, {
+      "X-Anky-Client": "ios",
+      "X-Anky-Trial-Proof": "raw-proof-token",
+    });
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+      diagnostics: {
+        record(event) {
+          events.push(event);
+        },
+      },
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 7, result: "trial_granted_spent", spentCredit: true }),
+      },
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers, body });
+    const serialized = JSON.stringify(events);
+
+    expect(response.status).toBe(200);
+    expect(events).toHaveLength(1);
+    expect(serialized).toContain("\"status\":200");
+    expect(serialized).toContain("\"provider\":\"mock\"");
+    expect(serialized).toContain("\"client\":\"ios\"");
+    expect(serialized).not.toContain(headers["X-Anky-Account"]);
+    expect(serialized).not.toContain(headers["X-Anky-Signature"]);
+    expect(serialized).not.toContain("raw-proof-token");
+    expect(serialized).not.toContain("You are Anky");
+    expect(serialized).not.toContain("Here is what I saw");
+    expect(serialized).not.toContain("1770000000000");
   });
 
   test("hostile app version is normalized before metadata logging", async () => {

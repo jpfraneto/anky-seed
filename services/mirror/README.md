@@ -4,6 +4,8 @@ Bun + Hono service for the stateless ANKY mirror.
 
 The only app-facing endpoint is `POST /anky`. It accepts the exact `.anky` UTF-8 bytes as `text/plain; charset=utf-8`, verifies Base/EVM EIP-712 identity headers with `X-Anky-Account: 0xChecksumAddress`, derives the hash/duration/reconstructed text on the server, asks the provider router, spends a credit only after a real provider succeeds, returns JSON, and forgets. It does not store raw `.anky`, reconstructed writing, prompts, or reflections.
 
+The mirror runtime/product logic lives in one auditable source file: `services/mirror/src/index.ts`. Tests and the Cloudflare Worker import that public surface directly.
+
 ## Run Locally
 
 ```sh
@@ -89,7 +91,7 @@ Production startup fails loudly if dev bypass/mock is enabled, OpenRouter config
 
 OpenRouter privacy note: the adapter does not log prompts or responses. The exact no-data-collection routing flag must be verified against the current OpenRouter account/API configuration before setting `OPENROUTER_PRIVACY_CONFIRMED=true`.
 
-RevenueCat note: RevenueCat is the credit ledger with the checksum address as customer identity. Reflection spend, trial grant, and refund all use server-derived idempotency keys and safe references that never include writing, prompts, reflections, private keys, seed phrases, or raw DeviceCheck tokens. The adapter is isolated and does not create a custom credit database.
+RevenueCat note: RevenueCat is the credit ledger with the checksum address as customer identity. Reflection spend and trial grant use server-derived idempotency keys and safe references that never include writing, prompts, reflections, private keys, seed phrases, or raw DeviceCheck tokens. A refund helper remains available for manual/support recovery paths, but the current `POST /anky` flow spends only after a chargeable provider succeeds and therefore does not use spend-then-refund semantics. The adapter is isolated and does not create a custom credit database.
 
 Automatic iOS trial ordering is fail-closed and database-free:
 
@@ -150,7 +152,7 @@ iOS real-device automatic trial QA:
 6. Confirm the app stores the reflection locally and no writing, prompt, reflection, or raw DeviceCheck token appears in logs.
 7. Reinstall or create a new local Base account on the same device and confirm there is no second automatic trial grant.
 
-Failure QA: force model failure after spend and confirm the server attempts a `+1 CRD` refund while keeping the DeviceCheck trial claim closed.
+Failure QA: force model failure before spend and confirm the server returns `MIRROR_FAILED`, does not spend a credit, and does not issue a refund.
 
 Android QA: confirm paid RevenueCat credits still work, automatic trials remain disabled, and Android never receives public-address-only automatic grants.
 

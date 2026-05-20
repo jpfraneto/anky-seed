@@ -4,7 +4,7 @@ import {
   grantRevenueCatCredits,
   refundRevenueCatCredit,
   spendRevenueCatCredit,
-} from "../src/credits/revenuecat";
+} from "../src";
 
 describe("RevenueCat credits", () => {
   test("reads the configured virtual currency balance", async () => {

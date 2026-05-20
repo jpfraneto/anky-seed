@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MemoryIdempotencyStore } from "../../mirror/src/idempotency/store";
+import { MemoryIdempotencyStore } from "../../mirror/src";
 
 describe("Worker idempotency contract", () => {
   test("uses processing, succeeded, and failed states without content", async () => {

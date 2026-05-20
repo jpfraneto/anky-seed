@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { loadEnv } from "../src/env";
-import { openRouterProvider, routeReflection } from "../src/mirror/providers";
+import { loadEnv, openRouterProvider, routeReflection } from "../src";
 
 describe("provider router", () => {
   test("OpenRouter requests deny data collection and require ZDR", async () => {

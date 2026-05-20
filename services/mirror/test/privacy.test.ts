@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../src";
-import { loadEnv } from "../src/env";
-import { createSafeLogger } from "../src/privacy/safeLogger";
+import { createApp, createSafeLogger, loadEnv } from "../src";
 
 describe("privacy logging", () => {
   test("safe logger does not receive writing, prompt, or reflection fields", () => {

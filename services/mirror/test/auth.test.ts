@@ -2,8 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { bodySha256Bytes32, signAnkyMirrorRequest } from "@anky/protocol";
-import { isFreshRequestTime } from "../src/auth/replayProtection";
-import { AnkyAuthError, verifyAnkyBaseRequest } from "../src/auth/verifyAnkyIdentity";
+import { AnkyAuthError, isFreshRequestTime, verifyAnkyBaseRequest } from "../src";
 
 const fixtureRoot = resolve(import.meta.dir, "../../../protocol/identity/fixtures");
 
@@ -52,6 +51,70 @@ describe("Base EIP-712 request auth", () => {
         },
       }),
     ).rejects.toThrow(new AnkyAuthError("UNSUPPORTED_IDENTITY_VERSION"));
+  });
+
+  test("rejects missing required Base identity headers cleanly", async () => {
+    const signed = await signAnkyMirrorRequest({
+      mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      chainId: 8453,
+      body: "body",
+      requestTime: 1770000000000,
+      client: "other",
+    });
+    const bodyBytes = new TextEncoder().encode("body");
+
+    await expect(
+      verifyAnkyBaseRequest({
+        allowedChainId: 8453,
+        bodyBytes,
+        headers: {
+          account: signed.identity.accountId,
+          signatureType: "eip712",
+          signature: signed.signature,
+          requestTime: "1770000000000",
+          client: "other",
+        },
+      }),
+    ).rejects.toThrow(new AnkyAuthError("MISSING_IDENTITY_VERSION"));
+
+    await expect(
+      verifyAnkyBaseRequest({
+        allowedChainId: 8453,
+        bodyBytes,
+        headers: {
+          identityVersion: signed.identity.identityVersion,
+          signatureType: "eip712",
+          signature: signed.signature,
+          requestTime: "1770000000000",
+          client: "other",
+        },
+      }),
+    ).rejects.toThrow(new AnkyAuthError("MISSING_ACCOUNT"));
+  });
+
+  test("rejects non-EIP-712 signature types", async () => {
+    const signed = await signAnkyMirrorRequest({
+      mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      chainId: 8453,
+      body: "body",
+      requestTime: 1770000000000,
+      client: "other",
+    });
+
+    await expect(
+      verifyAnkyBaseRequest({
+        allowedChainId: 8453,
+        bodyBytes: new TextEncoder().encode("body"),
+        headers: {
+          identityVersion: signed.identity.identityVersion,
+          account: signed.identity.accountId,
+          signatureType: "personal_sign",
+          signature: signed.signature,
+          requestTime: "1770000000000",
+          client: "other",
+        },
+      }),
+    ).rejects.toThrow(new AnkyAuthError("INVALID_SIGNATURE_TYPE"));
   });
 
   test("rejects stale request times", () => {

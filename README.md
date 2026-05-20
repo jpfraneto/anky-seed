@@ -62,6 +62,8 @@ The mirror exposes:
 
 `POST /anky` accepts `Content-Type: text/plain; charset=utf-8`. The request body is the exact `.anky` text/bytes. It does not accept JSON writing bodies.
 
+The mirror runtime/product logic is consolidated in `services/mirror/src/index.ts`; tests and the Worker import that same surface.
+
 Signature verification is EIP-712 over a Base account identity. Current requests use `X-Anky-Identity-Version: anky.base.eoa.v1`, `X-Anky-Account: 0xChecksumAddress`, `X-Anky-Signature-Type: eip712`, and an EVM signature over the server-derived `.anky` body hash. The Base chain ID remains in env and EIP-712 domain data.
 
 The service listens on `process.env.PORT` and `0.0.0.0` for Railway. It has a production guard: when `ANKY_ENV=production` or `NODE_ENV=production`, dev credit bypass and mock mirror are forbidden, OpenRouter and RevenueCat configuration are required, and startup fails loudly if the mirror is unsafe.

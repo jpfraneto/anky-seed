@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { loadEnv } from "../src/env";
-import { evaluateTrialEligibility } from "../src/trial/evaluateTrialEligibility";
+import { evaluateTrialEligibility, loadEnv } from "../src";
 
 describe("trial eligibility", () => {
   test("iOS valid proof with bit0 false is eligible", async () => {

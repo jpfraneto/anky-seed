@@ -2,6 +2,8 @@
 
 The mirror service is deployable as a Docker-backed Railway service from `services/mirror/Dockerfile`.
 
+The Railway service uses the same one-file runtime as tests and the Worker: `services/mirror/src/index.ts`.
+
 ## Local Safety Check
 
 ```sh
@@ -70,6 +72,6 @@ Verify current non-secret Railway state without printing API keys:
 railway run --service mirror --environment production -- sh -c 'printf "ANKY_MIRROR_DISABLED=%s\nOPENROUTER_PRIVACY_CONFIRMED=%s\nREVENUECAT_CREDIT_CODE=%s\n" "$ANKY_MIRROR_DISABLED" "$OPENROUTER_PRIVACY_CONFIRMED" "$REVENUECAT_CREDIT_CODE"'
 ```
 
-## v0 Replay Scope
+## Duplicate Protection Scope
 
-Replay and duplicate-in-progress protection are in memory. This is acceptable for one Railway instance in v0. Do not add Redis or a database unless the deployment moves to multiple instances and replay protection must survive process restarts.
+Replay protection and duplicate-in-progress/succeeded protection are in memory for the Railway runtime. This is acceptable only for the current single-instance Railway deployment. The Cloudflare Worker path binds the same idempotency contract to Durable Objects through `services/mirror-worker/src/index.ts`. Do not add Redis or a database unless the deployment moves to multiple Railway instances and replay/duplicate protection must survive process restarts there.

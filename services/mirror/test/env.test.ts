@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { assertProductionSafe, loadEnv } from "../src/env";
+import { assertProductionSafe, loadEnv } from "../src";
 
 describe("production environment guard", () => {
   test("defaults automatic trials to disabled and 8 credits", () => {

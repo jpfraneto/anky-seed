@@ -10,6 +10,8 @@ This endpoint receives one exact `.anky` artifact, verifies a Base/EVM identity 
 
 The server is a mirror, not memory.
 
+The current mirror runtime/product logic is intentionally consolidated in `services/mirror/src/index.ts`.
+
 ## Endpoint
 
 ```txt
@@ -181,6 +183,8 @@ sha256(address + ":" + ankyHash)
 Trial grants require official-app/device proof. A public address alone must not grant trial credits.
 
 Development credit bypass may bypass credits only. It must not bypass request identity verification.
+
+The current tested credit contract is prepare-before-model, spend-after-chargeable-provider-success. A model failure before spend does not charge and does not need a refund. The no-charge default fallback returns safely without spending.
 
 Manual credit support copy:
 
