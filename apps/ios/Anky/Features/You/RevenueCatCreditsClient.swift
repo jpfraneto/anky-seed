@@ -22,34 +22,38 @@ enum RevenueCatCreditsConfiguration {
 
 final class RevenueCatCreditsClient {
     @MainActor
-    private static var configuredPublicKey: String?
+    private static var configuredAccountId: String?
+
+    static func appUserID(for identity: WriterIdentity) -> String {
+        CreditIdentity.appUserID(for: identity)
+    }
 
     @MainActor
-    func identify(publicKey: String) async throws {
-        guard !publicKey.isEmpty else { return }
+    func identify(accountId: String) async throws {
+        guard !accountId.isEmpty else { return }
 
-        if Self.configuredPublicKey == nil {
+        if Self.configuredAccountId == nil {
             #if DEBUG
             Purchases.logLevel = .debug
             #endif
             Purchases.configure(
                 withAPIKey: RevenueCatCreditsConfiguration.apiKey,
-                appUserID: publicKey
+                appUserID: accountId
             )
-            Self.configuredPublicKey = publicKey
+            Self.configuredAccountId = accountId
             return
         }
 
-        guard Self.configuredPublicKey != publicKey else {
+        guard Self.configuredAccountId != accountId else {
             return
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            Purchases.shared.logIn(publicKey) { _, _, error in
+            Purchases.shared.logIn(accountId) { _, _, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    Self.configuredPublicKey = publicKey
+                    Self.configuredAccountId = accountId
                     continuation.resume()
                 }
             }

@@ -12,6 +12,9 @@ let package = Package(
         .library(name: "AnkyProtocol", targets: ["AnkyProtocol"]),
         .library(name: "AnkyCore", targets: ["AnkyCore"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/web3swift-team/web3swift.git", from: "3.3.2")
+    ],
     targets: [
         .target(
             name: "AnkyProtocol",
@@ -19,7 +22,10 @@ let package = Package(
         ),
         .target(
             name: "AnkyCore",
-            dependencies: ["AnkyProtocol"],
+            dependencies: [
+                "AnkyProtocol",
+                .product(name: "web3swift", package: "web3swift")
+            ],
             path: "Anky/Core",
             exclude: [
                 "Clipboard",

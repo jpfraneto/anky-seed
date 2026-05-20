@@ -3,7 +3,7 @@ import { resolveReflectionCredit } from "../src/credits/spendCredit";
 import { loadEnv } from "../src/env";
 
 describe("reflection credit spending", () => {
-  test("Android public-key trial grants once then spends one credit when explicitly enabled", async () => {
+  test("Android account trial grants once then spends one credit when explicitly enabled", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const result = await resolveReflectionCredit({
       env: loadEnv({
@@ -14,8 +14,8 @@ describe("reflection credit spending", () => {
         REVENUECAT_PROJECT_ID: "project",
         REVENUECAT_CREDIT_CODE: "CRD",
       }),
-      publicKey: "AndroidWriterPublicKey",
-      publicKeyHash: "publicHash",
+      accountId: "AndroidWriterAccountId",
+      accountIdHash: "publicHash",
       ankyHash: "ankyHash",
       client: "android",
       fetchImpl: async (url, init) => {
@@ -34,7 +34,7 @@ describe("reflection credit spending", () => {
     const grantBody = JSON.parse(String(calls[1]?.init.body));
     expect(grantBody.adjustments).toEqual({ CRD: 8 });
     expect(String(grantBody.reference).startsWith("anky-trial-v1:android:publicHash:")).toBe(true);
-    expect(String(calls[1]?.init.body)).not.toContain("AndroidWriterPublicKey");
+    expect(String(calls[1]?.init.body)).not.toContain("AndroidWriterAccountId");
   });
 
   test("Android trial stays unavailable when Play Integrity is still required", async () => {
@@ -45,8 +45,8 @@ describe("reflection credit spending", () => {
         REVENUECAT_SECRET_KEY: "secret",
         REVENUECAT_PROJECT_ID: "project",
       }),
-      publicKey: "AndroidWriterPublicKey",
-      publicKeyHash: "publicHash",
+      accountId: "AndroidWriterAccountId",
+      accountIdHash: "publicHash",
       ankyHash: "ankyHash",
       client: "android",
       fetchImpl: async () => jsonResponse({ items: [{ balance: 0, currency_code: "CRD" }] }),

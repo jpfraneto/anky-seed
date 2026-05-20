@@ -1,7 +1,6 @@
 package inc.anky.android.mirror
 
 import inc.anky.android.BuildConfig
-import inc.anky.android.core.identity.AnkyPostSigner
 import inc.anky.android.core.identity.RecoveryPhrase
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
@@ -109,23 +108,19 @@ class MirrorClientTest {
             assertEquals("/anky", request.path)
             assertEquals("text/plain; charset=utf-8", request.getHeader("Content-Type"))
             assertEquals("application/json", request.getHeader("Accept"))
-            assertEquals(identity.publicKey, request.getHeader("X-Anky-Public-Key"))
+            assertEquals("anky.base.eoa.v1", request.getHeader("X-Anky-Identity-Version"))
+            assertEquals(identity.accountId, request.getHeader("X-Anky-Account"))
+            assertEquals("eip712", request.getHeader("X-Anky-Signature-Type"))
+            assertEquals(null, request.getHeader("X-Anky-Public-Key"))
             assertEquals("android", request.getHeader("X-Anky-Client"))
             assertEquals("1.0(1)", request.getHeader("X-Anky-App-Version"))
             assertEquals(null, request.getHeader("X-Anky-Trial-Proof"))
             val signature = request.getHeader("X-Anky-Signature")!!
             val requestTime = request.getHeader("X-Anky-Request-Time")!!
             assertTrue(signature.isNotBlank())
+            assertTrue(signature.startsWith("0x"))
+            assertEquals(132, signature.length)
             assertTrue(requestTime.isNotBlank())
-            assertTrue(
-                identity.verifies(
-                    AnkyPostSigner.canonicalMessage(
-                        requestTime = requestTime,
-                        bodySha256 = AnkyHasher.sha256Hex(body),
-                    ),
-                    signature,
-                ),
-            )
         } finally {
             server.shutdown()
         }

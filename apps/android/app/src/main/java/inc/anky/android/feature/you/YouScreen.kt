@@ -139,7 +139,7 @@ fun YouScreen(viewModel: YouViewModel) {
                 when (page.value!!) {
                     YouPage.Account -> AccountPage(
                         state = state,
-                        onCopyPublicKey = { context.copyText("Anky public identity", state.publicKey) },
+                        onCopyAccountId = { context.copyText("Anky address", state.accountId) },
                         onRevealRecovery = viewModel::revealRecoveryPhrase,
                         onCopyRecovery = { state.recoveryPhrase?.let { context.copyText("Anky recovery key", it) } },
                         onHideRecovery = viewModel::hideRecoveryPhrase,
@@ -523,7 +523,7 @@ private fun YouDetailShell(page: YouPage, onBack: () -> Unit, content: @Composab
 @Composable
 private fun AccountPage(
     state: YouState,
-    onCopyPublicKey: () -> Unit,
+    onCopyAccountId: () -> Unit,
     onRevealRecovery: () -> Unit,
     onCopyRecovery: () -> Unit,
     onHideRecovery: () -> Unit,
@@ -562,9 +562,9 @@ private fun AccountPage(
             }
         }
         AnkyActionButton("recover identity", onClick = onImportPhrase)
-        Text("public identity", style = AnkyType.Caption)
-        Text(state.publicKey, style = AnkyType.Mono.copy(color = AnkyColors.PaperMuted))
-        AnkyActionButton("copy public identity", onClick = onCopyPublicKey)
+        Text("Anky address", style = AnkyType.Caption)
+        Text(state.accountId, style = AnkyType.Mono.copy(color = AnkyColors.PaperMuted))
+        AnkyActionButton("copy account", onClick = onCopyAccountId)
     }
     AnkyPanel {
         SwitchRow("daily reminder", state.dailyReminderEnabled, onReminder)
@@ -682,7 +682,7 @@ private fun CreditsPage(
     AnkyPanel {
         AnkyActionButton("share support request", onClick = onShareFreeCredit)
         AnkyActionButton("contact jp / support", onClick = onDmJp)
-        Text("support credit requests use your public identity only. no writing is included.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("support credit requests use your account id only. no writing is included.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
 }
 
@@ -791,7 +791,7 @@ private fun DeveloperPage(
             label = { Text("mirror base url") },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("simulator local mirror: http://127.0.0.1:3000. physical devices need your mac's lan ip.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("emulator local mirror: http://10.0.2.2:3000. physical devices should use the deployed https mirror or an https tunnel to local.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         AnkyActionButton("save mirror url", onClick = onSaveMirrorUrl)
         AnkyActionButton("repair map index", onClick = onRepairMapIndex)
     }
@@ -902,7 +902,7 @@ private val PrivacyCopy = listOf(
 
 private val TokenCopy = listOf(
     ArticleItem.Paragraph("a memecoin is the simplest possible expression of an idea on the internet. no pitch deck, no roadmap, no Series A. just a name, a ticker, and a bet that enough people will recognize what it points to."),
-    ArticleItem.Paragraph("\$ANKY was launched on pump.fun on Solana. that's it. no presale, no team allocation, no vesting schedule. the bonding curve did what bonding curves do."),
+    ArticleItem.Paragraph("\$ANKY exists as a memecoin. that's it. no presale, no team allocation, no vesting schedule. the bonding curve did what bonding curves do."),
     ArticleItem.Heading("what it points to"),
     ArticleItem.Paragraph("anky is a writing practice. you sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. the token doesn't change what the practice is. it doesn't unlock features or grant access. it's a flag planted in the ground that says: this idea exists, and the market gets to decide what it's worth."),
     ArticleItem.Heading("memecoins and the new internet"),

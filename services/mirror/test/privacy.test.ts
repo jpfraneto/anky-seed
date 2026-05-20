@@ -10,7 +10,7 @@ describe("privacy logging", () => {
 
     logger.info({
       requestId: "req_1",
-      publicKeyHash: "pk_hash",
+      accountIdHash: "pk_hash",
       ankyHash: "anky_hash",
       client: "ios",
       statusCode: 200,

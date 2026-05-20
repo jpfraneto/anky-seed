@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class YouViewModel: ObservableObject {
-    @Published private(set) var publicKey = ""
+    @Published private(set) var accountId = ""
     @Published private(set) var ankyFileURLs: [URL] = []
     @Published private(set) var reflectionFileURLs: [URL] = []
     @Published private(set) var backupZipURL: URL?
@@ -61,7 +61,7 @@ final class YouViewModel: ObservableObject {
 
     func refresh() {
         do {
-            publicKey = try identityStore.loadOrCreate().publicKey
+            accountId = try identityStore.loadOrCreate().accountId
             ankyFileURLs = archive.fileURLs()
             reflectionFileURLs = reflectionStore.fileURLs()
             backupZipURL = try backupExporter.exportBackup()
@@ -69,10 +69,10 @@ final class YouViewModel: ObservableObject {
             updateStats()
             errorMessage = nil
             Task {
-                try? await creditsClient.identify(publicKey: publicKey)
+                try? await creditsClient.identify(accountId: accountId)
             }
         } catch {
-            errorMessage = "Could not load the local identity."
+            errorMessage = "Could not load the local Base identity."
         }
     }
 
@@ -91,7 +91,7 @@ final class YouViewModel: ObservableObject {
     }
 
     func revealRecoveryPhrase() async {
-        guard await biometricAuth.confirm(reason: "Show your ANKY recovery key.") else {
+        guard await biometricAuth.confirm(reason: "Show your ANKY recovery phrase.") else {
             errorMessage = "Could not confirm identity."
             return
         }
@@ -101,7 +101,22 @@ final class YouViewModel: ObservableObject {
             sensitiveIdentityConfirmed = true
             errorMessage = nil
         } catch {
-            errorMessage = "Could not load the recovery key."
+            errorMessage = "Could not load the recovery phrase."
+        }
+    }
+
+    func backUpIdentityToICloudKeychain() async {
+        guard await biometricAuth.confirm(reason: "Back up your ANKY recovery phrase to iCloud Keychain.") else {
+            errorMessage = "Could not confirm identity."
+            return
+        }
+
+        do {
+            try identityStore.backUpRecoveryPhraseToICloudKeychain()
+            statusMessage = "Anky identity backup saved to iCloud Keychain. Anky cannot read or recover it."
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not back up Anky identity."
         }
     }
 
@@ -113,8 +128,8 @@ final class YouViewModel: ObservableObject {
 
         do {
             let identity = try identityStore.importRecoveryPhrase(phraseText)
-            publicKey = identity.publicKey
-            try? await creditsClient.identify(publicKey: identity.publicKey)
+            accountId = identity.accountId
+            try? await creditsClient.identify(accountId: identity.accountId)
             recoveryPhraseText = ""
             sensitiveIdentityConfirmed = false
             refresh()
@@ -122,10 +137,10 @@ final class YouViewModel: ObservableObject {
             errorMessage = nil
             return true
         } catch RecoveryPhraseError.invalidWordCount {
-            errorMessage = "Recovery key must be 12 words."
+            errorMessage = "Recovery phrase must be 12 words."
             return false
         } catch RecoveryPhraseError.unknownWord {
-            errorMessage = "Recovery key contains an unrecognized word."
+            errorMessage = "Recovery phrase contains an unrecognized word."
             return false
         } catch {
             errorMessage = "Could not recover that identity."
@@ -225,8 +240,8 @@ final class YouViewModel: ObservableObject {
             try identityStore.resetForDevelopment()
             refresh()
             Task {
-                if !publicKey.isEmpty {
-                    try? await creditsClient.identify(publicKey: publicKey)
+                if !accountId.isEmpty {
+                    try? await creditsClient.identify(accountId: accountId)
                 }
             }
             statusMessage = "Local identity reset."
@@ -245,10 +260,10 @@ final class YouViewModel: ObservableObject {
         defer { creditsLoading = false }
 
         do {
-            if publicKey.isEmpty {
-                publicKey = try identityStore.loadOrCreate().publicKey
+            if accountId.isEmpty {
+                accountId = try identityStore.loadOrCreate().accountId
             }
-            try await creditsClient.identify(publicKey: publicKey)
+            try await creditsClient.identify(accountId: accountId)
             let packages = try await creditsClient.fetchCreditPackages()
             let balance = try await creditsClient.fetchCreditBalance()
             creditPackages = packages
@@ -266,7 +281,7 @@ final class YouViewModel: ObservableObject {
         defer { purchasingCreditPackageID = nil }
 
         do {
-            try await creditsClient.identify(publicKey: publicKey)
+            try await creditsClient.identify(accountId: accountId)
             try await creditsClient.purchase(creditPackage)
             let balance = try await creditsClient.fetchCreditBalance()
             creditBalance = balance
@@ -278,16 +293,12 @@ final class YouViewModel: ObservableObject {
     }
 
     var freeCreditMessage: String {
-        FreeCreditMessage.make(publicKey: publicKey, appVersion: appVersion)
+        FreeCreditMessage.make(accountId: accountId, appVersion: appVersion)
     }
 
     var freeCreditWhatsAppURL: URL? {
         let encoded = freeCreditMessage.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         return URL(string: "https://wa.me/56985491126?text=\(encoded)")
-    }
-
-    var ankyCoinContractAddress: String {
-        "6GsRbp2Bz9QZsoAEmUSGgTpTW7s59m7R3EGtm1FPpump"
     }
 
     var appVersion: String {

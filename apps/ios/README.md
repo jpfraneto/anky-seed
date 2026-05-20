@@ -23,10 +23,10 @@ Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -
 - Reveal includes the local ownership reminder: writing only leaves the device after an explicit reflection request and only after 8 minutes.
 - Fragments show copy actions only.
 - Complete ankys show `Ask Anky` when no local reflection exists.
-- `Ask Anky` sends the exact `.anky` UTF-8 bytes to `POST /anky` with signature headers.
+- `Ask Anky` must send the exact `.anky` UTF-8 bytes to `POST /anky` with Base EIP-712 identity headers.
 - Returned reflections are stored locally by `.anky` hash.
 - Map shows the local trail by day, with today state, complete/fragment/reflection counts, previews, day detail, and Reveal navigation.
-- You shows local identity, advanced recovery key show/export/recover actions after local auth, Face ID app lock, daily local reminders, local export, support/manual-credit contact, `$ANKY` CA copy, privacy, and RevenueCat-backed credits.
+- You shows local Base account identity, recovery phrase reveal/copy/recover actions after local auth, Face ID app lock, daily local reminders, local export, support/manual-credit contact, privacy, and RevenueCat-backed credits.
 
 ## Build And Run
 
@@ -115,7 +115,7 @@ In the iOS app, open `You` and set `Mirror base URL`.
 
 - Default Railway mirror: `https://mirror-production-a23c.up.railway.app`
 - iOS simulator talking to local mirror: `http://127.0.0.1:3000`
-- Physical iPhone talking to local mirror: `http://<your-mac-lan-ip>:3000`
+- Physical iPhone device testing should use the Railway/staging HTTPS mirror or an HTTPS tunnel to the local mirror. Plain `http://<your-mac-lan-ip>:3000` requires an explicit debug ATS exception before iOS will allow it.
 
 Use the base URL only, not `/anky`; the app appends `/anky`.
 
@@ -133,10 +133,10 @@ Fragments intentionally do not show `Ask Anky`.
 
 On a real iPhone with backend trial flags and Apple DeviceCheck credentials enabled:
 
-1. Fresh install and confirm the app has a local identity with a public identity value.
+1. Fresh install and confirm the app has a local Anky Base account.
 2. Complete a valid 8-minute `.anky`.
 3. Tap `Ask Anky`.
-4. Confirm the request keeps the exact `text/plain` `.anky` body and existing signature headers, and also includes `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
+4. Confirm the request keeps the exact `text/plain` `.anky` body and EIP-712 identity headers, and also includes `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
 5. Confirm the backend grants `+8 CRD`, spends `-1 CRD`, returns the reflection, and the local saved reflection shows `7 reflections left` when the balance is known.
 6. Reinstall or reset local identity on the same device and confirm DeviceCheck prevents a second automatic trial grant.
 
@@ -147,7 +147,7 @@ On a real iPhone with backend trial flags and Apple DeviceCheck credentials enab
 - Reflections: Application Support, `Anky/reflections/<sha256>.json`
 - Session index: Application Support, `Anky/session-index.json`
 - First app open date: UserDefaults
-- Identity private key: Keychain, local device only
+- Identity recovery phrase/private key: Keychain, local device only
 - Mirror base URL: UserDefaults via `AppStorage`
 - Daily reminder preference: UserDefaults plus local notification schedule
 
@@ -159,15 +159,14 @@ Map is local-only. It rebuilds a session index from local `.anky` files, joins l
 
 You is the local control surface:
 
-- Local identity status and advanced public identity copy action.
-- 12-word recovery key generated on first app open, stored in Keychain, and revealable only after local auth.
+- Local Anky address/Base account status and copy action.
+- 12-word recovery phrase generated on first app open, stored in Keychain, and revealable only after local auth.
 - Optional biometric confirmation for sensitive identity settings.
 - Local daily reminder scheduling with `UserNotifications`.
 - Native export/share of individual `.anky` files and reflection JSON files.
-- Support/WhatsApp message containing only public identity, platform, and app version.
+- Support/WhatsApp message containing only accountId, platform, and app version.
 - WhatsApp opens JP directly at `+56 9 8549 1126`.
 - RevenueCat-backed credit balance, credit packs, purchase buttons, and manual refresh.
-- `$ANKY` contract address copy and link to `https://anky.app/ankycoin`.
 - Privacy policy link to `https://anky.app/privacy-policy.md`.
 - DEBUG-only mirror URL and destructive local reset tools.
 
@@ -179,7 +178,7 @@ Run iOS Swift tests:
 swift test --package-path apps/ios --scratch-path /tmp/anky-ios-swiftpm
 ```
 
-The tests cover parser/reconstruction/duration/hash, generated writer output, canonical signing message, exact body hash, Ed25519 identity signing, reflection store save/load, archive listing, Ask Anky eligibility, and the safe free-credit message.
+The tests should cover parser/reconstruction/duration/hash, generated writer output, exact body hash, Base EOA identity derivation, EIP-712 signing, reflection store save/load, archive listing, Ask Anky eligibility, and the safe free-credit message.
 
 ## Privacy Guarantees
 
@@ -188,30 +187,23 @@ The tests cover parser/reconstruction/duration/hash, generated writer output, ca
 - The request body is the exact `.anky` bytes, not JSON.
 - The app does not log raw `.anky`, reconstructed writing, or reflection text.
 - Reflections are stored locally on device.
-- Support/manual-credit message includes only public identity, platform, and app version.
+- Support/manual-credit message includes only accountId, platform, and app version.
 
 ## Known Limitations
 
-- No Android implementation in this pass.
 - RevenueCat purchases require the App Store Connect products, RevenueCat offering, and virtual currency grant rules to remain aligned with the product IDs in `RevenueCatCreditsClient.swift`.
 - iOS automatic trial grants require a real device, DeviceCheck support, backend Apple DeviceCheck credentials, and the backend trial flags. The app sends a DeviceCheck token opportunistically on Ask Anky; paid reflections must still work if token generation fails.
 - No production OpenRouter tuning in iOS; local mirror dev mode is supported.
-- Local identity recovery is implemented with the BIP39 English word list and deterministic ANKY Ed25519 key derivation.
-- Identity is Ed25519 with Solana-style base58 public key/signature, but not yet Solana BIP44 path compatible.
+- iOS Base EOA signing is implemented with `web3swift`/`Web3Core` and fixture-tested against the shared Base EIP-712 protocol vectors.
 - Face ID app lock is local and simple; it is not a full enterprise security boundary.
 - No cloud sync, database, analytics, Map geospatial view, or newline support.
 - Export uses native sharing of individual local files, not a zip archive.
 
 ## Crypto Compatibility Note
 
-The mirror verifies Ed25519 signatures with a 32-byte base58 public key and 64-byte base58 signature. iOS generates a local CryptoKit Ed25519 identity and signs the canonical `ANKY_POST_V1` message in that compatible shape.
-
-The gap: this is recovery-phrase backed, but not yet Solana BIP44 path compatible. The phrase remains local in Keychain and is never sent.
+The current mirror verifies Base EOA EIP-712 signatures. iOS must derive the same fixture account from the public BIP39 test mnemonic and sign the same `AnkyMirrorRequest` typed data before `Ask Anky` is considered compatible.
 
 ## Next Steps
 
-- Keep recovery-key UX calm while preserving deterministic local identity recovery.
 - Add App Attest or a stronger attestation path if DeviceCheck is not enough for future abuse pressure.
 - Improve export with a zip archive.
-- Wire shared protocol fixtures directly into Swift tests.
-- Add Android after the iOS loop remains stable.

@@ -34,7 +34,7 @@ The trial grant must not require screenshots, `.anky` files, reconstructed text,
 
 The trial grant may use:
 
-- public key
+- accountId
 - platform
 - app version
 - RevenueCat customer state

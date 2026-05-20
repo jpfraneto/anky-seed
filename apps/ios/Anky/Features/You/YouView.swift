@@ -13,7 +13,6 @@ struct YouView: View {
     @State private var confirmClearReflections = false
     @State private var confirmClearWritingData = false
     @State private var confirmResetIdentity = false
-    @State private var copiedAnkyCA = false
     @State private var isImportingBackup = false
     @State private var isImportingRecoveryPhrase = false
     @State private var recoveryPhraseInput = ""
@@ -82,16 +81,6 @@ struct YouView: View {
                                 YouMenuRow(icon: "you-icon-credits", title: "credits", subtitle: "reflections and trial credits")
                             }
 
-                            YouDivider()
-
-                            NavigationLink {
-                                AnkyTokenPage(viewModel: viewModel, copiedAnkyCA: $copiedAnkyCA)
-                            } label: {
-                                YouMenuRow(icon: "you-icon-settings", title: "$ANKY", subtitle: "the memetic layer")
-                            }
-
-                            YouDivider()
-
                             if let whatsappURL = viewModel.freeCreditWhatsAppURL {
                                 Button {
                                     openURL(whatsappURL)
@@ -144,6 +133,8 @@ struct YouView: View {
                 Button("reset identity", role: .destructive) {
                     viewModel.resetIdentityForDevelopment()
                 }
+            } message: {
+                Text("Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.")
             }
             .sheet(isPresented: $isImportingRecoveryPhrase) {
                 ImportRecoveryPhraseSheet(
@@ -235,7 +226,7 @@ private struct AccountPage: View {
             YouPanel {
                 Text("local identity")
                     .youCaption()
-                Text("anky created a private identity for this device.")
+                Text("anky created a Base account for this device.")
                     .font(.system(size: 17, weight: .semibold, design: .serif))
                     .foregroundStyle(YouPalette.paper)
                 Text("your writing and identity live here unless you choose to export or recover them elsewhere.")
@@ -245,7 +236,7 @@ private struct AccountPage: View {
             YouPanel {
                 Text("advanced recovery")
                     .youCaption()
-                Text("anyone with this recovery key can restore this identity. keep it private.")
+                Text("this phrase controls your Anky Base account. never share it. anky cannot recover it for you.")
                     .youBody()
 
                 YouDivider()
@@ -255,11 +246,14 @@ private struct AccountPage: View {
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16, design: .serif))
 
-                Text("your recovery key can only be shown after face id is enabled.")
+                Text("your recovery phrase can only be shown after face id is enabled.")
+                    .youBody()
+
+                Text("Your password/biometrics protect local access. They are not an Anky login.")
                     .youBody()
 
                 if viewModel.recoveryPhraseText.isEmpty {
-                    YouActionButton("show recovery key") {
+                    YouActionButton("reveal recovery phrase") {
                         Task {
                             await viewModel.revealRecoveryPhrase()
                         }
@@ -273,7 +267,7 @@ private struct AccountPage: View {
                         .textSelection(.enabled)
 
                     VStack(spacing: 10) {
-                        YouActionButton("export recovery key") {
+                        YouActionButton("copy recovery phrase") {
                             ClipboardClient().copy(viewModel.recoveryPhraseText)
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
@@ -288,17 +282,24 @@ private struct AccountPage: View {
                     isImportingRecoveryPhrase = true
                 }
 
+                YouActionButton("Back up Anky identity") {
+                    Task { await viewModel.backUpIdentityToICloudKeychain() }
+                }
+
+                Text("This stores your recovery phrase in your device/cloud keychain. Anky cannot read it.")
+                    .youBody()
+
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("public identity")
+                    Text("Anky address")
                         .youCaption()
-                    Text(viewModel.publicKey)
+                    Text(viewModel.accountId)
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(YouPalette.paperMuted)
                         .textSelection(.enabled)
                 }
 
-                YouActionButton("copy public identity") {
-                    ClipboardClient().copy(viewModel.publicKey)
+                YouActionButton("copy account") {
+                    ClipboardClient().copy(viewModel.accountId)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
             }
@@ -370,7 +371,7 @@ private struct PrivacyPolicyPage: View {
         .paragraph("anky computes a SHA-256 hash of the exact `.anky` bytes. the hash is for integrity. it is not encryption. if someone has the same `.anky` bytes, they can compute the same hash."),
         .paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/ios/Anky/Core/Protocol)."),
         .heading("local identity"),
-        .paragraph("anky creates a local identity, stores its recovery key in device secure storage, and derives the writing identity locally. the recovery key is not sent to anky."),
+        .paragraph("anky creates a local Base account, stores its recovery phrase in device secure storage, and derives the Anky address locally. the recovery phrase is not sent to anky."),
         .paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/WriterIdentityStore.swift) and [keychain storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/KeychainClient.swift)."),
         .heading("when plaintext leaves"),
         .paragraph("writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
@@ -523,7 +524,7 @@ struct CreditsPage: View {
                     }
                 }
 
-                Text("support credit requests use your public identity only. no writing is included.")
+                Text("support credit requests use your account id only. no writing is included.")
                     .youBody()
             }
         }
@@ -562,92 +563,6 @@ private struct CreditPackageButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isPurchasing)
-    }
-}
-
-private struct AnkyTokenPage: View {
-    @ObservedObject var viewModel: YouViewModel
-    @Binding var copiedAnkyCA: Bool
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        YouDetailShell(title: "$ANKY", subtitle: "the memetic layer") {
-            VStack(spacing: 14) {
-                Image("you-ankycoin")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 136, height: 136)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(YouPalette.gold.opacity(0.5), lineWidth: 1))
-                    .shadow(color: YouPalette.gold.opacity(0.24), radius: 18)
-                    .frame(maxWidth: .infinity)
-
-
-            }
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(Self.tokenCopy.indices, id: \.self) { index in
-                    TokenCopyLine(Self.tokenCopy[index])
-                }
-            }
-
-            YouPanel {
-                Text(viewModel.ankyCoinContractAddress)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(YouPalette.paperMuted)
-                    .textSelection(.enabled)
-
-                YouActionButton(copiedAnkyCA ? "copied!" : "copy contract address") {
-                    ClipboardClient().copy(viewModel.ankyCoinContractAddress)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    copiedAnkyCA = true
-                }
-            }
-        }
-    }
-
-    private static let tokenCopy: [TokenCopyItem] = [
-        .paragraph("a memecoin is the simplest possible expression of an idea on the internet. no pitch deck, no roadmap, no Series A. just a name, a ticker, and a bet that enough people will recognize what it points to."),
-        .paragraph("$ANKY was launched on pump.fun on Solana. that's it. no presale, no team allocation, no vesting schedule. the bonding curve did what bonding curves do."),
-        .heading("what it points to"),
-        .paragraph("anky is a writing practice. you sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. the token doesn't change what the practice is. it doesn't unlock features or grant access. it's a flag planted in the ground that says: this idea exists, and the market gets to decide what it's worth."),
-        .heading("memecoins and the new internet"),
-        .paragraph("the old internet released ideas through products. you built something, charged for it, and hoped people would pay. the new internet releases ideas through tokens. the idea itself becomes tradeable the moment it has a name."),
-        .paragraph("this is either profoundly stupid or profoundly honest. probably both. a memecoin strips away every pretension about what makes something valuable and reduces it to the only question that ever mattered: do people care about this?"),
-        .paragraph("most memecoins are jokes. some jokes contain more truth than business plans. the cosmic joke of $ANKY is that a tool designed to bypass your conscious mind — to help you stop thinking and just write — now has a price feed that people watch with their conscious minds, thinking very hard about whether the number will go up."),
-        .paragraph("the mirror doesn't care about the price. the practice remains free. write for 8 minutes. meet yourself. whether the token is worth a penny or a dollar, the words you wrote are still yours.")
-    ]
-}
-
-private enum TokenCopyItem {
-    case heading(String)
-    case paragraph(String)
-}
-
-private struct TokenCopyLine: View {
-    let item: TokenCopyItem
-
-    init(_ item: TokenCopyItem) {
-        self.item = item
-    }
-
-    var body: some View {
-        switch item {
-        case .heading(let text):
-            Text(text)
-                .font(.custom("Georgia", size: 21).weight(.semibold))
-                .foregroundStyle(YouPalette.gold)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-        case .paragraph(let text):
-            Text(text)
-                .font(.custom("Georgia", size: 16))
-                .lineSpacing(5)
-                .foregroundStyle(YouPalette.paper)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }
 
@@ -691,7 +606,7 @@ private struct DeveloperPage: View {
                     .padding(12)
                     .background(YouPalette.panelStrong, in: RoundedRectangle(cornerRadius: 12))
 
-                Text("simulator local mirror: http://127.0.0.1:3000. physical devices need your mac's lan ip.")
+                Text("simulator local mirror: http://127.0.0.1:3000. physical devices should use the deployed https mirror or an https tunnel to local.")
                     .youBody()
 
                 YouActionButton("repair map index") {

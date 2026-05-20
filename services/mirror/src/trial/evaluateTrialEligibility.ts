@@ -20,7 +20,7 @@ export type TrialEligibility =
 
 export async function evaluateTrialEligibility(input: {
   env: Env;
-  publicKey: string;
+  accountId: string;
   client: string;
   trialProof?: string;
   fetchImpl?: TrialFetch;
@@ -42,7 +42,7 @@ export async function evaluateTrialEligibility(input: {
 
 async function evaluateAndroidTrialEligibility(input: {
   env: Env;
-  publicKey: string;
+  accountId: string;
 }): Promise<TrialEligibility> {
   if (!input.env.androidTrialEnabled) {
     return { eligible: false, reason: "platform_disabled" };
@@ -54,7 +54,7 @@ async function evaluateAndroidTrialEligibility(input: {
   return {
     eligible: true,
     platform: "android",
-    proofHash: await shortHash(`android-public-key-trial-v1:${input.publicKey}`),
+    proofHash: await shortHash(`android-account-trial-v1:${input.accountId}`),
   };
 }
 

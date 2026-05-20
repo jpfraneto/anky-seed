@@ -120,7 +120,7 @@ Answer from the actual shipped binary, not from intent. Current Android behavior
 - Raw `.anky` writing: stored locally in app-specific internal storage. Not collected by Anky unless the writer explicitly taps Ask Anky on a complete Anky.
 - Mirror request body: exact `.anky` bytes are transmitted to the mirror only after explicit Ask Anky. The mirror contract is transient processing and no server-side journal.
 - Reflections: stored locally on device. The mirror returns a reflection in the Ask Anky response; do not add analytics or crash breadcrumbs containing reflection text.
-- Public key: used as writer identifier, mirror auth identity, and RevenueCat App User ID. It may be transmitted for mirror and credit flows.
+- AccountId: used as writer identifier, mirror auth identity, and RevenueCat App User ID. It may be transmitted for mirror and credit flows.
 - Recovery phrase/private key/seed: local only, Keystore-protected, never transmitted.
 - Purchases/credits: Google Play and RevenueCat handle purchase and entitlement state when configured. Use only the Android public SDK key in the app.
 - Notifications: local daily reminder only.
@@ -163,7 +163,7 @@ Setup checklist:
 - Configure Google Play products for Android. Do not reuse iOS App Store product IDs unless RevenueCat/Play configuration explicitly maps them.
 - Create products/packages/offerings in RevenueCat for Android credit packages.
 - Connect RevenueCat to Google Play with the required Play Developer API/service-account setup in the RevenueCat dashboard.
-- Use the writer public key as RevenueCat App User ID.
+- Use the accountId as RevenueCat App User ID.
 - Verify package display, purchase flow, and CRD balance refresh on an internal testing track before shipping a build with `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY`.
 - Backend remains responsible for spending credits when `POST /anky` succeeds.
 
@@ -184,7 +184,7 @@ Before every Play upload, verify:
 - Ask Anky sends `POST /anky` only after explicit user action.
 - Request `Content-Type` is `text/plain; charset=utf-8`.
 - Request body is exact `.anky` bytes, not JSON.
-- Signature headers are present: `X-Anky-Public-Key`, `X-Anky-Signature`, `X-Anky-Request-Time`, `X-Anky-Client: android`.
+- Signature headers are present: `X-Anky-Account`, `X-Anky-Signature`, `X-Anky-Request-Time`, `X-Anky-Client: android`.
 - Hash/signature are computed over exact UTF-8 bytes.
 - Fragments remain local/copy/export only and cannot Ask Anky.
 - Raw `.anky`, reconstructed writing, prompts, reflections, recovery phrase, private key, and seed are not logged.

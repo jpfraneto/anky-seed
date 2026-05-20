@@ -1,180 +1,262 @@
 import { reconstructText, sha256Hex, validateAnky } from "@anky/protocol";
 import { Hono } from "hono";
-import { canonicalAnkyPostMessage } from "../auth/canonicalMessage";
 import { isFreshRequestTime, rememberRequest } from "../auth/replayProtection";
-import { verifySolanaSignature } from "../auth/verifySolanaSignature";
-import { refundReflectionCredit, resolveReflectionCredit } from "../credits/spendCredit";
+import { AnkyAuthError, verifyAnkyBaseRequest } from "../auth/verifyAnkyIdentity";
+import {
+  prepareReflectionCredit,
+  spendPreparedReflectionCredit,
+  type PreparedReflectionCredit,
+} from "../credits/spendCredit";
+import type { DiagnosticsSink } from "../diagnostics/sink";
 import type { Env } from "../env";
-import { errorJson } from "../errors";
-import { buildWitnessPrompt } from "../mirror/witnessPrompt";
-import { callOpenRouter } from "../mirror/openrouter";
+import { errorJson, type ErrorCode } from "../errors";
 import { parseMirrorResponse } from "../mirror/parseMirrorResponse";
-import { normalizeMetadataValue, publicKeyHash } from "../privacy/redaction";
+import { routeReflection, type ReflectionProviderResult } from "../mirror/providers";
+import { buildStorytellerPrompt } from "../mirror/storytellerPrompt";
+import { mirrorIdempotencyKey, railwayMemoryIdempotencyStore, type IdempotencyStore } from "../idempotency/store";
+import { addressHash as hashAddress, normalizeMetadataValue } from "../privacy/redaction";
 import type { SafeLogger } from "../privacy/safeLogger";
 
-const inFlight = new Set<string>();
-
 export type AnkyRouteDeps = {
-  resolveReflectionCredit?: typeof resolveReflectionCredit;
-  refundReflectionCredit?: typeof refundReflectionCredit;
-  callMirror?: typeof callOpenRouter;
+  prepareReflectionCredit?: typeof prepareReflectionCredit;
+  spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
+  routeReflection?: typeof routeReflection;
+  callMirror?: (input: { env: Env; prompt: string }) => Promise<string>;
+  idempotencyStore?: IdempotencyStore;
+  diagnostics?: DiagnosticsSink;
 };
 
 export function createAnkyRoute(env: Env, logger: SafeLogger, deps: AnkyRouteDeps = {}): Hono {
   const route = new Hono();
-  const resolveCredit = deps.resolveReflectionCredit ?? resolveReflectionCredit;
-  const refundCredit = deps.refundReflectionCredit ?? refundReflectionCredit;
-  const mirrorCall = deps.callMirror ?? callOpenRouter;
+  const prepareCredit = deps.prepareReflectionCredit ?? prepareReflectionCredit;
+  const spendCredit = deps.spendPreparedReflectionCredit ?? (deps.prepareReflectionCredit ? testSpendPreparedReflectionCredit : spendPreparedReflectionCredit);
+  const reflectionRouter = deps.routeReflection ?? (deps.callMirror ? legacyMirrorRouter(deps.callMirror) : routeReflection);
+  const idempotencyStore = deps.idempotencyStore ?? railwayMemoryIdempotencyStore;
 
   route.post("/anky", async (c) => {
     const startedAt = Date.now();
+    const startedAtIso = new Date(startedAt).toISOString();
     const requestId = crypto.randomUUID();
     let statusCode = 200;
+    let errorCode: ErrorCode | undefined;
     let ankyHash: string | undefined;
-    let keyHash: string | undefined;
+    let identityHash: string | undefined;
+    let accountId: string | undefined;
     let client: string | undefined;
+    let identityVersionForDiagnostics: string | undefined;
+    let chainIdForDiagnostics: number | undefined;
     let appVersion: string | undefined;
     let durationMs: number | undefined;
     let creditResult: string | undefined;
-    let modelProvider: "openrouter" | "mock" | "none" = "none";
+    let modelProvider = "none";
     let modelFailure: string | undefined;
+    let idempotencyKey: string | undefined;
+    let idempotencyAcquired = false;
 
     try {
       const contentType = c.req.header("content-type") ?? "";
       if (!contentType.toLowerCase().startsWith("text/plain")) {
         statusCode = 400;
+        errorCode = "INVALID_ANKY";
         return errorJson(c, "INVALID_ANKY");
       }
       if (requestBodyTooLarge(c.req.header("content-length"), env.maxBodyBytes)) {
         statusCode = 413;
+        errorCode = "BODY_TOO_LARGE";
         return errorJson(c, "BODY_TOO_LARGE");
       }
       if (env.mirrorDisabled) {
         statusCode = 500;
+        errorCode = "MIRROR_FAILED";
         return errorJson(c, "MIRROR_FAILED");
       }
 
-      const publicKey = c.req.header("x-anky-public-key");
+      const identityVersion = c.req.header("x-anky-identity-version");
+      identityVersionForDiagnostics = identityVersion ?? undefined;
+      const account = c.req.header("x-anky-account");
+      const signatureType = c.req.header("x-anky-signature-type");
       const signature = c.req.header("x-anky-signature");
       const requestTime = c.req.header("x-anky-request-time");
       client = c.req.header("x-anky-client") ?? undefined;
       appVersion = normalizeMetadataValue(c.req.header("x-anky-app-version") ?? undefined);
       const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
-      if (!publicKey || !signature || !requestTime || !client) {
+      if (!signature || !requestTime) {
         statusCode = 401;
+        errorCode = "MISSING_SIGNATURE";
         return errorJson(c, "MISSING_SIGNATURE");
       }
 
-      keyHash = await publicKeyHash(publicKey);
       if (!isFreshRequestTime(requestTime, env.requestTimeToleranceMs)) {
         statusCode = 401;
+        errorCode = "INVALID_SIGNATURE";
         return errorJson(c, "INVALID_SIGNATURE");
       }
       if (!rememberRequest(signature, requestTime, env.requestTimeToleranceMs)) {
         statusCode = 401;
+        errorCode = "INVALID_SIGNATURE";
         return errorJson(c, "INVALID_SIGNATURE");
       }
 
       const bodyBytes = new Uint8Array(await c.req.arrayBuffer());
       if (bodyBytes.byteLength > env.maxBodyBytes) {
         statusCode = 413;
+        errorCode = "BODY_TOO_LARGE";
         return errorJson(c, "BODY_TOO_LARGE");
       }
       ankyHash = await sha256Hex(bodyBytes);
-      const message = canonicalAnkyPostMessage({ requestTime, bodySha256: ankyHash });
-      if (!verifySolanaSignature({ publicKey, signature, message })) {
+
+      const identity = await verifyAnkyBaseRequest({
+        headers: { identityVersion, account, signatureType, signature, requestTime, client },
+        bodyBytes,
+        allowedChainId: env.baseChainId,
+      }).catch((error) => {
+        if (error instanceof AnkyAuthError) return error;
+        return new AnkyAuthError("INVALID_SIGNATURE");
+      });
+      if (identity instanceof AnkyAuthError) {
         statusCode = 401;
-        return errorJson(c, "INVALID_SIGNATURE");
+        errorCode = identity.code;
+        return errorJson(c, identity.code);
       }
+      accountId = identity.accountId;
+      chainIdForDiagnostics = identity.chainId;
+      identityHash = await hashAddress(accountId);
 
       const bodyText = new TextDecoder("utf-8", { fatal: true }).decode(bodyBytes);
       const validation = validateAnky(bodyText);
       if (!validation.isValid) {
         statusCode = 400;
+        errorCode = "INVALID_ANKY";
         return errorJson(c, "INVALID_ANKY");
       }
       if (!validation.isComplete) {
         statusCode = 400;
+        errorCode = "INCOMPLETE_RITUAL";
         return errorJson(c, "INCOMPLETE_RITUAL");
       }
       durationMs = validation.durationMs;
 
-      const idempotencyKey = await sha256Hex(`${publicKey}:${ankyHash}`);
-      if (inFlight.has(idempotencyKey)) {
+      idempotencyKey = await mirrorIdempotencyKey(accountId, ankyHash);
+      const idempotency = await idempotencyStore.begin({ key: idempotencyKey, addressHash: identityHash, ankyHash });
+      if (!idempotency.acquired && idempotency.record.status === "succeeded") {
         statusCode = 409;
+        errorCode = "DUPLICATE_SUCCEEDED";
+        return errorJson(c, "DUPLICATE_SUCCEEDED");
+      }
+      if (!idempotency.acquired) {
+        statusCode = 409;
+        errorCode = "DUPLICATE_IN_PROGRESS";
         return errorJson(c, "DUPLICATE_IN_PROGRESS");
       }
-      inFlight.add(idempotencyKey);
+      idempotencyAcquired = true;
 
       try {
-        const credit = await resolveCredit({
+        const preparedCredit = await prepareCredit({
           env,
-          publicKey,
-          publicKeyHash: keyHash,
+          accountId,
+          accountIdHash: identityHash,
           ankyHash,
-          client,
+          client: identity.client,
           appVersion,
           trialProof,
         });
-        creditResult = credit.result;
-        if (!credit.ok) {
+        if (!preparedCredit.ok) {
+          creditResult = preparedCredit.result;
           if (
-            credit.result === "insufficient" ||
-            credit.result === "trial_disabled" ||
-            credit.result === "trial_ineligible" ||
-            credit.result === "trial_proof_missing" ||
-            credit.result === "trial_proof_invalid"
+            preparedCredit.result === "insufficient" ||
+            preparedCredit.result === "trial_disabled" ||
+            preparedCredit.result === "trial_ineligible" ||
+            preparedCredit.result === "trial_proof_missing" ||
+            preparedCredit.result === "trial_proof_invalid"
           ) {
             statusCode = 402;
+            errorCode = "INSUFFICIENT_CREDITS";
             return errorJson(c, "INSUFFICIENT_CREDITS");
           }
           statusCode = 500;
+          errorCode = "MIRROR_FAILED";
           return errorJson(c, "MIRROR_FAILED");
         }
 
         const writing = reconstructText(validation.parsed);
-        const prompt = buildWitnessPrompt(writing);
-        modelProvider = env.devMockMirror ? "mock" : "openrouter";
-        let mirror: ReturnType<typeof parseMirrorResponse>;
+        const prompt = buildStorytellerPrompt(writing);
+        let mirror: ReflectionProviderResult;
         try {
-          const rawMirror = await mirrorCall({ env, prompt });
-          mirror = parseMirrorResponse(rawMirror);
+          mirror = await reflectionRouter({ env, prompt });
+          modelProvider = mirror.provider;
         } catch (error) {
           modelFailure = safeModelFailure(error);
-          if (credit.spentCredit) {
-            const refund = await refundCredit({ env, publicKey, publicKeyHash: keyHash, ankyHash });
-            creditResult = refund.ok
-              ? `${credit.result}_credit_refunded_after_model_failure`
-              : `${credit.result}_credit_refund_failed_after_model_failure`;
-          }
           throw new Error("MIRROR_FAILED");
         }
 
-        return c.json({
+        let creditsRemaining = preparedCredit.creditsRemaining;
+        if (mirror.chargeable) {
+          const credit = await spendCredit({
+            env,
+            accountId,
+            accountIdHash: identityHash,
+            ankyHash,
+            prepared: preparedCredit,
+            trialProof,
+          });
+          creditResult = credit.result;
+          if (!credit.ok) {
+            statusCode = credit.result === "insufficient" ? 402 : 500;
+            errorCode = statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
+            return errorJson(c, errorCode);
+          }
+          creditsRemaining = credit.creditsRemaining;
+        } else {
+          creditResult = "not_spent_default_fallback";
+        }
+
+        const responseBody = {
           hash: ankyHash,
           title: mirror.title,
           reflection: mirror.reflection,
-          creditsRemaining: credit.creditsRemaining,
-        });
+          creditsRemaining,
+        };
+        await idempotencyStore.markSucceeded(idempotencyKey);
+        idempotencyAcquired = false;
+        return c.json(responseBody);
       } finally {
-        inFlight.delete(idempotencyKey);
+        if (idempotencyAcquired && idempotencyKey) {
+          await idempotencyStore.markFailed(idempotencyKey);
+        }
       }
     } catch {
       statusCode = 500;
+      errorCode = "MIRROR_FAILED";
       return errorJson(c, "MIRROR_FAILED");
     } finally {
       logger.info({
         requestId,
-        publicKeyHash: keyHash,
+        addressHash: identityHash,
         ankyHash,
         client,
         appVersion,
         durationMs,
+        identityVersion: identityVersionForDiagnostics,
+        chainId: chainIdForDiagnostics,
         statusCode,
         latencyMs: Date.now() - startedAt,
         modelProvider,
         modelFailure,
         creditResult,
+      });
+      await deps.diagnostics?.record({
+        requestId,
+        addressHash: identityHash,
+        ankyHash,
+        client: isDiagnosticClient(client) ? client : undefined,
+        identityVersion: identityVersionForDiagnostics,
+        chainId: chainIdForDiagnostics,
+        status: statusCode,
+        provider: modelProvider,
+        durationMs,
+        errorCode,
+        startedAt: startedAtIso,
+        finishedAt: new Date().toISOString(),
       });
     }
   });
@@ -183,13 +265,43 @@ export function createAnkyRoute(env: Env, logger: SafeLogger, deps: AnkyRouteDep
 }
 
 export function clearInFlightForTests(): void {
-  inFlight.clear();
+  railwayMemoryIdempotencyStore.clearForTests();
 }
 
 function requestBodyTooLarge(contentLength: string | undefined, maxBodyBytes: number): boolean {
   if (!contentLength) return false;
   const parsed = Number(contentLength);
   return Number.isFinite(parsed) && parsed > maxBodyBytes;
+}
+
+function legacyMirrorRouter(callMirror: (input: { env: Env; prompt: string }) => Promise<string>): typeof routeReflection {
+  return async (input) => {
+    const raw = await callMirror(input);
+    return { ...parseMirrorResponse(raw), provider: "test", chargeable: true };
+  };
+}
+
+function isDiagnosticClient(value: string | undefined): value is "ios" | "android" | "other" {
+  return value === "ios" || value === "android" || value === "other";
+}
+
+async function testSpendPreparedReflectionCredit(input: {
+  prepared: PreparedReflectionCredit;
+}): Promise<Awaited<ReturnType<typeof spendPreparedReflectionCredit>>> {
+  if (!input.prepared.ok) return { ...input.prepared, spentCredit: false };
+  const source =
+    input.prepared.source ??
+    (input.prepared.result === "trial_granted_spent" ? "trial" :
+      input.prepared.result === "bypassed" || input.prepared.spentCredit === false ? "bypass" :
+      "balance");
+  const result = source === "trial" ? "trial_granted_spent" : source === "balance" ? "spent" : "bypassed";
+  return {
+    ok: true,
+    creditsRemaining: input.prepared.creditsRemaining,
+    result,
+    spentCredit: source !== "bypass",
+    spendIdempotencyKey: input.prepared.spendIdempotencyKey,
+  };
 }
 
 function safeModelFailure(error: unknown): string {

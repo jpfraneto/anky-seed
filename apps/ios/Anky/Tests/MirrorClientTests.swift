@@ -21,9 +21,12 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Trial-Proof"), "trial-proof")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Public-Key"), identity.publicKey)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Identity-Version"), "anky.base.eoa.v1")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Account"), identity.accountId)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Signature-Type"), "eip712")
             XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Anky-Signature"))
             XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Anky-Request-Time"))
+            XCTAssertNil(request.value(forHTTPHeaderField: "X-Anky-Public-Key"))
             XCTAssertEqual(request.ankyTestBodyData(), body)
 
             let response = HTTPURLResponse(

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-const [publicKey, amountText] = process.argv.slice(2);
+const [accountId, amountText] = process.argv.slice(2);
 
-if (!publicKey || !amountText || !/^\d+$/.test(amountText)) {
-  console.error("usage: bun run scripts/grant-credits.ts <public-key> <amount>");
+if (!accountId || !/^0x[0-9a-fA-F]{40}$/.test(accountId) || !amountText || !/^\d+$/.test(amountText)) {
+  console.error("usage: bun run scripts/grant-credits.ts <0xChecksumAddress> <amount>");
   process.exit(1);
 }
 
@@ -12,7 +12,7 @@ const projectId = process.env.REVENUECAT_PROJECT_ID ?? "";
 const creditCode = process.env.REVENUECAT_CREDIT_CODE ?? "CRD";
 const idempotencyKey =
   process.env.ANKY_GRANT_CREDITS_IDEMPOTENCY_KEY ??
-  `manual-grant:${publicKey}:${amount}:${new Date().toISOString().slice(0, 10)}`;
+  `manual-grant:${accountId}:${amount}:${new Date().toISOString().slice(0, 10)}`;
 const dryRun = process.env.ANKY_GRANT_CREDITS_DRY_RUN !== "false";
 
 if (!secretKey || !projectId || !creditCode || dryRun) {
@@ -20,7 +20,7 @@ if (!secretKey || !projectId || !creditCode || dryRun) {
     JSON.stringify(
       {
         status: "stubbed",
-        publicKey,
+        accountId,
         amount,
         creditCode,
         idempotencyKey,
@@ -35,7 +35,7 @@ if (!secretKey || !projectId || !creditCode || dryRun) {
 }
 
 const response = await fetch(
-  `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(publicKey)}/virtual_currencies/transactions`,
+  `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(accountId)}/virtual_currencies/transactions`,
   {
     method: "POST",
     headers: {
@@ -58,7 +58,7 @@ if (!response.ok) {
       {
         status: "failed",
         statusCode: response.status,
-        publicKey,
+        accountId,
         amount,
         creditCode,
         idempotencyKey,
@@ -75,7 +75,7 @@ console.log(
   JSON.stringify(
     {
       status: "granted",
-      publicKey,
+      accountId,
       amount,
       creditCode,
       idempotencyKey,

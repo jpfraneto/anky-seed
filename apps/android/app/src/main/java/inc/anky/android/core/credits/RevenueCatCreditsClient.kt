@@ -209,7 +209,7 @@ internal object CreditCatalog {
     const val OfferingIdentifier = "credits DEV"
     const val RestoreSuccessMessage = "Purchases restored for this Anky identity."
     const val RestoreFailureMessage = "Could not restore purchases for this Anky identity."
-    const val RestoreIdentityNote = "Restores purchases linked to this Anky public identity. Spent credits may not reappear if this is not the same Anky identity used to buy them."
+    const val RestoreIdentityNote = "Restores purchases linked to this Anky address. Spent credits may not reappear if this is not the same Anky identity used to buy them."
     val ProductOrder = listOf(
         "inc.dev.anky.credits.22",
         "inc.dev.anky.credits.88_bonus_11",

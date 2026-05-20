@@ -330,7 +330,11 @@ class RevealViewModelTest {
         "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
 
     private fun identity(): WriterIdentity =
-        WriterIdentity.fromSeed(ByteArray(32) { 7 })
+        WriterIdentity.fromRecoveryPhrase(
+            inc.anky.android.core.identity.RecoveryPhrase.parse(
+                "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            ),
+        )
 
     private fun reflectionResponse(hash: String, creditsRemaining: Int? = 3): MockResponse =
         MockResponse()

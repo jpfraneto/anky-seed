@@ -1,41 +1,70 @@
 package inc.anky.android.core.identity
 
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.crypto.signers.Ed25519Signer
+import org.web3j.crypto.Bip32ECKeyPair
+import org.web3j.crypto.Credentials
+import org.web3j.crypto.Keys
+import org.web3j.crypto.MnemonicUtils
+import org.web3j.crypto.Sign
+
+const val AnkyBaseIdentityVersion = "anky.base.eoa.v1"
+const val AnkyBaseMainnetChainId = 8453L
+const val AnkyBaseSepoliaChainId = 84532L
+const val AnkyBaseDerivationPath = "m/44'/60'/0'/0/0"
+
+data class AnkyIdentityDescriptor(
+    val identityVersion: String = AnkyBaseIdentityVersion,
+    val accountKind: String = "eoa",
+    val chainId: Long = AnkyBaseMainnetChainId,
+    val accountId: String,
+    val address: String,
+    val signingScheme: String = "eip712",
+    val curve: String = "secp256k1",
+    val recovery: String = "bip39-english-12-word",
+    val derivationPath: String = AnkyBaseDerivationPath,
+)
 
 class WriterIdentity private constructor(
-    private val privateKey: Ed25519PrivateKeyParameters,
+    private val keyPair: Bip32ECKeyPair,
+    val chainId: Long = AnkyBaseMainnetChainId,
 ) {
-    val publicKeyBytes: ByteArray = privateKey.generatePublicKey().encoded
-    val publicKey: String = Base58.encode(publicKeyBytes)
+    private val credentials: Credentials = Credentials.create(keyPair)
+    val address: String = Keys.toChecksumAddress(credentials.address)
+    val accountId: String = address
+    val descriptor: AnkyIdentityDescriptor = AnkyIdentityDescriptor(
+        chainId = chainId,
+        accountId = accountId,
+        address = address,
+    )
 
-    fun sign(message: String): String {
-        val signer = Ed25519Signer()
-        val messageBytes = message.toByteArray(Charsets.UTF_8)
-        signer.init(true, privateKey)
-        signer.update(messageBytes, 0, messageBytes.size)
-        return Base58.encode(signer.generateSignature())
-    }
-
-    fun verifies(message: String, signature: String): Boolean {
-        val signatureBytes = Base58.decode(signature) ?: return false
-        if (signatureBytes.size != 64) return false
-        val verifier = Ed25519Signer()
-        val messageBytes = message.toByteArray(Charsets.UTF_8)
-        verifier.init(false, Ed25519PublicKeyParameters(publicKeyBytes, 0))
-        verifier.update(messageBytes, 0, messageBytes.size)
-        return verifier.verifySignature(signatureBytes)
+    fun signDigest(digest32: ByteArray): String {
+        require(digest32.size == 32) { "EIP-712 digest must be 32 bytes." }
+        val signature = Sign.signMessage(digest32, keyPair, false)
+        return "0x" +
+            signature.r.hex() +
+            signature.s.hex() +
+            signature.v.hex()
     }
 
     companion object {
-        fun fromSeed(seed: ByteArray): WriterIdentity {
-            require(seed.size == 32) { "Ed25519 seed must be 32 bytes." }
-            return WriterIdentity(Ed25519PrivateKeyParameters(seed, 0))
-        }
+        const val IdentityVersion = AnkyBaseIdentityVersion
+        const val BaseMainnetChainId = AnkyBaseMainnetChainId
+        const val BaseSepoliaChainId = AnkyBaseSepoliaChainId
+        const val DerivationPath = AnkyBaseDerivationPath
 
-        fun fromRecoveryPhrase(phrase: RecoveryPhrase): WriterIdentity =
-            fromSeed(phrase.signingSeed())
+        private val HardenedBit = Bip32ECKeyPair.HARDENED_BIT
+        private val BaseDerivationPath = intArrayOf(
+            44 or HardenedBit,
+            60 or HardenedBit,
+            0 or HardenedBit,
+            0,
+            0,
+        )
+
+        fun fromRecoveryPhrase(phrase: RecoveryPhrase, chainId: Long = BaseMainnetChainId): WriterIdentity {
+            val seed = MnemonicUtils.generateSeed(phrase.text, "")
+            val master = Bip32ECKeyPair.generateKeyPair(seed)
+            return WriterIdentity(Bip32ECKeyPair.deriveKeyPair(master, BaseDerivationPath), chainId)
+        }
 
         fun generateRecoveryIdentity(): Pair<WriterIdentity, RecoveryPhrase> {
             val phrase = RecoveryPhrase.generate()
@@ -43,3 +72,5 @@ class WriterIdentity private constructor(
         }
     }
 }
+
+private fun ByteArray.hex(): String = joinToString(separator = "") { "%02x".format(it) }

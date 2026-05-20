@@ -198,7 +198,7 @@ final class RevealViewModel: ObservableObject {
             creditsDenied = false
             if response.creditsRemaining != nil {
                 creditBalance = response.creditsRemaining
-                try? await creditsClient.identify(publicKey: identity.publicKey)
+                try? await creditsClient.identify(accountId: identity.accountId)
                 creditsClient.invalidateCreditBalanceCache()
             }
             reflection = saved
@@ -224,7 +224,7 @@ final class RevealViewModel: ObservableObject {
 
         do {
             let identity = try identityStore.loadOrCreate()
-            try await creditsClient.identify(publicKey: identity.publicKey)
+            try await creditsClient.identify(accountId: identity.accountId)
             creditBalance = try await creditsClient.fetchCreditBalance()
             creditsDenied = false
             if showError {

@@ -36,7 +36,7 @@ Do not change or weaken any of these:
 1. `.anky` protocol semantics.
 2. Local-first writing.
 3. Exact mirror request body semantics: raw `.anky` bytes, not JSON.
-4. Ed25519/signing behavior.
+4. Base EIP-712 signing behavior.
 5. Local archive/storage behavior.
 6. Privacy posture: no raw writing logs, no raw `.anky` logs, no recovery phrase/private key/seed logs.
 7. RevenueCat secret handling: public SDK keys only in app; secret keys stay server-side.

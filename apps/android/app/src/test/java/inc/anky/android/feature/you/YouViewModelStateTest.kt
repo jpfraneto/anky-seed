@@ -12,7 +12,7 @@ class YouViewModelStateTest {
     fun mergeRefreshedStatePreservesTransientUiFields() {
         val exportedFile = File("anky-backup.zip")
         val previous = YouState(
-            publicKey = "old-key",
+            accountId = "old-key",
             recoveryPhrase = "able about above absent",
             purchasingCreditPackageId = "inc.dev.anky.credits.22",
             isRestoringPurchases = true,
@@ -21,7 +21,7 @@ class YouViewModelStateTest {
             error = "previous error",
         )
         val refreshed = YouState(
-            publicKey = "new-key",
+            accountId = "new-key",
             creditState = CreditState(isConfigured = true, balance = 7, message = "credits refreshed."),
             localAnkyFileCount = 2,
             completeAnkyCount = 1,
@@ -32,7 +32,7 @@ class YouViewModelStateTest {
 
         val merged = mergeRefreshedYouState(previous, refreshed)
 
-        assertEquals("new-key", merged.publicKey)
+        assertEquals("new-key", merged.accountId)
         assertEquals(7, merged.creditState.balance)
         assertEquals(2, merged.localAnkyFileCount)
         assertEquals(1, merged.completeAnkyCount)
@@ -49,9 +49,9 @@ class YouViewModelStateTest {
 
     @Test
     fun freeCreditMessageIncludesAndroidVersionNameAndCode() {
-        val state = YouState(publicKey = "PUBLIC_KEY")
+        val state = YouState(accountId = "0x9858EfFD232B4033E47d90003D41EC34EcaEda94")
         assertEquals(
-            PrivacyMessages.freeCreditMessage("PUBLIC_KEY", "${inc.anky.android.BuildConfig.VERSION_NAME} ${inc.anky.android.BuildConfig.VERSION_CODE}"),
+            PrivacyMessages.freeCreditMessage("0x9858EfFD232B4033E47d90003D41EC34EcaEda94", "${inc.anky.android.BuildConfig.VERSION_NAME} ${inc.anky.android.BuildConfig.VERSION_CODE}"),
             state.freeCreditMessage,
         )
     }
@@ -60,7 +60,7 @@ class YouViewModelStateTest {
     fun localIdentityLoadFailureShowsIosCopyAndStopsCreditLoading() {
         val failed = localIdentityLoadFailureState(
             YouState(
-                publicKey = "",
+                accountId = "",
                 creditState = CreditState(false, null, "loading credit packs", isLoading = true),
             ),
         )
@@ -71,9 +71,9 @@ class YouViewModelStateTest {
     }
 
     @Test
-    fun identityStatusMatchesIosDefaultWhilePublicKeyLoads() {
-        assertEquals("Local identity", identityStatus(YouState(publicKey = "")))
-        assertEquals("Local identity", identityStatus(YouState(publicKey = "PUBLIC_KEY")))
+    fun identityStatusMatchesIosDefaultWhileAccountIdLoads() {
+        assertEquals("Local identity", identityStatus(YouState(accountId = "")))
+        assertEquals("Local identity", identityStatus(YouState(accountId = "0x9858EfFD232B4033E47d90003D41EC34EcaEda94")))
     }
 
     @Test

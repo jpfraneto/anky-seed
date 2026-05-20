@@ -2,7 +2,7 @@
 
 Bun + Hono service for the stateless ANKY mirror.
 
-The only app-facing endpoint is `POST /anky`. It accepts the exact `.anky` UTF-8 bytes as `text/plain; charset=utf-8`, verifies the ANKY signature headers, derives the hash/duration/reconstructed text on the server, asks the mirror model, returns JSON, and forgets. It does not store raw `.anky`, reconstructed writing, prompts, or reflections.
+The only app-facing endpoint is `POST /anky`. It accepts the exact `.anky` UTF-8 bytes as `text/plain; charset=utf-8`, verifies Base/EVM EIP-712 identity headers with `X-Anky-Account: 0xChecksumAddress`, derives the hash/duration/reconstructed text on the server, asks the provider router, spends a credit only after a real provider succeeds, returns JSON, and forgets. It does not store raw `.anky`, reconstructed writing, prompts, or reflections.
 
 ## Run Locally
 
@@ -30,7 +30,7 @@ bun test
 Use the iOS app against:
 
 - Simulator: `http://127.0.0.1:3000`
-- iPhone: `http://<your-mac-lan-ip>:3000`
+- Physical devices: use the deployed HTTPS mirror or an HTTPS tunnel to this local service. Plain LAN HTTP needs platform-specific debug transport exceptions.
 
 Then complete an 8-minute `.anky`, open Reveal, and tap `Ask Anky`. Dev mode requires both:
 
@@ -52,6 +52,7 @@ Common:
 - `ANKY_ENV`: set to `production` for production guard.
 - `NODE_ENV`: production guard also runs when this is `production`.
 - `ANKY_MAX_BODY_BYTES`: POST body limit, defaults to `1048576`.
+- `ANKY_BASE_CHAIN_ID`: configured Base chain, defaults to `8453`; tests may use `84532`.
 - `REQUEST_TIME_TOLERANCE_MS`: signature freshness window, defaults to `300000`.
 
 Development only:
@@ -65,6 +66,10 @@ Production:
 - `OPENROUTER_MODEL`
 - `OPENROUTER_TIMEOUT_MS`, optional, defaults to `45000`.
 - `OPENROUTER_PRIVACY_CONFIRMED=true`
+- `ANKY_REQUIRE_ZDR=true`, production default.
+- `ANKY_PROVIDER_ORDER=openrouter,bankr,poiesis,default`.
+- `BANKR_LLM_GATEWAY_URL`, `BANKR_LLM_GATEWAY_API_KEY`, `BANKR_ZDR_CONFIRMED=false`.
+- `POIESIS_LLM_URL`, `POIESIS_LLM_API_KEY`, `POIESIS_ZDR_CONFIRMED=false`.
 - `REVENUECAT_SECRET_KEY`
 - `REVENUECAT_PROJECT_ID`
 - `REVENUECAT_CREDIT_CODE`, defaults to `CRD`.
@@ -78,22 +83,24 @@ Production:
 - `APPLE_DEVICECHECK_ENV=production`, or `development` for sandbox testing.
 - `ANKY_ANDROID_TRIAL_ENABLED=false`; keep disabled until Play Integrity/device recall is implemented.
 - `ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=true`.
+- `ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED=false`; keep false until a guarded official-app proof path exists.
 
 Production startup fails loudly if dev bypass/mock is enabled, OpenRouter config is missing, RevenueCat config is missing, OpenRouter privacy confirmation is not set, iOS trials require DeviceCheck but Apple credentials are missing, or Android trials are enabled before Play Integrity/device recall exists. `ANKY_MIRROR_DISABLED=true` is the documented emergency mode that allows health checks without model/credit configuration; it does not make `POST /anky` useful.
 
 OpenRouter privacy note: the adapter does not log prompts or responses. The exact no-data-collection routing flag must be verified against the current OpenRouter account/API configuration before setting `OPENROUTER_PRIVACY_CONFIRMED=true`.
 
-RevenueCat note: RevenueCat is the credit ledger with public key as customer identity. Reflection spend, trial grant, and refund all use server-derived idempotency keys and safe references that never include writing, prompts, reflections, private keys, seed phrases, or raw DeviceCheck tokens. The adapter is isolated and does not create a custom credit database.
+RevenueCat note: RevenueCat is the credit ledger with the checksum address as customer identity. Reflection spend, trial grant, and refund all use server-derived idempotency keys and safe references that never include writing, prompts, reflections, private keys, seed phrases, or raw DeviceCheck tokens. The adapter is isolated and does not create a custom credit database.
 
 Automatic iOS trial ordering is fail-closed and database-free:
 
 1. Validate the signed `POST /anky` request and complete `.anky`.
 2. Read RevenueCat balance.
 3. If balance is zero or unknown and iOS trial is enabled, query DeviceCheck bit 0.
-4. If bit 0 is unclaimed, mark bit 0 claimed.
-5. Grant `ANKY_TRIAL_CREDITS` in RevenueCat.
-6. Spend one reflection credit.
-7. Only then call the model.
+4. Reconstruct writing in memory and call the provider router.
+5. If the provider result is the default fallback, return it without spending a credit.
+6. If a real provider succeeds and bit 0 is unclaimed, mark bit 0 claimed.
+7. Grant `ANKY_TRIAL_CREDITS` in RevenueCat when needed.
+8. Spend one reflection credit.
 
 If DeviceCheck marking succeeds but RevenueCat grant fails, the device may need support/manual credit help. The server does not create a local trial database to paper over that edge case.
 
@@ -137,15 +144,15 @@ iOS real-device automatic trial QA:
 
 1. Configure RevenueCat env: `REVENUECAT_SECRET_KEY`, `REVENUECAT_PROJECT_ID`, `REVENUECAT_CREDIT_CODE=CRD`.
 2. Configure trial env: `ANKY_AUTO_TRIAL_ENABLED=true`, `ANKY_IOS_TRIAL_ENABLED=true`, `ANKY_IOS_DEVICECHECK_REQUIRED=true`, Apple DeviceCheck credentials, and `APPLE_DEVICECHECK_ENV`.
-3. Fresh install on a real iPhone and confirm the app has a local public key.
-4. Complete a valid 8-minute `.anky`, tap `Ask Anky`, and confirm the request has the exact `text/plain` body, existing signature headers, `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
+3. Fresh install on a real iPhone and confirm the app has a local Anky Base account.
+4. Complete a valid 8-minute `.anky`, tap `Ask Anky`, and confirm the request has the exact `text/plain` body, EIP-712 identity headers, `X-Anky-Client: ios`, `X-Anky-App-Version`, and `X-Anky-Trial-Proof`.
 5. Confirm the backend validates signature and `.anky`, sees zero balance, verifies DeviceCheck unclaimed, marks bit 0 claimed, grants `+8 CRD`, spends `-1 CRD`, calls the model, returns a reflection, and reports `creditsRemaining: 7`.
 6. Confirm the app stores the reflection locally and no writing, prompt, reflection, or raw DeviceCheck token appears in logs.
-7. Reinstall or create a new local key on the same device and confirm there is no second automatic trial grant.
+7. Reinstall or create a new local Base account on the same device and confirm there is no second automatic trial grant.
 
 Failure QA: force model failure after spend and confirm the server attempts a `+1 CRD` refund while keeping the DeviceCheck trial claim closed.
 
-Android QA: confirm paid RevenueCat credits still work, automatic trials remain disabled, and Android never receives public-key-only automatic grants.
+Android QA: confirm paid RevenueCat credits still work, automatic trials remain disabled, and Android never receives public-address-only automatic grants.
 
 Current deployment:
 

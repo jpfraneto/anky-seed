@@ -75,7 +75,7 @@ class CreditCatalogTest {
     fun restoreCopyIsScopedToCurrentAnkyIdentity() {
         assertEquals("Purchases restored for this Anky identity.", CreditCatalog.RestoreSuccessMessage)
         assertEquals("Could not restore purchases for this Anky identity.", CreditCatalog.RestoreFailureMessage)
-        assertTrue(CreditCatalog.RestoreIdentityNote.contains("Anky public identity"))
+        assertTrue(CreditCatalog.RestoreIdentityNote.contains("Anky address"))
         assertTrue(CreditCatalog.RestoreIdentityNote.contains("Spent credits may not reappear"))
     }
 

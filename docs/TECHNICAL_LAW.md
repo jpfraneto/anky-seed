@@ -1,341 +1,146 @@
-# TECHNICAL_LAW.md
-
 # Anky Technical Law
 
-## 0. The Principle
+Technical simplicity is product integrity. The app is local-first, the server is stateless wherever possible, and the `.anky` protocol is the canonical layer.
 
-Technical simplicity is product integrity.
+## Architecture
 
-The system should be as small as the ritual.
-
-The app is local-first.
-
-The server is stateless wherever possible.
-
-The protocol is the sacred layer.
-
-The implementation is disposable.
-
----
-
-## 1. Architecture
-
-The new Anky system has four layers:
+The system has four layers:
 
 ```txt
 apps/ios
 apps/android
 services/mirror
-packages/protocol
+protocol
+```
 
-The iOS and Android apps are native clients.
+iOS and Android are native clients. Do not use React Native. Do not share UI code. Share protocol law, API contract, test vectors, and mirror contract.
 
-Do not use React Native.
+## Canonical State
 
-Do not share UI code.
+The canonical state of a writing session is the exact `.anky` file.
 
-Share only:
+The app may derive reconstructed text, duration, hash, preview, title, reflection, and local map status. The source of truth remains the `.anky` artifact.
 
-product law
-protocol law
-API contract
-test vectors
-mirror contract
+## Local-First Law
 
-The official clients should feel native to their platforms.
+The device stores active drafts, completed `.anky` files, local indexes, local reflections, local identity, and settings.
 
-The product should remain identical.
+The server must not persist raw `.anky`, reconstructed writing, prompts containing writing, reflections, AI memory, embeddings, journal history, or writing analytics.
 
-2. Canonical State
+The server may temporarily hold writing in memory during a reflection request. Then it forgets.
 
-The canonical state of a writing session is the exact .anky file.
+## Identity Law
 
-The app may derive:
+Each official app generates or recovers a local Base EOA identity.
 
-reconstructed text
-duration
-hash
-preview
-title
-reflection
-local map status
+Current identity:
 
-But the source of truth is the .anky.
+```txt
+identityVersion: anky.base.eoa.v1
+accountKind: eoa
+chain: Base
+productionChainId: 8453
+testChainId: 84532
+account: 0xChecksumAddress
+recovery: bip39-english-12-word
+derivationPath: m/44'/60'/0'/0/0
+curve: secp256k1
+signing: eip712
+```
 
-Do not invent another source of truth.
+The 12-word recovery phrase controls the Anky Base account and never leaves the device. The server does not issue identity.
 
-3. Local-First Law
+No `/register`. No `/session`. No login ceremony.
 
-The device stores:
+The checksum address is the writer identifier, RevenueCat App User ID, mirror request identity, credit account key, and free-credit grant target when official-app/device proof is valid.
 
-active draft
-completed .anky files
-local session index
-local reflection results
-local identity
-local settings
+Legacy identity material may be retained locally for manual support migration, but new `POST /anky` requests must use `anky.base.eoa.v1`.
 
-The server does not store:
+## Request Authentication
 
-raw .anky
-reconstructed writing
-private reflection content
-journal archive
-user memory
-writing analytics
+The mirror endpoint must verify that the requester controls the Base account.
 
-The server may temporarily hold writing in memory during a reflection request.
+Required headers:
 
-Then it forgets.
-
-4. Identity Law
-
-Each official app generates a local Solana-compatible identity.
-
-The identity is derived from a locally stored seed phrase.
-
-The public key is the writer identifier.
-
-The private key never leaves the device.
-
-The public key may be used as:
-
-RevenueCat App User ID
-mirror request identity
-credit account key
-free-credit grant target
-
-The server does not issue identity.
-
-No /register.
-
-No /session.
-
-No login ceremony.
-
-The writer appears to the server only when asking Anky to mirror a .anky.
-
-5. Request Authentication
-
-The mirror endpoint must verify that the requester controls the public key.
-
-Use signature authentication.
-
-The client sends:
-
-X-Anky-Public-Key
+```txt
+X-Anky-Identity-Version
+X-Anky-Account
+X-Anky-Signature-Type
 X-Anky-Signature
 X-Anky-Request-Time
 X-Anky-Client
+```
 
-The client signs a canonical message:
+`X-Anky-Signature-Type` must be `eip712`.
 
-ANKY_POST_V1
-method:POST
-path:/anky
-request_time:<epoch_ms>
-body_sha256:<sha256_of_exact_body_bytes>
+The server computes SHA-256 from the exact received body bytes and verifies an EIP-712 `AnkyMirrorRequest` typed-data signature. If verification fails, reject before credit checks or model calls.
 
-The server computes body_sha256 from the exact received body bytes.
-
-The server reconstructs the canonical message.
-
-The server verifies the signature against the public key.
-
-If verification fails, reject the request.
-
-6. Mirror Endpoint Law
+## Mirror Endpoint Law
 
 There is one app-facing endpoint:
 
+```txt
 POST /anky
+```
 
-Do not create:
+Do not create `/register`, `/session`, `/me`, `/wallet`, `/identity`, `/login`, `/profile`, `/submit`, `/seal`, `/proof`, or `/v1/reflections`.
 
-/register
-/session
-/me
-/v1/reflections
-/register-payment
-/submit
-/seal
-/proof
+The body of `POST /anky` is exact `.anky` bytes. Do not wrap it in JSON. Do not ask the client to send trusted hash, timestamp, duration, reconstructed text, or reflection mode.
 
-The body of POST /anky is the exact .anky text/bytes.
+## Server Flow
 
-Do not wrap it in JSON.
+For `POST /anky`, the server must:
 
-Do not ask the client to send the hash.
+1. Read exact raw request body bytes.
+2. Compute SHA-256 hash.
+3. Verify Base EIP-712 request identity.
+4. Decode UTF-8.
+5. Parse `.anky`.
+6. Validate protocol and complete 8-minute duration.
+7. Use the checksum address as credit identity.
+8. Preflight credit eligibility without spending.
+9. Reconstruct writing in memory.
+10. Build the transient Anky storyteller prompt.
+11. Send to the provider router using ZDR-compatible routing.
+12. Parse model output.
+13. Spend 1 credit only if a real provider succeeded.
+14. Return reflection JSON.
+15. Forget raw `.anky`, prompt, and reconstructed writing.
 
-Do not ask the client to send the timestamp.
+## Credit Law
 
-Do not ask the client to send the duration.
+RevenueCat is the credit ledger. The backend should not maintain an independent credit database.
 
-Do not ask the client to send reflection mode.
+Purchases happen in the native app through RevenueCat. The backend spends credits when `POST /anky` succeeds.
 
-The server derives all of this from the .anky.
+Idempotency is derived from:
 
-7. Server Flow
+```txt
+address + ankyHash
+```
 
-For POST /anky, the server must:
+Official mobile clients may receive one automatic trial grant of 8 credits. The trial grant is not a registration flow. It happens lazily inside `POST /anky`, only when a writer asks for reflection on a complete `.anky`.
 
-Read the exact raw request body bytes.
-Compute SHA-256 hash.
-Decode UTF-8.
-Parse .anky.
-Validate protocol.
-Derive start timestamp.
-Derive duration.
-Reject invalid sessions.
-Reject reflection for sessions under 8 minutes.
-Verify request signature.
-Use public key as credit identity.
-Check/spend 1 credit.
-Reconstruct writing.
-Prepend the Anky witness prompt.
-Send to the model provider using privacy-compatible routing.
-Parse model output.
-Return reflection JSON.
-Forget raw .anky.
-Forget reconstructed writing.
+Trial grants require proof that the request came from an official app/device path. A public address alone must not grant credits.
 
-## 8. Credit Law
-
-RevenueCat is the credit ledger.
-
-The Anky backend should not maintain an independent credit database unless absolutely necessary.
-
-Purchases happen in the native app through RevenueCat.
-
-The backend spends credits when `POST /anky` succeeds.
-
-The backend should use an idempotency key derived from:
-
-publicKey + ankyHash
-
-This prevents double spending when the client retries the same reflection request.
-
-Official mobile clients may receive one automatic trial grant of 8 credits.
-
-The trial grant is not a `/register` flow.
-
-The trial grant happens lazily inside `POST /anky`, only when a writer asks for reflection on a complete `.anky`.
-
-The trial grant requires proof that the request came from an official app/device path.
-
-For iOS, use DeviceCheck or App Attest.
-
-For Android, use Play Integrity / device recall when available.
-
-If device-bound proof is unavailable, automatic grants must remain disabled.
-
-The public key remains the RevenueCat App User ID, mirror identity, credit account key, and free-credit grant target.
-
-9. Database Law
+## Database Law
 
 The ideal mirror server has no durable application database.
 
-Acceptable durable state:
+Acceptable durable state: environment variables, provider API keys, deployment metadata.
 
-environment variables
-provider API keys
-deployment metadata
+Acceptable ephemeral state: rate limits, replay protection, short-lived idempotency locks, abuse counters.
 
-Acceptable optional ephemeral state:
+Forbidden durable state: raw `.anky`, reconstructed writing, private reflections, full journal history, AI training corpus, hidden user memory.
 
-rate limits
-replay protection
-short-lived idempotency locks
-abuse counters
+## Native App Law
 
-Forbidden durable state:
+iOS uses SwiftUI. Android uses Kotlin. Both open directly into Write, capture `.anky` locally, reconstruct locally, store reflections locally, and sign mirror requests locally.
 
-raw .anky
-reconstructed writing
-private reflections
-full journal history
-AI training corpus
-hidden user memory
+Do not drift from the shared protocol fixtures.
 
-If a database is introduced, it must be justified in writing.
+## Forbidden Complexity
 
-The default answer is no database.
+Do not implement smart wallets, Coinbase Smart Wallet, Privy, WalletConnect, MetaMask integration, ERC-4337 UserOperations, on-chain `.anky` storage, on-chain reflections, NFTs, cloud sync, server archive, AI memory, social feed, chat threads, multi-reflection modes, analytics over writing content, automatic free credits without device-bound abuse protection, React Native, or shared cross-platform UI.
 
-10. Privacy-Compatible Model Routing
-
-The model provider must be configured so that writing is not retained for training or logging.
-
-The server should prefer zero-retention or no-data-collection routing.
-
-If the provider cannot satisfy the privacy covenant, it cannot be used for Anky reflections.
-
-The privacy law outranks model quality.
-
-11. Native App Law
-iOS
-
-Use SwiftUI.
-
-The app opens directly into Write.
-
-The keyboard appears immediately.
-
-The app captures .anky locally.
-
-The app stores active drafts locally.
-
-The app saves completed .anky files locally by hash.
-
-The app reconstructs writing locally.
-
-The app stores reflections locally.
-
-The app signs mirror requests locally.
-
-Android
-
-Use Kotlin.
-
-Follow the same product law.
-
-Follow the same protocol law.
-
-Follow the same mirror contract.
-
-Do not drift from iOS behavior.
-
-12. Complexity Rules
-
-Before adding a feature, ask:
-
-Does this protect the ritual?
-Does this preserve the protocol?
-Does this strengthen privacy?
-Does this increase ankys written?
-Does this make the app more boring in the right way?
-
-If not, do not add it.
-
-13. Forbidden Complexity in v0
-
-Do not implement:
-
-Solana sealing
-NFTs
-Looms
-SP1 proofs
-Privy
-Helius indexer
-cloud sync
-server archive
-AI memory
-social feed
-chat threads
-multi-reflection modes
-analytics over writing content
-automatic free credits without device-bound abuse protection
-React Native bridge
-shared cross-platform UI framework
-
-The ritual is the product.
-```
+No Solana.

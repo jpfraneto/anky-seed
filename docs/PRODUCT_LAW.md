@@ -249,7 +249,7 @@ The You page contains identity, export, credits, and settings.
 
 It may include:
 
-- public key
+- accountId
 - seed phrase reveal/export
 - Face ID / biometric lock
 - notifications

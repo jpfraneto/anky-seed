@@ -1,0 +1,41 @@
+{
+  "identityVersion": "anky.base.eoa.v1",
+  "accountKind": "eoa",
+  "chainId": 8453,
+  "accountId": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+  "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+  "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+  "derivationPath": "m/44'/60'/0'/0/0",
+  "body": "1770000000000 anky base identity fixture\n0042 exact bytes stay local\n0091 mirror signs the hash\n8000\n",
+  "bodyEncoding": "utf8",
+  "bodySha256": "0x77df436eaa64911a72bb961a0fca0ff8b6cf5d7e1abb9bc0e8041dc170348e69",
+  "requestTime": 1770000000000,
+  "client": "ios",
+  "eip712Domain": {
+    "name": "Anky",
+    "version": "1",
+    "chainId": 8453
+  },
+  "eip712Types": {
+    "AnkyMirrorRequest": [
+      { "name": "identityVersion", "type": "string" },
+      { "name": "account", "type": "address" },
+      { "name": "method", "type": "string" },
+      { "name": "path", "type": "string" },
+      { "name": "bodyHash", "type": "bytes32" },
+      { "name": "requestTime", "type": "uint64" },
+      { "name": "client", "type": "string" }
+    ]
+  },
+  "eip712Message": {
+    "identityVersion": "anky.base.eoa.v1",
+    "account": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+    "method": "POST",
+    "path": "/anky",
+    "bodyHash": "0x77df436eaa64911a72bb961a0fca0ff8b6cf5d7e1abb9bc0e8041dc170348e69",
+    "requestTime": 1770000000000,
+    "client": "ios"
+  },
+  "signature": "0xea72c87834c9da6f8078abbeadb948874f6a77c82e1cff5f53d1de622a4884f95ee67809a292e2ee421bac02eab499350ecb9eb31fcdbc821b3737af0b0127f61c",
+  "recoveredAddress": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
+}

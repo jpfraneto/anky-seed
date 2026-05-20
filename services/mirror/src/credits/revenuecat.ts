@@ -22,7 +22,7 @@ type RevenueCatFetch = (url: string, init: RequestInit) => Promise<Response>;
 export async function getRevenueCatCreditBalance(input: {
   secretKey: string;
   projectId: string;
-  publicKey: string;
+  accountId: string;
   creditCode: string;
   fetchImpl?: RevenueCatFetch;
 }): Promise<{ ok: true; balance: number | null } | { ok: false; result: "not_configured" | "unavailable" }> {
@@ -33,7 +33,7 @@ export async function getRevenueCatCreditBalance(input: {
   const fetcher = input.fetchImpl ?? fetch;
 
   try {
-    const response = await fetcher(`${revenueCatVirtualCurrencyURL(input.projectId, input.publicKey)}?include_empty_balances=true`, {
+    const response = await fetcher(`${revenueCatVirtualCurrencyURL(input.projectId, input.accountId)}?include_empty_balances=true`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${input.secretKey}`,
@@ -55,7 +55,7 @@ export async function getRevenueCatCreditBalance(input: {
 export async function grantRevenueCatCredits(input: {
   secretKey: string;
   projectId: string;
-  publicKey: string;
+  accountId: string;
   creditCode: string;
   amount: number;
   idempotencyKey: string;
@@ -68,7 +68,7 @@ export async function grantRevenueCatCredits(input: {
 export async function spendRevenueCatCredit(input: {
   secretKey: string;
   projectId: string;
-  publicKey: string;
+  accountId: string;
   creditCode: string;
   idempotencyKey: string;
   reference: string;
@@ -80,7 +80,7 @@ export async function spendRevenueCatCredit(input: {
 export async function refundRevenueCatCredit(input: {
   secretKey: string;
   projectId: string;
-  publicKey: string;
+  accountId: string;
   creditCode: string;
   idempotencyKey: string;
   reference: string;
@@ -92,7 +92,7 @@ export async function refundRevenueCatCredit(input: {
 async function adjustRevenueCatCredits(input: {
   secretKey: string;
   projectId: string;
-  publicKey: string;
+  accountId: string;
   creditCode: string;
   amount: number;
   idempotencyKey: string;
@@ -107,7 +107,7 @@ async function adjustRevenueCatCredits(input: {
   const fetcher = input.fetchImpl ?? fetch;
 
   try {
-    const response = await fetcher(revenueCatVirtualCurrencyTransactionsURL(input.projectId, input.publicKey), {
+    const response = await fetcher(revenueCatVirtualCurrencyTransactionsURL(input.projectId, input.accountId), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${input.secretKey}`,
@@ -141,12 +141,12 @@ async function adjustRevenueCatCredits(input: {
   }
 }
 
-function revenueCatVirtualCurrencyURL(projectId: string, publicKey: string): string {
-  return `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(publicKey)}/virtual_currencies`;
+function revenueCatVirtualCurrencyURL(projectId: string, accountId: string): string {
+  return `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(accountId)}/virtual_currencies`;
 }
 
-function revenueCatVirtualCurrencyTransactionsURL(projectId: string, publicKey: string): string {
-  return `${revenueCatVirtualCurrencyURL(projectId, publicKey)}/transactions`;
+function revenueCatVirtualCurrencyTransactionsURL(projectId: string, accountId: string): string {
+  return `${revenueCatVirtualCurrencyURL(projectId, accountId)}/transactions`;
 }
 
 function balanceFromVirtualCurrencies(body: unknown, creditCode: string): number | null {

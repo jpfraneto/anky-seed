@@ -2,8 +2,9 @@ import Foundation
 
 struct WriterIdentityStore {
     private let keychain: KeychainClient
-    private let rawKeyAccount = "writer-ed25519-v1"
-    private let recoveryPhraseAccount = "writer-recovery-phrase-v1"
+    private let legacyRawKeyAccount = "writer-ed25519-v1"
+    private let recoveryPhraseAccount = "writer-base-eoa-recovery-phrase-v1"
+    private let iCloudRecoveryPhraseBackupAccount = "writer-base-eoa-recovery-phrase-icloud-backup-v1"
 
     init(keychain: KeychainClient = KeychainClient()) {
         self.keychain = keychain
@@ -16,7 +17,7 @@ struct WriterIdentityStore {
 
         let generated = try WriterIdentity.generateRecoveryIdentity()
         try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: rawKeyAccount)
+        try? keychain.delete(account: legacyRawKeyAccount)
         return generated.identity
     }
 
@@ -27,7 +28,7 @@ struct WriterIdentityStore {
 
         let generated = try WriterIdentity.generateRecoveryIdentity()
         try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: rawKeyAccount)
+        try? keychain.delete(account: legacyRawKeyAccount)
         return generated.phrase
     }
 
@@ -36,7 +37,7 @@ struct WriterIdentityStore {
         let phrase = try RecoveryPhrase(text: phraseText)
         let identity = try WriterIdentity(recoveryPhrase: phrase)
         try keychain.save(Data(phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: rawKeyAccount)
+        try? keychain.delete(account: legacyRawKeyAccount)
         return identity
     }
 
@@ -52,21 +53,22 @@ struct WriterIdentityStore {
         (try? loadRecoveryPhrase()) != nil
     }
 
+    func backUpRecoveryPhraseToICloudKeychain() throws {
+        let phrase = try loadOrCreateRecoveryPhrase()
+        try keychain.save(
+            Data(phrase.text.utf8),
+            account: iCloudRecoveryPhraseBackupAccount,
+            synchronizable: true
+        )
+    }
+
     func migrateLegacyIdentityIfNeeded() throws {
         guard try loadRecoveryPhrase() == nil else {
             return
         }
         let generated = try WriterIdentity.generateRecoveryIdentity()
         try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: rawKeyAccount)
-    }
-
-    func legacyRawIdentityIfNeeded() throws -> WriterIdentity? {
-        guard try loadRecoveryPhrase() == nil,
-              let existing = try keychain.data(for: rawKeyAccount) else {
-            return nil
-        }
-        return try WriterIdentity(rawPrivateKey: existing)
+        try? keychain.delete(account: legacyRawKeyAccount)
     }
 
     func loadLegacyOrCreateRecoveryIdentity() throws -> WriterIdentity {
@@ -74,17 +76,14 @@ struct WriterIdentityStore {
             return try WriterIdentity(recoveryPhrase: phrase)
         }
 
-        if let legacy = try legacyRawIdentityIfNeeded() {
-            return legacy
-        }
-
         let generated = try WriterIdentity.generateRecoveryIdentity()
         try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
+        try? keychain.delete(account: legacyRawKeyAccount)
         return generated.identity
     }
 
     func resetForDevelopment() throws {
-        try keychain.delete(account: rawKeyAccount)
+        try keychain.delete(account: legacyRawKeyAccount)
         try keychain.delete(account: recoveryPhraseAccount)
     }
 }

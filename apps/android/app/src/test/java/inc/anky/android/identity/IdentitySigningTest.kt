@@ -1,7 +1,6 @@
 package inc.anky.android.identity
 
 import inc.anky.android.core.identity.AnkyPostSigner
-import inc.anky.android.core.identity.Base58
 import inc.anky.android.core.identity.RecoveryPhrase
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.protocol.AnkyHasher
@@ -11,62 +10,47 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IdentitySigningTest {
+    private val fixtureMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    private val fixtureBody = "1770000000000 anky base identity fixture\n" +
+        "0042 exact bytes stay local\n" +
+        "0091 mirror signs the hash\n" +
+        "8000\n"
+
     @Test
-    fun base58PreservesLeadingZeroBytes() {
-        val bytes = byteArrayOf(0, 0, 1, 2, 3)
-        val encoded = Base58.encode(bytes)
-        assertTrue(encoded.startsWith("11"))
-        assertEquals(bytes.toList(), Base58.decode(encoded)?.toList())
+    fun mnemonicDerivesBaseAccountFixture() {
+        val identity = WriterIdentity.fromRecoveryPhrase(RecoveryPhrase.parse(fixtureMnemonic))
+
+        assertEquals("0x9858EfFD232B4033E47d90003D41EC34EcaEda94", identity.address)
+        assertEquals("0x9858EfFD232B4033E47d90003D41EC34EcaEda94", identity.accountId)
+        assertEquals("anky.base.eoa.v1", identity.descriptor.identityVersion)
+        assertEquals("eip712", identity.descriptor.signingScheme)
+        assertEquals("secp256k1", identity.descriptor.curve)
+        assertEquals("m/44'/60'/0'/0/0", identity.descriptor.derivationPath)
     }
 
     @Test
-    fun canonicalMessageMatchesBackendContract() {
+    fun signerHashesExactBodyBytesAsBytes32() {
+        val identity = WriterIdentity.fromRecoveryPhrase(RecoveryPhrase.parse(fixtureMnemonic))
+        val body = fixtureBody.toByteArray(Charsets.UTF_8)
+        val signed = AnkyPostSigner.sign(body, identity, "1770000000000", "ios")
+
+        assertEquals("0x${AnkyHasher.sha256Hex(body)}", signed.bodySha256)
+        assertEquals("0x77df436eaa64911a72bb961a0fca0ff8b6cf5d7e1abb9bc0e8041dc170348e69", signed.bodySha256)
+        assertTrue(signed.signature.startsWith("0x"))
+        assertEquals(132, signed.signature.length)
         assertEquals(
-            listOf(
-                "ANKY_POST_V1",
-                "method:POST",
-                "path:/anky",
-                "request_time:1770000000000",
-                "body_sha256:abc123",
-            ).joinToString("\n"),
-            AnkyPostSigner.canonicalMessage("1770000000000", "abc123"),
+            "0xea72c87834c9da6f8078abbeadb948874f6a77c82e1cff5f53d1de622a4884f95ee67809a292e2ee421bac02eab499350ecb9eb31fcdbc821b3737af0b0127f61c",
+            signed.signature,
         )
+        assertFalse(signed.bodySha256.endsWith(" "))
     }
 
     @Test
-    fun ed25519SignatureVerifiesWithBase58PublicKeyAndSignature() {
-        val phrase = RecoveryPhrase.parse("able about above absent absorb abstract access accident account across action actual")
-        val identity = WriterIdentity.fromRecoveryPhrase(phrase)
-        val message = AnkyPostSigner.canonicalMessage("1770000000000", "abc123")
-        val signature = identity.sign(message)
+    fun recoveryPhraseRestoresSameAccount() {
+        val first = WriterIdentity.fromRecoveryPhrase(RecoveryPhrase.parse(fixtureMnemonic))
+        val second = WriterIdentity.fromRecoveryPhrase(RecoveryPhrase.parse(fixtureMnemonic))
 
-        assertEquals(32, Base58.decode(identity.publicKey)?.size)
-        assertEquals(64, Base58.decode(signature)?.size)
-        assertTrue(identity.verifies(message, signature))
-        assertFalse(identity.verifies("$message\n", signature))
-    }
-
-    @Test
-    fun identityMatchesBackendNobleEd25519Vector() {
-        val phrase = RecoveryPhrase.parse("able about above absent absorb abstract access accident account across action actual")
-        val identity = WriterIdentity.fromRecoveryPhrase(phrase)
-        val message = AnkyPostSigner.canonicalMessage("1770000000000", "abc123")
-
-        assertEquals("MQ5arRxphfMgDoheq3LPVN2sqFuZt3HwKPkb3kDFhoM", identity.publicKey)
-        assertEquals(
-            "66ndLcazKT7Ecn22GipqXs5rBhvyVURNY9dF57T4PZ4z3eMtC3M6BnB3EJraBjXM9zQwuZ5vQatSwwrc8gcJdZjx",
-            identity.sign(message),
-        )
-    }
-
-    @Test
-    fun signerHashesExactBodyBytes() {
-        val phrase = RecoveryPhrase.parse("able about above absent absorb abstract access accident account across action actual")
-        val identity = WriterIdentity.fromRecoveryPhrase(phrase)
-        val body = "1770000000000 h\n0042 e\n8000".toByteArray(Charsets.UTF_8)
-        val signed = AnkyPostSigner.sign(body, identity, "1770000000000")
-
-        assertEquals(AnkyHasher.sha256Hex(body), signed.bodySha256)
-        assertTrue(identity.verifies(AnkyPostSigner.canonicalMessage(signed.requestTime, signed.bodySha256), signed.signature))
+        assertEquals(first.address, second.address)
+        assertEquals(first.accountId, second.accountId)
     }
 }

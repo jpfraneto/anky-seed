@@ -1,0 +1,28 @@
+# Anky As Storyteller
+
+Anky is a local-first writer archive. The `.anky` file on the device is the canonical artifact.
+
+The mirror is a transient storyteller. It receives exact `.anky` bytes at `POST /anky`, verifies a per-request Base EIP-712 signature, reconstructs the writing in memory, builds a storyteller prompt, asks a confirmed private provider, returns a reflection, and forgets the writing.
+
+No server memory:
+
+- no raw `.anky` storage;
+- no reconstructed writing storage;
+- no prompt storage;
+- no reflection storage;
+- no embeddings;
+- no login/session/profile.
+
+Provider routing lives behind `services/mirror/src/mirror/providers.ts`. Providers declare zero-data-retention, content logging, and training status. `ANKY_REQUIRE_ZDR=true` skips unconfirmed providers. The default fallback is no-charge and does not call a model.
+
+Storyteller entrypoint:
+
+- prompt module: `services/mirror/src/mirror/storytellerPrompt.ts`
+- provider router: `services/mirror/src/mirror/providers.ts`
+- mirror route/core: `services/mirror/src/routes/anky.ts`
+- identity verifier: `services/mirror/src/auth/verifyAnkyIdentity.ts`
+- credit ledger: `services/mirror/src/credits/spendCredit.ts`
+- diagnostics: `services/mirror/src/diagnostics/sink.ts`
+- protocol: `protocol/implementations/typescript/src/identity.ts`
+- iOS request path: `apps/ios/Anky/Core/Mirror/AnkyPostSigner.swift`, `apps/ios/Anky/Core/Mirror/MirrorClient.swift`
+- Android request path: `apps/android/app/src/main/java/inc/anky/android/core/identity/AnkyPostSigner.kt`, `apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt`

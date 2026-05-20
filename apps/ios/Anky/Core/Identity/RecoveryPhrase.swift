@@ -56,11 +56,6 @@ struct RecoveryPhrase: Hashable {
         }
         return try RecoveryPhrase(words: words)
     }
-
-    func signingSeed() -> Data {
-        let digest = SHA256.hash(data: Data("ANKY_RECOVERY_PHRASE_V1\n\(text)".utf8))
-        return Data(digest)
-    }
 }
 
 enum RecoveryPhraseError: Error, Equatable {

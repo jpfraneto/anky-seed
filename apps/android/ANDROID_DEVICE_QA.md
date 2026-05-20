@@ -106,14 +106,14 @@ Fail:
    ```
 
 3. Observe the first visible screen.
-4. Open the `You` tab and note the public key.
+4. Open the `You` tab and note the accountId.
 5. Stop and relaunch the app.
 
 Pass:
 
 - First visible app surface is `Write`.
 - No login, cloud sync, analytics consent, or server account setup is required.
-- `You` shows a stable public key after relaunch.
+- `You` shows a stable accountId after relaunch.
 - No recovery phrase is visible on first launch.
 - No network call is observed on first launch if network inspection is enabled.
 
@@ -420,7 +420,7 @@ Fail:
 
 ## Mirror Signing
 
-Run this only with a complete session. Prefer a controlled local/LAN HTTPS or HTTP capture endpoint that records method, path, headers, and exact request body. The app accepts `http://` and `https://` mirror base URLs.
+Run this only with a complete session. Prefer a controlled HTTPS staging mirror or HTTPS tunnel that records method, path, headers, and exact request body. Android release builds should not rely on cleartext LAN HTTP; if a debug-only cleartext capture endpoint is used, configure the device/build explicitly and never persist raw writing in the capture logs.
 
 1. Start a request capture endpoint reachable from the device.
 2. In `You`, set `Mirror base URL` to the capture endpoint base URL and tap `Save mirror URL`.
@@ -436,12 +436,12 @@ Pass:
 - `Content-Type` is `text/plain; charset=utf-8`.
 - Body is exact `.anky` text bytes, not JSON or multipart.
 - Headers include:
-  - `X-Anky-Public-Key`
+  - `X-Anky-Account`
   - `X-Anky-Signature`
   - `X-Anky-Request-Time`
   - `X-Anky-Client: android`
 - Body SHA-256 matches the hash shown in Reveal.
-- Public key matches the `You` screen public key.
+- AccountId matches the `You` screen accountId.
 - If the endpoint returns a mismatched hash, the app reports an error and does not save a reflection.
 
 Fail:

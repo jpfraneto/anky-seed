@@ -1,7 +1,7 @@
 package inc.anky.android.core.identity
 
-import inc.anky.android.core.protocol.AnkyHasher
 import java.security.SecureRandom
+import org.web3j.crypto.MnemonicUtils
 
 data class RecoveryPhrase(val words: List<String>) {
     val text: String = words.joinToString(separator = " ")
@@ -11,19 +11,16 @@ data class RecoveryPhrase(val words: List<String>) {
         require(words.all { BIP39WordList.english.contains(it) }) { "Recovery phrase contains an unsupported word." }
     }
 
-    fun signingSeed(): ByteArray =
-        AnkyHasher.sha256Hex("ANKY_RECOVERY_PHRASE_V1\n$text")
-            .chunked(2)
-            .map { it.toInt(16).toByte() }
-            .toByteArray()
+    fun signingSeed(): ByteArray = MnemonicUtils.generateSeed(text, "")
 
     companion object {
         fun parse(text: String): RecoveryPhrase =
             RecoveryPhrase(text.lowercase().trim().split(Regex("\\s+")).filter { it.isNotEmpty() })
 
         fun generate(random: SecureRandom = SecureRandom()): RecoveryPhrase {
-            val words = List(12) { BIP39WordList.english[random.nextInt(BIP39WordList.english.size)] }
-            return RecoveryPhrase(words)
+            val entropy = ByteArray(16)
+            random.nextBytes(entropy)
+            return parse(MnemonicUtils.generateMnemonic(entropy))
         }
     }
 }

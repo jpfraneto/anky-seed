@@ -16,10 +16,12 @@ struct MirrorClient {
         request.httpBody = bytes
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(signed.publicKey, forHTTPHeaderField: "X-Anky-Public-Key")
+        request.setValue(signed.identityVersion, forHTTPHeaderField: "X-Anky-Identity-Version")
+        request.setValue(signed.accountId, forHTTPHeaderField: "X-Anky-Account")
+        request.setValue(signed.signatureType, forHTTPHeaderField: "X-Anky-Signature-Type")
         request.setValue(signed.signature, forHTTPHeaderField: "X-Anky-Signature")
         request.setValue(signed.requestTime, forHTTPHeaderField: "X-Anky-Request-Time")
-        request.setValue("ios", forHTTPHeaderField: "X-Anky-Client")
+        request.setValue(signed.client, forHTTPHeaderField: "X-Anky-Client")
         if let appVersion {
             request.setValue(appVersion, forHTTPHeaderField: "X-Anky-App-Version")
         }

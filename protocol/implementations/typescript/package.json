@@ -10,5 +10,10 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@scure/bip32": "^2.2.0",
+    "@scure/bip39": "^2.2.0",
+    "viem": "^2.50.4"
   }
 }

@@ -11,7 +11,7 @@ describe("production environment guard", () => {
     expect(env.iosDeviceCheckRequired).toBe(true);
     expect(env.androidTrialEnabled).toBe(false);
     expect(env.androidPlayIntegrityRequired).toBe(true);
-    expect(env.androidPublicKeyTrialsConfirmed).toBe(false);
+    expect(env.androidAddressTrialsConfirmed).toBe(false);
   });
 
   test("rejects dev credit bypass in production", () => {
@@ -96,7 +96,7 @@ describe("production environment guard", () => {
     expect(() => assertProductionSafe(env)).not.toThrow();
   });
 
-  test("production requires explicit Android public-key trial confirmation", () => {
+  test("production requires explicit Android address trial confirmation", () => {
     const env = loadEnv({
       NODE_ENV: "production",
       OPENROUTER_API_KEY: "key",
@@ -108,10 +108,10 @@ describe("production environment guard", () => {
       ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
     });
 
-    expect(() => assertProductionSafe(env)).toThrow("ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED");
+    expect(() => assertProductionSafe(env)).toThrow("ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED");
   });
 
-  test("production allows explicitly confirmed Android public-key trials", () => {
+  test("production allows explicitly confirmed Android address trials", () => {
     const env = loadEnv({
       NODE_ENV: "production",
       OPENROUTER_API_KEY: "key",
@@ -121,7 +121,7 @@ describe("production environment guard", () => {
       REVENUECAT_PROJECT_ID: "project",
       ANKY_ANDROID_TRIAL_ENABLED: "true",
       ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED: "false",
-      ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED: "true",
+      ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED: "true",
     });
 
     expect(() => assertProductionSafe(env)).not.toThrow();

@@ -1,5 +1,9 @@
-export async function publicKeyHash(publicKey: string): Promise<string> {
-  return shortHash(publicKey);
+export async function accountIdHash(accountId: string): Promise<string> {
+  return shortHash(accountId);
+}
+
+export async function addressHash(address: string): Promise<string> {
+  return shortHash(address);
 }
 
 export async function shortHash(value: string): Promise<string> {

@@ -152,7 +152,7 @@ fun AnkyApp(container: AppContainer) {
                 runCatching { container.appOpenStore.loadOrCreate() }
                 if (identity != null) {
                     runCatching {
-                        container.creditsClient.configure(identity.publicKey)
+                        container.creditsClient.configure(identity.accountId)
                         container.creditsClient.refresh()
                     }
                 }
@@ -269,7 +269,7 @@ fun AnkyApp(container: AppContainer) {
                                 creditBalanceCacheInvalidator = { container.creditsClient.invalidateCreditBalanceCache() },
                                 creditBalanceFetcher = {
                                     val identity = container.identityStore.loadOrCreate()
-                                    container.creditsClient.configure(identity.publicKey)
+                                    container.creditsClient.configure(identity.accountId)
                                     container.creditsClient.refresh().balance
                                 },
                                 hasClaimedFreeCreditsProvider = {

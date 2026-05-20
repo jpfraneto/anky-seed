@@ -3,31 +3,43 @@ import XCTest
 @testable import AnkyProtocol
 
 final class MirrorSigningTests: XCTestCase {
-    func testCanonicalSignatureMessageMatchesServerContract() {
-        let message = AnkyPostSigner.canonicalMessage(
-            requestTime: "1770000000000",
-            bodySha256: "abc123"
-        )
+    func testFixtureBodyHashUsesExactRawAnkyBytes() throws {
+        let fixture = try AnkyIdentityFixtureLoader.mainnet()
+        let body = Data(fixture.body.utf8)
+        let bodyHash = "0x" + AnkyHasher.sha256Hex(body)
 
-        XCTAssertEqual(message, [
-            "ANKY_POST_V1",
-            "method:POST",
-            "path:/anky",
-            "request_time:1770000000000",
-            "body_sha256:abc123"
-        ].joined(separator: "\n"))
+        XCTAssertEqual(bodyHash, fixture.bodySha256)
+        XCTAssertNotEqual(bodyHash, "0x" + AnkyHasher.sha256Hex(Data(fixture.body.dropLast().utf8)))
     }
 
-    func testExactBodyHashUsesRawAnkyBytes() throws {
-        let body = Data("1770000000000 h\n0042 e\n8000".utf8)
-        let identity = WriterIdentity.generate()
+    func testFixtureEIP712SignatureMatchesContractExactly() throws {
+        let fixture = try AnkyIdentityFixtureLoader.mainnet()
+        let identity = try WriterIdentity(
+            recoveryPhrase: try RecoveryPhrase(text: fixture.mnemonic),
+            chainId: fixture.chainId
+        )
         let signed = try AnkyPostSigner.sign(
-            body: body,
+            body: Data(fixture.body.utf8),
             identity: identity,
-            requestTime: "1770000000000"
+            requestTime: fixture.requestTime,
+            client: fixture.client
         )
 
-        XCTAssertEqual(signed.bodySha256, AnkyHasher.sha256Hex(body))
-        XCTAssertNotEqual(signed.bodySha256, AnkyHasher.sha256Hex("1770000000000 h\n0042 e\n8000\n"))
+        XCTAssertEqual(signed.identityVersion, fixture.identityVersion)
+        XCTAssertEqual(signed.accountId, fixture.accountId)
+        XCTAssertEqual(signed.signatureType, "eip712")
+        XCTAssertEqual(signed.bodySha256, fixture.bodySha256)
+        XCTAssertEqual(signed.signature, fixture.signature)
+
+        let digest = try AnkyPostSigner.eip712Digest(
+            identity: identity,
+            bodySha256: fixture.bodySha256,
+            requestTime: fixture.requestTime,
+            client: fixture.client
+        )
+        XCTAssertEqual(
+            WriterIdentity.recoverAddress(digest: digest, signature: signed.signature),
+            fixture.recoveredAddress
+        )
     }
 }

@@ -6,11 +6,20 @@ export type Env = {
   devBypassCredits: boolean;
   devMockMirror: boolean;
   mirrorDisabled: boolean;
+  baseChainId: number;
   maxBodyBytes: number;
   openrouterApiKey: string;
   openrouterModel: string;
   openrouterTimeoutMs: number;
   openrouterPrivacyConfirmed: boolean;
+  requireZdr: boolean;
+  providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
+  bankrLlmGatewayUrl: string;
+  bankrLlmGatewayApiKey: string;
+  bankrZdrConfirmed: boolean;
+  poiesisLlmUrl: string;
+  poiesisLlmApiKey: string;
+  poiesisZdrConfirmed: boolean;
   revenueCatSecretKey: string;
   revenueCatProjectId: string;
   revenueCatCreditCode: string;
@@ -25,7 +34,7 @@ export type Env = {
   appleDeviceCheckEnv: "production" | "development";
   androidTrialEnabled: boolean;
   androidPlayIntegrityRequired: boolean;
-  androidPublicKeyTrialsConfirmed: boolean;
+  androidAddressTrialsConfirmed: boolean;
 };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -37,11 +46,20 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     devBypassCredits: source.ANKY_DEV_BYPASS_CREDITS === "true",
     devMockMirror: source.ANKY_DEV_MOCK_MIRROR === "true",
     mirrorDisabled: source.ANKY_MIRROR_DISABLED === "true",
+    baseChainId: numberFromEnv(source.ANKY_BASE_CHAIN_ID, 8453),
     maxBodyBytes: numberFromEnv(source.ANKY_MAX_BODY_BYTES, 1_048_576),
     openrouterApiKey: source.OPENROUTER_API_KEY ?? "",
     openrouterModel: source.OPENROUTER_MODEL ?? "",
     openrouterTimeoutMs: numberFromEnv(source.OPENROUTER_TIMEOUT_MS, 45000),
     openrouterPrivacyConfirmed: source.OPENROUTER_PRIVACY_CONFIRMED === "true",
+    requireZdr: source.ANKY_REQUIRE_ZDR !== "false",
+    providerOrder: providerOrderFromEnv(source.ANKY_PROVIDER_ORDER),
+    bankrLlmGatewayUrl: source.BANKR_LLM_GATEWAY_URL ?? "",
+    bankrLlmGatewayApiKey: source.BANKR_LLM_GATEWAY_API_KEY ?? "",
+    bankrZdrConfirmed: source.BANKR_ZDR_CONFIRMED === "true",
+    poiesisLlmUrl: source.POIESIS_LLM_URL ?? "",
+    poiesisLlmApiKey: source.POIESIS_LLM_API_KEY ?? "",
+    poiesisZdrConfirmed: source.POIESIS_ZDR_CONFIRMED === "true",
     revenueCatSecretKey: source.REVENUECAT_SECRET_KEY ?? "",
     revenueCatProjectId: source.REVENUECAT_PROJECT_ID ?? "",
     revenueCatCreditCode: source.REVENUECAT_CREDIT_CODE ?? "CRD",
@@ -57,7 +75,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       source.APPLE_DEVICECHECK_ENV === "development" ? "development" : "production",
     androidTrialEnabled: source.ANKY_ANDROID_TRIAL_ENABLED === "true",
     androidPlayIntegrityRequired: source.ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED !== "false",
-    androidPublicKeyTrialsConfirmed: source.ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED === "true",
+    androidAddressTrialsConfirmed: source.ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED === "true",
   };
 }
 
@@ -78,6 +96,7 @@ export function assertProductionSafe(env: Env): void {
     if (!env.openrouterPrivacyConfirmed) {
       failures.push("OPENROUTER_PRIVACY_CONFIRMED=true is required after routing privacy has been verified");
     }
+    if (!env.requireZdr) failures.push("ANKY_REQUIRE_ZDR must not be false");
     if (missingOrPlaceholder(env.revenueCatSecretKey)) failures.push("REVENUECAT_SECRET_KEY is required");
     if (missingOrPlaceholder(env.revenueCatProjectId)) failures.push("REVENUECAT_PROJECT_ID is required");
     if (missingOrPlaceholder(env.revenueCatCreditCode)) failures.push("REVENUECAT_CREDIT_CODE is required");
@@ -95,10 +114,10 @@ export function assertProductionSafe(env: Env): void {
     }
     if (
       env.androidTrialEnabled &&
-      (!env.androidPublicKeyTrialsConfirmed || env.androidPlayIntegrityRequired)
+      (!env.androidAddressTrialsConfirmed || env.androidPlayIntegrityRequired)
     ) {
       failures.push(
-        "Android automatic trials require ANKY_ANDROID_PUBLIC_KEY_TRIALS_CONFIRMED=true and ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=false until Play Integrity/device recall is implemented",
+        "Android automatic trials require ANKY_ANDROID_ADDRESS_TRIALS_CONFIRMED=true and ANKY_ANDROID_PLAY_INTEGRITY_REQUIRED=false until Play Integrity/device recall is implemented",
       );
     }
   }
@@ -116,4 +135,13 @@ function numberFromEnv(value: string | undefined, fallback: number): number {
 
 function missingOrPlaceholder(value: string): boolean {
   return !value || value.startsWith("REPLACE_WITH_") || value === "...";
+}
+
+function providerOrderFromEnv(value: string | undefined): Env["providerOrder"] {
+  const allowed = new Set(["openrouter", "bankr", "poiesis", "default"]);
+  const names = (value ?? "openrouter,bankr,poiesis,default")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name): name is Env["providerOrder"][number] => allowed.has(name));
+  return names.length > 0 ? names : ["openrouter", "bankr", "poiesis", "default"];
 }

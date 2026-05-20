@@ -1,12 +1,12 @@
 import Foundation
 
 enum FreeCreditMessage {
-    static func make(publicKey: String, appVersion: String?) -> String {
+    static func make(accountId: String, appVersion: String?) -> String {
         var lines = [
             "hey jp, i'd love to try anky reflections.",
             "",
-            "my public identity is:",
-            publicKey,
+            "my Anky address is:",
+            accountId,
             "",
             "platform: ios"
         ]

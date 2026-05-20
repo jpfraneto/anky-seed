@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { ed25519 } from "@noble/curves/ed25519.js";
-import bs58 from "bs58";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { sha256Hex } from "@anky/protocol";
-import { canonicalAnkyPostMessage } from "../src/auth/canonicalMessage";
+import { signAnkyMirrorRequest } from "@anky/protocol";
 import { clearReplayMemoryForTests } from "../src/auth/replayProtection";
 import { createApp } from "../src";
 import { loadEnv } from "../src/env";
@@ -13,6 +10,7 @@ import { createSafeLogger } from "../src/privacy/safeLogger";
 import { normalizeMetadataValue } from "../src/privacy/redaction";
 
 const fixtureRoot = resolve(import.meta.dir, "../../../protocol/fixtures");
+const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
 beforeEach(() => {
   clearReplayMemoryForTests();
@@ -69,7 +67,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => {
+        prepareReflectionCredit: async () => {
           creditCalls += 1;
           return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
         },
@@ -146,14 +144,16 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => {
+        prepareReflectionCredit: async () => {
           creditCalls += 1;
           return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
         },
       },
     });
     const headers = await signedHeaders(body);
-    headers["X-Anky-Signature"] = bs58.encode(crypto.getRandomValues(new Uint8Array(64)));
+    headers["X-Anky-Signature"] = `0x${[...crypto.getRandomValues(new Uint8Array(65))]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}`;
 
     const response = await app.request("/anky", { method: "POST", headers, body });
     const json = await response.json();
@@ -163,6 +163,77 @@ describe("POST /anky", () => {
     expect(creditCalls).toBe(0);
   });
 
+  test("rejects when the signed body does not match the received body bytes", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const headers = await signedHeaders(body);
+    const tampered = new TextEncoder().encode(`${new TextDecoder().decode(body)} `);
+    let creditCalls = 0;
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => {
+          creditCalls += 1;
+          return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers, body: tampered });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("INVALID_SIGNATURE");
+    expect(creditCalls).toBe(0);
+  });
+
+  test("rejects when the account header does not match the signer", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const headers = await signedHeaders(body, {
+      "X-Anky-Account": "0x0000000000000000000000000000000000000001",
+    });
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers, body });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("INVALID_SIGNATURE");
+  });
+
+  test("rejects unsupported Base chain ids", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const headers = await signedHeaders(body);
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true", ANKY_BASE_CHAIN_ID: "1" }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers, body });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("UNSUPPORTED_CHAIN");
+  });
+
+  test("rejects unsupported identity versions", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const headers = await signedHeaders(body, { "X-Anky-Identity-Version": "anky.base.erc1271.v1" });
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers, body });
+    const json = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(json.error.code).toBe("UNSUPPORTED_IDENTITY_VERSION");
+  });
+
   test("rejects incomplete ankys", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
     let creditCalls = 0;
@@ -170,7 +241,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => {
+        prepareReflectionCredit: async () => {
           creditCalls += 1;
           return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
         },
@@ -197,7 +268,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_BYPASS_CREDITS: "true", ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => {
+        prepareReflectionCredit: async () => {
           creditCalls += 1;
           return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
         },
@@ -257,7 +328,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async ({ ankyHash }) => ({
+        prepareReflectionCredit: async ({ ankyHash }) => ({
           ok: true,
           creditsRemaining: 4,
           result: "spent",
@@ -284,7 +355,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async ({ client, appVersion, trialProof }) => {
+        prepareReflectionCredit: async ({ client, appVersion, trialProof }) => {
           expect(client).toBe("ios");
           expect(appVersion).toBe("1.0(1)");
           expect(trialProof).toBe("proof-token");
@@ -321,7 +392,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => ({
+        prepareReflectionCredit: async () => ({
           ok: false,
           creditsRemaining: null,
           result: "trial_ineligible",
@@ -346,12 +417,11 @@ describe("POST /anky", () => {
     expect(modelCalls).toBe(0);
   });
 
-  test("same publicKey and ankyHash duplicate does not double spend while in flight", async () => {
+  test("same accountId and ankyHash duplicate does not double spend while in flight", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
-    const secretKey = crypto.getRandomValues(new Uint8Array(32));
     const now = Date.now();
-    const headers = await signedHeaders(body, {}, String(now), secretKey);
-    const duplicateHeaders = await signedHeaders(body, {}, String(now + 1), secretKey);
+    const headers = await signedHeaders(body, {}, String(now));
+    const duplicateHeaders = await signedHeaders(body, {}, String(now + 1));
     let unblock!: () => void;
     const gate = new Promise<void>((resolveGate) => {
       unblock = resolveGate;
@@ -361,7 +431,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true", REQUEST_TIME_TOLERANCE_MS: "300000" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => {
+        prepareReflectionCredit: async () => {
           creditCalls += 1;
           await gate;
           return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
@@ -379,7 +449,87 @@ describe("POST /anky", () => {
     expect(creditCalls).toBe(1);
   });
 
-  test("model failure after spend attempts refund", async () => {
+  test("duplicate succeeded does not double spend or store reflection", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let creditCalls = 0;
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true", REQUEST_TIME_TOLERANCE_MS: "300000" }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => {
+          creditCalls += 1;
+          return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
+        },
+      },
+    });
+
+    const first = await app.request("/anky", { method: "POST", headers: await signedHeaders(body, {}, String(Date.now())), body });
+    const duplicate = await app.request("/anky", { method: "POST", headers: await signedHeaders(body, {}, String(Date.now() + 1)), body });
+    const json = await duplicate.json();
+
+    expect(first.status).toBe(200);
+    expect(duplicate.status).toBe(409);
+    expect(json.error.code).toBe("DUPLICATE_SUCCEEDED");
+    expect(creditCalls).toBe(1);
+    expect(JSON.stringify(json)).not.toContain("Here is what I saw");
+  });
+
+  test("same .anky from different addresses uses separate duplicate keys", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let creditCalls = 0;
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => {
+          creditCalls += 1;
+          return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
+        },
+      },
+    });
+
+    const first = await app.request("/anky", { method: "POST", headers: await signedHeaders(body), body });
+    const second = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {}, undefined, 8453, "test test test test test test test test test test test junk"),
+      body,
+    });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(creditCalls).toBe(2);
+  });
+
+  test("default fallback does not spend credits", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let spendCalls = 0;
+    const app = createApp({
+      env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 4, result: "spent", spentCredit: true }),
+        routeReflection: async () => ({
+          provider: "default",
+          chargeable: false,
+          title: "mirror unavailable",
+          reflection: "hey, thanks for being who you are. my thoughts:\n\nNo credit was spent.",
+        }),
+        spendPreparedReflectionCredit: async () => {
+          spendCalls += 1;
+          return { ok: true, creditsRemaining: 3, result: "spent", spentCredit: true };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", { method: "POST", headers: await signedHeaders(body), body });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.creditsRemaining).toBe(4);
+    expect(spendCalls).toBe(0);
+  });
+
+  test("model failure before spend does not charge or refund", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const lines: string[] = [];
     let refundCalls = 0;
@@ -387,16 +537,12 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => ({
+        prepareReflectionCredit: async () => ({
           ok: true,
           creditsRemaining: 4,
           result: "spent",
           spentCredit: true,
         }),
-        refundReflectionCredit: async () => {
-          refundCalls += 1;
-          return { ok: true, creditsRemaining: 5, result: "refunded" };
-        },
         callMirror: async () => {
           throw new Error("model down");
         },
@@ -412,27 +558,23 @@ describe("POST /anky", () => {
 
     expect(response.status).toBe(500);
     expect(json.error.code).toBe("MIRROR_FAILED");
-    expect(refundCalls).toBe(1);
+    expect(refundCalls).toBe(0);
     expect(lines.join("\n")).toContain('"modelFailure":"MODEL_FAILED"');
   });
 
-  test("model failure after trial grant only refunds spent reflection credit", async () => {
+  test("model failure before trial spend does not charge or refund", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let refundCalls = 0;
     const app = createApp({
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => ({
+        prepareReflectionCredit: async () => ({
           ok: true,
           creditsRemaining: 7,
           result: "trial_granted_spent",
           spentCredit: true,
         }),
-        refundReflectionCredit: async () => {
-          refundCalls += 1;
-          return { ok: true, creditsRemaining: 8, result: "refunded" };
-        },
         callMirror: async () => {
           throw new Error("model down");
         },
@@ -446,7 +588,7 @@ describe("POST /anky", () => {
     });
 
     expect(response.status).toBe(500);
-    expect(refundCalls).toBe(1);
+    expect(refundCalls).toBe(0);
   });
 
   test("logs do not include raw writing, prompt, reflection, or trial proof", async () => {
@@ -456,7 +598,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async () => ({
+        prepareReflectionCredit: async () => ({
           ok: true,
           creditsRemaining: 7,
           result: "trial_granted_spent",
@@ -486,7 +628,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async ({ appVersion }) => {
+        prepareReflectionCredit: async ({ appVersion }) => {
           expect(appVersion).toHaveLength(64);
           expect(appVersion).toMatch(/^[A-Za-z0-9._\-+()]+$/);
           expect(appVersion).not.toContain("<");
@@ -520,7 +662,7 @@ describe("POST /anky", () => {
       env: loadEnv({ ANKY_DEV_MOCK_MIRROR: "true" }),
       logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
-        resolveReflectionCredit: async ({ appVersion }) => {
+        prepareReflectionCredit: async ({ appVersion }) => {
           expect(appVersion).toBeUndefined();
           return { ok: true, creditsRemaining: 3, result: "spent", spentCredit: true };
         },
@@ -552,21 +694,26 @@ async function signedHeaders(
   body: Uint8Array,
   extra: Record<string, string> = {},
   requestTimeOverride?: string,
-  secretKeyOverride?: Uint8Array,
+  chainId = 8453,
+  mnemonic = identityFixtureMnemonic,
 ): Promise<Record<string, string>> {
-  const secretKey = secretKeyOverride ?? crypto.getRandomValues(new Uint8Array(32));
-  const publicKey = ed25519.getPublicKey(secretKey);
   const requestTime = requestTimeOverride ?? String(Date.now());
-  const bodySha256 = await sha256Hex(body);
-  const message = canonicalAnkyPostMessage({ requestTime, bodySha256 });
-  const signature = ed25519.sign(new TextEncoder().encode(message), secretKey);
+  const signed = await signAnkyMirrorRequest({
+    mnemonic,
+    chainId,
+    body,
+    requestTime,
+    client: (extra["X-Anky-Client"] as any) ?? "other",
+  });
 
   return {
     "Content-Type": "text/plain; charset=utf-8",
-    "X-Anky-Public-Key": bs58.encode(publicKey),
-    "X-Anky-Signature": bs58.encode(signature),
+    "X-Anky-Identity-Version": signed.identity.identityVersion,
+    "X-Anky-Account": signed.identity.accountId,
+    "X-Anky-Signature-Type": "eip712",
+    "X-Anky-Signature": signed.signature,
     "X-Anky-Request-Time": requestTime,
-    "X-Anky-Client": "cli",
+    "X-Anky-Client": "other",
     ...extra,
   };
 }

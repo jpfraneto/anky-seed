@@ -11,6 +11,8 @@ The constitutional source of truth lives in:
 - `docs/PRODUCT_LAW.md`
 - `docs/TECHNICAL_LAW.md`
 - `docs/API_CONTRACT.md`
+- `docs/BASE_IDENTITY_LAW.md`
+- `docs/FUTURE_SMART_ACCOUNTS.md`
 - `docs/CODEX_MIGRATION_NOTES.md`
 - `docs/PRIVACY_COVENANT.md`
 
@@ -22,7 +24,8 @@ The important constraints for this foundation:
 - The mirror server receives `.anky` only when the writer explicitly asks for reflection.
 - The mirror server processes writing transiently and forgets.
 - There is one app-facing endpoint: `POST /anky`.
-- No cloud journal, feed, chat, social graph, Solana sealing, NFTs, AI memory, or server-side writing archive.
+- Anky identity is Base-native: local EOA now, ERC-1271-compatible interface later.
+- No cloud journal, feed, chat, social graph, smart wallet product, wallet UI, on-chain writing, AI memory, or server-side writing archive.
 
 ## Repository Structure
 
@@ -59,7 +62,7 @@ The mirror exposes:
 
 `POST /anky` accepts `Content-Type: text/plain; charset=utf-8`. The request body is the exact `.anky` text/bytes. It does not accept JSON writing bodies.
 
-Signature verification is implemented with Ed25519 using `@noble/curves` and Solana-style base58 public keys/signatures via `bs58`.
+Signature verification is EIP-712 over a Base account identity. Current requests use `X-Anky-Identity-Version: anky.base.eoa.v1`, `X-Anky-Account: 0xChecksumAddress`, `X-Anky-Signature-Type: eip712`, and an EVM signature over the server-derived `.anky` body hash. The Base chain ID remains in env and EIP-712 domain data.
 
 The service listens on `process.env.PORT` and `0.0.0.0` for Railway. It has a production guard: when `ANKY_ENV=production` or `NODE_ENV=production`, dev credit bypass and mock mirror are forbidden, OpenRouter and RevenueCat configuration are required, and startup fails loudly if the mirror is unsafe.
 
@@ -72,7 +75,7 @@ cd services/mirror
 ANKY_DEV_BYPASS_CREDITS=true ANKY_DEV_MOCK_MIRROR=true bun run dev
 ```
 
-Then set the iOS app's `You -> Mirror base URL` to `http://127.0.0.1:3000` for simulator, or to your Mac's LAN IP for a physical iPhone.
+Then set the app's `You -> Mirror base URL` to `http://127.0.0.1:3000` for the iOS simulator, `http://10.0.2.2:3000` for the Android emulator, or use the deployed HTTPS mirror / an HTTPS tunnel for physical devices.
 
 Current Railway mirror URL:
 
@@ -115,7 +118,7 @@ The native iOS v0 loop is implemented:
 - Ask Anky signs `POST /anky` and sends the exact `.anky` bytes.
 - Reflections are stored locally by hash.
 - Map shows the local trail grouped by day with complete/fragment/reflection state.
-- You exposes public key, recovery phrase reveal/copy after local auth, Face ID app lock, reminders, export, support/manual-credit contact, `$ANKY` CA copy, privacy, and DEBUG mirror tools.
+- You exposes the Anky address/Base account, recovery phrase reveal/copy after local auth, Face ID app lock, reminders, export, support/manual-credit contact, `$ANKY` CA copy, privacy, and DEBUG mirror tools.
 
 See `apps/ios/README.md` for build, test, storage, and privacy details.
 
@@ -148,5 +151,5 @@ This reads from disk, prints derived facts, and never uploads writing.
 - Databases
 - `/register`, `/session`, `/me`, `/v1/reflections`, or any product endpoint besides `POST /anky`
 - Server-side persistence of raw `.anky`, reconstructed writing, prompts, or reflections
-- Solana sealing, NFTs, Looms, proofs, Helius, Privy, social feed, chat, cloud sync, or AI memory
+- Smart wallets, Coinbase Smart Wallet, Privy, WalletConnect, ERC-4337, on-chain `.anky` storage, on-chain reflections, NFTs, social feed, chat, cloud sync, or AI memory
 - Android automatic trial credits before Play Integrity/device recall

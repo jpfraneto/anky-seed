@@ -20,7 +20,7 @@ export async function queryDeviceCheckTrialBit(input: {
     body: request.body,
     fetchImpl: input.fetchImpl,
     parse: async (response) => {
-      const body = await response.json().catch(() => null);
+      const body = await response.json().catch(() => null) as { bit0?: boolean } | null;
       return { ok: true, claimed: body?.bit0 === true };
     },
   });

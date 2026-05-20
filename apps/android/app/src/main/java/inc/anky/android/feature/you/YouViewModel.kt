@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class YouState(
-    val publicKey: String = "",
+    val accountId: String = "",
     val recoveryPhrase: String? = null,
     val appLockEnabled: Boolean = false,
     val dailyReminderEnabled: Boolean = false,
@@ -45,7 +45,7 @@ data class YouState(
     val error: String? = null,
 ) {
     val freeCreditMessage: String
-        get() = PrivacyMessages.freeCreditMessage(publicKey, "${BuildConfig.VERSION_NAME} ${BuildConfig.VERSION_CODE}")
+        get() = PrivacyMessages.freeCreditMessage(accountId, "${BuildConfig.VERSION_NAME} ${BuildConfig.VERSION_CODE}")
 
     val freeCreditWhatsAppUrl: String
         get() = Uri.parse("https://wa.me/56985491126")
@@ -69,7 +69,7 @@ class YouViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(YouState())
     private val creditState = MutableStateFlow(_state.value.creditState)
-    private val publicKeyState = MutableStateFlow(_state.value.publicKey)
+    private val accountIdState = MutableStateFlow(_state.value.accountId)
     val state: StateFlow<YouState> = _state
 
     init {
@@ -80,14 +80,14 @@ class YouViewModel(
                 _state.update(::localIdentityLoadFailureState)
                 return@launch
             }
-            publicKeyState.value = identity.publicKey
-            creditsClient.configure(identity.publicKey)
+            accountIdState.value = identity.accountId
+            creditsClient.configure(identity.accountId)
             creditState.value = CreditState(false, null, "loading credit packs", isLoading = true)
             creditState.value = creditsClient.refresh()
-            combine(settingsStore.settings, creditState, publicKeyState) { settings, credits, publicKey ->
+            combine(settingsStore.settings, creditState, accountIdState) { settings, credits, accountId ->
                 val sessions = indexStore.rebuild(archive, reflectionStore)
                 YouState(
-                    publicKey = publicKey,
+                    accountId = accountId,
                     appLockEnabled = settings.appLockEnabled,
                     dailyReminderEnabled = settings.dailyReminderEnabled,
                     dailyReminderMinutes = settings.dailyReminderMinutes,
@@ -139,12 +139,12 @@ class YouViewModel(
             runCatching {
                 identityStore.importRecoveryPhrase(text)
             }.onSuccess { identity ->
-                creditsClient.configure(identity.publicKey)
-                publicKeyState.value = identity.publicKey
+                creditsClient.configure(identity.accountId)
+                accountIdState.value = identity.accountId
                 creditState.value = creditsClient.refresh()
                 _state.update {
                     it.copy(
-                        publicKey = identity.publicKey,
+                        accountId = identity.accountId,
                         recoveryPhrase = null,
                         statusMessage = YouStatusCopy.RecoveryPhraseImported,
                         error = null,
@@ -214,7 +214,7 @@ class YouViewModel(
     fun refreshCredits() {
         viewModelScope.launch {
             creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
-            if (_state.value.publicKey.isBlank()) {
+            if (_state.value.accountId.isBlank()) {
                 val identity = runCatching {
                     identityStore.loadOrCreate()
                 }.getOrElse {
@@ -222,8 +222,8 @@ class YouViewModel(
                     _state.update { it.copy(error = YouStatusCopy.CouldNotLoadCredits) }
                     return@launch
                 }
-                publicKeyState.value = identity.publicKey
-                creditsClient.configure(identity.publicKey)
+                accountIdState.value = identity.accountId
+                creditsClient.configure(identity.accountId)
             }
             val refreshed = creditsClient.refresh()
             creditState.value = refreshed
@@ -433,12 +433,12 @@ class YouViewModel(
                 identityStore.resetForDevelopment()
                 identityStore.loadOrCreate()
             }.onSuccess { identity ->
-                creditsClient.configure(identity.publicKey)
-                publicKeyState.value = identity.publicKey
+                creditsClient.configure(identity.accountId)
+                accountIdState.value = identity.accountId
                 creditState.value = creditsClient.refresh()
                 _state.update {
                     it.copy(
-                        publicKey = identity.publicKey,
+                        accountId = identity.accountId,
                         recoveryPhrase = null,
                         statusMessage = YouStatusCopy.LocalIdentityReset,
                         error = null,

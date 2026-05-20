@@ -43,11 +43,17 @@ android {
         compose = true
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/DISCLAIMER"
+        }
+    }
+
     defaultConfig {
         applicationId = "app.anky.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 1
+        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 2026052001
         versionName = releaseProperty("ANKY_ANDROID_VERSION_NAME") ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -76,7 +82,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX") ?: ""
+            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
@@ -137,6 +143,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     implementation("org.json:json:20240303")
+    implementation("org.web3j:crypto:4.12.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

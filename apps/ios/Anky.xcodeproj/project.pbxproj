@@ -23,7 +23,6 @@
 		8A000001000000000000000E /* ActiveDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100E /* ActiveDraftStore.swift */; };
 		8A000001000000000000000F /* LocalAnkyArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100F /* LocalAnkyArchive.swift */; };
 		8A0000010000000000000010 /* ClipboardClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001010 /* ClipboardClient.swift */; };
-		8A0000020000000000000001 /* Base58.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001001 /* Base58.swift */; };
 		8A0000020000000000000002 /* WriterIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001002 /* WriterIdentity.swift */; };
 		8A0000020000000000000003 /* KeychainClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001003 /* KeychainClient.swift */; };
 		8A0000020000000000000004 /* WriterIdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001004 /* WriterIdentityStore.swift */; };
@@ -53,6 +52,8 @@
 		8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000060000000000001001 /* RevenueCatCreditsClient.swift */; };
 		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
 		8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */; };
+		8A0000080000000000000001 /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000080000000000009002 /* web3swift */; };
+		8A0000080000000000000002 /* CreditIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000080000000000001001 /* CreditIdentity.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,7 +74,6 @@
 		8A000001000000000000100F /* LocalAnkyArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnkyArchive.swift; sourceTree = "<group>"; };
 		8A0000010000000000001010 /* ClipboardClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardClient.swift; sourceTree = "<group>"; };
 		8A0000010000000000001011 /* Anky.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anky.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		8A0000020000000000001001 /* Base58.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Base58.swift; sourceTree = "<group>"; };
 		8A0000020000000000001002 /* WriterIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriterIdentity.swift; sourceTree = "<group>"; };
 		8A0000020000000000001003 /* KeychainClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainClient.swift; sourceTree = "<group>"; };
 		8A0000020000000000001004 /* WriterIdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriterIdentityStore.swift; sourceTree = "<group>"; };
@@ -102,6 +102,7 @@
 		8A0000050000000000001004 /* AnkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTheme.swift; sourceTree = "<group>"; };
 		8A0000060000000000001001 /* RevenueCatCreditsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatCreditsClient.swift; sourceTree = "<group>"; };
 		8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCheckTrialProofProvider.swift; sourceTree = "<group>"; };
+		8A0000080000000000001001 /* CreditIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditIdentity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +111,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A0000060000000000000002 /* RevenueCat in Frameworks */,
+				8A0000080000000000000001 /* web3swift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,8 +248,8 @@
 		8A0000020000000000003003 /* Identity */ = {
 			isa = PBXGroup;
 			children = (
-				8A0000020000000000001001 /* Base58.swift */,
 				8A0000020000000000001002 /* WriterIdentity.swift */,
+				8A0000080000000000001001 /* CreditIdentity.swift */,
 				8A0000020000000000001003 /* KeychainClient.swift */,
 				8A0000020000000000001004 /* WriterIdentityStore.swift */,
 				8A0000030000000000001004 /* BiometricAuthClient.swift */,
@@ -314,6 +316,7 @@
 			name = Anky;
 			packageProductDependencies = (
 				8A0000060000000000009002 /* RevenueCat */,
+				8A0000080000000000009002 /* web3swift */,
 			);
 			productName = Anky;
 			productReference = 8A0000010000000000001011 /* Anky.app */;
@@ -350,6 +353,7 @@
 			mainGroup = 8A0000010000000000003001;
 			packageReferences = (
 				8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */,
 			);
 			productRefGroup = 8A0000010000000000003003 /* Products */;
 			projectDirPath = "";
@@ -392,7 +396,6 @@
 				8A000001000000000000000E /* ActiveDraftStore.swift in Sources */,
 				8A000001000000000000000F /* LocalAnkyArchive.swift in Sources */,
 				8A0000010000000000000010 /* ClipboardClient.swift in Sources */,
-				8A0000020000000000000001 /* Base58.swift in Sources */,
 				8A0000020000000000000002 /* WriterIdentity.swift in Sources */,
 				8A0000020000000000000003 /* KeychainClient.swift in Sources */,
 				8A0000020000000000000004 /* WriterIdentityStore.swift in Sources */,
@@ -420,6 +423,7 @@
 					8A0000050000000000000004 /* AnkyTheme.swift in Sources */,
 					8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */,
 					8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */,
+					8A0000080000000000000002 /* CreditIdentity.swift in Sources */,
 				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -547,7 +551,7 @@
 					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 					ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 					CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2026052001;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -561,7 +565,7 @@
 					INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 					IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Ankydev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -578,7 +582,7 @@
 					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 					ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 					CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2026052001;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -592,7 +596,7 @@
 					INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 					IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Ankydev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -635,6 +639,14 @@
 				minimumVersion = 5.0.0;
 			};
 		};
+		8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/web3swift-team/web3swift.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 3.3.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -642,6 +654,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCat;
+		};
+		8A0000080000000000009002 /* web3swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */;
+			productName = web3swift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

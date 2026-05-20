@@ -47,7 +47,7 @@ Map screen
 You/settings screen
 local identity
 seed phrase
-public key
+accountId
 RevenueCat credits
 one mirror endpoint
 3. Drop From v0
@@ -57,7 +57,7 @@ Drop the old complexity:
 React Native
 Expo dependency
 Privy
-Solana sealing
+on-chain writing storage
 Looms
 NFTs
 SP1 proof
@@ -259,7 +259,7 @@ Do not grant credits on app install.
 
 Do not grant credits during onboarding.
 
-Do not grant credits by public key alone.
+Do not grant credits by accountId alone.
 
 Official mobile clients may receive one automatic 8-credit trial grant only when a valid complete `.anky` asks for reflection through `POST /anky`.
 
@@ -267,7 +267,7 @@ The grant must be device-bound, app-bound, platform-bound, and RevenueCat-backed
 
 If device-bound proof is unavailable, automatic grants stay disabled.
 
-Fallback support may still use JP/manual credit help with public key, platform, and app version only.
+Fallback support may still use JP/manual credit help with accountId, platform, and app version only.
 
 This protects the mirror budget without making the first reflection require a conversation.
 
@@ -331,7 +331,7 @@ iOS minimal loop exists or is clearly scaffolded
 Android minimal loop exists or is clearly scaffolded
 no writing is stored on server
 POST /anky is the only app-facing mirror endpoint
-no legacy Solana/proof/loom code enters v0
+no legacy proof/loom code enters v0
 16. Warning
 
 Complexity will try to return as cleverness.

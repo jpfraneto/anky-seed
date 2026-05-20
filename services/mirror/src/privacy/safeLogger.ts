@@ -1,13 +1,16 @@
 export type SafeLogFields = {
   requestId: string;
-  publicKeyHash?: string;
+  addressHash?: string;
+  accountIdHash?: string;
   ankyHash?: string;
   client?: string;
   appVersion?: string;
   durationMs?: number;
+  identityVersion?: string;
+  chainId?: number;
   statusCode: number;
   latencyMs: number;
-  modelProvider?: "openrouter" | "mock" | "none";
+  modelProvider?: string;
   modelFailure?: string;
   creditResult?: string;
 };

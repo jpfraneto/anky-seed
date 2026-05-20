@@ -538,9 +538,9 @@ private extension Data {
     var crc32Checksum: UInt32 {
         withUnsafeBytes { bytes in
             guard let base = bytes.bindMemory(to: Bytef.self).baseAddress else {
-                return UInt32(crc32(0, nil, 0))
+                return UInt32(zlib.crc32(0, nil, 0))
             }
-            return UInt32(crc32(0, base, uInt(count)))
+            return UInt32(zlib.crc32(0, base, uInt(count)))
         }
     }
 

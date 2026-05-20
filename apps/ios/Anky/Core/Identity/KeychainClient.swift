@@ -8,8 +8,8 @@ struct KeychainClient {
         self.service = service
     }
 
-    func data(for account: String) throws -> Data? {
-        var query = baseQuery(account: account)
+    func data(for account: String, synchronizable: Bool = false) throws -> Data? {
+        var query = baseQuery(account: account, synchronizable: synchronizable)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -24,15 +24,15 @@ struct KeychainClient {
         return result as? Data
     }
 
-    func save(_ data: Data, account: String) throws {
-        var query = baseQuery(account: account)
+    func save(_ data: Data, account: String, synchronizable: Bool = false) throws {
+        var query = baseQuery(account: account, synchronizable: synchronizable)
         query[kSecValueData as String] = data
-        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        query[kSecAttrAccessible as String] = synchronizable ? kSecAttrAccessibleAfterFirstUnlock : kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
         let status = SecItemAdd(query as CFDictionary, nil)
         if status == errSecDuplicateItem {
             let attributes = [kSecValueData as String: data]
-            let updateStatus = SecItemUpdate(baseQuery(account: account) as CFDictionary, attributes as CFDictionary)
+            let updateStatus = SecItemUpdate(baseQuery(account: account, synchronizable: synchronizable) as CFDictionary, attributes as CFDictionary)
             guard updateStatus == errSecSuccess else {
                 throw KeychainError.unhandled(updateStatus)
             }
@@ -50,12 +50,16 @@ struct KeychainClient {
         }
     }
 
-    private func baseQuery(account: String) -> [String: Any] {
-        [
+    private func baseQuery(account: String, synchronizable: Bool = false) -> [String: Any] {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
+        if synchronizable {
+            query[kSecAttrSynchronizable as String] = kCFBooleanTrue
+        }
+        return query
     }
 }
 

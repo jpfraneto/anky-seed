@@ -30,10 +30,12 @@ class MirrorClient(
             .post(bytes.toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .header("Content-Type", "text/plain; charset=utf-8")
             .header("Accept", "application/json")
-            .header("X-Anky-Public-Key", signed.publicKey)
+            .header("X-Anky-Identity-Version", signed.identityVersion)
+            .header("X-Anky-Account", signed.accountId)
+            .header("X-Anky-Signature-Type", signed.signatureType)
             .header("X-Anky-Signature", signed.signature)
             .header("X-Anky-Request-Time", signed.requestTime)
-            .header("X-Anky-Client", "android")
+            .header("X-Anky-Client", signed.client)
             .apply {
                 if (!appVersion.isNullOrBlank()) {
                     header("X-Anky-App-Version", appVersion)
@@ -92,6 +94,12 @@ private fun String?.toMirrorErrorCode(): MirrorErrorCode =
     when (this) {
         "INVALID_ANKY" -> MirrorErrorCode.InvalidAnky
         "INCOMPLETE_RITUAL" -> MirrorErrorCode.IncompleteRitual
+        "MISSING_IDENTITY_VERSION" -> MirrorErrorCode.MissingSignature
+        "UNSUPPORTED_IDENTITY_VERSION" -> MirrorErrorCode.InvalidSignature
+        "MISSING_ACCOUNT" -> MirrorErrorCode.MissingSignature
+        "INVALID_ACCOUNT" -> MirrorErrorCode.InvalidSignature
+        "UNSUPPORTED_CHAIN" -> MirrorErrorCode.InvalidSignature
+        "INVALID_SIGNATURE_TYPE" -> MirrorErrorCode.InvalidSignature
         "MISSING_SIGNATURE" -> MirrorErrorCode.MissingSignature
         "INVALID_SIGNATURE" -> MirrorErrorCode.InvalidSignature
         "INSUFFICIENT_CREDITS" -> MirrorErrorCode.InsufficientCredits
