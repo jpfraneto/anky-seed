@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "anky",
+  "version": "0.1.0",
+  "description": "A quiet Anky client for X: only the post box, plus a local .anky writing stream.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "css": ["content.css"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "anky"
+  }
+}

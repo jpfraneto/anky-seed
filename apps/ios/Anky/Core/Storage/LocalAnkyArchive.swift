@@ -13,7 +13,13 @@ struct SavedAnky: Hashable {
     let createdAt: Date
 }
 
+enum AnkyImportError: Error, Equatable {
+    case invalidArtifact
+}
+
 struct LocalAnkyArchive {
+    static let canonicalFileName = "dotAnky.anky"
+
     let directoryURL: URL
     private let fileManager: FileManager
 
@@ -30,11 +36,18 @@ struct LocalAnkyArchive {
 
     func save(_ ankyText: String) throws -> SavedAnky {
         let bytes = Data(ankyText.utf8)
-        let hash = AnkyHasher.sha256Hex(bytes)
-        let url = directoryURL.appendingPathComponent("\(hash).anky")
+        let url = canonicalURL
         try bytes.write(to: url, options: [.atomic])
 
         return try artifact(from: ankyText, url: url)
+    }
+
+    func importArtifact(_ ankyText: String) throws -> SavedAnky {
+        guard AnkyValidator.validate(ankyText).isValid else {
+            throw AnkyImportError.invalidArtifact
+        }
+
+        return try save(ankyText)
     }
 
     func load(url: URL) throws -> SavedAnky {
@@ -42,10 +55,18 @@ struct LocalAnkyArchive {
     }
 
     func load(hash: String) throws -> SavedAnky {
-        try load(url: directoryURL.appendingPathComponent("\(hash).anky"))
+        let current = try load(url: canonicalURL)
+        guard current.hash == hash else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return current
     }
 
     func list() -> [SavedAnky] {
+        if let current = try? load(url: canonicalURL) {
+            return [current]
+        }
+
         let urls = (try? fileManager.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: [.contentModificationDateKey],
@@ -56,16 +77,12 @@ struct LocalAnkyArchive {
             .filter { $0.pathExtension == "anky" }
             .compactMap { try? load(url: $0) }
             .sorted { $0.createdAt > $1.createdAt }
+            .prefix(1)
+            .map { $0 }
     }
 
     func fileURLs() -> [URL] {
-        ((try? fileManager.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
-        )) ?? [])
-        .filter { $0.pathExtension == "anky" }
-        .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        list().map(\.url)
     }
 
     func delete(_ artifact: SavedAnky) throws {
@@ -82,10 +99,19 @@ struct LocalAnkyArchive {
     }
 
     func clear() throws {
-        let urls = fileURLs()
+        let urls = ((try? fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )) ?? [])
+        .filter { $0.pathExtension == "anky" }
         for url in urls {
             try fileManager.removeItem(at: url)
         }
+    }
+
+    private var canonicalURL: URL {
+        directoryURL.appendingPathComponent(Self.canonicalFileName)
     }
 
     private func artifact(from ankyText: String, url: URL) throws -> SavedAnky {

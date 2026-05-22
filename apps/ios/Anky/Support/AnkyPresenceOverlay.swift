@@ -5,6 +5,7 @@ struct AnkyPresenceOverlay: View {
     let defaultSequence: AnkySequenceName
     let goldenGlow: Bool
     let transformToSigil: Bool
+    let dockedToDialogue: Bool
 
     @AppStorage("ankyPresenceX") private var storedX = -1.0
     @AppStorage("ankyPresenceY") private var storedY = -1.0
@@ -18,11 +19,13 @@ struct AnkyPresenceOverlay: View {
     init(
         defaultSequence: AnkySequenceName = .idleFront,
         goldenGlow: Bool = false,
-        transformToSigil: Bool = false
+        transformToSigil: Bool = false,
+        dockedToDialogue: Bool = false
     ) {
         self.defaultSequence = defaultSequence
         self.goldenGlow = goldenGlow
         self.transformToSigil = transformToSigil
+        self.dockedToDialogue = dockedToDialogue
         _sequence = State(initialValue: defaultSequence)
     }
 
@@ -60,6 +63,8 @@ struct AnkyPresenceOverlay: View {
             .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
             .contentShape(Circle())
             .position(point)
+            .animation(.easeInOut(duration: 0.85), value: dockedToDialogue)
+            .animation(.easeInOut(duration: 0.35), value: keyboardHeight)
             .gesture(dragGesture(in: geometry.size, presenceSize: size))
             .onTapGesture {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -164,6 +169,10 @@ struct AnkyPresenceOverlay: View {
     }
 
     private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
+        if dockedToDialogue {
+            return clamp(dialoguePoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
+        }
+
         let fallback = defaultPoint(in: containerSize, presenceSize: presenceSize)
         let point = CGPoint(
             x: storedX < 0 ? fallback.x : storedX,
@@ -184,6 +193,13 @@ struct AnkyPresenceOverlay: View {
         CGPoint(
             x: max(presenceSize / 2 + 12, containerSize.width - presenceSize / 2 - 20),
             y: max(presenceSize / 2 + 12, containerSize.height - keyboardHeight - presenceSize / 2 - 110)
+        )
+    }
+
+    private func dialoguePoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
+        CGPoint(
+            x: presenceSize / 2 + 18,
+            y: max(presenceSize / 2 + 12, containerSize.height - keyboardHeight - presenceSize / 2 - 18)
         )
     }
 

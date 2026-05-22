@@ -5,9 +5,9 @@ struct RevealView: View {
     @StateObject private var viewModel: RevealViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDelete = false
-    @State private var activeSection: RevealCopySection = .writing
     @State private var copiedSection: RevealCopySection?
-    @State private var didTapReflectionPrompt = false
+    @State private var showReflectionScroll = false
+    @State private var showPrivacyInfo = false
     private let onDeleted: () -> Void
 
     init(viewModel: RevealViewModel, onDeleted: @escaping () -> Void = {}) {
@@ -22,88 +22,57 @@ struct RevealView: View {
 
             RevealBackgroundTexture()
 
-            ScrollViewReader { proxy in
-                VStack(spacing: 0) {
-                    RevealHeader(
-                        date: viewModel.createdDate,
-                        time: viewModel.createdTime,
-                        metadata: viewModel.metadataLine,
-                        isDeleting: viewModel.isDeleting,
-                        dismiss: dismiss,
-                        delete: {
-                            RevealHaptics.warning()
-                            confirmDelete = true
-                        }
-                    )
-
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            SelectableWritingText(
-                                text: viewModel.reconstructedText,
-                                isHighlighted: copiedSection == .writing
-                            )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 8)
-                            .background(SectionPositionReader(section: .writing))
-                            .id(RevealScrollTarget.writing)
-
-                            PrivacyDivider()
-                                .padding(.top, 28)
-
-                            RevealActions(viewModel: viewModel)
-                                .padding(.top, 20)
-                                .id(RevealScrollTarget.askAnky)
-
-                            if let reflection = viewModel.reflection {
-                                SavedReflectionPanel(
-                                    reflection: reflection,
-                                    isHighlighted: copiedSection == .reflection
-                                )
-                                .padding(.top, 20)
-                                .background(SectionPositionReader(section: .reflection))
-                                .id(RevealScrollTarget.reflection)
-                            }
-
-                            if let errorMessage = viewModel.errorMessage {
-                                Text(errorMessage)
-                                    .font(.footnote)
-                                    .foregroundStyle(Color.red.opacity(0.9))
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.top, 18)
-                            }
-                        }
-                        .padding(.horizontal, 28)
-                        .padding(.top, 20)
-                        .padding(.bottom, 118)
+            VStack(spacing: 0) {
+                RevealHeader(
+                    date: viewModel.createdDate,
+                    time: viewModel.createdTime,
+                    metadata: viewModel.metadataLine,
+                    isDeleting: viewModel.isDeleting,
+                    dismiss: dismiss,
+                    delete: {
+                        RevealHaptics.warning()
+                        confirmDelete = true
                     }
-                    .coordinateSpace(name: RevealCoordinateSpace.scroll)
-                    .onPreferenceChange(SectionPositionPreferenceKey.self) { positions in
-                        updateActiveSection(with: positions)
+                )
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        SelectableWritingText(
+                            text: viewModel.reconstructedText,
+                            isHighlighted: copiedSection == .writing
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                        .id(RevealScrollTarget.writing)
+
+                        PrivacyDivider()
+                            .padding(.top, 34)
                     }
-                    .overlay(alignment: .topTrailing) {
-                        FloatingCopyButton(section: activeCopySection, isCopied: copiedSection == activeCopySection) {
-                            copyActiveSection()
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.top, 20)
-                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 20)
+                    .padding(.bottom, 238)
                 }
-                .overlay(alignment: .bottom) {
-                    if viewModel.canAskAnky && !didTapReflectionPrompt {
-                        AskReflectionFloatingButton(isAskingAnky: viewModel.isAskingAnky) {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                didTapReflectionPrompt = true
-                            }
-                            withAnimation(.snappy(duration: 0.45)) {
-                                proxy.scrollTo(RevealScrollTarget.askAnky, anchor: .bottom)
-                            }
-                        }
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 18)
+                .overlay(alignment: .topTrailing) {
+                    FloatingCopyButton(section: .writing, isCopied: copiedSection == .writing) {
+                        copyActiveSection()
                     }
+                    .padding(.trailing, 16)
+                    .padding(.top, 20)
                 }
             }
+
+            VStack {
+                Spacer()
+                RevealReflectionDock(
+                    viewModel: viewModel,
+                    openPrivacy: { showPrivacyInfo = true },
+                    openReflection: { showReflectionScroll = true }
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+            .ignoresSafeArea(.keyboard)
+            .zIndex(30)
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
@@ -115,6 +84,23 @@ struct RevealView: View {
             Button("cancel", role: .cancel) {}
         } message: {
             Text("This permanently deletes this writing session and its saved reflection from this device. This cannot be undone.")
+        }
+        .sheet(isPresented: $showPrivacyInfo) {
+            ReflectionPrivacySheet()
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showReflectionScroll) {
+            if let reflection = viewModel.reflection {
+                ReflectionScrollSheet(reflection: reflection)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .onAppear {
+            Task {
+                await viewModel.refreshCredits(showError: false)
+            }
         }
         .onChange(of: viewModel.isDeleted) { _, isDeleted in
             guard isDeleted else {
@@ -137,10 +123,7 @@ struct RevealView: View {
     }
 
     private var activeCopySection: RevealCopySection {
-        if activeSection == .reflection, viewModel.reflection != nil {
-            return .reflection
-        }
-        return .writing
+        .writing
     }
 
     private func copyActiveSection() {
@@ -160,17 +143,6 @@ struct RevealView: View {
         }
     }
 
-    private func updateActiveSection(with positions: [RevealCopySection: CGFloat]) {
-        guard !positions.isEmpty else {
-            return
-        }
-
-        if let reflectionY = positions[.reflection], reflectionY < 260 {
-            activeSection = .reflection
-        } else {
-            activeSection = .writing
-        }
-    }
 }
 
 private enum RevealHaptics {
@@ -257,33 +229,6 @@ private struct RevealHeader: View {
 
 private enum RevealScrollTarget {
     case writing
-    case askAnky
-    case reflection
-}
-
-private enum RevealCoordinateSpace {
-    static let scroll = "revealScroll"
-}
-
-private struct SectionPositionReader: View {
-    let section: RevealCopySection
-
-    var body: some View {
-        GeometryReader { geometry in
-            Color.clear.preference(
-                key: SectionPositionPreferenceKey.self,
-                value: [section: geometry.frame(in: .named(RevealCoordinateSpace.scroll)).minY]
-            )
-        }
-    }
-}
-
-private struct SectionPositionPreferenceKey: PreferenceKey {
-    static var defaultValue: [RevealCopySection: CGFloat] = [:]
-
-    static func reduce(value: inout [RevealCopySection: CGFloat], nextValue: () -> [RevealCopySection: CGFloat]) {
-        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-    }
 }
 
 private struct RevealBackgroundTexture: View {
@@ -347,6 +292,320 @@ private struct PrivacyDivider: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+private struct RevealReflectionDock: View {
+    @ObservedObject var viewModel: RevealViewModel
+    let openPrivacy: () -> Void
+    let openReflection: () -> Void
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            ZStack(alignment: .topTrailing) {
+                AnkyWitnessView(mood: .warm, size: .companion, sequence: sequence)
+                    .frame(width: 78, height: 78)
+
+                if viewModel.reflection != nil {
+                    Button(action: openReflection) {
+                        ReflectionScrollGlyph()
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 12, y: -6)
+                    .accessibilityLabel("Open reflection")
+                }
+            }
+            .frame(width: 92, height: 84)
+
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .tracking(1)
+                        .foregroundStyle(RevealPalette.gold.opacity(0.86))
+
+                    if viewModel.isAskingAnky {
+                        MirrorProgressLine()
+                    } else {
+                        Text(subtitle)
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .lineSpacing(3)
+                            .foregroundStyle(subtitleColor)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage.lowercased())
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .lineSpacing(3)
+                            .foregroundStyle(Color.red.opacity(0.82))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if viewModel.reflection == nil {
+                    HStack(spacing: 8) {
+                        Button {
+                            Task {
+                                await viewModel.askAnky()
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if viewModel.isAskingAnky {
+                                    ProgressView()
+                                        .tint(RevealPalette.ink)
+                                }
+                                Text(viewModel.isAskingAnky ? "getting reflection" : "get reflection")
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundStyle(RevealPalette.ink)
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .stroke(Color.white.opacity(0.48), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!viewModel.canSubmitReflectionRequest)
+                        .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.48)
+
+                        Button(action: openPrivacy) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(RevealPalette.goldSoft)
+                                .frame(width: 34, height: 34)
+                                .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Reflection privacy information")
+
+                        if viewModel.shouldShowCreditsLink {
+                            NavigationLink {
+                                CreditsPage(viewModel: YouViewModel())
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(RevealPalette.goldSoft)
+                                    .frame(width: 34, height: 34)
+                                    .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                            .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open credits")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(ReflectionDockBackground())
+        }
+    }
+
+    private var title: String {
+        if viewModel.reflection != nil {
+            return "reflection returned"
+        }
+        return "get a reflection"
+    }
+
+    private var subtitle: String {
+        if viewModel.reflection != nil {
+            return "tap the scroll to read what came back."
+        }
+        if !viewModel.isComplete {
+            return "complete 8 minutes to unlock reflection."
+        }
+        return creditLine
+    }
+
+    private var subtitleColor: Color {
+        switch viewModel.creditPromptState {
+        case .unavailable:
+            return Color.red.opacity(0.82)
+        default:
+            return RevealPalette.paper.opacity(0.82)
+        }
+    }
+
+    private var creditLine: String {
+        if viewModel.creditsLoading {
+            return "checking credits..."
+        }
+        switch viewModel.creditPromptState {
+        case .available(let count):
+            return "\(count) \(count == 1 ? "credit" : "credits") left."
+        case .freeGift(let count):
+            return "\(count) free \(count == 1 ? "credit" : "credits") left."
+        case .unavailable:
+            return "no credits left."
+        case .unknown:
+            return "credits update after reflection."
+        }
+    }
+
+    private var sequence: AnkySequenceName {
+        if viewModel.isAskingAnky {
+            return .shyListening
+        }
+        if viewModel.reflection != nil {
+            return .celebrate
+        }
+        return .idleBlink
+    }
+}
+
+private struct MirrorProgressLine: View {
+    private let messages = [
+        "carrying your writing to the mirror...",
+        "listening for the shape underneath...",
+        "bringing the reflection back..."
+    ]
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let index = Int(timeline.date.timeIntervalSinceReferenceDate / 2.1) % messages.count
+            Text(messages[index])
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .lineSpacing(3)
+                .foregroundStyle(RevealPalette.paper.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+                .transition(.opacity)
+        }
+    }
+}
+
+private struct ReflectionScrollGlyph: View {
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.0) + 1) / 2
+            ZStack {
+                Circle()
+                    .fill(RevealPalette.gold.opacity(0.22 + pulse * 0.18))
+                    .frame(width: 42, height: 42)
+                    .blur(radius: 5)
+
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [RevealPalette.copiedPaper, RevealPalette.gold, RevealPalette.copiedPaper],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 24, height: 32)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(Color.white.opacity(0.64), lineWidth: 1)
+                    )
+                    .rotationEffect(.degrees(-8 + pulse * 3))
+
+                Image(systemName: "sparkle")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(RevealPalette.ink.opacity(0.78))
+                    .offset(x: 1, y: -1)
+            }
+            .frame(width: 48, height: 48)
+        }
+    }
+}
+
+private struct ReflectionDockBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color(red: 0.035, green: 0.049, blue: 0.082).opacity(0.96))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.white.opacity(0.64), lineWidth: 1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
+                    .padding(3)
+            )
+            .shadow(color: Color.black.opacity(0.44), radius: 20, y: 10)
+    }
+}
+
+private struct ReflectionPrivacySheet: View {
+    var body: some View {
+        ZStack {
+            RevealPalette.ink.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 18) {
+                Text("reflection privacy")
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundStyle(RevealPalette.gold)
+
+                Text("your writing stays on this device unless you tap get reflection. then anky sends this .anky to the mirror service, verifies the hash, reconstructs the writing for processing, and returns a markdown reflection. anky does not need to store a writing archive for this interaction.")
+                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .lineSpacing(6)
+                    .foregroundStyle(RevealPalette.paper.opacity(0.86))
+
+                Text("use it only when you want this piece of writing to leave the device for processing.")
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .lineSpacing(5)
+                    .foregroundStyle(RevealPalette.paper.opacity(0.62))
+
+                Spacer()
+            }
+            .padding(24)
+        }
+    }
+}
+
+private struct ReflectionScrollSheet: View {
+    let reflection: LocalReflection
+
+    var body: some View {
+        ZStack {
+            RevealPalette.ink.ignoresSafeArea()
+            RevealBackgroundTexture()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(alignment: .center, spacing: 12) {
+                        ReflectionScrollGlyph()
+                            .frame(width: 54, height: 54)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(reflection.title.lowercased())
+                                .font(.custom("Georgia", size: 24).weight(.bold))
+                                .foregroundStyle(RevealPalette.markdownHeading)
+
+                            if let creditsRemaining = reflection.creditsRemaining {
+                                Text("\(creditsRemaining) \(creditsRemaining == 1 ? "credit" : "credits") left")
+                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(RevealPalette.goldSoft)
+                            }
+                        }
+                    }
+
+                    SelectableReflectionText(text: reflection.reflection, isHighlighted: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(RevealPalette.paper.opacity(0.075))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(RevealPalette.gold.opacity(0.24), lineWidth: 1)
+                        )
+                )
+                .padding(18)
             }
         }
     }
@@ -432,8 +691,7 @@ private struct RevealActions: View {
                     .multilineTextAlignment(.center)
 
                 ThreadedActionButton(
-                    title: viewModel.isAskingAnky ? "anky is reflecting" : "ask anky",
-                    systemImage: "sparkles",
+                    title: viewModel.isAskingAnky ? "anky is listening" : "mirror this",
                     badge: nil,
                     isLoading: viewModel.isAskingAnky,
                     action: {
@@ -485,7 +743,7 @@ private struct MirrorWitnessLoadingView: View {
             }
             .frame(width: 70, height: 54)
 
-            Text("Anky is reflecting...")
+            Text("Anky is listening...")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(RevealPalette.paper.opacity(0.62))
         }
@@ -496,7 +754,6 @@ private struct MirrorWitnessLoadingView: View {
 
 private struct ThreadedActionButton: View {
     let title: String
-    let systemImage: String
     let badge: String?
     let isLoading: Bool
     let action: () -> Void
@@ -510,9 +767,6 @@ private struct ThreadedActionButton: View {
                     if isLoading {
                         ProgressView()
                             .tint(RevealPalette.paper)
-                    } else {
-                        Image(systemName: systemImage)
-                            .font(.system(size: 17, weight: .semibold))
                     }
 
                     Text(title)
@@ -616,56 +870,6 @@ private struct FloatingCopyButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
-    }
-}
-
-private struct AskReflectionFloatingButton: View {
-    let isAskingAnky: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                if isAskingAnky {
-                    ProgressView()
-                        .tint(RevealPalette.paper)
-                } else {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-
-                Text(isAskingAnky ? "asking anky" : "ask anky")
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundStyle(RevealPalette.ink)
-            .padding(.horizontal, 16)
-            .frame(height: 46)
-            .background(
-                LinearGradient(
-                    colors: [
-                        RevealPalette.gold,
-                        RevealPalette.copiedPaper,
-                        RevealPalette.gold
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: Capsule()
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
-            )
-            .shadow(color: RevealPalette.gold.opacity(0.38), radius: 18, y: 6)
-        }
-        .buttonStyle(.plain)
-        .disabled(isAskingAnky)
-        .accessibilityLabel("Ask Anky for reflection")
     }
 }
 

@@ -20,7 +20,7 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(store.list(), [reflection])
     }
 
-    func testLocalArchiveListsSavedAnkysNewestFirst() throws {
+    func testLocalArchiveKeepsOneCanonicalDotAnkyString() throws {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)
 
@@ -28,7 +28,31 @@ final class StorageTests: XCTestCase {
         let newer = try archive.save("1770000001000 y\n8000")
 
         XCTAssertEqual(archive.list().first?.hash, newer.hash)
-        XCTAssertEqual(archive.fileURLs().count, 2)
+        XCTAssertEqual(archive.list().first?.url.lastPathComponent, LocalAnkyArchive.canonicalFileName)
+        XCTAssertEqual(archive.fileURLs().count, 1)
+    }
+
+    func testLocalArchiveImportsValidAnkyIdempotentlyByHash() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+        let text = "1770000000000 h\n0042 i\n8000"
+
+        let first = try archive.importArtifact(text)
+        let second = try archive.importArtifact(text)
+
+        XCTAssertEqual(first.hash, second.hash)
+        XCTAssertEqual(second.reconstructedText, "hi")
+        XCTAssertEqual(archive.fileURLs().count, 1)
+    }
+
+    func testLocalArchiveRejectsInvalidImportedAnky() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+
+        XCTAssertThrowsError(try archive.importArtifact("not a .anky artifact")) { error in
+            XCTAssertEqual(error as? AnkyImportError, .invalidArtifact)
+        }
+        XCTAssertTrue(archive.fileURLs().isEmpty)
     }
 
     func testSessionIndexRebuildsFromArchiveAndReflections() throws {
@@ -37,7 +61,6 @@ final class StorageTests: XCTestCase {
         let reflections = ReflectionStore(directoryURL: root.appendingPathComponent("reflections", isDirectory: true))
         let index = SessionIndexStore(url: root.appendingPathComponent("session-index.json"))
 
-        let fragment = try archive.save("1770000000000 h\n8000")
         let complete = try archive.save("1770000100000 y\n480000 o\n8000")
         try reflections.save(LocalReflection(
             hash: complete.hash,
@@ -49,10 +72,9 @@ final class StorageTests: XCTestCase {
 
         let sessions = try index.rebuild(archive: archive, reflectionStore: reflections)
 
-        XCTAssertEqual(sessions.count, 2)
-        XCTAssertTrue(sessions.contains { $0.hash == fragment.hash && !$0.isComplete && !$0.hasReflection })
+        XCTAssertEqual(sessions.count, 1)
         XCTAssertTrue(sessions.contains { $0.hash == complete.hash && $0.isComplete && $0.reflectionTitle == "Reflected Title" })
-        XCTAssertEqual(index.load().count, 2)
+        XCTAssertEqual(index.load().count, 1)
     }
 
     func testDeletingWritingSessionRemovesArchiveReflectionAndIndexEntry() throws {
@@ -221,6 +243,37 @@ final class StorageTests: XCTestCase {
         XCTAssertTrue(oneDay?.showsTrailCompletionMarker == true)
         XCTAssertEqual(oneDay?.showsTrailCompletionMarker, manyDay?.showsTrailCompletionMarker)
         XCTAssertEqual(oneDay?.trailActivitySummary, manyDay?.trailActivitySummary)
+    }
+
+    func testCompleteRitualGateUsesLocalCalendarDay() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: -3 * 60 * 60)!
+        let root = temporaryDirectory()
+        let today = Date(timeIntervalSince1970: 1_770_000_000)
+        let complete = SessionSummary(
+            hash: "complete",
+            createdAt: today,
+            localFileURL: root.appendingPathComponent("complete.anky"),
+            durationMs: 488_000,
+            isComplete: true,
+            preview: "complete",
+            hasReflection: false,
+            reflectionTitle: nil
+        )
+        let fragment = SessionSummary(
+            hash: "fragment",
+            createdAt: today.addingTimeInterval(100),
+            localFileURL: root.appendingPathComponent("fragment.anky"),
+            durationMs: 8_000,
+            isComplete: false,
+            preview: "fragment",
+            hasReflection: false,
+            reflectionTitle: nil
+        )
+
+        XCTAssertTrue([fragment, complete].hasCompleteRitual(on: today, calendar: calendar))
+        XCTAssertFalse([fragment].hasCompleteRitual(on: today, calendar: calendar))
+        XCTAssertFalse([complete].hasCompleteRitual(on: today.addingTimeInterval(86_400), calendar: calendar))
     }
 
     func testBackupImporterImportsZipBackupAnkysAndReflections() throws {

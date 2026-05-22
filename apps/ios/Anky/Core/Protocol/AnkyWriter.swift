@@ -3,11 +3,13 @@ import Foundation
 public struct AnkyWriter {
     private var lines: [String]
     private var lastAcceptedEpochMs: Int64?
+    private(set) public var writingElapsedMs: Int64
     private(set) public var isClosed: Bool
 
     public init() {
         self.lines = []
         self.lastAcceptedEpochMs = nil
+        self.writingElapsedMs = 0
         self.isClosed = false
     }
 
@@ -19,6 +21,7 @@ public struct AnkyWriter {
         let elapsedWithoutTerminal = parsed.events.reduce(Int64(0)) { sum, event in
             sum + event.deltaMs
         }
+        self.writingElapsedMs = elapsedWithoutTerminal
         self.lastAcceptedEpochMs = parsed.startEpochMs + elapsedWithoutTerminal
     }
 
@@ -34,6 +37,13 @@ public struct AnkyWriter {
         lastAcceptedEpochMs
     }
 
+    public mutating func prepareToResume(at epochMs: Int64) {
+        guard isStarted, !isClosed else {
+            return
+        }
+        lastAcceptedEpochMs = epochMs
+    }
+
     @discardableResult
     public mutating func accept(_ character: Character, at epochMs: Int64) -> Bool {
         guard !isClosed, isProtocolCharacter(character) else {
@@ -43,6 +53,7 @@ public struct AnkyWriter {
         if let lastAcceptedEpochMs {
             let delta = max(0, epochMs - lastAcceptedEpochMs)
             lines.append("\(delta) \(character)")
+            writingElapsedMs += delta
         } else {
             lines.append("\(epochMs) \(character)")
         }

@@ -1,0 +1,119 @@
+html.anky-x-active,
+html.anky-x-active body {
+  background: #000 !important;
+  color-scheme: dark !important;
+  overflow: hidden !important;
+}
+
+[data-anky-shell] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  padding: min(13vh, 96px) 24px 24px !important;
+  background: #000 !important;
+  color: rgb(231, 233, 234) !important;
+  font-family:
+    TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif !important;
+}
+
+[data-anky-composer] {
+  width: min(940px, calc(100vw - 32px)) !important;
+  background: #000 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-anky-row] {
+  display: grid !important;
+  grid-template-columns: 72px minmax(0, 1fr) !important;
+  gap: 18px !important;
+}
+
+[data-anky-avatar] {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 999px !important;
+  background:
+    radial-gradient(circle at 50% 48%, #7bd7cb 0 18%, transparent 19%),
+    radial-gradient(circle at 50% 50%, #101820 0 36%, transparent 37%),
+    linear-gradient(135deg, #ffbb78, #f3a35f) !important;
+}
+
+[data-anky-textbox] {
+  min-height: 168px !important;
+  outline: none !important;
+  color: rgb(231, 233, 234) !important;
+  caret-color: rgb(29, 155, 240) !important;
+  font-size: clamp(28px, 4vw, 40px) !important;
+  font-weight: 400 !important;
+  line-height: 1.16 !important;
+  overflow-wrap: anywhere !important;
+  white-space: pre-wrap !important;
+}
+
+[data-anky-textbox]:empty::before {
+  content: "What is worth saying?";
+  color: rgba(231, 233, 234, 0.54) !important;
+}
+
+[data-anky-actions] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  min-height: 82px !important;
+  margin-top: 18px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+[data-anky-post] {
+  appearance: none !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  min-width: 118px !important;
+  min-height: 56px !important;
+  padding: 0 28px !important;
+  background: rgb(239, 243, 244) !important;
+  color: rgb(15, 20, 25) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+}
+
+[data-anky-post]:disabled {
+  cursor: default !important;
+  opacity: 0.42 !important;
+}
+
+html.anky-writing-mode [data-anky-composer] {
+  border-bottom-color: rgba(214, 186, 116, 0.76) !important;
+}
+
+html.anky-writing-mode [data-anky-textbox] {
+  text-shadow: 0 0 18px rgba(214, 186, 116, 0.12) !important;
+}
+
+@media (max-width: 700px) {
+  [data-anky-shell] {
+    padding: 28px 12px 18px !important;
+  }
+
+  [data-anky-row] {
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  [data-anky-avatar] {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  [data-anky-textbox] {
+    min-height: 156px !important;
+    font-size: 28px !important;
+  }
+}

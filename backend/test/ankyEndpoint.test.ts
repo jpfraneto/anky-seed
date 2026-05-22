@@ -359,7 +359,7 @@ describe("POST /anky", () => {
     const paymentRequired = JSON.parse(atob(response.headers.get("PAYMENT-REQUIRED") ?? ""));
     expect(paymentRequired.accepts[0]).toMatchObject({ scheme: "exact", price: "$0.01", network: "eip155:8453" });
     expect(paymentRequired.anky).toMatchObject({ provider: "openrouter", chargeable: true });
-    expect(paymentRequired.mimeType).toBe("application/json");
+    expect(paymentRequired.mimeType).toBe("text/markdown; charset=utf-8");
     expect(json.error.code).toBe("INSUFFICIENT_CREDITS");
   });
 

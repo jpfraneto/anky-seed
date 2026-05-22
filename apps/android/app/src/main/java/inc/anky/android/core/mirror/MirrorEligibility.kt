@@ -59,6 +59,6 @@ object ReflectionCreditPresentation {
             is ReflectionCreditPromptState.Available -> "You have ${state.count} ${if (state.count == 1) "reflection" else "reflections"} left"
             is ReflectionCreditPromptState.FreeGift -> "Anky gives you ${state.count} free reflections"
             ReflectionCreditPromptState.Unavailable -> "No reflections left"
-            ReflectionCreditPromptState.Unknown -> "Checking reflections"
+            ReflectionCreditPromptState.Unknown -> "Reflection balance updates after mirroring"
         }
 }

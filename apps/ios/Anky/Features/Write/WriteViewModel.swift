@@ -11,6 +11,7 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.terminalSilenceMs
     @Published private(set) var lastCharacter: Character?
     @Published private(set) var keyboardFocusID = UUID()
+    @Published private(set) var isTodaySealed = false
     @Published var errorMessage: String?
 
     var hasStarted: Bool {
@@ -18,7 +19,15 @@ final class WriteViewModel: ObservableObject {
     }
 
     var hasReachedRitualMark: Bool {
-        elapsedMs >= AnkyDuration.completeRitualMs
+        writer.writingElapsedMs >= AnkyDuration.completeRitualMs || elapsedMs >= AnkyDuration.completeRitualMs
+    }
+
+    var isPausedOnDraft: Bool {
+        isFrozen && writer.isStarted && !writer.isClosed
+    }
+
+    var shouldShowTopActions: Bool {
+        !writer.isStarted || isPausedOnDraft
     }
 
     private var writer = AnkyWriter()
@@ -30,7 +39,8 @@ final class WriteViewModel: ObservableObject {
     private var tickerTask: Task<Void, Never>?
     private var completion: ((SavedAnky) -> Void)?
     private var needsImmediateClose = false
-    private var sessionStartMs: Int64?
+    private var isClosing = false
+    private var isFrozen = false
     private var lastMinuteHaptic = 0
     private var lastAlarmHapticSecond = 0
     private let keySelectionHaptic = UISelectionFeedbackGenerator()
@@ -48,6 +58,8 @@ final class WriteViewModel: ObservableObject {
         self.archive = archive
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
+        resetDotAnkyIfNeeded()
+        refreshDailyGate()
         restoreDraftIfPresent()
     }
 
@@ -55,15 +67,18 @@ final class WriteViewModel: ObservableObject {
         self.completion = completion
         if needsImmediateClose {
             needsImmediateClose = false
-            closeAndSave()
+            sealAndSave()
         }
     }
 
     func accept(_ character: Character) {
-        let now = Self.nowMs()
-        if !writer.isStarted {
-            sessionStartMs = now
+        guard hasStarted || !isTodaySealed else {
+            errorMessage = "today's ritual is sealed. come back tomorrow."
+            return
         }
+
+        let now = Self.nowMs()
+        resumeIfFrozen(now: now)
 
         guard writer.accept(character, at: now) else {
             return
@@ -81,7 +96,7 @@ final class WriteViewModel: ObservableObject {
     }
 
     func persistOnBackground() {
-        guard writer.isStarted, !writer.isClosed else {
+        guard writer.isStarted, !writer.isClosed, !isFrozen else {
             return
         }
         draftStore.save(writer.text)
@@ -93,10 +108,56 @@ final class WriteViewModel: ObservableObject {
             return
         }
         resetForNextSession()
+    }
+
+    func clipboardText() -> String? {
+        ClipboardClient().readText()
+    }
+
+    func clearCurrentSession() {
+        silenceTask?.cancel()
+        tickerTask?.cancel()
         draftStore.clear()
+        try? archive.clear()
+        _ = try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
+        resetForNextSession()
+        errorMessage = nil
+    }
+
+    @discardableResult
+    func importAnkyArtifact(_ text: String) -> Bool {
+        guard !writer.isStarted else {
+            errorMessage = "Finish this rhythm before opening another artifact."
+            return false
+        }
+
+        do {
+            let saved = try archive.importArtifact(text)
+            try? sessionIndexStore.upsert(
+                SessionSummary.make(
+                    artifact: saved,
+                    reflection: reflectionStore.load(hash: saved.hash)
+                )
+            )
+            errorMessage = nil
+            completion?(saved)
+            resetForNextSession()
+            refreshDailyGate()
+            return true
+        } catch AnkyImportError.invalidArtifact {
+            errorMessage = "not a valid .anky string."
+            return false
+        } catch {
+            errorMessage = "I could not open that artifact."
+            return false
+        }
     }
 
     func prepareForWritingScene() {
+        refreshDailyGate()
+        guard !isTodaySealed || hasStarted else {
+            return
+        }
         keyboardFocusID = UUID()
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
@@ -111,11 +172,7 @@ final class WriteViewModel: ObservableObject {
 
         let silenceElapsed = Self.nowMs() - lastAcceptedMs
         if silenceElapsed >= AnkyDuration.terminalSilenceMs {
-            if completion == nil {
-                needsImmediateClose = true
-            } else {
-                closeAndSave()
-            }
+            closeOrFreezeAfterSilence()
         } else {
             scheduleSilenceClose(afterMs: AnkyDuration.terminalSilenceMs - silenceElapsed)
         }
@@ -134,11 +191,14 @@ final class WriteViewModel: ObservableObject {
             protocolText = writer.text
             displayedText = AnkyReconstructor.reconstructText(parsed)
             lastCharacter = displayedText.last
-            sessionStartMs = parsed.startEpochMs
             updateLiveState()
 
             if writer.isClosed {
-                needsImmediateClose = true
+                resetForNextSession()
+                refreshDailyGate()
+            } else if let lastAcceptedMs = writer.lastAcceptedMs,
+                      Self.nowMs() - lastAcceptedMs >= AnkyDuration.terminalSilenceMs {
+                closeOrFreezeAfterSilence()
             } else {
                 startTicker()
                 closeIfSilenceElapsed()
@@ -162,14 +222,29 @@ final class WriteViewModel: ObservableObject {
             guard !Task.isCancelled else {
                 return
             }
-            self?.closeAndSave()
+            self?.closeOrFreezeAfterSilence()
         }
     }
 
-    private func closeAndSave() {
+    private func resumeIfFrozen(now: Int64) {
+        guard isFrozen else {
+            return
+        }
+        writer.prepareToResume(at: now)
+        isFrozen = false
+        startTicker()
+    }
+
+    private func freezeAndSave(now inputNow: Int64? = nil) {
+        guard writer.isStarted, !writer.isClosed, !isClosing else {
+            return
+        }
+
+        let now = inputNow ?? Self.nowMs()
         silenceTask?.cancel()
         tickerTask?.cancel()
-        writer.closeWithTerminalSilence()
+        isFrozen = true
+        updateLiveState(now: now)
         protocolText = writer.text
 
         do {
@@ -180,12 +255,50 @@ final class WriteViewModel: ObservableObject {
                     reflection: reflectionStore.load(hash: saved.hash)
                 )
             )
-            draftStore.clear()
-            completion?(saved)
-            resetForNextSession()
         } catch {
             errorMessage = "Could not save this .anky."
             draftStore.save(protocolText)
+        }
+        silenceElapsedMs = 0
+        silenceRemainingMs = AnkyDuration.terminalSilenceMs
+    }
+
+    private func sealAndSave() {
+        guard writer.isStarted, !isClosing else {
+            return
+        }
+
+        isClosing = true
+        silenceTask?.cancel()
+        tickerTask?.cancel()
+        writer.closeWithTerminalSilence()
+        protocolText = writer.text
+
+        let validation = AnkyValidator.validate(protocolText)
+        guard validation.isValid else {
+            errorMessage = "Could not save this .anky."
+            draftStore.save(protocolText)
+            isClosing = false
+            return
+        }
+
+        do {
+            let saved = try archive.save(protocolText)
+            try? sessionIndexStore.upsert(
+                SessionSummary.make(
+                    artifact: saved,
+                    reflection: reflectionStore.load(hash: saved.hash)
+                )
+            )
+            if saved.isComplete {
+                completion?(saved)
+            }
+            resetForNextSession()
+            refreshDailyGate()
+        } catch {
+            errorMessage = "Could not save this .anky."
+            draftStore.save(protocolText)
+            isClosing = false
         }
     }
 
@@ -204,7 +317,8 @@ final class WriteViewModel: ObservableObject {
         silenceRemainingMs = AnkyDuration.terminalSilenceMs
         lastCharacter = nil
         needsImmediateClose = false
-        sessionStartMs = nil
+        isClosing = false
+        isFrozen = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         keyboardFocusID = UUID()
@@ -225,9 +339,7 @@ final class WriteViewModel: ObservableObject {
 
     private func updateLiveState(now inputNow: Int64? = nil) {
         let now = inputNow ?? Self.nowMs()
-        if let sessionStartMs {
-            elapsedMs = max(0, now - sessionStartMs)
-        }
+        elapsedMs = writer.writingElapsedMs
 
         if let lastAcceptedMs = writer.lastAcceptedMs {
             silenceElapsedMs = max(0, now - lastAcceptedMs)
@@ -251,5 +363,38 @@ final class WriteViewModel: ObservableObject {
             minuteHaptic.prepare()
             lastMinuteHaptic = minute
         }
+    }
+
+    private func closeOrFreezeAfterSilence() {
+        if hasReachedRitualMark {
+            if completion == nil {
+                needsImmediateClose = true
+            } else {
+                sealAndSave()
+            }
+        } else {
+            freezeAndSave()
+        }
+    }
+
+    private func refreshDailyGate(now: Date = Date(), calendar: Calendar = .current) {
+        let sessions = (try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore))
+            ?? sessionIndexStore.load()
+        isTodaySealed = sessions.hasCompleteRitual(on: now, calendar: .ankyUTC)
+    }
+
+    private func resetDotAnkyIfNeeded(now: Date = Date(), calendar: Calendar = .ankyUTC) {
+        guard let draft = draftStore.load(),
+              let parsed = try? AnkyParser.parse(draft) else {
+            return
+        }
+
+        let createdAt = Date(timeIntervalSince1970: TimeInterval(parsed.startEpochMs) / 1000)
+        guard !calendar.isDate(createdAt, inSameDayAs: now) else {
+            return
+        }
+
+        draftStore.clear()
+        try? sessionIndexStore.clear()
     }
 }

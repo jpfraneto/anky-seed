@@ -68,9 +68,6 @@ final class YouViewModel: ObservableObject {
             identityStatus = "Local identity"
             updateStats()
             errorMessage = nil
-            Task {
-                try? await creditsClient.identify(accountId: accountId)
-            }
         } catch {
             errorMessage = "Could not load the local Base identity."
         }
@@ -129,7 +126,6 @@ final class YouViewModel: ObservableObject {
         do {
             let identity = try identityStore.importRecoveryPhrase(phraseText)
             accountId = identity.accountId
-            try? await creditsClient.identify(accountId: identity.accountId)
             recoveryPhraseText = ""
             sensitiveIdentityConfirmed = false
             refresh()
@@ -239,11 +235,6 @@ final class YouViewModel: ObservableObject {
         do {
             try identityStore.resetForDevelopment()
             refresh()
-            Task {
-                if !accountId.isEmpty {
-                    try? await creditsClient.identify(accountId: accountId)
-                }
-            }
             statusMessage = "Local identity reset."
             errorMessage = nil
         } catch {

@@ -9,6 +9,7 @@ import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
+import inc.anky.android.core.storage.SingleAnkyImporter
 import inc.anky.android.core.storage.startOfLocalDay
 import java.io.File
 import java.time.Instant
@@ -45,8 +46,21 @@ class StorageTest {
         val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
         val artifact = archive.save("1770000000000 h\n0042 e\n8000")
         assertEquals("he", artifact.reconstructedText)
+        assertEquals(LocalAnkyArchive.CanonicalFileName, artifact.file.name)
         assertEquals(artifact.hash, archive.load(artifact.hash).hash)
         assertEquals(1, archive.list().size)
+    }
+
+    @Test
+    fun archiveOverwritesSingleCanonicalDotAnkyString() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        archive.save("1770000000000 h\n8000")
+        val latest = archive.save("1770000001000 i\n8000")
+
+        assertEquals(1, archive.fileList().size)
+        assertEquals(LocalAnkyArchive.CanonicalFileName, archive.fileList().single().name)
+        assertEquals(latest.hash, archive.list().single().hash)
+        assertEquals("i", archive.list().single().reconstructedText)
     }
 
     @Test
@@ -507,6 +521,47 @@ class StorageTest {
             assertEquals("That backup could not be read.", expected.message)
         }
         assertEquals(0, archive.list().size)
+    }
+
+    @Test
+    fun singleAnkyImporterSavesValidClipboardTextAndIndexesIt() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
+        val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
+
+        val saved = SingleAnkyImporter.importText(
+            rawText = "1770000000000 h\n0042 i\n8000\n",
+            archive = archive,
+            reflectionStore = reflections,
+            indexStore = index,
+        )
+
+        assertEquals("hi", saved.reconstructedText)
+        assertEquals(saved.hash, archive.load(saved.hash).hash)
+        assertEquals(saved.hash, index.load().single().hash)
+        assertFalse(index.load().single().hasReflection)
+    }
+
+    @Test
+    fun singleAnkyImporterRejectsInvalidBytesWithoutWriting() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
+        val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
+
+        try {
+            SingleAnkyImporter.importBytes(
+                bytes = invalidUtf8AnkyBytes(),
+                archive = archive,
+                reflectionStore = reflections,
+                indexStore = index,
+            )
+            fail("Expected invalid UTF-8 rejection")
+        } catch (expected: IllegalStateException) {
+            assertEquals("That .anky file could not be read.", expected.message)
+        }
+
+        assertEquals(0, archive.list().size)
+        assertEquals(0, index.load().size)
     }
 
     private fun unzip(file: File): Map<String, String> {

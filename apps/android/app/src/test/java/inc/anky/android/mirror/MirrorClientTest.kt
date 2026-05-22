@@ -94,7 +94,10 @@ class MirrorClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"hash":"${AnkyHasher.sha256Hex(body)}","title":"Small Steady Thread","reflection":"Here is what I saw.","creditsRemaining":7}"""),
+                .setHeader("Content-Type", "text/markdown; charset=utf-8")
+                .setHeader("X-Anky-Hash", AnkyHasher.sha256Hex(body))
+                .setHeader("X-Anky-Credits-Remaining", "7")
+                .setBody("# Small Steady Thread\n\nHere is what I saw."),
         )
         server.start()
         try {
@@ -107,7 +110,7 @@ class MirrorClientTest {
             assertEquals("POST", request.method)
             assertEquals("/anky", request.path)
             assertEquals("text/plain; charset=utf-8", request.getHeader("Content-Type"))
-            assertEquals("application/json", request.getHeader("Accept"))
+            assertEquals("text/markdown, text/plain", request.getHeader("Accept"))
             assertEquals("anky.base.eoa.v1", request.getHeader("X-Anky-Identity-Version"))
             assertEquals(identity.accountId, request.getHeader("X-Anky-Account"))
             assertEquals("eip712", request.getHeader("X-Anky-Signature-Type"))
@@ -172,12 +175,12 @@ class MirrorClientTest {
     }
 
     @Test
-    fun successfulMalformedPayloadUsesInvalidResponseCopy() {
+    fun successfulEmptyMarkdownUsesInvalidResponseCopy() {
         val server = MockWebServer()
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"hash":"missing fields"}"""),
+                .setBody("  \n"),
         )
         server.start()
         try {

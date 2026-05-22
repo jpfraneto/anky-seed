@@ -63,8 +63,6 @@ class RevealViewModel(
     private val indexStore: SessionIndexStore,
     private val identityProvider: () -> WriterIdentity,
     private val mirrorClientProvider: () -> MirrorClient,
-    private val creditBalanceCacheInvalidator: suspend () -> Unit = {},
-    private val creditBalanceFetcher: suspend () -> Int? = { null },
     private val hasClaimedFreeCreditsProvider: () -> Boolean = { false },
     private val markFreeCreditsClaimed: () -> Unit = {},
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -76,8 +74,6 @@ class RevealViewModel(
         indexStore: SessionIndexStore,
         identityStore: WriterIdentityStore,
         mirrorClientProvider: () -> MirrorClient,
-        creditBalanceCacheInvalidator: suspend () -> Unit = {},
-        creditBalanceFetcher: suspend () -> Int? = { null },
         hasClaimedFreeCreditsProvider: () -> Boolean = { false },
         markFreeCreditsClaimed: () -> Unit = {},
     ) : this(
@@ -87,8 +83,6 @@ class RevealViewModel(
         indexStore = indexStore,
         identityProvider = { identityStore.loadOrCreate() },
         mirrorClientProvider = mirrorClientProvider,
-        creditBalanceCacheInvalidator = creditBalanceCacheInvalidator,
-        creditBalanceFetcher = creditBalanceFetcher,
         hasClaimedFreeCreditsProvider = hasClaimedFreeCreditsProvider,
         markFreeCreditsClaimed = markFreeCreditsClaimed,
     )
@@ -114,7 +108,6 @@ class RevealViewModel(
             canAskAnky = canAskAnky,
             hasClaimedFreeCredits = hasClaimedFreeCreditsProvider() || reflectionStore.list().isNotEmpty(),
         )
-        if (canAskAnky) refreshCredits(showError = false)
     }
 
     fun askAnky() {
@@ -141,9 +134,6 @@ class RevealViewModel(
                 reflectionStore.save(reflection)
                 indexStore.updateReflection(payload.hash, payload.title)
                 markFreeCreditsClaimed()
-                if (payload.creditsRemaining != null) {
-                    runCatching { creditBalanceCacheInvalidator() }
-                }
                 reflection
             }.onSuccess { reflection ->
                 _state.update {
@@ -164,32 +154,6 @@ class RevealViewModel(
                         creditBalance = if (message.contains("credit", ignoreCase = true)) 0 else it.creditBalance,
                         creditsDenied = it.creditsDenied || message.contains("credit", ignoreCase = true),
                         error = message,
-                    )
-                }
-            }
-        }
-    }
-
-    fun refreshCredits(showError: Boolean = true) {
-        if (!_state.value.canAskAnky) return
-        _state.update { it.copy(creditsLoading = true) }
-        viewModelScope.launch(dispatcher) {
-            runCatching {
-                creditBalanceFetcher()
-            }.onSuccess { balance ->
-                _state.update {
-                    it.copy(
-                        creditBalance = balance,
-                        creditsLoading = false,
-                        creditsDenied = false,
-                        error = if (showError) null else it.error,
-                    )
-                }
-            }.onFailure {
-                _state.update {
-                    it.copy(
-                        creditsLoading = false,
-                        error = if (showError) "Could not load reflections." else it.error,
                     )
                 }
             }

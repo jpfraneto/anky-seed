@@ -65,11 +65,6 @@ final class RevealViewModel: ObservableObject {
         self.reflection = reflectionStore.load(hash: artifact.hash)
         self.hasClaimedFreeCredits = userDefaults.bool(forKey: Self.hasClaimedFreeCreditsKey) || !reflectionStore.list().isEmpty
 
-        if MirrorEligibility.canAskAnky(isComplete: artifact.isComplete, hasReflection: self.reflection != nil) {
-            Task {
-                await refreshCredits(showError: false)
-            }
-        }
     }
 
     var ritualState: String {
@@ -85,9 +80,9 @@ final class RevealViewModel: ObservableObject {
             return ""
         }
         if isComplete {
-            return "ready to ask anky for reflection"
+            return "ready to mirror this artifact"
         }
-        return "write 8 minutes to ask anky for reflection"
+        return "write 8 minutes to mirror this artifact"
     }
 
     var canAskAnky: Bool {
@@ -198,8 +193,6 @@ final class RevealViewModel: ObservableObject {
             creditsDenied = false
             if response.creditsRemaining != nil {
                 creditBalance = response.creditsRemaining
-                try? await creditsClient.identify(accountId: identity.accountId)
-                creditsClient.invalidateCreditBalanceCache()
             }
             reflection = saved
         } catch {

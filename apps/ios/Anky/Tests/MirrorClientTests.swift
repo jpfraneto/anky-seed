@@ -17,7 +17,7 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/anky")
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "text/plain; charset=utf-8")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/markdown, text/plain")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Trial-Proof"), "trial-proof")
@@ -33,10 +33,16 @@ final class MirrorClientTests: XCTestCase {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: ["Content-Type": "application/json"]
+                headerFields: [
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "X-Anky-Hash": expectedHash,
+                    "X-Anky-Credits-Remaining": "null"
+                ]
             )!
             let payload = Data("""
-            {"hash":"\(expectedHash)","title":"Small Thread","reflection":"Here is what I saw.","creditsRemaining":null}
+            # Small Thread
+
+            Here is what I saw.
             """.utf8)
             return (response, payload)
         }
@@ -55,6 +61,7 @@ final class MirrorClientTests: XCTestCase {
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.title, "Small Thread")
+        XCTAssertEqual(response.reflection, "# Small Thread\n\nHere is what I saw.")
         XCTAssertNil(response.creditsRemaining)
     }
 
@@ -68,10 +75,16 @@ final class MirrorClientTests: XCTestCase {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: ["Content-Type": "application/json"]
+                headerFields: [
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "X-Anky-Hash": expectedHash,
+                    "X-Anky-Credits-Remaining": "7"
+                ]
             )!
             let payload = Data("""
-            {"hash":"\(expectedHash)","title":"Small Thread","reflection":"Here is what I saw.","creditsRemaining":7}
+            # Small Thread
+
+            Here is what I saw.
             """.utf8)
             return (response, payload)
         }

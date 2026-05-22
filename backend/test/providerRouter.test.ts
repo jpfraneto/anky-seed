@@ -13,13 +13,16 @@ describe("provider router", () => {
       fetchImpl: async (_url, init) => {
         body = JSON.parse(String(init.body));
         return Response.json({
-          choices: [{ message: { content: JSON.stringify({ title: "quiet thread", reflection: "hey, thanks for being who you are. my thoughts:" }) } }],
+          choices: [{ message: { content: "# quiet thread\n\nhey, thanks for being who you are. my thoughts:" } }],
         });
       },
     });
 
     expect(result.chargeable).toBe(true);
+    expect(result.title).toBe("quiet thread");
+    expect(result.reflection).toContain("# quiet thread");
     expect(body.provider).toEqual({ data_collection: "deny", zdr: true });
+    expect(body.response_format).toBeUndefined();
   });
 
   test("unconfirmed providers are skipped when ZDR is required", async () => {

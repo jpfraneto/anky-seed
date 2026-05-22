@@ -6,7 +6,7 @@ import java.io.File
 class ActiveDraftStore private constructor(
     private val file: File,
 ) {
-    constructor(context: Context) : this(File(File(context.filesDir, "Anky"), "active-draft.anky"))
+    constructor(context: Context) : this(File(File(context.filesDir, "Ankys"), LocalAnkyArchive.CanonicalFileName))
 
     init {
         file.parentFile?.mkdirs()
@@ -25,6 +25,6 @@ class ActiveDraftStore private constructor(
 
     companion object {
         fun forDirectory(directory: File): ActiveDraftStore =
-            ActiveDraftStore(File(directory, "active-draft.anky"))
+            ActiveDraftStore(File(directory, LocalAnkyArchive.CanonicalFileName))
     }
 }

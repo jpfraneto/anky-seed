@@ -29,6 +29,10 @@ public enum AnkyDuration {
         return "\(minutes):\(String(format: "%02d", seconds))"
     }
 
+    public static func ritualClock(_ durationMs: Int64) -> String {
+        clock(min(durationMs, completeRitualMs))
+    }
+
     public static func utcDayProgress(at date: Date, secondsPerDay: TimeInterval = 86_400) -> Double {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt

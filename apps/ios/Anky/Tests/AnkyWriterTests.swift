@@ -38,6 +38,21 @@ final class AnkyWriterTests: XCTestCase {
         XCTAssertEqual(parsed.events, [AnkyEvent(deltaMs: 0, character: "a")])
     }
 
+    func testResumeAfterFrozenSilenceDoesNotStoreIdleGap() throws {
+        var writer = AnkyWriter()
+
+        writer.accept("a", at: 1_770_000_000_000)
+        writer.prepareToResume(at: 1_770_000_030_000)
+        writer.accept("b", at: 1_770_000_030_000)
+
+        let parsed = try AnkyParser.parse(writer.text)
+        XCTAssertEqual(parsed.events, [
+            AnkyEvent(deltaMs: 0, character: "a"),
+            AnkyEvent(deltaMs: 0, character: "b")
+        ])
+        XCTAssertNil(parsed.terminalSilenceMs)
+    }
+
     func testUtcDayProgressGrowsWithTheDay() {
         XCTAssertEqual(AnkyDuration.utcDayProgress(at: Date(timeIntervalSince1970: 6 * 60 * 60)), 0.25, accuracy: 0.001)
         XCTAssertEqual(AnkyDuration.utcDayProgress(at: Date(timeIntervalSince1970: 12 * 60 * 60)), 0.50, accuracy: 0.001)
@@ -48,5 +63,11 @@ final class AnkyWriterTests: XCTestCase {
         XCTAssertEqual(AnkyDuration.clock(480_000), "8:00")
         XCTAssertEqual(AnkyDuration.clock(481_000), "8:01")
         XCTAssertEqual(AnkyDuration.clock(552_000), "9:12")
+    }
+
+    func testRitualClockNeverShowsPastEightMinutes() {
+        XCTAssertEqual(AnkyDuration.ritualClock(480_000), "8:00")
+        XCTAssertEqual(AnkyDuration.ritualClock(481_000), "8:00")
+        XCTAssertEqual(AnkyDuration.ritualClock(552_000), "8:00")
     }
 }

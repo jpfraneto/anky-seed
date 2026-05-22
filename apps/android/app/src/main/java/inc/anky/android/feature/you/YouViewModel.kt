@@ -32,7 +32,7 @@ data class YouState(
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderMinutes: Int = 9 * 60,
     val mirrorBaseUrl: String = BuildConfig.DEFAULT_MIRROR_BASE_URL,
-    val creditState: CreditState = CreditState(false, null, "loading credit packs", isLoading = true),
+    val creditState: CreditState = CreditState(false, null, "no credit packs available"),
     val purchasingCreditPackageId: String? = null,
     val isRestoringPurchases: Boolean = false,
     val exportedFile: File? = null,
@@ -81,9 +81,6 @@ class YouViewModel(
                 return@launch
             }
             accountIdState.value = identity.accountId
-            creditsClient.configure(identity.accountId)
-            creditState.value = CreditState(false, null, "loading credit packs", isLoading = true)
-            creditState.value = creditsClient.refresh()
             combine(settingsStore.settings, creditState, accountIdState) { settings, credits, accountId ->
                 val sessions = indexStore.rebuild(archive, reflectionStore)
                 YouState(
@@ -139,9 +136,8 @@ class YouViewModel(
             runCatching {
                 identityStore.importRecoveryPhrase(text)
             }.onSuccess { identity ->
-                creditsClient.configure(identity.accountId)
                 accountIdState.value = identity.accountId
-                creditState.value = creditsClient.refresh()
+                creditState.value = CreditState(false, null, "no credit packs available")
                 _state.update {
                     it.copy(
                         accountId = identity.accountId,
@@ -215,15 +211,9 @@ class YouViewModel(
         viewModelScope.launch {
             creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
             if (_state.value.accountId.isBlank()) {
-                val identity = runCatching {
-                    identityStore.loadOrCreate()
-                }.getOrElse {
-                    creditState.value = creditLoadFailureState()
-                    _state.update { it.copy(error = YouStatusCopy.CouldNotLoadCredits) }
-                    return@launch
-                }
-                accountIdState.value = identity.accountId
-                creditsClient.configure(identity.accountId)
+                if (!configureCreditsForCurrentIdentity()) return@launch
+            } else {
+                creditsClient.configure(_state.value.accountId)
             }
             val refreshed = creditsClient.refresh()
             creditState.value = refreshed
@@ -241,6 +231,7 @@ class YouViewModel(
             _state.update { it.copy(purchasingCreditPackageId = packageId) }
             try {
                 creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
+                if (!configureCreditsForCurrentIdentity()) return@launch
                 val refreshed = creditsClient.purchase(packageId, activity)
                 creditState.value = refreshed
                 when (refreshed.message) {
@@ -259,6 +250,7 @@ class YouViewModel(
             _state.update { it.copy(isRestoringPurchases = true, statusMessage = null, error = null) }
             try {
                 creditState.value = creditState.value.copy(message = "restoring purchases", isLoading = true)
+                if (!configureCreditsForCurrentIdentity()) return@launch
                 val restored = creditsClient.restorePurchases()
                 creditState.value = restored
                 when (restored.message) {
@@ -433,9 +425,8 @@ class YouViewModel(
                 identityStore.resetForDevelopment()
                 identityStore.loadOrCreate()
             }.onSuccess { identity ->
-                creditsClient.configure(identity.accountId)
                 accountIdState.value = identity.accountId
-                creditState.value = creditsClient.refresh()
+                creditState.value = CreditState(false, null, "no credit packs available")
                 _state.update {
                     it.copy(
                         accountId = identity.accountId,
@@ -462,6 +453,20 @@ class YouViewModel(
             cursor = cursor.minusDays(1)
         }
         return streak
+    }
+
+    private suspend fun configureCreditsForCurrentIdentity(): Boolean {
+        val accountId = _state.value.accountId.ifBlank {
+            val identity = runCatching { identityStore.loadOrCreate() }.getOrElse {
+                creditState.value = creditLoadFailureState()
+                _state.update { state -> state.copy(error = YouStatusCopy.CouldNotLoadCredits) }
+                return false
+            }
+            accountIdState.value = identity.accountId
+            identity.accountId
+        }
+        creditsClient.configure(accountId)
+        return true
     }
 
     private fun totalWritingMinutes(sessions: List<inc.anky.android.core.storage.SessionSummary>): Int {

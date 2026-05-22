@@ -42,7 +42,7 @@ enum ReflectionCreditPresentation {
         case .unavailable:
             return "No reflections left"
         case .unknown:
-            return "Checking reflections"
+            return "Reflection balance updates after mirroring"
         }
     }
 }

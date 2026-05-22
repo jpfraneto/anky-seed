@@ -4,6 +4,7 @@ import UIKit
 struct WriteView: View {
     @StateObject private var viewModel: WriteViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @State private var keyboardHeight: CGFloat = 0
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
@@ -22,28 +23,45 @@ struct WriteView: View {
 
     var body: some View {
         ZStack {
-            ForwardOnlyTextView(
-                text: viewModel.displayedText,
-                focusID: viewModel.keyboardFocusID,
-                shouldFocus: shouldFocus,
-                onCharacter: viewModel.accept
-            )
-            .padding(24)
+            if viewModel.isTodaySealed && !viewModel.hasStarted {
+                SealedDayView(
+                    openMap: {
+                        viewModel.abandonIfEmpty()
+                        onCloseToMap()
+                    },
+                    paste: pasteArtifact
+                )
+            } else {
+                ForwardOnlyTextView(
+                    text: viewModel.displayedText,
+                    focusID: viewModel.keyboardFocusID,
+                    shouldFocus: shouldFocus,
+                    onCharacter: viewModel.accept
+                )
+                .padding(24)
 
-            RitualRingsView(
-                elapsedMs: viewModel.elapsedMs,
-                silenceElapsedMs: viewModel.silenceElapsedMs,
-                silenceRemainingMs: viewModel.silenceRemainingMs,
-                lastCharacter: viewModel.lastCharacter,
-                isRitualComplete: viewModel.hasReachedRitualMark
-            )
+                RitualRingsView(
+                    elapsedMs: viewModel.elapsedMs,
+                    silenceElapsedMs: viewModel.silenceElapsedMs,
+                    silenceRemainingMs: viewModel.silenceRemainingMs,
+                    lastCharacter: viewModel.lastCharacter,
+                    isRitualComplete: viewModel.hasReachedRitualMark
+                )
+            }
 
             if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .padding(16)
-                    .background(.background)
+                VStack {
+                    Spacer()
+                    AnkyCompanionPromptView(
+                        state: .error,
+                        message: errorMessage,
+                        actionTitle: nil,
+                        action: nil
+                    )
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, dialogueBottomPadding)
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             if viewModel.hasReachedRitualMark {
@@ -70,34 +88,29 @@ struct WriteView: View {
                 .transition(.opacity)
             }
 
-            if !viewModel.hasStarted {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button {
-                            viewModel.abandonIfEmpty()
-                            onCloseToMap()
-                        } label: {
-                            Image(systemName: "map")
-                                .font(.system(size: 17, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("Open Map")
-                    }
-                    Spacer()
-                }
-                .padding(.top, 8)
-                .padding(.trailing, 10)
-            }
+            WriteTopActionBar(
+                isVisible: viewModel.shouldShowTopActions,
+                isClearMode: viewModel.isPausedOnDraft,
+                openMap: {
+                    viewModel.abandonIfEmpty()
+                    onCloseToMap()
+                },
+                paste: pasteArtifact,
+                clear: viewModel.clearCurrentSession
+            )
         }
         .background(Color(.systemBackground))
+        .ignoresSafeArea(.keyboard)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(true)
+        .statusBarHidden(false)
         .persistentSystemOverlays(.hidden)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            keyboardHeight = keyboardOverlap(from: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
         .onAppear {
             viewModel.bindCompletion(onCompleted)
             if shouldFocus {
@@ -105,12 +118,12 @@ struct WriteView: View {
             }
             viewModel.closeIfSilenceElapsed()
         }
-        .onChange(of: shouldFocus) { isFocused in
+        .onChange(of: shouldFocus) { _, isFocused in
             if isFocused {
                 viewModel.prepareForWritingScene()
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .active, shouldFocus {
                 viewModel.prepareForWritingScene()
                 viewModel.closeIfSilenceElapsed()
@@ -118,6 +131,119 @@ struct WriteView: View {
                 viewModel.persistOnBackground()
             }
         }
+    }
+
+    private func pasteArtifact() {
+        _ = viewModel.importAnkyArtifact(viewModel.clipboardText() ?? "")
+    }
+
+    private var dialogueBottomPadding: CGFloat {
+        keyboardHeight > 0 ? keyboardHeight + 8 : 18
+    }
+
+    private func keyboardOverlap(from notification: Notification) -> CGFloat {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            return 0
+        }
+
+        return max(0, UIScreen.main.bounds.maxY - frame.minY)
+    }
+}
+
+private struct WriteTopActionBar: View {
+    let isVisible: Bool
+    let isClearMode: Bool
+    let openMap: () -> Void
+    let paste: () -> Void
+    let clear: () -> Void
+
+    var body: some View {
+        VStack {
+            HStack {
+                Button(action: openMap) {
+                    WriteChromeIcon(systemName: "chevron.left", isEnabled: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Map")
+
+                Spacer()
+
+                Button(action: isClearMode ? clear : paste) {
+                    WriteChromeIcon(systemName: isClearMode ? "eraser" : "doc.on.clipboard", isEnabled: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isClearMode ? "Clear .anky session" : "Paste .anky artifact")
+            }
+            Spacer()
+        }
+        .safeAreaPadding(.top, 8)
+        .padding(.horizontal, 10)
+        .opacity(isVisible ? 1 : 0)
+        .allowsHitTesting(isVisible)
+        .animation(.easeInOut(duration: 0.26), value: isVisible)
+        .animation(.easeInOut(duration: 0.20), value: isClearMode)
+    }
+}
+
+private struct SealedDayView: View {
+    let openMap: () -> Void
+    let paste: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            AnkyWitnessView(mood: .warm, size: .companion, sequence: .celebrate)
+
+            VStack(spacing: 8) {
+                Text("today's ritual is sealed.")
+                    .font(.system(size: 24, weight: .semibold, design: .serif))
+                    .foregroundStyle(.primary.opacity(0.86))
+                    .multilineTextAlignment(.center)
+
+                Text("come back tomorrow.")
+                    .font(.system(size: 18, weight: .medium, design: .serif))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            HStack(spacing: 12) {
+                Button(action: openMap) {
+                    WriteChromeIcon(systemName: "chevron.left", isEnabled: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Map")
+
+                Button(action: paste) {
+                    WriteChromeIcon(systemName: "doc.on.clipboard", isEnabled: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Paste .anky artifact")
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+    }
+}
+
+private struct WriteChromeIcon: View {
+    let systemName: String
+    let isEnabled: Bool
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(isEnabled ? Color.primary.opacity(0.74) : Color.secondary.opacity(0.38))
+            .frame(width: 42, height: 42)
+            .background(.thinMaterial, in: Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
+            .opacity(isEnabled ? 1 : 0.62)
+            .contentShape(Circle())
     }
 }
 

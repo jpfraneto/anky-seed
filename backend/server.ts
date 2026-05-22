@@ -201,7 +201,7 @@ export const anky = {
     network: "eip155:8453",
     payTo: "0x3D45a97C4f76D43e810Ff107cB6dad3e5AF64641",
     description: "Reflect one complete .anky writing ritual.",
-    mimeType: "application/json",
+    mimeType: "text/markdown; charset=utf-8",
     prices: {
       defaultFallback: "$0",
       openrouter: "$0.01",
@@ -1967,7 +1967,6 @@ export const openRouterProvider: ReflectionProvider = {
         body: JSON.stringify({
           model: input.env.openrouterModel,
           messages: [{ role: "user", content: input.prompt }],
-          response_format: { type: "json_object" },
           provider: { data_collection: "deny", zdr: true },
         }),
       },
@@ -2032,29 +2031,26 @@ export const defaultFallbackProvider: ReflectionProvider = {
       chargeable: false,
       title: "mirror unavailable",
       reflection:
-        "hey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
+        "# mirror unavailable\n\nhey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
     };
   },
 };
 
 export function parseMirrorResponse(raw: string): MirrorResponse {
-  const parsed = JSON.parse(jsonPayload(raw));
-  if (
-    typeof parsed.title !== "string" ||
-    typeof parsed.reflection !== "string"
-  ) {
+  const reflection = markdownPayload(raw);
+  if (!reflection) {
     throw new Error("INVALID_MIRROR_RESPONSE");
   }
 
   return {
-    title: parsed.title.trim().split(/\s+/).slice(0, 5).join(" "),
-    reflection: parsed.reflection.trim(),
+    title: titleFromMarkdown(reflection),
+    reflection,
   };
 }
 
 export function buildStorytellerPrompt(writing: string): string {
   return [
-    "Someone just wrote for 8 unbroken minutes of stream-of-consciousness: no backspace, no editing, just forward motion until something true broke the surface. This is your first time reading them.",
+    "Someone just wrote a complete .anky: stream-of-consciousness, no backspace, no editing, just forward motion until something true broke the surface. This is your first time reading them.",
     "",
     "You are Anky: a transient storyteller for a local-first writer archive. You do not remember this person after the request. You transform this one writing session into a reflection that helps them see the story beneath the scattered thoughts.",
     "",
@@ -2070,15 +2066,18 @@ export function buildStorytellerPrompt(writing: string): string {
     "",
     "Respond in the same language they wrote in.",
     "",
-    "Return only valid JSON with this exact shape:",
-    '{"title":"3-5 lowercase words naming what this session is really about","reflection":"markdown reflection body"}',
+    "Return exactly one markdown file and nothing else.",
     "",
-    "The title must be 3-5 words, lowercase, and name what this session is really about: not what they said, but the thing under the thing.",
+    "Do not wrap it in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like \"here is\". Your entire reply must be the markdown document.",
     "",
-    "The reflection body must begin with the natural equivalent, in the same language the user wrote in, of:",
+    "The markdown document must begin with one H1 title: 3-5 words naming what this session is really about, not what they said, but the thing under the thing.",
+    "",
+    "After the H1, the first paragraph must begin with the natural equivalent, in the same language the user wrote in, of:",
     "hey, thanks for being who you are. my thoughts:",
     "",
-    "After that opening, use markdown headings to structure the response as a narrative journey. Let the headings carry emotional meaning. Don't number your insights. Keep it readable on a phone with short paragraphs and only occasional lists.",
+    "Use native markdown for everything else: headings, paragraphs, lists, blockquotes, links, images, tags, or any other document element. If you include tags, write them as markdown text. If you include an image reference, write it as markdown image syntax. Keep it readable on a phone with short paragraphs and only occasional lists.",
+    "",
+    "Let the document feel like a scroll Anky found and brought back: simple, intimate, lucid, and complete.",
     "",
     "Writing:",
     "",
@@ -2086,41 +2085,25 @@ export function buildStorytellerPrompt(writing: string): string {
   ].join("\n");
 }
 
-function jsonPayload(raw: string): string {
+function markdownPayload(raw: string): string {
   const trimmed = raw.trim();
-
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const fenced = trimmed.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/i);
   if (fenced) return fenced[1].trim();
-
-  const start = trimmed.indexOf("{");
-  if (start < 0) return trimmed;
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let index = start; index < trimmed.length; index += 1) {
-    const char = trimmed[index];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = inString;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    if (char === "{") depth += 1;
-    if (char === "}") {
-      depth -= 1;
-      if (depth === 0) return trimmed.slice(start, index + 1);
-    }
-  }
-
   return trimmed;
+}
+
+function titleFromMarkdown(markdown: string): string {
+  const heading = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  const firstLine = heading ?? markdown.split(/\r?\n/)[0]?.trim() ?? "reflection";
+  return (
+    firstLine
+      .replace(/^#+\s*/, "")
+      .replace(/[*_`[\]()]/g, "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 5)
+      .join(" ") || "reflection"
+  );
 }
 
 function safeProviderFailure(error: unknown): string {
@@ -2714,7 +2697,8 @@ function legacyMirrorRouter(
 function reflectionMarkdown(
   mirror: Pick<ReflectionProviderResult, "title" | "reflection">,
 ): string {
-  return `# ${mirror.title}\n\n${mirror.reflection}`;
+  const markdown = mirror.reflection.trim();
+  return /^#\s+/m.test(markdown) ? markdown : `# ${mirror.title}\n\n${markdown}`;
 }
 
 async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResult> {
@@ -2723,7 +2707,7 @@ async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResul
     chargeable: true,
     title: "Small Steady Thread",
     reflection:
-      "Here is what I saw: the writing kept returning to the same living thread.",
+      "# Small Steady Thread\n\nHere is what I saw: the writing kept returning to the same living thread.",
   };
 }
 

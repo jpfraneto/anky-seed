@@ -39,4 +39,14 @@ final class RevealRulesTests: XCTestCase {
         XCTAssertEqual(unavailable, .unavailable)
         XCTAssertEqual(ReflectionCreditPresentation.message(for: unavailable), "No reflections left")
     }
+
+    func testUnknownCreditStateDoesNotImplyANetworkCheck() {
+        let unknown = ReflectionCreditPresentation.state(
+            creditsRemaining: nil,
+            hasClaimedFreeCredits: true
+        )
+
+        XCTAssertEqual(unknown, .unknown)
+        XCTAssertEqual(ReflectionCreditPresentation.message(for: unknown), "Reflection balance updates after mirroring")
+    }
 }

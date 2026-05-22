@@ -1,13 +1,13 @@
 import Foundation
 
 struct ActiveDraftStore {
-    private let fileURL: URL
+    let fileURL: URL
 
     init(fileManager: FileManager = .default) {
-        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = base.appendingPathComponent("Anky", isDirectory: true)
+        let base = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = base.appendingPathComponent("Ankys", isDirectory: true)
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        self.fileURL = directory.appendingPathComponent("active-draft.anky")
+        self.fileURL = directory.appendingPathComponent(LocalAnkyArchive.canonicalFileName)
     }
 
     func load() -> String? {

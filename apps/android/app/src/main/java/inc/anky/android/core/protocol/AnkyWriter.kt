@@ -34,6 +34,11 @@ class AnkyWriter private constructor(
         isClosed = true
     }
 
+    fun prepareToResume(epochMs: Long) {
+        if (!isStarted || isClosed) return
+        lastAcceptedEpochMs = epochMs
+    }
+
     companion object {
         fun fromDraft(draftText: String): AnkyWriter {
             val parsed = AnkyParser.parse(draftText)

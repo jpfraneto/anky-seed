@@ -17,6 +17,10 @@ struct YouView: View {
     @State private var isImportingRecoveryPhrase = false
     @State private var recoveryPhraseInput = ""
 
+    init(viewModel: YouViewModel) {
+        self.viewModel = viewModel
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -165,21 +169,21 @@ struct YouView: View {
     @ViewBuilder
     private var statusMessages: some View {
         if let errorMessage = viewModel.errorMessage {
-            YouPanel {
-                Text(errorMessage.lowercased())
-                    .font(.system(size: 14, design: .serif))
-                    .foregroundStyle(YouPalette.danger)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            AnkyCompanionPromptView(
+                state: .error,
+                message: errorMessage,
+                actionTitle: nil,
+                action: nil
+            )
         }
 
         if let statusMessage = viewModel.statusMessage {
-            YouPanel {
-                Text(statusMessage.lowercased())
-                    .font(.system(size: 14, design: .serif))
-                    .foregroundStyle(YouPalette.paperMuted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            AnkyCompanionPromptView(
+                state: .notice,
+                message: statusMessage,
+                actionTitle: nil,
+                action: nil
+            )
         }
     }
 

@@ -1,4 +1,7 @@
 import Foundation
+#if SWIFT_PACKAGE
+import AnkyProtocol
+#endif
 
 struct MirrorClient {
     let baseURL: URL
@@ -15,7 +18,7 @@ struct MirrorClient {
         request.httpMethod = "POST"
         request.httpBody = bytes
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("text/markdown, text/plain", forHTTPHeaderField: "Accept")
         request.setValue(signed.identityVersion, forHTTPHeaderField: "X-Anky-Identity-Version")
         request.setValue(signed.accountId, forHTTPHeaderField: "X-Anky-Account")
         request.setValue(signed.signatureType, forHTTPHeaderField: "X-Anky-Signature-Type")
@@ -35,13 +38,38 @@ struct MirrorClient {
         }
 
         if (200..<300).contains(http.statusCode) {
-            return try JSONDecoder().decode(MirrorResponsePayload.self, from: data)
+            guard let reflection = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !reflection.isEmpty else {
+                throw MirrorClientError.invalidResponse
+            }
+            let hash = http.value(forHTTPHeaderField: "X-Anky-Hash") ?? AnkyHasher.sha256Hex(bytes)
+            let creditsRemaining = http.value(forHTTPHeaderField: "X-Anky-Credits-Remaining").flatMap(Self.creditsRemaining)
+            return MirrorResponsePayload(
+                hash: hash,
+                title: Self.title(fromMarkdown: reflection),
+                reflection: reflection,
+                creditsRemaining: creditsRemaining
+            )
         }
 
         if let envelope = try? JSONDecoder().decode(MirrorErrorEnvelope.self, from: data) {
             throw MirrorClientError.server(envelope.error.message)
         }
         throw MirrorClientError.server("Anky could not return a reflection right now.")
+    }
+
+    private static func creditsRemaining(_ value: String) -> Int? {
+        value == "null" ? nil : Int(value)
+    }
+
+    private static func title(fromMarkdown markdown: String) -> String {
+        let lines = markdown.split(whereSeparator: \.isNewline).map(String.init)
+        let heading = lines.first { $0.hasPrefix("# ") }?
+            .dropFirst(2)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = heading?.isEmpty == false ? heading : fallback
+        return title?.isEmpty == false ? title! : "reflection"
     }
 }
 

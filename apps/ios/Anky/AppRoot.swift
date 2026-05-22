@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AppRoot: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -8,8 +9,18 @@ struct AppRoot: View {
     @State private var isUnlocked = false
     @State private var authFailed = false
     @State private var isAuthenticating = false
+    @State private var showsLaunchDialogue = true
+    @State private var launchDialogueIndex = 0
+    @State private var keyboardHeight: CGFloat = 0
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
+
+    private let launchDialogueMessages = [
+        "write 8 minutes",
+        "keep going forward",
+        "if silence lasts 8 seconds, i close the ritual",
+        "when the ring completes, the day is sealed"
+    ]
 
     private func showMap() {
         selectedTab = 1
@@ -26,7 +37,7 @@ struct AppRoot: View {
                 NavigationStack {
                     WriteView(
                         viewModel: writeViewModel,
-                        shouldFocus: selectedTab == 0 && (!faceIDLockEnabled || isUnlocked),
+                        shouldFocus: shouldFocusWrite,
                         onCompleted: revealOnMap,
                         onCloseToMap: {
                             showMap()
@@ -62,9 +73,36 @@ struct AppRoot: View {
             AnkyPresenceOverlay(
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
-                transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark
+                transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
+                dockedToDialogue: shouldShowLaunchDialogue
             )
                 .zIndex(40)
+
+            if shouldShowLaunchDialogue {
+                VStack {
+                    Spacer()
+
+                    AnkyConversationPromptView(
+                        message: launchDialogueMessages[launchDialogueIndex],
+                        currentIndex: launchDialogueIndex,
+                        totalCount: launchDialogueMessages.count,
+                        next: nextLaunchDialogue,
+                        close: closeLaunchDialogue
+                    )
+                    .padding(.leading, 108)
+                    .padding(.trailing, 18)
+                    .padding(.bottom, dialogueBottomPadding)
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .zIndex(60)
+            }
+        }
+        .ignoresSafeArea(.keyboard)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            keyboardHeight = keyboardOverlap(from: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
         }
         .onAppear {
             AppOpenStore().loadOrCreate()
@@ -78,7 +116,7 @@ struct AppRoot: View {
                 await authenticateIfNeeded()
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
                 if faceIDLockEnabled && !isUnlocked && !isAuthenticating {
@@ -97,7 +135,7 @@ struct AppRoot: View {
                 break
             }
         }
-        .onChange(of: faceIDLockEnabled) { enabled in
+        .onChange(of: faceIDLockEnabled) { _, enabled in
             if enabled {
                 isUnlocked = false
                 Task {
@@ -106,6 +144,11 @@ struct AppRoot: View {
             } else {
                 isUnlocked = true
                 authFailed = false
+            }
+        }
+        .onChange(of: writeViewModel.hasStarted) { _, hasStarted in
+            if hasStarted {
+                showsLaunchDialogue = false
             }
         }
     }
@@ -127,6 +170,48 @@ struct AppRoot: View {
         isUnlocked = ok
         authFailed = !ok
         isAuthenticating = false
+    }
+
+    private func nextLaunchDialogue() {
+        if launchDialogueIndex < launchDialogueMessages.count - 1 {
+            launchDialogueIndex += 1
+            UISelectionFeedbackGenerator().selectionChanged()
+        } else {
+            closeLaunchDialogue()
+        }
+    }
+
+    private func closeLaunchDialogue() {
+        withAnimation(.easeOut(duration: 0.22)) {
+            showsLaunchDialogue = false
+        }
+    }
+
+    private var shouldFocusWrite: Bool {
+        selectedTab == 0
+            && (!faceIDLockEnabled || isUnlocked)
+            && (!writeViewModel.isTodaySealed || writeViewModel.hasStarted)
+    }
+
+    private var shouldShowLaunchDialogue: Bool {
+        showsLaunchDialogue
+            && selectedTab == 0
+            && (!faceIDLockEnabled || isUnlocked)
+            && !writeViewModel.hasStarted
+            && !writeViewModel.hasReachedRitualMark
+            && !writeViewModel.isTodaySealed
+    }
+
+    private var dialogueBottomPadding: CGFloat {
+        keyboardHeight > 0 ? keyboardHeight + 8 : 18
+    }
+
+    private func keyboardOverlap(from notification: Notification) -> CGFloat {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            return 0
+        }
+
+        return max(0, UIScreen.main.bounds.maxY - frame.minY)
     }
 
     private var presenceSequence: AnkySequenceName {

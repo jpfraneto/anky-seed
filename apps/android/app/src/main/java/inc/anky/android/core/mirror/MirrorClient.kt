@@ -29,7 +29,7 @@ class MirrorClient(
             .url(url)
             .post(bytes.toRequestBody("text/plain; charset=utf-8".toMediaType()))
             .header("Content-Type", "text/plain; charset=utf-8")
-            .header("Accept", "application/json")
+            .header("Accept", "text/markdown, text/plain")
             .header("X-Anky-Identity-Version", signed.identityVersion)
             .header("X-Anky-Account", signed.accountId)
             .header("X-Anky-Signature-Type", signed.signatureType)
@@ -46,10 +46,14 @@ class MirrorClient(
         client.newCall(request).execute().use { response ->
             val bodyText = response.body?.string()
             if (response.isSuccessful) {
-                val json = bodyText?.toJsonObjectOrNull() ?: throw MirrorClientError.InvalidResponse
-                val payload = runCatching { json.toMirrorResponsePayload() }.getOrElse {
-                    throw MirrorClientError.InvalidResponse
-                }
+                val reflection = bodyText?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: throw MirrorClientError.InvalidResponse
+                val payload = MirrorResponsePayload(
+                    hash = response.header("X-Anky-Hash") ?: AnkyHasher.sha256Hex(bytes),
+                    title = titleFromMarkdown(reflection),
+                    reflection = reflection,
+                    creditsRemaining = response.header("X-Anky-Credits-Remaining").creditsRemaining(),
+                )
                 if (payload.hash != AnkyHasher.sha256Hex(bytes)) throw MirrorClientError.HashMismatch
                 return payload
             }
@@ -71,14 +75,6 @@ internal fun MirrorConfiguration.effectiveBaseUrl(): String {
 
 private fun String.toJsonObjectOrNull(): JSONObject? =
     runCatching { JSONObject(this) }.getOrNull()
-
-private fun JSONObject.toMirrorResponsePayload(): MirrorResponsePayload =
-    MirrorResponsePayload(
-        hash = getString("hash"),
-        title = getString("title"),
-        reflection = getString("reflection"),
-        creditsRemaining = if (isNull("creditsRemaining")) null else getInt("creditsRemaining"),
-    )
 
 private fun JSONObject.toMirrorServerError(): MirrorClientError.Server {
     val error = optJSONObject("error")
@@ -109,3 +105,15 @@ private fun String?.toMirrorErrorCode(): MirrorErrorCode =
         "BODY_TOO_LARGE" -> MirrorErrorCode.BodyTooLarge
         else -> MirrorErrorCode.Unknown
     }
+
+private fun String?.creditsRemaining(): Int? =
+    if (this == null || this == "null") null else toIntOrNull()
+
+private fun titleFromMarkdown(markdown: String): String {
+    val lines = markdown.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+    val heading = lines.firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()
+    val fallback = lines.firstOrNull()
+    return heading?.takeIf { it.isNotEmpty() }
+        ?: fallback?.takeIf { it.isNotEmpty() }
+        ?: "reflection"
+}

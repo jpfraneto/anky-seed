@@ -1,9 +1,13 @@
 package inc.anky.android.feature.write
 
 import android.app.Activity
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -15,7 +19,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -24,17 +30,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,18 +64,91 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.ui.theme.AnkyColors
+import inc.anky.android.ui.theme.AnkyType
 import kotlin.math.min
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun WriteScreen(
     viewModel: WriteViewModel,
     onReveal: (String) -> Unit,
     onCloseToMap: () -> Unit,
+    onImportAnkyText: (String) -> SavedAnky,
+    onImportAnkyBytes: (ByteArray) -> SavedAnky,
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
+    val context = LocalContext.current
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+    var importError by remember { mutableStateOf<String?>(null) }
     WriteSystemBarsHidden()
     WriteHaptics(state)
+
+    fun importAndReveal(importBlock: () -> SavedAnky) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching(importBlock)
+            }
+            result
+                .onSuccess { saved ->
+                    importError = null
+                    onReveal(saved.hash)
+                }
+                .onFailure {
+                    importError = "I could not find a .anky rhythm in that."
+                }
+        }
+    }
+
+    val openDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val bytesResult = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: error("Could not read .anky file.")
+                }
+            }
+            bytesResult
+                .onSuccess { bytes ->
+                    importAndReveal { onImportAnkyBytes(bytes) }
+                }
+                .onFailure {
+                    importError = "I could not open that artifact."
+                }
+        }
+    }
+
+    fun launchDocumentFallback() {
+        openDocument.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+    }
+
+    fun pasteOrOpenDocument() {
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        val clipboardText = context.primaryClipboardText()
+        if (clipboardText.isNullOrBlank()) {
+            launchDocumentFallback()
+            return
+        }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { onImportAnkyText(clipboardText) }
+            }
+            result
+                .onSuccess { saved ->
+                    importError = null
+                    onReveal(saved.hash)
+                }
+                .onFailure {
+                    importError = "I could not find a .anky rhythm in that."
+                    launchDocumentFallback()
+                }
+        }
+    }
 
     LaunchedEffect(state.completedHash) {
         state.completedHash?.let { hash ->
@@ -112,23 +195,45 @@ fun WriteScreen(
                 )
             }
 
-            if (!state.isClosing) {
-                IconButton(
-                    onClick = {
-                        viewModel.abandonIfEmpty()
-                        onCloseToMap()
-                    },
+            WriteTopBar(
+                canPaste = state.acceptedGlyphCount == 0 && !state.isClosing,
+                onCloseToMap = {
+                    viewModel.abandonIfEmpty()
+                    onCloseToMap()
+                },
+                onPaste = ::pasteOrOpenDocument,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp, start = 10.dp, end = 10.dp),
+            )
+
+            if (state.hasReachedRitualMark) {
+                Text(
+                    AnkyDuration.clock(state.elapsedMs),
+                    color = AnkyColors.PaperMuted.copy(alpha = 0.72f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = FontFamily.Monospace,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 10.dp, end = 12.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Map,
-                        contentDescription = "Open Map",
-                        tint = AnkyColors.PaperMuted.copy(alpha = 0.72f),
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                        .align(Alignment.TopCenter)
+                        .padding(top = 13.dp)
+                        .background(AnkyColors.Panel.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
+                        .border(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                )
+            }
+
+            importError?.let { message ->
+                Text(
+                    message,
+                    color = AnkyColors.Danger,
+                    style = AnkyType.Caption,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 58.dp)
+                        .background(AnkyColors.Background.copy(alpha = 0.92f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                )
             }
 
             RitualRings(
@@ -142,22 +247,6 @@ fun WriteScreen(
                     .testTag("ritual-glyph"),
             )
 
-            if (state.hasReachedRitualMark) {
-                Text(
-                    AnkyDuration.clock(state.elapsedMs),
-                    color = AnkyColors.PaperMuted.copy(alpha = 0.72f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = 12.dp, start = 14.dp)
-                        .background(AnkyColors.Panel.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
-                        .border(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                )
-            }
-
             state.errorMessage?.let { errorMessage ->
                 Text(
                     errorMessage,
@@ -169,6 +258,64 @@ fun WriteScreen(
                         .padding(16.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun WriteTopBar(
+    canPaste: Boolean,
+    onCloseToMap: () -> Unit,
+    onPaste: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        TextButton(
+            onClick = onCloseToMap,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .background(AnkyColors.Panel.copy(alpha = 0.62f), RoundedCornerShape(percent = 50))
+                .border(BorderStroke(1.dp, AnkyColors.PaperMuted.copy(alpha = 0.10f)), RoundedCornerShape(percent = 50)),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ChevronLeft,
+                contentDescription = null,
+                tint = AnkyColors.PaperMuted.copy(alpha = 0.78f),
+                modifier = Modifier.size(17.dp),
+            )
+            Icon(
+                imageVector = Icons.Filled.Map,
+                contentDescription = null,
+                tint = AnkyColors.PaperMuted.copy(alpha = 0.78f),
+                modifier = Modifier.size(17.dp),
+            )
+            Text(
+                "Map",
+                color = AnkyColors.PaperMuted.copy(alpha = 0.78f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Box(Modifier.weight(1f))
+        TextButton(
+            onClick = onPaste,
+            enabled = canPaste,
+            modifier = Modifier
+                .background(AnkyColors.Panel.copy(alpha = 0.62f), RoundedCornerShape(percent = 50))
+                .border(BorderStroke(1.dp, AnkyColors.Gold.copy(alpha = 0.18f)), RoundedCornerShape(percent = 50)),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ContentPaste,
+                contentDescription = null,
+                tint = AnkyColors.GoldSoft.copy(alpha = if (canPaste) 0.86f else 0.34f),
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                "PASTE",
+                color = AnkyColors.GoldSoft.copy(alpha = if (canPaste) 0.86f else 0.34f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -332,3 +479,10 @@ private tailrec fun Context.findActivity(): Activity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
+
+private fun Context.primaryClipboardText(): String? {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = clipboard.primaryClip ?: return null
+    if (clip.itemCount == 0) return null
+    return clip.getItemAt(0).coerceToText(this)?.toString()
+}

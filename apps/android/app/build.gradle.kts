@@ -53,7 +53,7 @@ android {
         applicationId = "app.anky.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 2026052001
+        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 2026052002
         versionName = releaseProperty("ANKY_ANDROID_VERSION_NAME") ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

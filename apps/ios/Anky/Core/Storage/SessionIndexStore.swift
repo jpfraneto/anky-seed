@@ -188,6 +188,10 @@ struct SessionIndexStore {
         return (try? JSONDecoder.sessionIndexDecoder.decode([SessionSummary].self, from: data)) ?? []
     }
 
+    func hasCompleteRitual(on date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        load().hasCompleteRitual(on: date, calendar: calendar)
+    }
+
     func save(_ sessions: [SessionSummary]) throws {
         let sorted = sessions.sorted { $0.createdAt > $1.createdAt }
         let data = try JSONEncoder.sessionIndexEncoder.encode(sorted)
@@ -245,6 +249,12 @@ struct SessionIndexStore {
 }
 
 extension Array where Element == SessionSummary {
+    func hasCompleteRitual(on date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        contains { summary in
+            summary.isComplete && calendar.isDate(summary.createdAt, inSameDayAs: date)
+        }
+    }
+
     func groupedByDay(
         calendar: Calendar = .ankyUTC,
         firstOpenDate: Date,

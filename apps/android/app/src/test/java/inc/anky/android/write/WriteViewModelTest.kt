@@ -22,10 +22,10 @@ class WriteViewModelTest {
     @get:Rule val temp = TemporaryFolder()
 
     @Test
-    fun restoredDraftClosesAfterElapsedSilenceAndArchivesCanonicalAnky() = runTest {
+    fun restoredIncompleteDraftFreezesAfterElapsedSilenceWithoutClosingAnky() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
-        stores.draft.save("$start h\n472000 e")
+        stores.draft.save("$start h\n471000 e")
 
         WriteViewModel(
             activeDraftStore = stores.draft,
@@ -38,15 +38,15 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         val saved = stores.archive.list().single()
-        assertEquals("$start h\n472000 e\n8000", saved.text)
-        assertEquals(480000, saved.durationMs)
-        assertEquals(true, saved.isComplete)
-        assertNull(stores.draft.load())
+        assertEquals("$start h\n471000 e", saved.text)
+        assertEquals(471000, saved.durationMs)
+        assertEquals(false, saved.isComplete)
+        assertEquals(saved.text, stores.draft.load())
         assertEquals(saved.hash, stores.index.load().single().hash)
     }
 
     @Test
-    fun restoredClosedDraftArchivesWithoutAppendingTerminalTwice() = runTest {
+    fun restoredClosedDraftStaysVisibleWithoutAppendingTerminalTwice() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n472000 e\n8000")
@@ -62,7 +62,7 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         assertEquals("$start h\n472000 e\n8000", stores.archive.list().single().text)
-        assertNull(stores.draft.load())
+        assertEquals("$start h\n472000 e\n8000", stores.draft.load())
     }
 
     @Test
@@ -140,6 +140,50 @@ class WriteViewModelTest {
     }
 
     @Test
+    fun frozenDraftResumesWithoutCountingIdleGap() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 8_000
+        advanceUntilIdle()
+        assertEquals("1770000000000 h", stores.draft.load())
+        assertEquals(8_000, viewModel.state.value.elapsedMs)
+
+        now += 60_000
+        viewModel.acceptGlyph("i")
+
+        assertEquals("1770000000000 h\n0 i", stores.draft.load())
+        assertEquals(8_000, viewModel.state.value.elapsedMs)
+    }
+
+    @Test
+    fun staleUtcDayDraftIsClearedOnLaunch() = runTest {
+        val stores = stores()
+        stores.draft.save("1770000000000 h")
+
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { 1_770_086_400_000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertNull(stores.draft.load())
+        assertEquals("", viewModel.state.value.displayedText)
+    }
+
+    @Test
     fun invalidRestoredDraftShowsIosErrorCopyAndLeavesDraftUntouched() = runTest {
         val stores = stores()
         stores.draft.save("not-a-timestamp h")
@@ -176,7 +220,7 @@ class WriteViewModelTest {
         viewModel.acceptGlyph("paste")
 
         assertEquals("$start h", stores.draft.load())
-        assertEquals(0, stores.archive.list().size)
+        assertEquals(1, stores.archive.list().size)
     }
 
     @Test
@@ -236,9 +280,10 @@ class WriteViewModelTest {
 
     private fun TestScope.stores(): Stores {
         val root = temp.newFolder()
+        val ankys = File(root, "ankys")
         return Stores(
-            draft = ActiveDraftStore.forDirectory(File(root, "draft")),
-            archive = LocalAnkyArchive.forDirectory(File(root, "archive")),
+            draft = ActiveDraftStore.forDirectory(ankys),
+            archive = LocalAnkyArchive.forDirectory(ankys),
             reflections = ReflectionStore.forDirectory(File(root, "reflections")),
             index = SessionIndexStore.forFile(File(root, "session-index.json")),
         )

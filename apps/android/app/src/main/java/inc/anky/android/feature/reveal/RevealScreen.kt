@@ -71,8 +71,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.R
-import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.ui.components.AnkyCompanionPrompt
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyType
 import java.time.ZoneId
@@ -154,6 +154,23 @@ fun RevealScreen(
                     .padding(top = 20.dp, bottom = 118.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
+                if (state.canAskAnky) {
+                    AnkyCompanionPrompt(
+                        title = if (state.isAsking) "Anky is mirroring" else "Mirror this",
+                        message = if (state.isAsking) {
+                            "I'm listening for what wants to be reflected."
+                        } else {
+                            "I found the rhythm inside this. Mirror it?"
+                        },
+                        actionLabel = if (state.isAsking) "mirroring" else "Mirror this",
+                        isLoading = state.isAsking,
+                        enabled = state.canSubmitReflectionRequest,
+                        onAction = viewModel::askAnky,
+                        modifier = Modifier
+                            .padding(bottom = 18.dp)
+                            .fillMaxWidth(),
+                    )
+                }
                 SelectionContainer {
                     Text(
                         text = artifact.reconstructedText,
@@ -185,30 +202,15 @@ fun RevealScreen(
                             .fillMaxWidth(),
                     )
                 }
-                if (state.canAskAnky) {
+                if (state.canAskAnky && state.creditPromptMessage.isNotBlank()) {
                     Text(
                         state.creditPromptMessage,
-                        style = AnkyType.Caption.copy(
-                            fontSize = 13.sp,
-                            color = if (state.creditPromptState == ReflectionCreditPromptState.Unavailable) {
-                                AnkyColors.Danger.copy(alpha = 0.82f)
-                            } else {
-                                AnkyColors.GoldSoft.copy(alpha = 0.82f)
-                            },
-                        ),
+                        style = AnkyType.Caption.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = AnkyColors.GoldSoft.copy(alpha = 0.82f)),
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .padding(top = 14.dp)
                             .fillMaxWidth(),
                     )
-                    Box(Modifier.padding(top = 10.dp)) {
-                        ThreadedActionButton(
-                            title = if (state.isAsking) "anky is reflecting" else "ask anky",
-                            isLoading = state.isAsking,
-                            enabled = state.canSubmitReflectionRequest,
-                            onClick = viewModel::askAnky,
-                        )
-                    }
                 }
                 if (state.shouldShowCreditsLink) {
                     Text(
@@ -239,14 +241,16 @@ fun RevealScreen(
                     }
                 }
                 state.error?.let {
-                    Text(
-                        it,
-                        color = AnkyColors.Danger,
-                        style = AnkyType.Caption,
+                    AnkyCompanionPrompt(
+                        title = "Anky paused",
+                        message = "I could not bring the reflection back yet.",
+                        actionLabel = "Mirror this",
+                        isLoading = false,
+                        enabled = state.canSubmitReflectionRequest,
+                        onAction = viewModel::askAnky,
                         modifier = Modifier
                             .padding(top = 18.dp)
                             .fillMaxWidth(),
-                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -267,10 +271,7 @@ fun RevealScreen(
                             ?: currentArtifact.reconstructedText
                     }
                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                    context.copyText(
-                        if (section == RevealCopySection.Writing) "Anky writing" else "Anky reflection",
-                        textToCopy,
-                    )
+                    context.copyText(if (section == RevealCopySection.Writing) "Anky writing" else "Anky mirror", textToCopy)
                     copiedSection = section
                 },
             )
@@ -534,7 +535,7 @@ private fun MirrorWitnessLoadingView(modifier: Modifier = Modifier) {
             )
         }
         Text(
-            "Anky is reflecting...",
+            "Anky is mirroring...",
             style = AnkyType.Caption.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.62f)),
         )
     }
@@ -637,7 +638,7 @@ private fun AskReflectionFloatingButton(
                     )
                 }
                 Text(
-                    if (isAsking) "anky is reflecting" else "ask anky",
+                    if (isAsking) "anky is mirroring" else "mirror this",
                     style = AnkyType.Caption.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Ink),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -774,8 +775,8 @@ private fun inlineMarkdown(text: String) = buildAnnotatedString {
 private fun reflectionStatus(state: RevealState): String =
     when {
         state.reflection != null -> ""
-        state.canAskAnky -> "ready to ask anky for reflection"
-        state.artifact?.isComplete == false -> "write 8 minutes to ask anky for reflection"
+        state.canAskAnky -> "ready to mirror this"
+        state.artifact?.isComplete == false -> "write 8 minutes to mirror this"
         else -> ""
     }
 

@@ -51,6 +51,7 @@ import inc.anky.android.feature.write.WriteScreen
 import inc.anky.android.feature.write.WriteViewModel
 import inc.anky.android.feature.you.YouScreen
 import inc.anky.android.feature.you.YouViewModel
+import inc.anky.android.core.storage.SingleAnkyImporter
 import inc.anky.android.ui.components.AnkyPresenceOverlay
 import inc.anky.android.ui.components.AnkySequenceName
 import inc.anky.android.ui.theme.AnkyColors
@@ -148,14 +149,8 @@ fun AnkyApp(container: AppContainer) {
 
         LaunchedEffect(lockState.value) {
             if (lockState.value == LockState.Unlocked) {
-                val identity = runCatching { container.identityStore.loadOrCreate() }.getOrNull()
+                runCatching { container.identityStore.loadOrCreate() }
                 runCatching { container.appOpenStore.loadOrCreate() }
-                if (identity != null) {
-                    runCatching {
-                        container.creditsClient.configure(identity.accountId)
-                        container.creditsClient.refresh()
-                    }
-                }
             }
         }
 
@@ -223,6 +218,22 @@ fun AnkyApp(container: AppContainer) {
                                 navController.navigate(AnkyRoute.Reveal.route(hash))
                             },
                             onCloseToMap = { navController.navigate(AnkyRoute.Map.route) },
+                            onImportAnkyText = { text ->
+                                SingleAnkyImporter.importText(
+                                    rawText = text,
+                                    archive = container.archive,
+                                    reflectionStore = container.reflectionStore,
+                                    indexStore = container.sessionIndexStore,
+                                )
+                            },
+                            onImportAnkyBytes = { bytes ->
+                                SingleAnkyImporter.importBytes(
+                                    bytes = bytes,
+                                    archive = container.archive,
+                                    reflectionStore = container.reflectionStore,
+                                    indexStore = container.sessionIndexStore,
+                                )
+                            },
                         )
                     }
                     composable(AnkyRoute.Map.route) {
@@ -266,12 +277,6 @@ fun AnkyApp(container: AppContainer) {
                                 indexStore = container.sessionIndexStore,
                                 identityStore = container.identityStore,
                                 mirrorClientProvider = { container.mirrorClient(settings.mirrorBaseUrl) },
-                                creditBalanceCacheInvalidator = { container.creditsClient.invalidateCreditBalanceCache() },
-                                creditBalanceFetcher = {
-                                    val identity = container.identityStore.loadOrCreate()
-                                    container.creditsClient.configure(identity.accountId)
-                                    container.creditsClient.refresh().balance
-                                },
                                 hasClaimedFreeCreditsProvider = {
                                     freeCreditPromptPrefs.getBoolean("hasClaimedFreeReflections", false)
                                 },

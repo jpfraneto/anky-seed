@@ -161,14 +161,13 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun askAnkyInvalidatesCreditCacheWhenCreditsRemainingIsReturned() = runTest {
+    fun askAnkyStoresCreditsRemainingWithoutInvalidatingCreditCache() = runTest {
         val server = MockWebServer()
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = 7))
         server.start()
-        var invalidationCount = 0
         try {
             val viewModel = RevealViewModel(
                 hash = artifact.hash,
@@ -177,14 +176,12 @@ class RevealViewModelTest {
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
-                creditBalanceCacheInvalidator = { invalidationCount += 1 },
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
 
             viewModel.askAnky()
             advanceUntilIdle()
 
-            assertEquals(1, invalidationCount)
             assertEquals(7, stores.reflections.load(artifact.hash)?.creditsRemaining)
             assertEquals(7, viewModel.state.value.creditBalance)
             assertTrue(viewModel.state.value.hasClaimedFreeCredits)
@@ -194,7 +191,7 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun refreshCreditsShowsUnavailablePromptAfterFreeCreditsClaimed() = runTest {
+    fun claimedFreeCreditsWithoutBalanceKeepsPromptUnknownAndAllowsBackendCheck() = runTest {
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
         val viewModel = RevealViewModel(
@@ -204,16 +201,15 @@ class RevealViewModelTest {
             indexStore = stores.index,
             identityProvider = { identity() },
             mirrorClientProvider = { error("Ask Anky should be blocked with no reflections left.") },
-            creditBalanceFetcher = { 0 },
             hasClaimedFreeCreditsProvider = { true },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
 
         advanceUntilIdle()
 
-        assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
-        assertEquals("No reflections left", viewModel.state.value.creditPromptMessage)
-        assertFalse(viewModel.state.value.canSubmitReflectionRequest)
+        assertEquals(ReflectionCreditPromptState.Unknown, viewModel.state.value.creditPromptState)
+        assertEquals("Reflection balance updates after mirroring", viewModel.state.value.creditPromptMessage)
+        assertTrue(viewModel.state.value.canSubmitReflectionRequest)
         viewModel.askAnky()
         advanceUntilIdle()
         assertFalse(viewModel.state.value.isAsking)
@@ -261,7 +257,6 @@ class RevealViewModelTest {
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = null))
         server.start()
-        var invalidationCount = 0
         try {
             val viewModel = RevealViewModel(
                 hash = artifact.hash,
@@ -270,14 +265,12 @@ class RevealViewModelTest {
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
-                creditBalanceCacheInvalidator = { invalidationCount += 1 },
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
 
             viewModel.askAnky()
             advanceUntilIdle()
 
-            assertEquals(0, invalidationCount)
             assertEquals(null, stores.reflections.load(artifact.hash)?.creditsRemaining)
         } finally {
             server.shutdown()
@@ -339,16 +332,10 @@ class RevealViewModelTest {
     private fun reflectionResponse(hash: String, creditsRemaining: Int? = 3): MockResponse =
         MockResponse()
             .setResponseCode(200)
-            .setBody(
-                """
-                {
-                  "hash": "$hash",
-                  "title": "Small Thread",
-                  "reflection": "Here is what I saw.",
-                  "creditsRemaining": ${creditsRemaining ?: "null"}
-                }
-                """.trimIndent(),
-            )
+            .setHeader("Content-Type", "text/markdown; charset=utf-8")
+            .setHeader("X-Anky-Hash", hash)
+            .setHeader("X-Anky-Credits-Remaining", creditsRemaining?.toString() ?: "null")
+            .setBody("# Small Thread\n\nHere is what I saw.")
 
     private data class Stores(
         val archive: LocalAnkyArchive,
