@@ -6,6 +6,7 @@ struct AnkyPresenceOverlay: View {
     let goldenGlow: Bool
     let transformToSigil: Bool
     let dockedToDialogue: Bool
+    let onTap: (() -> Bool)?
 
     @AppStorage("ankyPresenceX") private var storedX = -1.0
     @AppStorage("ankyPresenceY") private var storedY = -1.0
@@ -20,12 +21,14 @@ struct AnkyPresenceOverlay: View {
         defaultSequence: AnkySequenceName = .idleFront,
         goldenGlow: Bool = false,
         transformToSigil: Bool = false,
-        dockedToDialogue: Bool = false
+        dockedToDialogue: Bool = false,
+        onTap: (() -> Bool)? = nil
     ) {
         self.defaultSequence = defaultSequence
         self.goldenGlow = goldenGlow
         self.transformToSigil = transformToSigil
         self.dockedToDialogue = dockedToDialogue
+        self.onTap = onTap
         _sequence = State(initialValue: defaultSequence)
     }
 
@@ -68,6 +71,9 @@ struct AnkyPresenceOverlay: View {
             .gesture(dragGesture(in: geometry.size, presenceSize: size))
             .onTapGesture {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                if onTap?() == true {
+                    return
+                }
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                     isVisible.toggle()
                 }

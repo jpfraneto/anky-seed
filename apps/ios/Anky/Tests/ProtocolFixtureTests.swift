@@ -41,6 +41,7 @@ final class ProtocolFixtureTests: XCTestCase {
         XCTAssertEqual(validation.kind, .complete)
         XCTAssertTrue(validation.isComplete)
         XCTAssertEqual(validation.durationMs, 480000)
+        XCTAssertEqual(AnkyDuration.writingDurationMs(try XCTUnwrap(validation.parsed)), 472000)
 
         let parsed = try XCTUnwrap(validation.parsed)
         XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "hello!")

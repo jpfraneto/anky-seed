@@ -10,17 +10,9 @@ struct AppRoot: View {
     @State private var authFailed = false
     @State private var isAuthenticating = false
     @State private var showsLaunchDialogue = true
-    @State private var launchDialogueIndex = 0
     @State private var keyboardHeight: CGFloat = 0
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
-
-    private let launchDialogueMessages = [
-        "write 8 minutes",
-        "keep going forward",
-        "if silence lasts 8 seconds, i close the ritual",
-        "when the ring completes, the day is sealed"
-    ]
 
     private func showMap() {
         selectedTab = 1
@@ -28,6 +20,7 @@ struct AppRoot: View {
 
     private func revealOnMap(_ artifact: SavedAnky) {
         revealAfterWriting = artifact
+        showsLaunchDialogue = true
         selectedTab = 1
     }
 
@@ -49,7 +42,10 @@ struct AppRoot: View {
                 }
                 .tag(0)
 
-                MapView(revealAfterWriting: $revealAfterWriting)
+                MapView(
+                    revealAfterWriting: $revealAfterWriting,
+                    onTryAgain: beginRetryWriting
+                )
                     .tabItem {
                         Label("Map", systemImage: "map")
                     }
@@ -74,21 +70,16 @@ struct AppRoot: View {
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
                 transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
-                dockedToDialogue: shouldShowLaunchDialogue
+                dockedToDialogue: shouldShowWriteDialogue,
+                onTap: presenceTapHandler
             )
                 .zIndex(40)
 
-            if shouldShowLaunchDialogue {
+            if shouldShowWriteDialogue {
                 VStack {
                     Spacer()
 
-                    AnkyConversationPromptView(
-                        message: launchDialogueMessages[launchDialogueIndex],
-                        currentIndex: launchDialogueIndex,
-                        totalCount: launchDialogueMessages.count,
-                        next: nextLaunchDialogue,
-                        close: closeLaunchDialogue
-                    )
+                    writeDialogue
                     .padding(.leading, 108)
                     .padding(.trailing, 18)
                     .padding(.bottom, dialogueBottomPadding)
@@ -172,34 +163,74 @@ struct AppRoot: View {
         isAuthenticating = false
     }
 
-    private func nextLaunchDialogue() {
-        if launchDialogueIndex < launchDialogueMessages.count - 1 {
-            launchDialogueIndex += 1
-            UISelectionFeedbackGenerator().selectionChanged()
-        } else {
-            closeLaunchDialogue()
-        }
-    }
-
     private func closeLaunchDialogue() {
         withAnimation(.easeOut(duration: 0.22)) {
             showsLaunchDialogue = false
         }
     }
 
+    private func beginLaunchWriting() {
+        closeLaunchDialogue()
+        writeViewModel.openWritingPortal()
+    }
+
+    private func beginRetryWriting() {
+        showsLaunchDialogue = false
+        selectedTab = 0
+        writeViewModel.openWritingPortal()
+    }
+
     private var shouldFocusWrite: Bool {
         selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
-            && (!writeViewModel.isTodaySealed || writeViewModel.hasStarted)
     }
 
     private var shouldShowLaunchDialogue: Bool {
         showsLaunchDialogue
             && selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
-            && !writeViewModel.hasStarted
+            && !writeViewModel.hasActiveDotAnky
             && !writeViewModel.hasReachedRitualMark
-            && !writeViewModel.isTodaySealed
+            && keyboardHeight == 0
+            && !shouldShowWriteErrorDialogue
+    }
+
+    private var shouldShowWriteErrorDialogue: Bool {
+        selectedTab == 0
+            && (!faceIDLockEnabled || isUnlocked)
+            && writeViewModel.isErrorMessageVisible
+            && writeViewModel.errorMessage != nil
+    }
+
+    private var shouldShowWriteDialogue: Bool {
+        shouldShowWriteErrorDialogue || shouldShowLaunchDialogue
+    }
+
+    @ViewBuilder
+    private var writeDialogue: some View {
+        if shouldShowWriteErrorDialogue, let errorMessage = writeViewModel.errorMessage {
+            AnkyConversationPromptView(
+                message: errorMessage,
+                actionTitle: nil,
+                action: nil,
+                close: writeViewModel.dismissCurrentPrompt
+            )
+        } else {
+            AnkyConversationPromptView(
+                message: launchDialogueMessage,
+                actionTitle: writeViewModel.todayAnkyCount > 0 ? "write again" : "write 8 minutes",
+                action: beginLaunchWriting,
+                close: closeLaunchDialogue
+            )
+        }
+    }
+
+    private var launchDialogueMessage: String {
+        guard writeViewModel.todayAnkyCount > 0 else {
+            return "the living .anky string is the state of this session."
+        }
+
+        return "ankys today: \(writeViewModel.todayAnkyCount)"
     }
 
     private var dialogueBottomPadding: CGFloat {
@@ -224,6 +255,15 @@ struct AppRoot: View {
             return .waveFront
         default:
             return .idleFront
+        }
+    }
+
+    private var presenceTapHandler: (() -> Bool)? {
+        guard selectedTab == 0 else {
+            return nil
+        }
+        return {
+            writeViewModel.replayRecentPromptIfAvailable()
         }
     }
 }

@@ -5,6 +5,7 @@ struct WriteView: View {
     @StateObject private var viewModel: WriteViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var keyboardHeight: CGFloat = 0
+    @State private var confirmClearDotAnky = false
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
@@ -23,22 +24,20 @@ struct WriteView: View {
 
     var body: some View {
         ZStack {
-            if viewModel.isTodaySealed && !viewModel.hasStarted {
-                SealedDayView(
-                    openMap: {
-                        viewModel.abandonIfEmpty()
-                        onCloseToMap()
-                    },
-                    paste: pasteArtifact
-                )
-            } else {
+            GeometryReader { geometry in
+                let visibleHeight = max(1, geometry.size.height - keyboardHeight)
+                let center = CGPoint(x: geometry.size.width / 2, y: visibleHeight / 2)
+
                 ForwardOnlyTextView(
                     text: viewModel.displayedText,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: shouldFocus,
-                    onCharacter: viewModel.accept
+                    bottomInset: keyboardHeight + 92,
+                    onCharacter: viewModel.accept,
+                    onRejectedInput: viewModel.nudgeInvalidInput
                 )
                 .padding(24)
+                .frame(width: geometry.size.width, height: geometry.size.height)
 
                 RitualRingsView(
                     elapsedMs: viewModel.elapsedMs,
@@ -47,21 +46,7 @@ struct WriteView: View {
                     lastCharacter: viewModel.lastCharacter,
                     isRitualComplete: viewModel.hasReachedRitualMark
                 )
-            }
-
-            if let errorMessage = viewModel.errorMessage {
-                VStack {
-                    Spacer()
-                    AnkyCompanionPromptView(
-                        state: .error,
-                        message: errorMessage,
-                        actionTitle: nil,
-                        action: nil
-                    )
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, dialogueBottomPadding)
-                }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .position(center)
             }
 
             if viewModel.hasReachedRitualMark {
@@ -90,13 +75,17 @@ struct WriteView: View {
 
             WriteTopActionBar(
                 isVisible: viewModel.shouldShowTopActions,
-                isClearMode: viewModel.isPausedOnDraft,
+                hasActiveDotAnky: viewModel.hasActiveDotAnky,
+                canBeginNewPage: viewModel.canBeginNewPage,
                 openMap: {
                     viewModel.abandonIfEmpty()
                     onCloseToMap()
                 },
                 paste: pasteArtifact,
-                clear: viewModel.clearCurrentSession
+                devPaste: devPasteArtifact,
+                clear: {
+                    confirmClearDotAnky = true
+                }
             )
         }
         .background(Color(.systemBackground))
@@ -110,6 +99,14 @@ struct WriteView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardHeight = 0
+        }
+        .confirmationDialog("begin a new page?", isPresented: $confirmClearDotAnky, titleVisibility: .visible) {
+            Button("begin a new page", role: .destructive) {
+                viewModel.clearCurrentSession()
+            }
+            Button("cancel", role: .cancel) {}
+        } message: {
+            Text("This releases the live dotAnky string and gives this session a blank page.")
         }
         .onAppear {
             viewModel.bindCompletion(onCompleted)
@@ -137,8 +134,8 @@ struct WriteView: View {
         _ = viewModel.importAnkyArtifact(viewModel.clipboardText() ?? "")
     }
 
-    private var dialogueBottomPadding: CGFloat {
-        keyboardHeight > 0 ? keyboardHeight + 8 : 18
+    private func devPasteArtifact() {
+        _ = viewModel.importAnkyArtifact(viewModel.devSampleAnkyArtifact)
     }
 
     private func keyboardOverlap(from notification: Notification) -> CGFloat {
@@ -152,27 +149,43 @@ struct WriteView: View {
 
 private struct WriteTopActionBar: View {
     let isVisible: Bool
-    let isClearMode: Bool
+    let hasActiveDotAnky: Bool
+    let canBeginNewPage: Bool
     let openMap: () -> Void
     let paste: () -> Void
+    let devPaste: () -> Void
     let clear: () -> Void
 
     var body: some View {
         VStack {
             HStack {
-                Button(action: openMap) {
-                    WriteChromeIcon(systemName: "chevron.left", isEnabled: true)
+                if !hasActiveDotAnky {
+                    Button(action: openMap) {
+                        WriteChromeIcon(systemName: "chevron.left", isEnabled: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open Map")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Map")
 
                 Spacer()
 
-                Button(action: isClearMode ? clear : paste) {
-                    WriteChromeIcon(systemName: isClearMode ? "eraser" : "doc.on.clipboard", isEnabled: true)
+                HStack(spacing: 10) {
+                    if hasActiveDotAnky && canBeginNewPage {
+                        Button(action: clear) {
+                            WriteChromeIcon(systemName: "doc.badge.plus", isEnabled: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Begin a new page")
+                    }
+
+                    if !hasActiveDotAnky {
+                        DevPasteChromeIcon(
+                            paste: paste,
+                            devPaste: devPaste
+                        )
+                        .accessibilityLabel("Paste .anky artifact")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isClearMode ? "Clear .anky session" : "Paste .anky artifact")
             }
             Spacer()
         }
@@ -181,69 +194,70 @@ private struct WriteTopActionBar: View {
         .opacity(isVisible ? 1 : 0)
         .allowsHitTesting(isVisible)
         .animation(.easeInOut(duration: 0.26), value: isVisible)
-        .animation(.easeInOut(duration: 0.20), value: isClearMode)
-    }
-}
-
-private struct SealedDayView: View {
-    let openMap: () -> Void
-    let paste: () -> Void
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            AnkyWitnessView(mood: .warm, size: .companion, sequence: .celebrate)
-
-            VStack(spacing: 8) {
-                Text("today's ritual is sealed.")
-                    .font(.system(size: 24, weight: .semibold, design: .serif))
-                    .foregroundStyle(.primary.opacity(0.86))
-                    .multilineTextAlignment(.center)
-
-                Text("come back tomorrow.")
-                    .font(.system(size: 18, weight: .medium, design: .serif))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            HStack(spacing: 12) {
-                Button(action: openMap) {
-                    WriteChromeIcon(systemName: "chevron.left", isEnabled: true)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Map")
-
-                Button(action: paste) {
-                    WriteChromeIcon(systemName: "doc.on.clipboard", isEnabled: true)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Paste .anky artifact")
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 24)
+        .animation(.easeInOut(duration: 0.20), value: hasActiveDotAnky)
     }
 }
 
 private struct WriteChromeIcon: View {
     let systemName: String
     let isEnabled: Bool
+    var isActive: Bool = false
+
+    private var foregroundColor: Color {
+        if !isEnabled {
+            return Color.secondary.opacity(0.38)
+        }
+        return isActive ? Color.white.opacity(0.96) : Color.primary.opacity(0.74)
+    }
+
+    private var borderColor: Color {
+        isActive ? Color.white.opacity(0.62) : Color.primary.opacity(0.10)
+    }
+
+    private var shadowColor: Color {
+        isActive ? AnkyTheme.gold.opacity(0.42) : Color.black.opacity(0.08)
+    }
 
     var body: some View {
         Image(systemName: systemName)
             .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(isEnabled ? Color.primary.opacity(0.74) : Color.secondary.opacity(0.38))
+            .foregroundStyle(foregroundColor)
             .frame(width: 42, height: 42)
             .background(.thinMaterial, in: Circle())
+            .background(Circle().fill(isActive ? AnkyTheme.gold.opacity(0.86) : Color.clear))
             .overlay(
                 Circle()
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                    .stroke(borderColor, lineWidth: isActive ? 1.5 : 1)
             )
-            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
+            .shadow(color: shadowColor, radius: isActive ? 16 : 10, y: 4)
             .opacity(isEnabled ? 1 : 0.62)
             .contentShape(Circle())
+            .animation(.easeInOut(duration: 0.22), value: isActive)
+    }
+}
+
+private struct DevPasteChromeIcon: View {
+    let paste: () -> Void
+    let devPaste: () -> Void
+
+    var body: some View {
+        WriteChromeIcon(systemName: "doc.on.clipboard", isEnabled: true)
+            .gesture(
+                LongPressGesture(minimumDuration: 5)
+                    .exclusively(before: TapGesture())
+                    .onEnded { value in
+                        switch value {
+                        case .first(true):
+                            devPaste()
+                        case .second:
+                            paste()
+                        default:
+                            break
+                        }
+                    }
+            )
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Hold for five seconds to paste the built-in dev .anky")
     }
 }
 
@@ -357,7 +371,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     let text: String
     let focusID: UUID
     let shouldFocus: Bool
+    let bottomInset: CGFloat
     let onCharacter: (Character) -> Void
+    let onRejectedInput: () -> Void
 
     func makeUIView(context: Context) -> UITextView {
         let textView = CenteredTextView()
@@ -376,6 +392,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = UIEdgeInsets(top: 18, left: 0, bottom: bottomInset, right: 0)
+        textView.contentInset.bottom = bottomInset
+        textView.verticalScrollIndicatorInsets.bottom = bottomInset
         textView.isScrollEnabled = true
 
         if shouldFocus {
@@ -391,6 +410,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         if uiView.text != text {
             uiView.text = text
         }
+        uiView.textContainerInset.bottom = bottomInset
+        uiView.contentInset.bottom = bottomInset
+        uiView.verticalScrollIndicatorInsets.bottom = bottomInset
+
         if context.coordinator.focusID != focusID {
             context.coordinator.focusID = focusID
             if shouldFocus {
@@ -411,19 +434,26 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
 
         let end = uiView.endOfDocument
         uiView.selectedTextRange = uiView.textRange(from: end, to: end)
+        uiView.scrollRangeToVisible(NSRange(location: (uiView.text as NSString).length, length: 0))
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(focusID: focusID, onCharacter: onCharacter)
+        Coordinator(focusID: focusID, onCharacter: onCharacter, onRejectedInput: onRejectedInput)
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         var focusID: UUID
         private let onCharacter: (Character) -> Void
+        private let onRejectedInput: () -> Void
 
-        init(focusID: UUID, onCharacter: @escaping (Character) -> Void) {
+        init(
+            focusID: UUID,
+            onCharacter: @escaping (Character) -> Void,
+            onRejectedInput: @escaping () -> Void
+        ) {
             self.focusID = focusID
             self.onCharacter = onCharacter
+            self.onRejectedInput = onRejectedInput
         }
 
         func textView(
@@ -436,6 +466,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
                   let character = replacement.first,
                   character != "\n",
                   character != "\r" else {
+                if range.length > 0 || replacement == "\n" || replacement == "\r" {
+                    onRejectedInput()
+                }
                 return false
             }
 

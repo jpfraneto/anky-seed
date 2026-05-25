@@ -3,6 +3,35 @@ import XCTest
 @testable import AnkyProtocol
 
 final class StorageTests: XCTestCase {
+    func testReflectionRequestStorePersistsPendingReflectionByHash() throws {
+        let suiteName = "anky.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = ReflectionRequestStore(defaults: defaults)
+
+        store.markPending(hash: "abc123")
+
+        XCTAssertTrue(ReflectionRequestStore(defaults: defaults).isPending(hash: "abc123"))
+        XCTAssertFalse(ReflectionRequestStore(defaults: defaults).isPending(hash: "other"))
+
+        store.clear(hash: "abc123")
+
+        XCTAssertFalse(ReflectionRequestStore(defaults: defaults).isPending(hash: "abc123"))
+    }
+
+    func testReflectionRequestStoreExpiresStalePendingReflection() throws {
+        let suiteName = "anky.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = ReflectionRequestStore(defaults: defaults, expirationInterval: 10)
+        let startedAt = Date(timeIntervalSince1970: 100)
+
+        store.markPending(hash: "abc123", now: startedAt)
+
+        XCTAssertTrue(store.isPending(hash: "abc123", now: startedAt.addingTimeInterval(9)))
+        XCTAssertFalse(store.isPending(hash: "abc123", now: startedAt.addingTimeInterval(11)))
+    }
+
     func testReflectionStoreSavesAndLoadsByHash() throws {
         let directory = temporaryDirectory().appendingPathComponent("reflections", isDirectory: true)
         let store = ReflectionStore(directoryURL: directory)
@@ -20,22 +49,35 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(store.list(), [reflection])
     }
 
-    func testLocalArchiveKeepsOneCanonicalDotAnkyString() throws {
+    func testLocalArchivePersistsEachAnkyByHash() throws {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)
 
-        _ = try archive.save("1770000000000 h\n8000")
+        let older = try archive.save("1770000000000 h\n8000")
         let newer = try archive.save("1770000001000 y\n8000")
 
         XCTAssertEqual(archive.list().first?.hash, newer.hash)
-        XCTAssertEqual(archive.list().first?.url.lastPathComponent, LocalAnkyArchive.canonicalFileName)
-        XCTAssertEqual(archive.fileURLs().count, 1)
+        XCTAssertEqual(archive.list().map(\.hash), [newer.hash, older.hash])
+        XCTAssertEqual(archive.fileURLs().count, 2)
+        XCTAssertEqual(try archive.load(hash: older.hash).reconstructedText, "h")
+    }
+
+    func testLocalArchiveKeepsCompleteAnkyWhenShortAttemptIsSavedLater() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+
+        let complete = try archive.save("1770000000000 h\n480000 i\n8000")
+        let fragment = try archive.save("1770000100000 n\n10000 o\n8000")
+
+        XCTAssertFalse(fragment.isComplete)
+        XCTAssertTrue(try archive.load(hash: complete.hash).isComplete)
+        XCTAssertEqual(Set(archive.list().map(\.hash)), Set([complete.hash, fragment.hash]))
     }
 
     func testLocalArchiveImportsValidAnkyIdempotentlyByHash() throws {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)
-        let text = "1770000000000 h\n0042 i\n8000"
+        let text = "1770000000000 h\n480000 i\n8000"
 
         let first = try archive.importArtifact(text)
         let second = try archive.importArtifact(text)
@@ -43,6 +85,52 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(first.hash, second.hash)
         XCTAssertEqual(second.reconstructedText, "hi")
         XCTAssertEqual(archive.fileURLs().count, 1)
+    }
+
+    func testLocalArchiveImportsPastedMarkdownAnky() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+        let text = """
+        here is the .anky:
+
+        ```anky
+        1770000000000 h
+        480000 i
+        8000
+        ```
+        """
+
+        let saved = try archive.importArtifact(text)
+
+        XCTAssertEqual(saved.reconstructedText, "hi")
+    }
+
+    func testLocalArchiveImportsPastedAnkyWithSpacePlaceholderAndTrailingWhitespace() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+        let text = [
+            "",
+            "    1770000000000 h",
+            "    240000 SPACE",
+            "    240000 i   ",
+            "    8000",
+            ""
+        ].joined(separator: "\n")
+
+        let saved = try archive.importArtifact(text)
+
+        XCTAssertEqual(saved.text, "1770000000000 h\n240000  \n240000 i\n8000")
+        XCTAssertEqual(saved.reconstructedText, "h i")
+    }
+
+    func testLocalArchiveRejectsPastedAnkyFragmentUnderEightMinutes() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+
+        XCTAssertThrowsError(try archive.importArtifact("1770000000000 h\n471999 i\n8000")) { error in
+            XCTAssertEqual(error as? AnkyImportError, .invalidArtifact)
+        }
+        XCTAssertTrue(archive.fileURLs().isEmpty)
     }
 
     func testLocalArchiveRejectsInvalidImportedAnky() throws {

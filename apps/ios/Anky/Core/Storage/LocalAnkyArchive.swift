@@ -36,18 +36,24 @@ struct LocalAnkyArchive {
 
     func save(_ ankyText: String) throws -> SavedAnky {
         let bytes = Data(ankyText.utf8)
-        let url = canonicalURL
+        let hash = AnkyHasher.sha256Hex(bytes)
+        let url = hashURL(for: hash)
         try bytes.write(to: url, options: [.atomic])
 
         return try artifact(from: ankyText, url: url)
     }
 
     func importArtifact(_ ankyText: String) throws -> SavedAnky {
-        guard AnkyValidator.validate(ankyText).isValid else {
-            throw AnkyImportError.invalidArtifact
+        for candidate in Self.importCandidates(from: ankyText) {
+            let validation = AnkyValidator.validate(candidate)
+            guard validation.isValid, validation.isComplete else {
+                continue
+            }
+
+            return try save(candidate)
         }
 
-        return try save(ankyText)
+        throw AnkyImportError.invalidArtifact
     }
 
     func load(url: URL) throws -> SavedAnky {
@@ -55,30 +61,41 @@ struct LocalAnkyArchive {
     }
 
     func load(hash: String) throws -> SavedAnky {
-        let current = try load(url: canonicalURL)
-        guard current.hash == hash else {
-            throw CocoaError(.fileNoSuchFile)
+        let directURL = hashURL(for: hash)
+        if fileManager.fileExists(atPath: directURL.path) {
+            return try load(url: directURL)
         }
-        return current
+
+        if let canonical = try? load(url: canonicalURL), canonical.hash == hash {
+            return canonical
+        }
+
+        if let match = list().first(where: { $0.hash == hash }) {
+            return match
+        }
+
+        throw CocoaError(.fileNoSuchFile)
     }
 
     func list() -> [SavedAnky] {
-        if let current = try? load(url: canonicalURL) {
-            return [current]
-        }
-
         let urls = (try? fileManager.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: [.contentModificationDateKey],
             options: [.skipsHiddenFiles]
         )) ?? []
 
+        var seen = Set<String>()
         return urls
             .filter { $0.pathExtension == "anky" }
             .compactMap { try? load(url: $0) }
+            .filter { artifact in
+                guard !seen.contains(artifact.hash) else {
+                    return false
+                }
+                seen.insert(artifact.hash)
+                return true
+            }
             .sorted { $0.createdAt > $1.createdAt }
-            .prefix(1)
-            .map { $0 }
     }
 
     func fileURLs() -> [URL] {
@@ -114,6 +131,149 @@ struct LocalAnkyArchive {
         directoryURL.appendingPathComponent(Self.canonicalFileName)
     }
 
+    private func hashURL(for hash: String) -> URL {
+        directoryURL.appendingPathComponent("\(hash).anky")
+    }
+
+    private static func importCandidates(from text: String) -> [String] {
+        var candidates = [String]()
+
+        func append(_ candidate: String) {
+            let normalized = normalizedImportedAnkyText(candidate)
+            guard !normalized.isEmpty, !candidates.contains(normalized) else {
+                return
+            }
+            candidates.append(normalized)
+        }
+
+        let prepared = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\u{FEFF}", with: "")
+            .replacingOccurrences(of: "\u{200B}", with: "")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+
+        append(prepared)
+
+        for fencedBlock in fencedCodeBlocks(in: prepared) {
+            append(fencedBlock)
+        }
+
+        if let protocolBlock = extractedProtocolBlock(from: prepared) {
+            append(protocolBlock)
+        }
+
+        return candidates
+    }
+
+    private static func fencedCodeBlocks(in text: String) -> [String] {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var blocks = [String]()
+        var startIndex: Int?
+
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.hasPrefix("```") else {
+                continue
+            }
+
+            if let start = startIndex {
+                blocks.append(lines[(start + 1)..<index].joined(separator: "\n"))
+                startIndex = nil
+            } else {
+                startIndex = index
+            }
+        }
+
+        return blocks
+    }
+
+    private static func extractedProtocolBlock(from text: String) -> String? {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var best = [String]()
+        var current = [String]()
+
+        for line in lines {
+            let normalized = normalizedProtocolLine(line)
+            if let normalized {
+                current.append(normalized)
+                if normalized == "\(AnkyDuration.terminalSilenceMs)" {
+                    if current.count > best.count {
+                        best = current
+                    }
+                    current.removeAll()
+                }
+            } else {
+                if current.count > best.count {
+                    best = current
+                }
+                current.removeAll()
+            }
+        }
+
+        if current.count > best.count {
+            best = current
+        }
+
+        return best.isEmpty ? nil : best.joined(separator: "\n")
+    }
+
+    private static func normalizedImportedAnkyText(_ text: String) -> String {
+        var lines = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+
+        while let first = lines.first, first.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.removeFirst()
+        }
+
+        while let last = lines.last, last.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.removeLast()
+        }
+
+        return lines
+            .map { normalizedProtocolLine($0) ?? $0 }
+            .joined(separator: "\n")
+    }
+
+    private static func normalizedProtocolLine(_ line: String) -> String? {
+        let line = line.trimmingLeadingWhitespace()
+
+        if line.trimmingCharacters(in: .whitespacesAndNewlines) == "\(AnkyDuration.terminalSilenceMs)" {
+            return "\(AnkyDuration.terminalSilenceMs)"
+        }
+
+        guard let separator = line.firstIndex(where: { $0.isWhitespace }),
+              separator != line.startIndex else {
+            return nil
+        }
+
+        let timeText = String(line[..<separator])
+        guard timeText.allSatisfy(\.isNumber) else {
+            return nil
+        }
+
+        let afterSeparator = line.index(after: separator)
+        let characterText = String(line[afterSeparator...])
+        let trimmedCharacterText = characterText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedCharacterText == "SPACE" {
+            return "\(timeText)  "
+        }
+
+        if characterText.count == 1 {
+            return "\(timeText) \(characterText)"
+        }
+
+        if trimmedCharacterText.count == 1 {
+            return "\(timeText) \(trimmedCharacterText)"
+        }
+
+        return nil
+    }
+
     private func artifact(from ankyText: String, url: URL) throws -> SavedAnky {
         let bytes = Data(ankyText.utf8)
         let hash = AnkyHasher.sha256Hex(bytes)
@@ -129,5 +289,14 @@ struct LocalAnkyArchive {
             isComplete: AnkyDuration.isComplete(parsed),
             createdAt: createdAt
         )
+    }
+}
+
+private extension String {
+    func trimmingLeadingWhitespace() -> String {
+        guard let firstNonWhitespace = firstIndex(where: { !$0.isWhitespace }) else {
+            return ""
+        }
+        return String(self[firstNonWhitespace...])
     }
 }

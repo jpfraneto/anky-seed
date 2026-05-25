@@ -32,7 +32,9 @@ final class RevealViewModel: ObservableObject {
     private let sessionIndexStore: SessionIndexStore
     private let identityStore: WriterIdentityStore
     private let creditsClient: RevenueCatCreditsClient
+    private let requestStore: ReflectionRequestStore
     private let userDefaults: UserDefaults
+    private var reflectionWatcherTask: Task<Void, Never>?
     private static let hasClaimedFreeCreditsKey = "anky.hasClaimedFreeReflections"
 
     init(
@@ -43,6 +45,7 @@ final class RevealViewModel: ObservableObject {
         sessionIndexStore: SessionIndexStore = SessionIndexStore(),
         identityStore: WriterIdentityStore = WriterIdentityStore(),
         creditsClient: RevenueCatCreditsClient = RevenueCatCreditsClient(),
+        requestStore: ReflectionRequestStore? = nil,
         userDefaults: UserDefaults = .standard
     ) {
         self.artifact = artifact
@@ -61,9 +64,14 @@ final class RevealViewModel: ObservableObject {
         self.sessionIndexStore = sessionIndexStore
         self.identityStore = identityStore
         self.creditsClient = creditsClient
+        self.requestStore = requestStore ?? ReflectionRequestStore(defaults: userDefaults)
         self.userDefaults = userDefaults
         self.reflection = reflectionStore.load(hash: artifact.hash)
         self.hasClaimedFreeCredits = userDefaults.bool(forKey: Self.hasClaimedFreeCreditsKey) || !reflectionStore.list().isEmpty
+        if reflection == nil, self.requestStore.isPending(hash: artifact.hash) {
+            self.isAskingAnky = true
+            startPendingReflectionWatcher()
+        }
 
     }
 
@@ -83,6 +91,17 @@ final class RevealViewModel: ObservableObject {
             return "ready to mirror this artifact"
         }
         return "write 8 minutes to mirror this artifact"
+    }
+
+    var shortSessionMessage: String {
+        let messages = [
+            "keep going until you get to 8 minutes.",
+            "the thread opened, but it needs the full 8 minutes.",
+            "that was a spark. stay with it until 8 minutes.",
+            "anky needs the whole ritual. come back and write 8 minutes.",
+            "you stopped too soon. try again and cross the 8-minute mark."
+        ]
+        return messages[stableMessageIndex(count: messages.count)]
     }
 
     var canAskAnky: Bool {
@@ -164,6 +183,8 @@ final class RevealViewModel: ObservableObject {
 
         isAskingAnky = true
         errorMessage = nil
+        requestStore.markPending(hash: artifact.hash)
+        startPendingReflectionWatcher()
 
         do {
             let identity = try identityStore.loadOrCreate()
@@ -188,6 +209,7 @@ final class RevealViewModel: ObservableObject {
             )
             try reflectionStore.save(saved)
             try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title)
+            requestStore.clear(hash: response.hash)
             userDefaults.set(true, forKey: Self.hasClaimedFreeCreditsKey)
             hasClaimedFreeCredits = true
             creditsDenied = false
@@ -195,19 +217,29 @@ final class RevealViewModel: ObservableObject {
                 creditBalance = response.creditsRemaining
             }
             reflection = saved
+            reflectionWatcherTask?.cancel()
+            isAskingAnky = false
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? "Anky could not return a reflection right now."
+            if message.localizedCaseInsensitiveContains("already being reflected") {
+                requestStore.markPending(hash: artifact.hash)
+                isAskingAnky = true
+                errorMessage = nil
+                startPendingReflectionWatcher()
+                return
+            }
             if message.localizedCaseInsensitiveContains("credit") {
                 creditsDenied = true
                 creditBalance = 0
             }
+            requestStore.clear(hash: artifact.hash)
             errorMessage = message
+            isAskingAnky = false
         }
-
-        isAskingAnky = false
     }
 
     func refreshCredits(showError: Bool = true) async {
+        refreshLocalReflection()
         guard canAskAnky else {
             return
         }
@@ -226,6 +258,49 @@ final class RevealViewModel: ObservableObject {
         } catch {
             if showError {
                 errorMessage = "Could not load reflections."
+            }
+        }
+    }
+
+    private func stableMessageIndex(count: Int) -> Int {
+        guard count > 0 else {
+            return 0
+        }
+        let prefix = hash.prefix(8)
+        let value = UInt64(prefix, radix: 16) ?? UInt64(wordCount)
+        return Int(value % UInt64(count))
+    }
+
+    private func refreshLocalReflection() {
+        guard reflection == nil else {
+            return
+        }
+
+        if let savedReflection = reflectionStore.load(hash: artifact.hash) {
+            reflection = savedReflection
+            requestStore.clear(hash: artifact.hash)
+            reflectionWatcherTask?.cancel()
+            isAskingAnky = false
+        } else if requestStore.isPending(hash: artifact.hash) {
+            isAskingAnky = true
+            startPendingReflectionWatcher()
+        } else if isAskingAnky {
+            isAskingAnky = false
+        }
+    }
+
+    private func startPendingReflectionWatcher() {
+        guard reflectionWatcherTask == nil || reflectionWatcherTask?.isCancelled == true else {
+            return
+        }
+
+        reflectionWatcherTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else {
+                    return
+                }
+                self?.refreshLocalReflection()
             }
         }
     }

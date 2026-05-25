@@ -21,9 +21,11 @@ final class ReconstructionTests: XCTestCase {
         8000
         """)
 
+        XCTAssertEqual(AnkyDuration.writingDurationMs(fragment), 471999)
         XCTAssertEqual(AnkyDuration.durationMs(fragment), 479999)
         XCTAssertFalse(AnkyDuration.isComplete(fragment))
 
+        XCTAssertEqual(AnkyDuration.writingDurationMs(complete), 472000)
         XCTAssertEqual(AnkyDuration.durationMs(complete), 480000)
         XCTAssertTrue(AnkyDuration.isComplete(complete))
     }

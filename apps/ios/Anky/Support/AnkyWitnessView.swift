@@ -147,6 +147,7 @@ struct AnkyCompanionPromptView: View {
     let message: String?
     let actionTitle: String?
     let action: (() -> Void)?
+    let showsWitness: Bool
 
     @State private var appeared = false
 
@@ -154,20 +155,24 @@ struct AnkyCompanionPromptView: View {
         state: AnkyCompanionPromptState,
         message: String? = nil,
         actionTitle: String? = nil,
-        action: (() -> Void)? = nil
+        action: (() -> Void)? = nil,
+        showsWitness: Bool = true
     ) {
         self.state = state
         self.message = message
         self.actionTitle = actionTitle
         self.action = action
+        self.showsWitness = showsWitness
     }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            AnkyWitnessView(mood: state.mood, size: .companion, sequence: state.sequence)
-                .frame(width: 82, height: 82)
-                .offset(x: appeared ? 0 : 18)
-                .opacity(appeared ? 1 : 0)
+            if showsWitness {
+                AnkyWitnessView(mood: state.mood, size: .companion, sequence: state.sequence)
+                    .frame(width: 82, height: 82)
+                    .offset(x: appeared ? 0 : 18)
+                    .opacity(appeared ? 1 : 0)
+            }
 
             AnkyDialoguePanel(
                 message: message ?? state.defaultMessage,
@@ -188,50 +193,35 @@ struct AnkyCompanionPromptView: View {
 
 struct AnkyConversationPromptView: View {
     let message: String
-    let currentIndex: Int
-    let totalCount: Int
-    let next: () -> Void
+    let actionTitle: String?
+    let action: (() -> Void)?
     let close: () -> Void
 
     @State private var appeared = false
 
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack(alignment: .top) {
-                Button(action: next) {
-                    AnkyDialoguePanel(message: message)
+        ZStack(alignment: .top) {
+            AnkyDialoguePanel(
+                message: message,
+                actionTitle: actionTitle,
+                action: action
+            )
+
+            HStack {
+                Spacer()
+
+                Button(action: close) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-
-                HStack {
-                    Spacer()
-
-                    Button(action: close) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 26, height: 26)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(AnkyTheme.gold.opacity(0.82))
-                    .accessibilityLabel("Close Anky message")
-                }
-                .padding(.horizontal, 8)
-                .padding(.top, 5)
+                .foregroundStyle(AnkyTheme.gold.opacity(0.82))
+                .accessibilityLabel("Close Anky message")
             }
-
-            HStack(spacing: 6) {
-                ForEach(0..<totalCount, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(index == currentIndex ? AnkyTheme.gold.opacity(0.90) : AnkyTheme.gold.opacity(0.22))
-                        .frame(width: 10, height: 10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .stroke(AnkyTheme.gold.opacity(0.36), lineWidth: 1)
-                        )
-                }
-            }
-            .accessibilityLabel("Anky message \(currentIndex + 1) of \(totalCount)")
+            .padding(.horizontal, 8)
+            .padding(.top, 5)
         }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 8)

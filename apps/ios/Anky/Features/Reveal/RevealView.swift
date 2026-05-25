@@ -6,13 +6,18 @@ struct RevealView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDelete = false
     @State private var copiedSection: RevealCopySection?
-    @State private var showReflectionScroll = false
     @State private var showPrivacyInfo = false
     private let onDeleted: () -> Void
+    private let onTryAgain: () -> Void
 
-    init(viewModel: RevealViewModel, onDeleted: @escaping () -> Void = {}) {
+    init(
+        viewModel: RevealViewModel,
+        onDeleted: @escaping () -> Void = {},
+        onTryAgain: @escaping () -> Void = {}
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.onDeleted = onDeleted
+        self.onTryAgain = onTryAgain
     }
 
     var body: some View {
@@ -66,7 +71,7 @@ struct RevealView: View {
                 RevealReflectionDock(
                     viewModel: viewModel,
                     openPrivacy: { showPrivacyInfo = true },
-                    openReflection: { showReflectionScroll = true }
+                    tryAgain: onTryAgain
                 )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
@@ -89,13 +94,6 @@ struct RevealView: View {
             ReflectionPrivacySheet()
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $showReflectionScroll) {
-            if let reflection = viewModel.reflection {
-                ReflectionScrollSheet(reflection: reflection)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
         }
         .onAppear {
             Task {
@@ -300,28 +298,14 @@ private struct PrivacyDivider: View {
 private struct RevealReflectionDock: View {
     @ObservedObject var viewModel: RevealViewModel
     let openPrivacy: () -> Void
-    let openReflection: () -> Void
+    let tryAgain: () -> Void
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            ZStack(alignment: .topTrailing) {
-                AnkyWitnessView(mood: .warm, size: .companion, sequence: sequence)
-                    .frame(width: 78, height: 78)
-
-                if viewModel.reflection != nil {
-                    Button(action: openReflection) {
-                        ReflectionScrollGlyph()
-                    }
-                    .buttonStyle(.plain)
-                    .offset(x: 12, y: -6)
-                    .accessibilityLabel("Open reflection")
-                }
-            }
-            .frame(width: 92, height: 84)
-
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .tracking(1)
                         .foregroundStyle(RevealPalette.gold.opacity(0.86))
@@ -342,79 +326,118 @@ private struct RevealReflectionDock: View {
                             .lineSpacing(3)
                             .foregroundStyle(Color.red.opacity(0.82))
                             .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    if !viewModel.isComplete {
+                        tryAgainButton
+                    } else if viewModel.reflection == nil {
+                        reflectionRequestControls
                     }
                 }
 
-                if viewModel.reflection == nil {
-                    HStack(spacing: 8) {
-                        Button {
-                            Task {
-                                await viewModel.askAnky()
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if viewModel.isAskingAnky {
-                                    ProgressView()
-                                        .tint(RevealPalette.ink)
-                                }
-                                Text(viewModel.isAskingAnky ? "getting reflection" : "get reflection")
-                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            }
-                            .foregroundStyle(RevealPalette.ink)
-                            .padding(.horizontal, 12)
-                            .frame(height: 34)
-                            .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .stroke(Color.white.opacity(0.48), lineWidth: 1)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!viewModel.canSubmitReflectionRequest)
-                        .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.48)
-
-                        Button(action: openPrivacy) {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(RevealPalette.goldSoft)
-                                .frame(width: 34, height: 34)
-                                .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                        .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Reflection privacy information")
-
-                        if viewModel.shouldShowCreditsLink {
-                            NavigationLink {
-                                CreditsPage(viewModel: YouViewModel())
-                            } label: {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(RevealPalette.goldSoft)
-                                    .frame(width: 34, height: 34)
-                                    .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                            .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Open credits")
-                        }
+                if let reflection = viewModel.reflection {
+                    NavigationLink {
+                        ReflectionScrollPage(reflection: reflection)
+                    } label: {
+                        ReflectionScrollGlyph()
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open reflection")
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(ReflectionDockBackground())
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ReflectionDockBackground())
+    }
+
+    private var reflectionRequestControls: some View {
+        HStack(spacing: 8) {
+            Button {
+                Task {
+                    await viewModel.askAnky()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if viewModel.isAskingAnky {
+                        ProgressView()
+                            .tint(RevealPalette.ink)
+                    }
+                    Text(viewModel.isAskingAnky ? "getting reflection" : "get reflection")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                }
+                .foregroundStyle(RevealPalette.ink)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(Color.white.opacity(0.48), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!viewModel.canSubmitReflectionRequest)
+            .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.48)
+
+            Button(action: openPrivacy) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RevealPalette.goldSoft)
+                    .frame(width: 34, height: 34)
+                    .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Reflection privacy information")
+
+            if viewModel.shouldShowCreditsLink {
+                NavigationLink {
+                    CreditsPage(viewModel: YouViewModel())
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(RevealPalette.goldSoft)
+                        .frame(width: 34, height: 34)
+                        .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open credits")
+            }
         }
     }
 
+    private var tryAgainButton: some View {
+        Button(action: tryAgain) {
+            Text("try again")
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(RevealPalette.ink)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(Color.white.opacity(0.48), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     private var title: String {
+        if !viewModel.isComplete {
+            return "you have to write 8 minutes"
+        }
+        if viewModel.isAskingAnky {
+            return "processing"
+        }
         if viewModel.reflection != nil {
             return "reflection returned"
         }
@@ -426,7 +449,7 @@ private struct RevealReflectionDock: View {
             return "tap the scroll to read what came back."
         }
         if !viewModel.isComplete {
-            return "complete 8 minutes to unlock reflection."
+            return viewModel.shortSessionMessage
         }
         return creditLine
     }
@@ -442,29 +465,18 @@ private struct RevealReflectionDock: View {
 
     private var creditLine: String {
         if viewModel.creditsLoading {
-            return "checking credits..."
+            return "checking reflection access..."
         }
         switch viewModel.creditPromptState {
-        case .available(let count):
-            return "\(count) \(count == 1 ? "credit" : "credits") left."
-        case .freeGift(let count):
-            return "\(count) free \(count == 1 ? "credit" : "credits") left."
+        case .available, .freeGift:
+            return "ready to mirror this artifact."
         case .unavailable:
-            return "no credits left."
+            return "reflection access is empty."
         case .unknown:
-            return "credits update after reflection."
+            return "ready to mirror when the signal is open."
         }
     }
 
-    private var sequence: AnkySequenceName {
-        if viewModel.isAskingAnky {
-            return .shyListening
-        }
-        if viewModel.reflection != nil {
-            return .celebrate
-        }
-        return .idleBlink
-    }
 }
 
 private struct MirrorProgressLine: View {
@@ -566,7 +578,7 @@ private struct ReflectionPrivacySheet: View {
     }
 }
 
-private struct ReflectionScrollSheet: View {
+private struct ReflectionScrollPage: View {
     let reflection: LocalReflection
 
     var body: some View {
@@ -580,34 +592,23 @@ private struct ReflectionScrollSheet: View {
                         ReflectionScrollGlyph()
                             .frame(width: 54, height: 54)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(reflection.title.lowercased())
-                                .font(.custom("Georgia", size: 24).weight(.bold))
-                                .foregroundStyle(RevealPalette.markdownHeading)
-
-                            if let creditsRemaining = reflection.creditsRemaining {
-                                Text("\(creditsRemaining) \(creditsRemaining == 1 ? "credit" : "credits") left")
-                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(RevealPalette.goldSoft)
-                            }
-                        }
+                        Spacer(minLength: 0)
                     }
+                    .padding(.top, 8)
 
-                    SelectableReflectionText(text: reflection.reflection, isHighlighted: false)
+                    SelectableReflectionText(text: reflection.reflection, isHighlighted: false, style: .readingPage)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(RevealPalette.paper.opacity(0.075))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(RevealPalette.gold.opacity(0.24), lineWidth: 1)
-                        )
-                )
-                .padding(18)
+                .padding(.horizontal, 22)
+                .padding(.top, 10)
+                .padding(.bottom, 56)
             }
         }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 
@@ -670,11 +671,6 @@ private struct RevealActions: View {
                 .fill(RevealPalette.gold.opacity(0.13))
                 .frame(height: 1)
 
-            if viewModel.isAskingAnky {
-                MirrorWitnessLoadingView()
-                    .padding(.top, 4)
-            }
-
             if !viewModel.reflectionActionStatus.isEmpty {
                 Text(viewModel.reflectionActionStatus)
                     .font(.system(size: 12, weight: .medium))
@@ -725,30 +721,6 @@ private struct RevealActions: View {
         default:
             return RevealPalette.goldSoft.opacity(0.82)
         }
-    }
-}
-
-private struct MirrorWitnessLoadingView: View {
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                AnkyWitnessView(mood: .warm, size: .small, sequence: .idleBlink)
-
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .stroke(RevealPalette.goldSoft.opacity(0.82), lineWidth: 1.4)
-                    .background(RevealPalette.paper.opacity(0.10), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    .frame(width: 18, height: 24)
-                    .rotationEffect(.degrees(-8))
-                    .offset(x: 22, y: 6)
-            }
-            .frame(width: 70, height: 54)
-
-            Text("Anky is listening...")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(RevealPalette.paper.opacity(0.62))
-        }
-        .frame(maxWidth: .infinity)
-        .transition(.opacity.combined(with: .scale(scale: 0.96)))
     }
 }
 
@@ -887,11 +859,46 @@ private struct SavedReflectionPanel: View {
 
             SelectableReflectionText(text: reflection.reflection, isHighlighted: isHighlighted)
 
-            if let creditsRemaining = reflection.creditsRemaining {
-                Text("\(creditsRemaining) \(creditsRemaining == 1 ? "reflection" : "reflections") left")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(RevealPalette.goldSoft.opacity(0.78))
-            }
+        }
+    }
+}
+
+private enum ReflectionTextStyle {
+    case standard
+    case readingPage
+
+    var bodyFontSize: CGFloat {
+        switch self {
+        case .standard: 16
+        case .readingPage: 18
+        }
+    }
+
+    var headingFontSize: CGFloat {
+        switch self {
+        case .standard: 20
+        case .readingPage: 25
+        }
+    }
+
+    var codeFontSize: CGFloat {
+        switch self {
+        case .standard: 15
+        case .readingPage: 16
+        }
+    }
+
+    var lineSpacing: CGFloat {
+        switch self {
+        case .standard: 5
+        case .readingPage: 7
+        }
+    }
+
+    var paragraphSpacing: CGFloat {
+        switch self {
+        case .standard: 4
+        case .readingPage: 8
         }
     }
 }
@@ -899,6 +906,7 @@ private struct SavedReflectionPanel: View {
 private struct SelectableReflectionText: UIViewRepresentable {
     let text: String
     let isHighlighted: Bool
+    var style: ReflectionTextStyle = .standard
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -947,8 +955,8 @@ private struct SelectableReflectionText: UIViewRepresentable {
     private func attributedLine(_ line: String) -> NSAttributedString {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = 5
-        paragraph.paragraphSpacing = trimmed.isEmpty ? 9 : 4
+        paragraph.lineSpacing = style.lineSpacing
+        paragraph.paragraphSpacing = trimmed.isEmpty ? style.paragraphSpacing + 5 : style.paragraphSpacing
 
         if trimmed.isEmpty {
             return NSAttributedString(string: "", attributes: [.paragraphStyle: paragraph])
@@ -958,7 +966,7 @@ private struct SelectableReflectionText: UIViewRepresentable {
             return NSAttributedString(
                 string: heading,
                 attributes: [
-                    .font: UIFont(name: "Georgia-Bold", size: 20) ?? UIFont.boldSystemFont(ofSize: 20),
+                    .font: UIFont(name: "Georgia-Bold", size: style.headingFontSize) ?? UIFont.boldSystemFont(ofSize: style.headingFontSize),
                     .foregroundColor: UIColor(RevealPalette.markdownHeading),
                     .paragraphStyle: paragraph,
                     .shadow: copyShadow
@@ -1033,18 +1041,18 @@ private struct SelectableReflectionText: UIViewRepresentable {
             if text[index...].hasPrefix("**"),
                let end = text[text.index(index, offsetBy: 2)...].range(of: "**") {
                 let contentStart = text.index(index, offsetBy: 2)
-                append(String(text[contentStart..<end.lowerBound]), to: result, style: .strong, paragraph: paragraph)
+                append(String(text[contentStart..<end.lowerBound]), to: result, inlineStyle: .strong, paragraph: paragraph)
                 index = end.upperBound
             } else if text[index] == "`",
                       let end = text[text.index(after: index)...].firstIndex(of: "`") {
                 let contentStart = text.index(after: index)
-                append(String(text[contentStart..<end]), to: result, style: .code, paragraph: paragraph)
+                append(String(text[contentStart..<end]), to: result, inlineStyle: .code, paragraph: paragraph)
                 index = text.index(after: end)
             } else {
                 let nextStrong = text[index...].range(of: "**")?.lowerBound
                 let nextCode = text[index...].firstIndex(of: "`")
                 let next = [nextStrong, nextCode].compactMap { $0 }.min() ?? text.endIndex
-                append(String(text[index..<next]), to: result, style: .normal, paragraph: paragraph)
+                append(String(text[index..<next]), to: result, inlineStyle: .normal, paragraph: paragraph)
                 index = next
             }
         }
@@ -1055,8 +1063,8 @@ private struct SelectableReflectionText: UIViewRepresentable {
     private func baseAttributes(paragraph: NSMutableParagraphStyle, italic: Bool = false) -> [NSAttributedString.Key: Any] {
         [
             .font: italic
-                ? UIFont.italicSystemFont(ofSize: 16)
-                : (UIFont(name: "Georgia", size: 16) ?? UIFont.systemFont(ofSize: 16)),
+                ? UIFont.italicSystemFont(ofSize: style.bodyFontSize)
+                : (UIFont(name: "Georgia", size: style.bodyFontSize) ?? UIFont.systemFont(ofSize: style.bodyFontSize)),
             .foregroundColor: UIColor(RevealPalette.paper),
             .paragraphStyle: paragraph,
             .shadow: copyShadow
@@ -1074,19 +1082,19 @@ private struct SelectableReflectionText: UIViewRepresentable {
     private func append(
         _ string: String,
         to result: NSMutableAttributedString,
-        style: InlineStyle,
+        inlineStyle: InlineStyle,
         paragraph: NSMutableParagraphStyle
     ) {
         var attributes = baseAttributes(paragraph: paragraph)
-        switch style {
+        switch inlineStyle {
         case .normal:
             break
         case .strong:
             attributes[.foregroundColor] = UIColor(RevealPalette.gold)
-            attributes[.font] = UIFont(name: "Georgia-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 16)
+            attributes[.font] = UIFont(name: "Georgia-Bold", size: style.bodyFontSize) ?? UIFont.boldSystemFont(ofSize: style.bodyFontSize)
         case .code:
             attributes[.foregroundColor] = UIColor(RevealPalette.paper.opacity(0.82))
-            attributes[.font] = UIFont.monospacedSystemFont(ofSize: 15, weight: .regular)
+            attributes[.font] = UIFont.monospacedSystemFont(ofSize: style.codeFontSize, weight: .regular)
         }
         result.append(NSAttributedString(string: string, attributes: attributes))
     }

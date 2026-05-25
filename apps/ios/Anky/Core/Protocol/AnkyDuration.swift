@@ -4,11 +4,14 @@ public enum AnkyDuration {
     public static let completeRitualMs: Int64 = 8 * 60 * 1000
     public static let terminalSilenceMs: Int64 = 8000
 
-    public static func durationMs(_ parsed: ParsedAnky) -> Int64 {
-        let writingDuration = parsed.events.reduce(Int64(0)) { sum, event in
+    public static func writingDurationMs(_ parsed: ParsedAnky) -> Int64 {
+        parsed.events.reduce(Int64(0)) { sum, event in
             sum + event.deltaMs
         }
-        return writingDuration + (parsed.terminalSilenceMs ?? 0)
+    }
+
+    public static func durationMs(_ parsed: ParsedAnky) -> Int64 {
+        writingDurationMs(parsed) + (parsed.terminalSilenceMs ?? 0)
     }
 
     public static func isComplete(_ parsed: ParsedAnky) -> Bool {

@@ -250,9 +250,13 @@ struct SessionIndexStore {
 
 extension Array where Element == SessionSummary {
     func hasCompleteRitual(on date: Date = Date(), calendar: Calendar = .current) -> Bool {
-        contains { summary in
+        completeRitualCount(on: date, calendar: calendar) > 0
+    }
+
+    func completeRitualCount(on date: Date = Date(), calendar: Calendar = .current) -> Int {
+        filter { summary in
             summary.isComplete && calendar.isDate(summary.createdAt, inSameDayAs: date)
-        }
+        }.count
     }
 
     func groupedByDay(

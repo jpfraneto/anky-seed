@@ -5,10 +5,15 @@ struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
     @Binding private var revealAfterWriting: SavedAnky?
     @State private var path: [MapRoute] = []
+    private let onTryAgain: () -> Void
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
-    init(revealAfterWriting: Binding<SavedAnky?> = .constant(nil)) {
+    init(
+        revealAfterWriting: Binding<SavedAnky?> = .constant(nil),
+        onTryAgain: @escaping () -> Void = {}
+    ) {
         _revealAfterWriting = revealAfterWriting
+        self.onTryAgain = onTryAgain
     }
 
     var body: some View {
@@ -25,12 +30,20 @@ struct MapView: View {
                     DayDetailView(day: viewModel.day(for: day.date) ?? day)
                 case .session(let summary):
                     if let artifact = viewModel.artifact(for: summary) {
-                        RevealView(viewModel: RevealViewModel(artifact: artifact), onDeleted: viewModel.refresh)
+                        RevealView(
+                            viewModel: RevealViewModel(artifact: artifact),
+                            onDeleted: viewModel.refresh,
+                            onTryAgain: tryAgain
+                        )
                     } else {
                         ContentUnavailableView("Anky not found", systemImage: "doc.badge.questionmark")
                     }
                 case .reveal(let artifact):
-                    RevealView(viewModel: RevealViewModel(artifact: artifact), onDeleted: viewModel.refresh)
+                    RevealView(
+                        viewModel: RevealViewModel(artifact: artifact),
+                        onDeleted: viewModel.refresh,
+                        onTryAgain: tryAgain
+                    )
                 }
             }
             .onAppear {
@@ -54,6 +67,11 @@ struct MapView: View {
         viewModel.refresh()
         path = [.reveal(artifact)]
         revealAfterWriting = nil
+    }
+
+    private func tryAgain() {
+        path.removeAll()
+        onTryAgain()
     }
 }
 

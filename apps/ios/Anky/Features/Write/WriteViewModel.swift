@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import AudioToolbox
 
 @MainActor
 final class WriteViewModel: ObservableObject {
@@ -11,11 +12,16 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.terminalSilenceMs
     @Published private(set) var lastCharacter: Character?
     @Published private(set) var keyboardFocusID = UUID()
-    @Published private(set) var isTodaySealed = false
-    @Published var errorMessage: String?
+    @Published private(set) var todayAnkyCount = 0
+    @Published private(set) var errorMessage: String?
+    @Published private(set) var isErrorMessageVisible = false
 
     var hasStarted: Bool {
         writer.isStarted
+    }
+
+    var hasActiveDotAnky: Bool {
+        !protocolText.isEmpty || writer.isStarted
     }
 
     var hasReachedRitualMark: Bool {
@@ -26,8 +32,12 @@ final class WriteViewModel: ObservableObject {
         isFrozen && writer.isStarted && !writer.isClosed
     }
 
+    var canBeginNewPage: Bool {
+        false
+    }
+
     var shouldShowTopActions: Bool {
-        !writer.isStarted || isPausedOnDraft
+        true
     }
 
     private var writer = AnkyWriter()
@@ -41,12 +51,15 @@ final class WriteViewModel: ObservableObject {
     private var needsImmediateClose = false
     private var isClosing = false
     private var isFrozen = false
+    private var errorMessageTask: Task<Void, Never>?
+    private var errorRecallExpirationDate: Date?
     private var lastMinuteHaptic = 0
     private var lastAlarmHapticSecond = 0
     private let keySelectionHaptic = UISelectionFeedbackGenerator()
     private let keyHaptic = UIImpactFeedbackGenerator(style: .light)
     private let minuteHaptic = UIImpactFeedbackGenerator(style: .medium)
     private let alarmHaptic = UINotificationFeedbackGenerator()
+    private let invalidInputHaptic = UINotificationFeedbackGenerator()
 
     init(
         draftStore: ActiveDraftStore = ActiveDraftStore(),
@@ -59,7 +72,7 @@ final class WriteViewModel: ObservableObject {
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
         resetDotAnkyIfNeeded()
-        refreshDailyGate()
+        refreshTodayCount()
         restoreDraftIfPresent()
     }
 
@@ -72,11 +85,6 @@ final class WriteViewModel: ObservableObject {
     }
 
     func accept(_ character: Character) {
-        guard hasStarted || !isTodaySealed else {
-            errorMessage = "today's ritual is sealed. come back tomorrow."
-            return
-        }
-
         let now = Self.nowMs()
         resumeIfFrozen(now: now)
 
@@ -93,6 +101,12 @@ final class WriteViewModel: ObservableObject {
         updateLiveState(now: now)
         startTicker()
         persistDraftAndScheduleSilence()
+    }
+
+    func nudgeInvalidInput() {
+        invalidInputHaptic.notificationOccurred(.warning)
+        invalidInputHaptic.prepare()
+        showTransientError("that doesn't work here. just keep writing without agenda.")
     }
 
     func persistOnBackground() {
@@ -114,6 +128,10 @@ final class WriteViewModel: ObservableObject {
         ClipboardClient().readText()
     }
 
+    var devSampleAnkyArtifact: String {
+        DevAnkyFixture.validArtifact
+    }
+
     func clearCurrentSession() {
         silenceTask?.cancel()
         tickerTask?.cancel()
@@ -121,13 +139,13 @@ final class WriteViewModel: ObservableObject {
         try? archive.clear()
         _ = try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
         resetForNextSession()
-        errorMessage = nil
+        clearErrorMessage()
     }
 
     @discardableResult
     func importAnkyArtifact(_ text: String) -> Bool {
         guard !writer.isStarted else {
-            errorMessage = "Finish this rhythm before opening another artifact."
+            showPersistentError("Finish this rhythm before opening another artifact.")
             return false
         }
 
@@ -139,30 +157,53 @@ final class WriteViewModel: ObservableObject {
                     reflection: reflectionStore.load(hash: saved.hash)
                 )
             )
-            errorMessage = nil
+            clearErrorMessage()
             completion?(saved)
             resetForNextSession()
-            refreshDailyGate()
+            refreshTodayCount()
             return true
         } catch AnkyImportError.invalidArtifact {
-            errorMessage = "not a valid .anky string."
+            showTransientError("i couldn't find a readable .anky in that.")
             return false
         } catch {
-            errorMessage = "I could not open that artifact."
+            showTransientError("i couldn't open that .anky yet.")
             return false
         }
     }
 
-    func prepareForWritingScene() {
-        refreshDailyGate()
-        guard !isTodaySealed || hasStarted else {
-            return
+    @discardableResult
+    func replayRecentPromptIfAvailable() -> Bool {
+        guard let errorMessage,
+              !errorMessage.isEmpty,
+              !isErrorMessageVisible,
+              let errorRecallExpirationDate,
+              Date() <= errorRecallExpirationDate else {
+            return false
         }
+
+        isErrorMessageVisible = true
+        scheduleErrorFade(message: errorMessage)
+        return true
+    }
+
+    func openWritingPortal() {
+        keyboardFocusID = UUID()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        AudioServicesPlayAlertSound(SystemSoundID(1005))
+    }
+
+    func dismissCurrentPrompt() {
+        clearErrorMessage()
+    }
+
+    func prepareForWritingScene() {
+        refreshTodayCount()
         keyboardFocusID = UUID()
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         minuteHaptic.prepare()
         alarmHaptic.prepare()
+        invalidInputHaptic.prepare()
     }
 
     func closeIfSilenceElapsed() {
@@ -195,7 +236,7 @@ final class WriteViewModel: ObservableObject {
 
             if writer.isClosed {
                 resetForNextSession()
-                refreshDailyGate()
+                refreshTodayCount()
             } else if let lastAcceptedMs = writer.lastAcceptedMs,
                       Self.nowMs() - lastAcceptedMs >= AnkyDuration.terminalSilenceMs {
                 closeOrFreezeAfterSilence()
@@ -204,7 +245,7 @@ final class WriteViewModel: ObservableObject {
                 closeIfSilenceElapsed()
             }
         } catch {
-            errorMessage = "Could not restore the active draft."
+            showPersistentError("Could not restore the active draft.")
         }
     }
 
@@ -235,34 +276,6 @@ final class WriteViewModel: ObservableObject {
         startTicker()
     }
 
-    private func freezeAndSave(now inputNow: Int64? = nil) {
-        guard writer.isStarted, !writer.isClosed, !isClosing else {
-            return
-        }
-
-        let now = inputNow ?? Self.nowMs()
-        silenceTask?.cancel()
-        tickerTask?.cancel()
-        isFrozen = true
-        updateLiveState(now: now)
-        protocolText = writer.text
-
-        do {
-            let saved = try archive.save(protocolText)
-            try? sessionIndexStore.upsert(
-                SessionSummary.make(
-                    artifact: saved,
-                    reflection: reflectionStore.load(hash: saved.hash)
-                )
-            )
-        } catch {
-            errorMessage = "Could not save this .anky."
-            draftStore.save(protocolText)
-        }
-        silenceElapsedMs = 0
-        silenceRemainingMs = AnkyDuration.terminalSilenceMs
-    }
-
     private func sealAndSave() {
         guard writer.isStarted, !isClosing else {
             return
@@ -276,7 +289,7 @@ final class WriteViewModel: ObservableObject {
 
         let validation = AnkyValidator.validate(protocolText)
         guard validation.isValid else {
-            errorMessage = "Could not save this .anky."
+            showPersistentError("Could not save this .anky.")
             draftStore.save(protocolText)
             isClosing = false
             return
@@ -290,13 +303,11 @@ final class WriteViewModel: ObservableObject {
                     reflection: reflectionStore.load(hash: saved.hash)
                 )
             )
-            if saved.isComplete {
-                completion?(saved)
-            }
+            completion?(saved)
             resetForNextSession()
-            refreshDailyGate()
+            refreshTodayCount()
         } catch {
-            errorMessage = "Could not save this .anky."
+            showPersistentError("Could not save this .anky.")
             draftStore.save(protocolText)
             isClosing = false
         }
@@ -322,6 +333,43 @@ final class WriteViewModel: ObservableObject {
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         keyboardFocusID = UUID()
+    }
+
+    private func showPersistentError(_ message: String) {
+        errorMessageTask?.cancel()
+        errorRecallExpirationDate = nil
+        errorMessage = message
+        isErrorMessageVisible = true
+    }
+
+    private func showTransientError(_ message: String) {
+        errorMessageTask?.cancel()
+        errorMessage = message
+        isErrorMessageVisible = true
+        errorRecallExpirationDate = Date().addingTimeInterval(7)
+        scheduleErrorFade(message: message)
+    }
+
+    private func scheduleErrorFade(message: String) {
+        errorMessageTask?.cancel()
+        errorMessageTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.isErrorMessageVisible = false
+
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            if self?.errorMessage == message {
+                self?.clearErrorMessage()
+            }
+        }
+    }
+
+    private func clearErrorMessage() {
+        errorMessageTask?.cancel()
+        errorMessage = nil
+        isErrorMessageVisible = false
+        errorRecallExpirationDate = nil
     }
 
     private func startTicker() {
@@ -366,21 +414,17 @@ final class WriteViewModel: ObservableObject {
     }
 
     private func closeOrFreezeAfterSilence() {
-        if hasReachedRitualMark {
-            if completion == nil {
-                needsImmediateClose = true
-            } else {
-                sealAndSave()
-            }
+        if completion == nil {
+            needsImmediateClose = true
         } else {
-            freezeAndSave()
+            sealAndSave()
         }
     }
 
-    private func refreshDailyGate(now: Date = Date(), calendar: Calendar = .current) {
+    private func refreshTodayCount(now: Date = Date()) {
         let sessions = (try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore))
             ?? sessionIndexStore.load()
-        isTodaySealed = sessions.hasCompleteRitual(on: now, calendar: .ankyUTC)
+        todayAnkyCount = sessions.completeRitualCount(on: now, calendar: .ankyUTC)
     }
 
     private func resetDotAnkyIfNeeded(now: Date = Date(), calendar: Calendar = .ankyUTC) {

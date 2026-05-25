@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import AudioToolbox
 
 struct YouView: View {
     @ObservedObject var viewModel: YouViewModel
@@ -15,6 +16,7 @@ struct YouView: View {
     @State private var confirmResetIdentity = false
     @State private var isImportingBackup = false
     @State private var isImportingRecoveryPhrase = false
+    @State private var isShowingAnkyExperience = false
     @State private var recoveryPhraseInput = ""
 
     init(viewModel: YouViewModel) {
@@ -40,6 +42,15 @@ struct YouView: View {
                         )
 
                         statusMessages
+
+                        Button {
+                            isShowingAnkyExperience = true
+                        } label: {
+                            YouPanel {
+                                YouMenuRow(icon: "today-anky-icon", title: "The Anky Experience", subtitle: "88 minutes. opening and closing ankys.")
+                            }
+                        }
+                        .buttonStyle(.plain)
 
                         YouPanel(spacing: 0) {
                             NavigationLink {
@@ -146,6 +157,9 @@ struct YouView: View {
                     recoveryPhraseInput: $recoveryPhraseInput,
                     isPresented: $isImportingRecoveryPhrase
                 )
+            }
+            .fullScreenCover(isPresented: $isShowingAnkyExperience) {
+                AnkyExperienceView()
             }
             .fileImporter(
                 isPresented: $isImportingBackup,
@@ -629,6 +643,567 @@ private struct DeveloperPage: View {
                     confirmResetIdentity = true
                 }
             }
+        }
+    }
+}
+
+private struct AnkyExperienceView: View {
+    @StateObject private var viewModel = AnkyExperienceViewModel()
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+
+            if viewModel.isWriting {
+                ExperienceForwardOnlyTextView(
+                    text: viewModel.activeDisplayedText,
+                    focusID: viewModel.keyboardFocusID,
+                    shouldFocus: true,
+                    onCharacter: viewModel.accept
+                )
+                .padding(24)
+            }
+
+            VStack {
+                HStack {
+                    Spacer()
+
+                    Button {
+                        viewModel.stop()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.primary.opacity(0.72))
+                            .frame(width: 42, height: 42)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close The Anky Experience")
+                }
+
+                Spacer()
+            }
+            .safeAreaPadding(.top, 8)
+            .padding(.horizontal, 12)
+
+            VStack(spacing: 26) {
+                Spacer()
+
+                ExperiencePortalRing(
+                    progress: viewModel.totalProgress,
+                    clockText: viewModel.clockText,
+                    subtitle: viewModel.centerSubtitle
+                )
+
+                Spacer()
+
+                ExperienceCopyControls(viewModel: viewModel)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 18)
+                    .opacity(viewModel.shouldShowCopyControls ? 1 : 0)
+                    .allowsHitTesting(viewModel.shouldShowCopyControls)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .persistentSystemOverlays(.hidden)
+        .onAppear {
+            viewModel.start()
+        }
+        .onDisappear {
+            viewModel.stop()
+        }
+    }
+}
+
+private struct ExperienceCopyControls: View {
+    @ObservedObject var viewModel: AnkyExperienceViewModel
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if viewModel.canCopyOpening {
+                HStack(spacing: 10) {
+                    ExperienceActionButton(
+                        title: viewModel.lastCopiedAction == .openingAnky ? "copied .anky" : "copy opening .anky",
+                        systemName: "doc.on.doc"
+                    ) {
+                        viewModel.copyOpeningAnky()
+                    }
+
+                    ExperienceActionButton(
+                        title: viewModel.lastCopiedAction == .openingText ? "copied text" : "copy opening text",
+                        systemName: "text.quote"
+                    ) {
+                        viewModel.copyOpeningText()
+                    }
+                }
+            }
+
+            if viewModel.canCopyClosing {
+                HStack(spacing: 10) {
+                    ExperienceActionButton(
+                        title: viewModel.lastCopiedAction == .closingAnky ? "copied .anky" : "copy closing .anky",
+                        systemName: "doc.on.doc"
+                    ) {
+                        viewModel.copyClosingAnky()
+                    }
+
+                    ExperienceActionButton(
+                        title: viewModel.lastCopiedAction == .closingText ? "copied text" : "copy closing text",
+                        systemName: "text.quote"
+                    ) {
+                        viewModel.copyClosingText()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ExperienceActionButton: View {
+    let title: String
+    let systemName: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemName)
+                .font(.system(size: 13, weight: .semibold, design: .serif))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .foregroundStyle(Color.primary.opacity(0.82))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ExperiencePortalRing: View {
+    let progress: Double
+    let clockText: String
+    let subtitle: String
+
+    private let colors: [Color] = [
+        .red, .orange, .yellow, .green, .blue, .indigo, .purple, .white
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(colors.indices, id: \.self) { index in
+                ExperienceRingSegment(
+                    index: index,
+                    progress: 1,
+                    color: colors[index].opacity(0.18),
+                    lineWidth: 12
+                )
+
+                ExperienceRingSegment(
+                    index: index,
+                    progress: progress,
+                    color: colors[index],
+                    lineWidth: 12
+                )
+            }
+
+            Circle()
+                .fill(.thinMaterial)
+                .frame(width: 176, height: 176)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+
+            VStack(spacing: 8) {
+                Text(clockText)
+                    .font(.system(size: 38, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color.primary.opacity(0.88))
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.system(size: 11, weight: .medium, design: .serif))
+                    .lineSpacing(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Color.secondary.opacity(0.86))
+                    .frame(width: 128)
+            }
+        }
+        .frame(width: 220, height: 220)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(clockText). \(subtitle)")
+    }
+}
+
+private struct ExperienceRingSegment: View {
+    let index: Int
+    let progress: Double
+    let color: Color
+    let lineWidth: CGFloat
+
+    var body: some View {
+        let start = Double(index) / 8
+        let end = min(Double(index + 1) / 8, progress)
+        Circle()
+            .trim(from: start, to: max(start, end))
+            .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+            .rotationEffect(.degrees(-90))
+            .frame(width: 206, height: 206)
+    }
+}
+
+@MainActor
+private final class AnkyExperienceViewModel: ObservableObject {
+    @Published private(set) var phase: AnkyExperiencePhase = .openingAnky
+    @Published private(set) var totalRemainingSeconds = Constants.totalSeconds
+    @Published private(set) var keyboardFocusID = UUID()
+    @Published private(set) var openingDisplayedText = ""
+    @Published private(set) var closingDisplayedText = ""
+    @Published private(set) var openingProtocolText = ""
+    @Published private(set) var closingProtocolText = ""
+    @Published private(set) var lastCopiedAction: AnkyExperienceCopyAction?
+
+    private var openingWriter = AnkyWriter()
+    private var closingWriter = AnkyWriter()
+    private var startDate: Date?
+    private var tickerTask: Task<Void, Never>?
+    private var openingClosed = false
+    private var closingClosed = false
+    private var warningBellPlayed = false
+    private var closingBellPlayed = false
+    private var finishedBellPlayed = false
+
+    var isWriting: Bool {
+        phase == .openingAnky || phase == .closingAnky
+    }
+
+    var activeDisplayedText: String {
+        phase == .closingAnky ? closingDisplayedText : openingDisplayedText
+    }
+
+    var canCopyOpening: Bool {
+        openingClosed && !openingProtocolText.isEmpty
+    }
+
+    var canCopyClosing: Bool {
+        closingClosed && !closingProtocolText.isEmpty
+    }
+
+    var shouldShowCopyControls: Bool {
+        !isWriting && (canCopyOpening || canCopyClosing)
+    }
+
+    var totalProgress: Double {
+        1 - Double(totalRemainingSeconds) / Double(Constants.totalSeconds)
+    }
+
+    var clockText: String {
+        Self.clock(totalRemainingSeconds)
+    }
+
+    var centerSubtitle: String {
+        switch phase {
+        case .openingAnky:
+            return "this is the amount of time that things pass through here"
+        case .portal:
+            return "this is when the portal opens"
+        case .closingWarning:
+            return "the bell has sounded. prepare"
+        case .closingAnky:
+            return "the portal is open"
+        case .finished:
+            return "the portal is closed"
+        }
+    }
+
+    func start() {
+        guard tickerTask == nil else {
+            return
+        }
+
+        startDate = Date()
+        phase = .openingAnky
+        totalRemainingSeconds = Constants.totalSeconds
+        playBell()
+        keyboardFocusID = UUID()
+        startTicker()
+    }
+
+    func stop() {
+        tickerTask?.cancel()
+        tickerTask = nil
+    }
+
+    func accept(_ character: Character) {
+        let now = Self.nowMs()
+        switch phase {
+        case .openingAnky:
+            guard openingWriter.accept(character, at: now) else { return }
+            openingDisplayedText.append(character)
+            openingProtocolText = openingWriter.text
+        case .closingAnky:
+            guard closingWriter.accept(character, at: now) else { return }
+            closingDisplayedText.append(character)
+            closingProtocolText = closingWriter.text
+        case .portal, .closingWarning, .finished:
+            return
+        }
+    }
+
+    func copyOpeningAnky() {
+        copy(openingProtocolText, action: .openingAnky)
+    }
+
+    func copyOpeningText() {
+        copy(parsedText(from: openingProtocolText, fallback: openingDisplayedText), action: .openingText)
+    }
+
+    func copyClosingAnky() {
+        copy(closingProtocolText, action: .closingAnky)
+    }
+
+    func copyClosingText() {
+        copy(parsedText(from: closingProtocolText, fallback: closingDisplayedText), action: .closingText)
+    }
+
+    private func startTicker() {
+        tickerTask?.cancel()
+        tickerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard !Task.isCancelled else { return }
+                self?.tick()
+            }
+        }
+    }
+
+    private func tick() {
+        guard let startDate else {
+            return
+        }
+
+        let elapsed = max(0, Int(Date().timeIntervalSince(startDate)))
+        totalRemainingSeconds = max(0, Constants.totalSeconds - elapsed)
+
+        if elapsed >= Constants.openingSeconds, !openingClosed {
+            finishOpeningAnky()
+        }
+
+        if elapsed >= Constants.warningStartsAtSecond, !warningBellPlayed {
+            warningBellPlayed = true
+            playBell()
+        }
+
+        if elapsed >= Constants.closingStartsAtSecond, !closingBellPlayed {
+            closingBellPlayed = true
+            playBell()
+            keyboardFocusID = UUID()
+        }
+
+        if elapsed >= Constants.totalSeconds, !closingClosed {
+            finishClosingAnky()
+        }
+
+        let nextPhase = Self.phase(forElapsed: elapsed)
+        if nextPhase != phase {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                phase = nextPhase
+            }
+        }
+
+        if nextPhase == .finished, !finishedBellPlayed {
+            finishedBellPlayed = true
+            playBell()
+            stop()
+        }
+    }
+
+    private func finishOpeningAnky() {
+        openingClosed = true
+        guard openingWriter.isStarted, !openingWriter.isClosed else {
+            return
+        }
+        openingWriter.closeWithTerminalSilence()
+        openingProtocolText = openingWriter.text
+    }
+
+    private func finishClosingAnky() {
+        closingClosed = true
+        guard closingWriter.isStarted, !closingWriter.isClosed else {
+            return
+        }
+        closingWriter.closeWithTerminalSilence()
+        closingProtocolText = closingWriter.text
+    }
+
+    private func copy(_ text: String, action: AnkyExperienceCopyAction) {
+        guard !text.isEmpty else {
+            return
+        }
+        ClipboardClient().copy(text)
+        lastCopiedAction = action
+    }
+
+    private func parsedText(from protocolText: String, fallback: String) -> String {
+        guard let parsed = try? AnkyParser.parse(protocolText) else {
+            return fallback
+        }
+        return AnkyReconstructor.reconstructText(parsed)
+    }
+
+    private func playBell() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        AudioServicesPlayAlertSound(SystemSoundID(1005))
+    }
+
+    private static func phase(forElapsed elapsed: Int) -> AnkyExperiencePhase {
+        if elapsed >= Constants.totalSeconds {
+            return .finished
+        }
+        if elapsed >= Constants.closingStartsAtSecond {
+            return .closingAnky
+        }
+        if elapsed >= Constants.warningStartsAtSecond {
+            return .closingWarning
+        }
+        if elapsed >= Constants.openingSeconds {
+            return .portal
+        }
+        return .openingAnky
+    }
+
+    private static func clock(_ seconds: Int) -> String {
+        let safeSeconds = max(0, seconds)
+        let minutes = safeSeconds / 60
+        let seconds = safeSeconds % 60
+        return "\(minutes):\(String(format: "%02d", seconds))"
+    }
+
+    private static func nowMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
+    }
+
+    private enum Constants {
+        static let openingSeconds = 8 * 60
+        static let closingSeconds = 8 * 60
+        static let warningLeadSeconds = 30
+        static let portalSeconds = 72 * 60
+        static let totalSeconds = openingSeconds + portalSeconds + closingSeconds
+        static let warningStartsAtSecond = totalSeconds - closingSeconds - warningLeadSeconds
+        static let closingStartsAtSecond = totalSeconds - closingSeconds
+    }
+}
+
+private enum AnkyExperiencePhase: Equatable {
+    case openingAnky
+    case portal
+    case closingWarning
+    case closingAnky
+    case finished
+}
+
+private enum AnkyExperienceCopyAction {
+    case openingAnky
+    case openingText
+    case closingAnky
+    case closingText
+}
+
+private struct ExperienceForwardOnlyTextView: UIViewRepresentable {
+    let text: String
+    let focusID: UUID
+    let shouldFocus: Bool
+    let onCharacter: (Character) -> Void
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.backgroundColor = .clear
+        textView.font = .preferredFont(forTextStyle: .title3)
+        textView.adjustsFontForContentSizeCategory = true
+        textView.textColor = UIColor.label.withAlphaComponent(0.34)
+        textView.tintColor = UIColor.label.withAlphaComponent(0.62)
+        textView.textAlignment = .natural
+        textView.keyboardDismissMode = .none
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.spellCheckingType = .no
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        textView.smartInsertDeleteType = .no
+        textView.textContainer.lineFragmentPadding = 0
+        textView.isScrollEnabled = true
+
+        if shouldFocus {
+            DispatchQueue.main.async {
+                textView.becomeFirstResponder()
+            }
+        }
+
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+
+        if context.coordinator.focusID != focusID {
+            context.coordinator.focusID = focusID
+            if shouldFocus {
+                DispatchQueue.main.async {
+                    uiView.becomeFirstResponder()
+                }
+            }
+        }
+
+        if shouldFocus, !uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                uiView.becomeFirstResponder()
+            }
+        }
+
+        let end = uiView.endOfDocument
+        uiView.selectedTextRange = uiView.textRange(from: end, to: end)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(focusID: focusID, onCharacter: onCharacter)
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var focusID: UUID
+        private let onCharacter: (Character) -> Void
+
+        init(focusID: UUID, onCharacter: @escaping (Character) -> Void) {
+            self.focusID = focusID
+            self.onCharacter = onCharacter
+        }
+
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText replacement: String
+        ) -> Bool {
+            guard range.length == 0,
+                  replacement.count == 1,
+                  let character = replacement.first,
+                  character != "\n",
+                  character != "\r" else {
+                return false
+            }
+
+            onCharacter(character)
+            return false
         }
     }
 }
