@@ -14,6 +14,11 @@ private enum RevenueCatCreditPurchaseTarget {
     case product(StoreProduct)
 }
 
+enum RevenueCatCreditPurchaseResult {
+    case purchased
+    case cancelled
+}
+
 enum RevenueCatCreditsConfiguration {
     static let apiKey = "appl_zLWgfNRstPVwqJkIDmhJNReuJtc"
     static let currencyCode = "CRD"
@@ -99,16 +104,16 @@ final class RevenueCatCreditsClient {
     }
 
     @MainActor
-    func purchase(_ creditPackage: RevenueCatCreditPackage) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+    func purchase(_ creditPackage: RevenueCatCreditPackage) async throws -> RevenueCatCreditPurchaseResult {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<RevenueCatCreditPurchaseResult, Error>) in
             let completion: PurchaseCompletedBlock = { _, _, error, userCancelled in
                 if userCancelled {
-                    continuation.resume()
+                    continuation.resume(returning: .cancelled)
                 } else if let error {
                     continuation.resume(throwing: error)
                 } else {
                     Purchases.shared.invalidateVirtualCurrenciesCache()
-                    continuation.resume()
+                    continuation.resume(returning: .purchased)
                 }
             }
 

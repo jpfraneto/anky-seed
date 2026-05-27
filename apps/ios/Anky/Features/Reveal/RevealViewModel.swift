@@ -15,6 +15,7 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var creditsLoading = false
     @Published private(set) var hasClaimedFreeCredits = false
     @Published private(set) var creditsDenied = false
+    @Published private(set) var reflectionStatusMessage: String = ""
     @Published var errorMessage: String?
 
     let reconstructedText: String
@@ -90,16 +91,16 @@ final class RevealViewModel: ObservableObject {
         if isComplete {
             return "ready to mirror this artifact"
         }
-        return "write 8 minutes to mirror this artifact"
+        return "write \(AnkyDuration.completeRitualMinutes) minutes to mirror this artifact"
     }
 
     var shortSessionMessage: String {
         let messages = [
-            "keep going until you get to 8 minutes.",
-            "the thread opened, but it needs the full 8 minutes.",
-            "that was a spark. stay with it until 8 minutes.",
-            "anky needs the whole ritual. come back and write 8 minutes.",
-            "you stopped too soon. try again and cross the 8-minute mark."
+            "keep going until you get to \(AnkyDuration.completeRitualMinutes) minutes.",
+            "the thread opened, but it needs the full \(AnkyDuration.completeRitualMinutes) minutes.",
+            "that was a spark. stay with it until \(AnkyDuration.completeRitualMinutes) minutes.",
+            "anky needs the whole ritual. come back and write \(AnkyDuration.completeRitualMinutes) minutes.",
+            "you stopped too soon. try again and cross the \(AnkyDuration.completeRitualMinutes)-minute mark."
         ]
         return messages[stableMessageIndex(count: messages.count)]
     }
@@ -183,18 +184,22 @@ final class RevealViewModel: ObservableObject {
 
         isAskingAnky = true
         errorMessage = nil
+        reflectionStatusMessage = "i am opening a quiet channel."
         requestStore.markPending(hash: artifact.hash)
         startPendingReflectionWatcher()
 
         do {
             let identity = try identityStore.loadOrCreate()
+            reflectionStatusMessage = "i found your writer key. staying close."
             let trialProof = await DeviceCheckTrialProofProvider.makeToken()
+            reflectionStatusMessage = "i am carrying the thread to the mirror."
             let response = try await MirrorClient(baseURL: baseURL).askAnky(
                 bytes: Data(artifact.text.utf8),
                 identity: identity,
                 trialProof: trialProof,
                 appVersion: AnkyAppVersion.headerValue
             )
+            reflectionStatusMessage = "something answered. i am threading it back."
 
             guard response.hash == artifact.hash else {
                 throw MirrorClientError.hashMismatch
@@ -217,6 +222,7 @@ final class RevealViewModel: ObservableObject {
                 creditBalance = response.creditsRemaining
             }
             reflection = saved
+            reflectionStatusMessage = ""
             reflectionWatcherTask?.cancel()
             isAskingAnky = false
         } catch {
@@ -224,6 +230,7 @@ final class RevealViewModel: ObservableObject {
             if message.localizedCaseInsensitiveContains("already being reflected") {
                 requestStore.markPending(hash: artifact.hash)
                 isAskingAnky = true
+                reflectionStatusMessage = "the mirror is already holding this thread."
                 errorMessage = nil
                 startPendingReflectionWatcher()
                 return
@@ -234,6 +241,7 @@ final class RevealViewModel: ObservableObject {
             }
             requestStore.clear(hash: artifact.hash)
             errorMessage = message
+            reflectionStatusMessage = ""
             isAskingAnky = false
         }
     }
@@ -280,11 +288,16 @@ final class RevealViewModel: ObservableObject {
             reflection = savedReflection
             requestStore.clear(hash: artifact.hash)
             reflectionWatcherTask?.cancel()
+            reflectionStatusMessage = ""
             isAskingAnky = false
         } else if requestStore.isPending(hash: artifact.hash) {
             isAskingAnky = true
+            if reflectionStatusMessage.isEmpty {
+                reflectionStatusMessage = "i am waiting with the mirror."
+            }
             startPendingReflectionWatcher()
         } else if isAskingAnky {
+            reflectionStatusMessage = ""
             isAskingAnky = false
         }
     }

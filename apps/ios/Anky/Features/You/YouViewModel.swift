@@ -269,14 +269,23 @@ final class YouViewModel: ObservableObject {
 
     func purchaseCredits(_ creditPackage: RevenueCatCreditPackage) async {
         purchasingCreditPackageID = creditPackage.id
+        statusMessage = nil
+        errorMessage = nil
         defer { purchasingCreditPackageID = nil }
 
         do {
             try await creditsClient.identify(accountId: accountId)
-            try await creditsClient.purchase(creditPackage)
+            let result = try await creditsClient.purchase(creditPackage)
+            guard result == .purchased else {
+                return
+            }
             let balance = try await creditsClient.fetchCreditBalance()
             creditBalance = balance
-            statusMessage = "Credits updated."
+            if let balance {
+                statusMessage = "Credits updated. You have \(balance) \(balance == 1 ? "credit" : "credits")."
+            } else {
+                statusMessage = "Credits updated."
+            }
             errorMessage = nil
         } catch {
             errorMessage = "Could not complete that credit purchase."
@@ -290,6 +299,17 @@ final class YouViewModel: ObservableObject {
     var freeCreditWhatsAppURL: URL? {
         let encoded = freeCreditMessage.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         return URL(string: "https://wa.me/56985491126?text=\(encoded)")
+    }
+
+    var supportFeedbackEmailURL: URL? {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "support@anky.app"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "Anky support / feedback"),
+            URLQueryItem(name: "body", value: "account id: \(accountId)\n\n")
+        ]
+        return components.url
     }
 
     var appVersion: String {

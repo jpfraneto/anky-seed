@@ -4,20 +4,24 @@ import UIKit
 struct RevealView: View {
     @StateObject private var viewModel: RevealViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
     @State private var confirmDelete = false
     @State private var copiedSection: RevealCopySection?
-    @State private var showPrivacyInfo = false
+    @State private var copyBurst: RevealCopyBurst?
     private let onDeleted: () -> Void
     private let onTryAgain: () -> Void
+    private let onOpenCredits: () -> Void
 
     init(
         viewModel: RevealViewModel,
         onDeleted: @escaping () -> Void = {},
-        onTryAgain: @escaping () -> Void = {}
+        onTryAgain: @escaping () -> Void = {},
+        onOpenCredits: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.onDeleted = onDeleted
         self.onTryAgain = onTryAgain
+        self.onOpenCredits = onOpenCredits
     }
 
     var body: some View {
@@ -40,45 +44,57 @@ struct RevealView: View {
                     }
                 )
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        SelectableWritingText(
-                            text: viewModel.reconstructedText,
-                            isHighlighted: copiedSection == .writing
-                        )
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .id(RevealScrollTarget.writing)
+                ScrollViewReader { scrollProxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            SelectableWritingText(
+                                text: viewModel.reconstructedText,
+                                isHighlighted: copiedSection == .writing,
+                                onTap: copyWriting
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                            .id(RevealScrollTarget.writing)
 
-                        PrivacyDivider()
-                            .padding(.top, 34)
+                            PrivacyDivider()
+                                .padding(.top, 34)
+
+                            if let reflection = viewModel.reflection {
+                                SavedReflectionPanel(
+                                    reflection: reflection,
+                                    isHighlighted: copiedSection == .reflection,
+                                    onTap: copyReflection
+                                )
+                                .padding(.top, 36)
+                                .id(RevealScrollTarget.reflection)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.top, 20)
+                        .padding(.bottom, viewModel.reflection == nil ? 238 : 72)
                     }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 20)
-                    .padding(.bottom, 238)
-                }
-                .overlay(alignment: .topTrailing) {
-                    FloatingCopyButton(section: .writing, isCopied: copiedSection == .writing) {
-                        copyActiveSection()
+                    .onChange(of: viewModel.reflection?.id) { _, reflectionID in
+                        guard reflectionID != nil else {
+                            return
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+                            withAnimation(.easeInOut(duration: 0.55)) {
+                                scrollProxy.scrollTo(RevealScrollTarget.reflection, anchor: .top)
+                            }
+                        }
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 20)
                 }
             }
 
-            VStack {
-                Spacer()
-                RevealReflectionDock(
-                    viewModel: viewModel,
-                    openPrivacy: { showPrivacyInfo = true },
-                    tryAgain: onTryAgain
-                )
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+            if let copyBurst {
+                RevealCopyEmojiBurst(burst: copyBurst)
+                    .position(copyBurst.location)
+                    .allowsHitTesting(false)
+                    .zIndex(80)
             }
-            .ignoresSafeArea(.keyboard)
-            .zIndex(30)
         }
+        .coordinateSpace(name: "revealRoot")
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .confirmationDialog("delete forever?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -90,15 +106,14 @@ struct RevealView: View {
         } message: {
             Text("This permanently deletes this writing session and its saved reflection from this device. This cannot be undone.")
         }
-        .sheet(isPresented: $showPrivacyInfo) {
-            ReflectionPrivacySheet()
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
-        }
         .onAppear {
             Task {
                 await viewModel.refreshCredits(showError: false)
             }
+            syncRevealBubble()
+        }
+        .onDisappear {
+            ankyCompanion.hideBubble()
         }
         .onChange(of: viewModel.isDeleted) { _, isDeleted in
             guard isDeleted else {
@@ -106,6 +121,24 @@ struct RevealView: View {
             }
             onDeleted()
             dismiss()
+        }
+        .onChange(of: viewModel.isAskingAnky) { _, _ in
+            syncRevealBubble()
+        }
+        .onChange(of: viewModel.reflection?.id) { _, _ in
+            syncRevealBubble()
+        }
+        .onChange(of: viewModel.reflectionStatusMessage) { _, _ in
+            syncRevealBubble()
+        }
+        .onChange(of: viewModel.creditsLoading) { _, _ in
+            syncRevealBubble()
+        }
+        .onChange(of: viewModel.creditPromptState) { _, _ in
+            syncRevealBubble()
+        }
+        .onChange(of: viewModel.errorMessage) { _, _ in
+            syncRevealBubble()
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 30)
@@ -120,16 +153,106 @@ struct RevealView: View {
         )
     }
 
-    private var activeCopySection: RevealCopySection {
-        .writing
+    private func syncRevealBubble() {
+        guard viewModel.reflection == nil else {
+            ankyCompanion.hideBubble()
+            return
+        }
+
+        if viewModel.isAskingAnky {
+            let status = viewModel.reflectionStatusMessage.isEmpty
+                ? "i am staying with this .anky."
+                : viewModel.reflectionStatusMessage
+            ankyCompanion.witness(
+                mood: .thinking,
+                sequence: .shyListening,
+                bubble: AnkyBubble(
+                    text: "\(status)\n\ni am reading slowly. not looking for a summary.",
+                    isThinking: true
+                )
+            )
+            return
+        }
+
+        if !viewModel.isComplete {
+            ankyCompanion.witness(
+                mood: .guiding,
+                sequence: .waveFront,
+                bubble: AnkyBubble(
+                    text: viewModel.shortSessionMessage,
+                    actions: [
+                        AnkyChatAction("write again", isPrimary: true) {
+                            onTryAgain()
+                        }
+                    ]
+                )
+            )
+            return
+        }
+
+        var actions: [AnkyChatAction] = []
+        if viewModel.canSubmitReflectionRequest {
+            actions.append(
+                AnkyChatAction("reflect with anky", isPrimary: true) {
+                    Task {
+                        await viewModel.askAnky()
+                    }
+                }
+            )
+        }
+        if viewModel.shouldShowCreditsLink {
+            actions.append(
+                AnkyChatAction("open credits") {
+                    onOpenCredits()
+                }
+            )
+        }
+
+        let text = [reflectionInvitationMessage, viewModel.errorMessage]
+            .compactMap { $0 }
+            .joined(separator: "\n\n")
+
+        ankyCompanion.witness(
+            mood: viewModel.errorMessage == nil ? .guiding : .concerned,
+            sequence: viewModel.errorMessage == nil ? .waveFront : .softConcern,
+            bubble: AnkyBubble(
+                text: text,
+                actions: actions,
+                isThinking: viewModel.creditsLoading
+            )
+        )
     }
 
-    private func copyActiveSection() {
-        let section = activeCopySection
+    private var reflectionInvitationMessage: String {
+        if viewModel.creditsLoading {
+            return "i am checking whether the mirror is open.\n\nyour writing stays here unless you ask me to reflect it."
+        }
+
+        switch viewModel.creditPromptState {
+        case .available, .freeGift:
+            return "i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now."
+        case .unavailable:
+            return "i want to reflect this with you, but reflection access is empty right now."
+        case .unknown:
+            return "the mirror may be open.\n\nyour writing only leaves this device if you ask me now."
+        }
+    }
+
+    private func copyWriting(at location: CGPoint) {
+        copy(.writing, at: location)
+    }
+
+    private func copyReflection(at location: CGPoint) {
+        copy(.reflection, at: location)
+    }
+
+    private func copy(_ section: RevealCopySection, at location: CGPoint) {
         RevealHaptics.selection()
         viewModel.copy(section)
+        let burst = RevealCopyBurst(location: location)
         withAnimation(.easeOut(duration: 0.08)) {
             copiedSection = section
+            copyBurst = burst
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.48) {
             guard copiedSection == section else {
@@ -139,8 +262,39 @@ struct RevealView: View {
                 copiedSection = nil
             }
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.74) {
+            guard copyBurst?.id == burst.id else {
+                return
+            }
+            withAnimation(.easeOut(duration: 0.18)) {
+                copyBurst = nil
+            }
+        }
     }
 
+}
+
+private struct RevealCopyBurst: Identifiable, Equatable {
+    let id = UUID()
+    let location: CGPoint
+}
+
+private struct RevealCopyEmojiBurst: View {
+    let burst: RevealCopyBurst
+
+    var body: some View {
+        Text("📋")
+            .font(.system(size: 26))
+            .padding(8)
+            .background(RevealPalette.copyButtonFill.opacity(0.92), in: Circle())
+            .overlay(
+                Circle()
+                    .stroke(RevealPalette.copyMagenta.opacity(0.72), lineWidth: 1)
+            )
+            .shadow(color: RevealPalette.copyMagenta.opacity(0.45), radius: 14)
+            .transition(.scale(scale: 0.62).combined(with: .opacity))
+            .id(burst.id)
+    }
 }
 
 private enum RevealHaptics {
@@ -150,6 +304,10 @@ private enum RevealHaptics {
 
     static func warning() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+
+    static func subtle() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.42)
     }
 }
 
@@ -227,6 +385,7 @@ private struct RevealHeader: View {
 
 private enum RevealScrollTarget {
     case writing
+    case reflection
 }
 
 private struct RevealBackgroundTexture: View {
@@ -292,6 +451,138 @@ private struct PrivacyDivider: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+    }
+}
+
+private struct RevealAnkyReflectionChat: View {
+    @ObservedObject var viewModel: RevealViewModel
+    let tryAgain: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if viewModel.isAskingAnky {
+                RevealAnkyThinkingPrompt(status: viewModel.reflectionStatusMessage)
+            } else if !viewModel.isComplete {
+                AnkyCompanionPromptView(
+                    state: .notice,
+                    message: viewModel.shortSessionMessage,
+                    actionTitle: "write again",
+                    action: tryAgain
+                )
+            } else {
+                AnkyCompanionPromptView(
+                    state: .importedReady,
+                    message: reflectionInvitationMessage,
+                    actionTitle: viewModel.canSubmitReflectionRequest ? "reflect with anky" : nil,
+                    action: {
+                        Task {
+                            await viewModel.askAnky()
+                        }
+                    }
+                )
+            }
+
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage.lowercased())
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .lineSpacing(3)
+                    .foregroundStyle(Color.red.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if viewModel.shouldShowCreditsLink {
+                NavigationLink {
+                    CreditsPage(viewModel: YouViewModel())
+                } label: {
+                        Text("open reflection credits")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(RevealPalette.goldSoft)
+                    }
+                    .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var reflectionInvitationMessage: String {
+        if viewModel.creditsLoading {
+            return "i am checking whether the mirror is open.\n\nyour writing stays here unless you ask me to reflect it."
+        }
+
+        switch viewModel.creditPromptState {
+        case .available, .freeGift:
+            return "i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now."
+        case .unavailable:
+            return "i want to reflect this with you, but reflection access is empty right now."
+        case .unknown:
+            return "the mirror may be open.\n\nyour writing only leaves this device if you ask me now."
+        }
+    }
+}
+
+private struct RevealAnkyThinkingPrompt: View {
+    let status: String
+
+    private let messages = [
+        "i am reading slowly. not looking for a summary.",
+        "i am listening for the pressure under the words.",
+        "i am keeping the thread intact while the mirror answers.",
+        "still here. some reflections take a little longer.",
+        "i am bringing it back without flattening it.",
+        "stay close. the page is not gone."
+    ]
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let index = Int(timeline.date.timeIntervalSinceReferenceDate / 3.4) % messages.count
+            let firstLine = status.isEmpty ? "i am staying with this .anky." : status
+            ZStack(alignment: .top) {
+                AnkyCompanionPromptView(
+                    state: .mirrorLoading,
+                    message: "\(firstLine)\n\n\(messages[index])"
+                )
+
+                ReflectionSeekingSpinner(time: timeline.date.timeIntervalSinceReferenceDate)
+                    .frame(width: 58, height: 58)
+                    .offset(x: sin(timeline.date.timeIntervalSinceReferenceDate * 1.05) * 24, y: -28)
+                    .allowsHitTesting(false)
+            }
+            .padding(.top, 24)
+        }
+        .onAppear {
+            RevealHaptics.subtle()
+        }
+    }
+}
+
+private struct ReflectionSeekingSpinner: View {
+    let time: TimeInterval
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(RevealPalette.gold.opacity(0.08), lineWidth: 8)
+
+            Circle()
+                .trim(from: 0.08, to: 0.36)
+                .stroke(
+                    RevealPalette.goldSoft.opacity(0.36),
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+                .rotationEffect(.degrees(time * 150))
+
+            Circle()
+                .trim(from: 0.58, to: 0.72)
+                .stroke(
+                    RevealPalette.paper.opacity(0.18),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-time * 95))
+        }
+        .blur(radius: 0.25)
+        .opacity(0.72)
+        .scaleEffect(0.94 + sin(time * 2.0) * 0.035)
+        .accessibilityHidden(true)
     }
 }
 
@@ -433,7 +724,7 @@ private struct RevealReflectionDock: View {
 
     private var title: String {
         if !viewModel.isComplete {
-            return "you have to write 8 minutes"
+            return "you have to write \(AnkyDuration.completeRitualMinutes) minutes"
         }
         if viewModel.isAskingAnky {
             return "processing"
@@ -596,7 +887,7 @@ private struct ReflectionScrollPage: View {
                     }
                     .padding(.top, 8)
 
-                    SelectableReflectionText(text: reflection.reflection, isHighlighted: false, style: .readingPage)
+                    SelectableReflectionText(text: reflection.displayBody, isHighlighted: false, style: .readingPage)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, 22)
@@ -615,23 +906,31 @@ private struct ReflectionScrollPage: View {
 private struct SelectableWritingText: UIViewRepresentable {
     let text: String
     let isHighlighted: Bool
+    let onTap: (CGPoint) -> Void
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.backgroundColor = .clear
         textView.isEditable = false
         textView.isSelectable = true
+        textView.isUserInteractionEnabled = true
         textView.isScrollEnabled = false
         textView.showsVerticalScrollIndicator = false
         textView.showsHorizontalScrollIndicator = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.tintColor = UIColor(RevealPalette.gold)
         textView.adjustsFontForContentSizeCategory = false
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delegate = context.coordinator
+        textView.addGestureRecognizer(tap)
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.onTap = onTap
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 7
         textView.backgroundColor = .clear
@@ -653,12 +952,35 @@ private struct SelectableWritingText: UIViewRepresentable {
         return CGSize(width: width, height: size.height)
     }
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
+    }
+
     private func copyShadow(_ isHighlighted: Bool) -> NSShadow {
         let shadow = NSShadow()
         shadow.shadowColor = UIColor(isHighlighted ? RevealPalette.copyMagenta : Color.clear)
         shadow.shadowOffset = CGSize(width: 2, height: 2)
         shadow.shadowBlurRadius = 0
         return shadow
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onTap: (CGPoint) -> Void
+
+        init(onTap: @escaping (CGPoint) -> Void) {
+            self.onTap = onTap
+        }
+
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended else {
+                return
+            }
+            onTap(recognizer.location(in: nil))
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
     }
 }
 
@@ -805,49 +1127,10 @@ private struct ThreadOverlay: View {
     }
 }
 
-private struct FloatingCopyButton: View {
-    let section: RevealCopySection
-    let isCopied: Bool
-    let action: () -> Void
-
-    private var label: String {
-        switch section {
-        case .writing:
-            return isCopied ? "copied writing" : "copy writing"
-        case .reflection:
-            return isCopied ? "copied reflection" : "copy reflection"
-        }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                    .font(.system(size: 12, weight: .semibold))
-
-                Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
-            .foregroundStyle(isCopied ? RevealPalette.copyMagenta : RevealPalette.paper)
-            .padding(.horizontal, 10)
-            .frame(height: 38)
-            .background(RevealPalette.copyButtonFill, in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke((isCopied ? RevealPalette.copyMagenta : RevealPalette.gold).opacity(isCopied ? 0.72 : 0.32), lineWidth: 1)
-            )
-            .shadow(color: isCopied ? RevealPalette.copyMagenta.opacity(0.32) : Color.black.opacity(0.38), radius: isCopied ? 12 : 10, y: 5)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-}
-
 private struct SavedReflectionPanel: View {
     let reflection: LocalReflection
     let isHighlighted: Bool
+    let onTap: (CGPoint) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -855,11 +1138,58 @@ private struct SavedReflectionPanel: View {
                 .font(.custom("Georgia", size: 23).weight(.bold))
                 .foregroundStyle(RevealPalette.markdownHeading)
                 .tracking(0)
+                .textSelection(.enabled)
                 .shadow(color: isHighlighted ? RevealPalette.copyMagenta : .clear, radius: 0, x: 2, y: 2)
+                .onTapGesture(coordinateSpace: .named("revealRoot")) { location in
+                    onTap(location)
+                }
 
-            SelectableReflectionText(text: reflection.reflection, isHighlighted: isHighlighted)
+            SelectableReflectionText(text: reflection.displayBody, isHighlighted: isHighlighted, onTap: onTap)
 
         }
+    }
+}
+
+private extension LocalReflection {
+    var displayBody: String {
+        reflection.removingLeadingMarkdownHeading(matching: title)
+    }
+}
+
+private extension String {
+    func removingLeadingMarkdownHeading(matching title: String) -> String {
+        let lines = replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+
+        guard let headingIndex = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
+              let heading = Self.markdownHeadingText(from: lines[headingIndex]),
+              Self.normalizedHeading(heading) == Self.normalizedHeading(title) else {
+            return self
+        }
+
+        var bodyStart = headingIndex + 1
+        while bodyStart < lines.count, lines[bodyStart].trimmingCharacters(in: .whitespaces).isEmpty {
+            bodyStart += 1
+        }
+
+        return lines.dropFirst(bodyStart).joined(separator: "\n")
+    }
+
+    private static func markdownHeadingText(from line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        for marker in ["### ", "## ", "# "] {
+            if trimmed.hasPrefix(marker) {
+                return String(trimmed.dropFirst(marker.count))
+            }
+        }
+        return nil
+    }
+
+    private static func normalizedHeading(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }
 
@@ -906,24 +1236,44 @@ private enum ReflectionTextStyle {
 private struct SelectableReflectionText: UIViewRepresentable {
     let text: String
     let isHighlighted: Bool
+    let onTap: ((CGPoint) -> Void)?
     var style: ReflectionTextStyle = .standard
+
+    init(
+        text: String,
+        isHighlighted: Bool,
+        onTap: ((CGPoint) -> Void)? = nil,
+        style: ReflectionTextStyle = .standard
+    ) {
+        self.text = text
+        self.isHighlighted = isHighlighted
+        self.onTap = onTap
+        self.style = style
+    }
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.backgroundColor = .clear
         textView.isEditable = false
         textView.isSelectable = true
+        textView.isUserInteractionEnabled = true
         textView.isScrollEnabled = false
         textView.showsVerticalScrollIndicator = false
         textView.showsHorizontalScrollIndicator = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.tintColor = UIColor(RevealPalette.gold)
         textView.adjustsFontForContentSizeCategory = false
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delegate = context.coordinator
+        textView.addGestureRecognizer(tap)
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.onTap = onTap
         textView.backgroundColor = .clear
         textView.attributedText = attributedReflection()
         textView.layer.cornerRadius = 0
@@ -933,6 +1283,10 @@ private struct SelectableReflectionText: UIViewRepresentable {
         let width = proposal.width ?? UIScreen.main.bounds.width - 56
         let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: size.height)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
     }
 
     private var lines: [String] {
@@ -1043,15 +1397,24 @@ private struct SelectableReflectionText: UIViewRepresentable {
                 let contentStart = text.index(index, offsetBy: 2)
                 append(String(text[contentStart..<end.lowerBound]), to: result, inlineStyle: .strong, paragraph: paragraph)
                 index = end.upperBound
+            } else if text[index] == "*",
+                      let end = text[text.index(after: index)...].firstIndex(of: "*") {
+                let contentStart = text.index(after: index)
+                append(String(text[contentStart..<end]), to: result, inlineStyle: .emphasis, paragraph: paragraph)
+                index = text.index(after: end)
             } else if text[index] == "`",
                       let end = text[text.index(after: index)...].firstIndex(of: "`") {
                 let contentStart = text.index(after: index)
                 append(String(text[contentStart..<end]), to: result, inlineStyle: .code, paragraph: paragraph)
                 index = text.index(after: end)
+            } else if text[index] == "*" || text[index] == "`" {
+                append(String(text[index]), to: result, inlineStyle: .normal, paragraph: paragraph)
+                index = text.index(after: index)
             } else {
                 let nextStrong = text[index...].range(of: "**")?.lowerBound
+                let nextEmphasis = text[index...].firstIndex(of: "*")
                 let nextCode = text[index...].firstIndex(of: "`")
-                let next = [nextStrong, nextCode].compactMap { $0 }.min() ?? text.endIndex
+                let next = [nextStrong, nextEmphasis, nextCode].compactMap { $0 }.min() ?? text.endIndex
                 append(String(text[index..<next]), to: result, inlineStyle: .normal, paragraph: paragraph)
                 index = next
             }
@@ -1092,6 +1455,8 @@ private struct SelectableReflectionText: UIViewRepresentable {
         case .strong:
             attributes[.foregroundColor] = UIColor(RevealPalette.gold)
             attributes[.font] = UIFont(name: "Georgia-Bold", size: style.bodyFontSize) ?? UIFont.boldSystemFont(ofSize: style.bodyFontSize)
+        case .emphasis:
+            attributes[.font] = UIFont(name: "Georgia-Italic", size: style.bodyFontSize) ?? UIFont.italicSystemFont(ofSize: style.bodyFontSize)
         case .code:
             attributes[.foregroundColor] = UIColor(RevealPalette.paper.opacity(0.82))
             attributes[.font] = UIFont.monospacedSystemFont(ofSize: style.codeFontSize, weight: .regular)
@@ -1099,9 +1464,29 @@ private struct SelectableReflectionText: UIViewRepresentable {
         result.append(NSAttributedString(string: string, attributes: attributes))
     }
 
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onTap: ((CGPoint) -> Void)?
+
+        init(onTap: ((CGPoint) -> Void)?) {
+            self.onTap = onTap
+        }
+
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended else {
+                return
+            }
+            onTap?(recognizer.location(in: nil))
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+
     private enum InlineStyle {
         case normal
         case strong
+        case emphasis
         case code
     }
 }

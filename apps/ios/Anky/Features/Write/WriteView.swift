@@ -4,7 +4,7 @@ import UIKit
 struct WriteView: View {
     @StateObject private var viewModel: WriteViewModel
     @Environment(\.scenePhase) private var scenePhase
-    @State private var keyboardHeight: CGFloat = 0
+    @State private var keyboardFrame: CGRect?
     @State private var confirmClearDotAnky = false
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
@@ -25,28 +25,48 @@ struct WriteView: View {
     var body: some View {
         ZStack {
             GeometryReader { geometry in
-                let visibleHeight = max(1, geometry.size.height - keyboardHeight)
-                let center = CGPoint(x: geometry.size.width / 2, y: visibleHeight / 2)
+                let globalFrame = geometry.frame(in: .global)
+                let keyboardTop = keyboardFrame?.minY ?? globalFrame.maxY
+                let visibleHeight = max(1, min(globalFrame.maxY, keyboardTop) - globalFrame.minY)
+                let keyboardIsVisible = keyboardTop < globalFrame.maxY
+                let surfaceBottomInset: CGFloat = keyboardIsVisible ? 12 : 24
+                let textViewHeight = visibleHeight
+                let contentBottomY = max(24, visibleHeight - surfaceBottomInset)
+                let ringSize = RitualRingsView.size
+                let ringRadius = ringSize / 2
+                let textAnchor = CGPoint(
+                    x: max(24, geometry.size.width - (ringSize + 30)),
+                    y: contentBottomY
+                )
+                let ringCenter = CGPoint(
+                    x: max(ringRadius + 8, geometry.size.width - ringRadius - 8),
+                    y: max(ringRadius + 8, contentBottomY - ringRadius)
+                )
 
                 ForwardOnlyTextView(
-                    text: viewModel.displayedText,
+                    glyphs: viewModel.displayedGlyphs,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: shouldFocus,
-                    bottomInset: keyboardHeight + 92,
+                    bottomInset: max(surfaceBottomInset, textViewHeight - textAnchor.y),
+                    rightInset: max(14, geometry.size.width - (ringCenter.x - ringRadius - 10)),
+                    textOpacity: pageTextOpacity,
                     onCharacter: viewModel.accept,
                     onRejectedInput: viewModel.nudgeInvalidInput
                 )
-                .padding(24)
-                .frame(width: geometry.size.width, height: geometry.size.height)
+                .frame(width: geometry.size.width, height: textViewHeight)
+                .clipped()
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
 
                 RitualRingsView(
                     elapsedMs: viewModel.elapsedMs,
                     silenceElapsedMs: viewModel.silenceElapsedMs,
-                    silenceRemainingMs: viewModel.silenceRemainingMs,
                     lastCharacter: viewModel.lastCharacter,
+                    lastCharacterColor: activeRhythmColor,
+                    pulseID: viewModel.lastCharacterPulseID,
                     isRitualComplete: viewModel.hasReachedRitualMark
                 )
-                .position(center)
+                .position(ringCenter)
+                .transition(.scale(scale: 0.88).combined(with: .opacity))
             }
 
             if viewModel.hasReachedRitualMark {
@@ -92,13 +112,13 @@ struct WriteView: View {
         .ignoresSafeArea(.keyboard)
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(false)
+        .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
-            keyboardHeight = keyboardOverlap(from: notification)
+            keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
+            keyboardFrame = nil
         }
         .confirmationDialog("begin a new page?", isPresented: $confirmClearDotAnky, titleVisibility: .visible) {
             Button("begin a new page", role: .destructive) {
@@ -138,13 +158,19 @@ struct WriteView: View {
         _ = viewModel.importAnkyArtifact(viewModel.devSampleAnkyArtifact)
     }
 
-    private func keyboardOverlap(from notification: Notification) -> CGFloat {
-        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
-            return 0
-        }
-
-        return max(0, UIScreen.main.bounds.maxY - frame.minY)
+    private var pageTextOpacity: Double {
+        let resolveProgress = min(1, max(0, Double(viewModel.silenceElapsedMs - 3000) / 5000))
+        return 0.22 + resolveProgress * 0.78
     }
+
+    private var activeRhythmColor: Color {
+        WritingRhythmColor.color(progress: latestCharacterColorProgress)
+    }
+
+    private var latestCharacterColorProgress: Double {
+        min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(AnkyDuration.terminalSilenceMs)))
+    }
+
 }
 
 private struct WriteTopActionBar: View {
@@ -261,16 +287,48 @@ private struct DevPasteChromeIcon: View {
     }
 }
 
+private enum WritingRhythmColor {
+    static func color(progress: Double) -> Color {
+        let clamped = min(1, max(0, progress))
+        let red = 1.0 + (0.94 - 1.0) * clamped
+        let green = 1.0 + (0.12 - 1.0) * clamped
+        let blue = 1.0 + (0.08 - 1.0) * clamped
+        return Color(red: red, green: green, blue: blue)
+    }
+
+    static func uiColor(progress: Double, alpha: Double = 1) -> UIColor {
+        UIColor(color(progress: progress)).withAlphaComponent(alpha)
+    }
+}
+
 private struct RitualRingsView: View {
+    static let size: CGFloat = 106
+    private static let outerDiameter: CGFloat = 102
+    private static let jewelDiameter: CGFloat = 80
+    private static let mirrorDiameter: CGFloat = 56
+    private static let silenceDiameter: CGFloat = 65
+
     let elapsedMs: Int64
     let silenceElapsedMs: Int64
-    let silenceRemainingMs: Int64
     let lastCharacter: Character?
+    let lastCharacterColor: Color
+    let pulseID: UUID
     let isRitualComplete: Bool
 
     private let colors: [Color] = [
-        .red, .orange, .yellow, .green, .blue, .indigo, .purple, .white
+        Color(red: 0.91, green: 0.20, blue: 0.14),
+        Color(red: 0.95, green: 0.48, blue: 0.10),
+        Color(red: 0.96, green: 0.81, blue: 0.22),
+        Color(red: 0.22, green: 0.72, blue: 0.26),
+        Color(red: 0.10, green: 0.39, blue: 0.95),
+        Color(red: 0.30, green: 0.25, blue: 0.80),
+        Color(red: 0.58, green: 0.24, blue: 0.90),
+        Color(red: 0.96, green: 0.95, blue: 0.87)
     ]
+
+    private var minuteProgress: Double {
+        min(8, max(0, ritualProgress * 8))
+    }
 
     private var ritualProgress: Double {
         min(1, Double(elapsedMs) / Double(AnkyDuration.completeRitualMs))
@@ -280,73 +338,222 @@ private struct RitualRingsView: View {
         min(1, max(0, Double(silenceElapsedMs - 3000) / 5000))
     }
 
-    private var keyOpacity: Double {
-        min(1, max(0, Double(silenceRemainingMs) / Double(AnkyDuration.terminalSilenceMs)))
+    private func segmentProgress(_ index: Int) -> Double {
+        min(1, max(0, minuteProgress - Double(index)))
     }
 
     var body: some View {
-        ZStack {
-            if isRitualComplete {
-                TimelineView(.animation) { timeline in
-                    let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.2) + 1) / 2
+        TimelineView(.animation) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let breath = (sin(time * 2.2) + 1) / 2
+
+            ZStack {
+                if isRitualComplete {
+                    let completePulse = (sin(time * 3.2) + 1) / 2
                     Circle()
                         .stroke(
-                            AnkyTheme.gold.opacity(0.30 + pulse * 0.34),
-                            style: StrokeStyle(lineWidth: 15, lineCap: .round)
+                            AnkyTheme.gold.opacity(0.24 + completePulse * 0.36),
+                            style: StrokeStyle(lineWidth: 7, lineCap: .round)
                         )
-                        .frame(width: 186, height: 186)
-                        .shadow(color: AnkyTheme.gold.opacity(0.50 + pulse * 0.24), radius: 18 + pulse * 10)
-                        .shadow(color: Color.white.opacity(0.18 + pulse * 0.14), radius: 6 + pulse * 5)
+                        .frame(width: Self.outerDiameter + 10, height: Self.outerDiameter + 10)
+                        .shadow(color: AnkyTheme.gold.opacity(0.36 + completePulse * 0.24), radius: 9 + completePulse * 5)
+                        .shadow(color: Color.white.opacity(0.14 + completePulse * 0.14), radius: 4 + completePulse * 3)
+                        .transition(.opacity)
                 }
-                .transition(.opacity)
-            }
 
-            ForEach(colors.indices, id: \.self) { index in
-                RingSegment(
-                    index: index,
-                    progress: 1,
-                    color: colors[index].opacity(0.16),
-                    lineWidth: 10
-                )
+                Circle()
+                    .fill(Color(red: 0.035, green: 0.024, blue: 0.016).opacity(0.94))
+                    .frame(width: Self.outerDiameter, height: Self.outerDiameter)
+                    .shadow(color: Color.black.opacity(0.72), radius: 8, y: 2)
 
-                RingSegment(
-                    index: index,
+                Circle()
+                    .fill(PortalPalette.bronzeGradient)
+                    .frame(width: Self.outerDiameter - 5, height: Self.outerDiameter - 5)
+
+                Circle()
+                    .fill(Color(red: 0.08, green: 0.055, blue: 0.035))
+                    .frame(width: Self.outerDiameter - 17, height: Self.outerDiameter - 17)
+
+                ZStack {
+                    ForEach(colors.indices, id: \.self) { index in
+                        let phase = (time * 1.8) + Double(index) * 0.72
+                        let shimmer = (sin(phase) + 1) / 2
+                        let progress = segmentProgress(index)
+                        let isActive = progress > 0 && progress < 1
+
+                        RingSegment(
+                            index: index,
+                            progress: 1,
+                            color: colors[index].opacity(0.13 + shimmer * 0.05),
+                            lineWidth: 15,
+                            diameter: Self.jewelDiameter
+                        )
+
+                        if progress > 0 {
+                            RingSegment(
+                                index: index,
+                                progress: progress,
+                                color: colors[index].opacity((isActive ? 0.72 : 0.90) + shimmer * 0.10),
+                                lineWidth: 15.4 + (isActive ? breath * 1.0 : 0),
+                                diameter: Self.jewelDiameter
+                            )
+                            .shadow(color: colors[index].opacity((isActive ? 0.30 : 0.18) + shimmer * 0.18), radius: isActive ? 4.0 + shimmer * 2.4 : 2.4)
+                        }
+                    }
+                }
+                .scaleEffect(0.995 + breath * 0.010)
+
+                ForEach(0..<8, id: \.self) { index in
+                    Capsule()
+                        .fill(Color(red: 0.16, green: 0.09, blue: 0.04).opacity(0.92))
+                        .frame(width: 3, height: 18)
+                        .offset(y: -Self.jewelDiameter / 2 + 3)
+                        .rotationEffect(.degrees(Double(index) * 45 + 22.5))
+                        .shadow(color: Color.black.opacity(0.34), radius: 1)
+                }
+
+                Circle()
+                    .stroke(PortalPalette.bronzeGradient, lineWidth: 5)
+                    .frame(width: Self.mirrorDiameter + 9, height: Self.mirrorDiameter + 9)
+
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(0.16 + breath * 0.05),
+                                Color.cyan.opacity(0.10),
+                                Color.black.opacity(0.82),
+                                Color.black.opacity(0.96)
+                            ],
+                            center: UnitPoint(x: 0.32, y: 0.24),
+                            startRadius: 2,
+                            endRadius: 34
+                        )
+                    )
+                    .frame(width: Self.mirrorDiameter, height: Self.mirrorDiameter)
+                    .overlay(
+                        Circle()
+                            .stroke(AnkyTheme.gold.opacity(0.30), lineWidth: 1.5)
+                    )
+                    .overlay(
+                        Circle()
+                            .trim(from: 0.56, to: 0.82)
+                            .stroke(Color.white.opacity(0.24 + breath * 0.12), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .rotationEffect(.degrees(-22))
+                            .blur(radius: 0.8)
+                    )
+
+                PortalProgressCursor(
                     progress: ritualProgress,
-                    color: colors[index],
-                    lineWidth: 10
+                    diameter: Self.jewelDiameter,
+                    isComplete: isRitualComplete,
+                    breath: breath
                 )
-            }
 
-            Circle()
-                .trim(from: 0, to: silenceProgress)
-                .stroke(
-                    Color.white.opacity(0.42),
-                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .scaleEffect(x: -1, y: 1)
-                .frame(width: 154, height: 154)
-                .opacity(silenceElapsedMs >= 3000 ? 1 : 0)
-                .animation(.easeInOut(duration: 0.22), value: silenceElapsedMs >= 3000)
-                .animation(.linear(duration: 0.04), value: silenceProgress)
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.white.opacity(0.72 + breath * 0.18),
+                                    AnkyTheme.gold.opacity(0.30 + breath * 0.18),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 1,
+                                endRadius: 22
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+                        .blur(radius: 2 + breath * 2)
 
-            if let lastCharacter {
-                Text(String(lastCharacter))
-                    .font(.system(size: 58, weight: .regular, design: .rounded))
-                    .foregroundStyle(.primary.opacity(keyOpacity))
-                    .animation(.easeOut(duration: 0.2), value: keyOpacity)
-            } else {
-                TimelineView(.animation) { timeline in
-                    let phase = timeline.date.timeIntervalSinceReferenceDate
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color.primary.opacity(sin(phase * 3.4) > 0 ? 0.72 : 0.24))
-                        .frame(width: 3, height: 54)
+                    Capsule()
+                        .fill(Color.white.opacity(0.34 + breath * 0.20))
+                        .frame(width: 21, height: 4)
+                        .blur(radius: 1.4)
+                        .offset(x: 10)
                 }
+                .offset(x: Self.jewelDiameter / 2 - 5)
+                .blendMode(.plusLighter)
+                .opacity(elapsedMs > 0 ? 1 : 0.54)
+
+                if let lastCharacter {
+                    Text(String(lastCharacter))
+                        .font(.system(size: 36, weight: .medium, design: .rounded))
+                        .foregroundStyle(lastCharacterColor.opacity(0.94))
+                        .shadow(color: lastCharacterColor.opacity(0.52), radius: 7)
+                        .shadow(color: AnkyTheme.gold.opacity(0.22), radius: 10)
+                        .id(pulseID)
+                        .transition(.scale(scale: 0.74).combined(with: .opacity))
+                        .animation(.spring(response: 0.20, dampingFraction: 0.72), value: pulseID)
+                } else if elapsedMs == 0 {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color.primary.opacity(sin(time * 3.4) > 0 ? 0.58 : 0.20))
+                        .frame(width: 2, height: 25)
+                }
+
+                Circle()
+                    .trim(from: 0, to: silenceProgress)
+                    .stroke(
+                        Color.white.opacity(0.34 + breath * 0.16),
+                        style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .scaleEffect(x: -1, y: 1)
+                    .frame(width: Self.silenceDiameter, height: Self.silenceDiameter)
+                    .opacity(silenceElapsedMs >= 3000 ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.22), value: silenceElapsedMs >= 3000)
+                    .animation(.linear(duration: 0.04), value: silenceProgress)
             }
+            .frame(width: Self.size, height: Self.size)
         }
-        .frame(width: 190, height: 190)
+        .frame(width: Self.size, height: Self.size)
         .animation(.easeInOut(duration: 0.4), value: isRitualComplete)
         .allowsHitTesting(false)
+    }
+}
+
+private enum PortalPalette {
+    static let bronzeGradient = LinearGradient(
+        colors: [
+            Color(red: 0.95, green: 0.77, blue: 0.42),
+            Color(red: 0.54, green: 0.33, blue: 0.15),
+            Color(red: 0.87, green: 0.67, blue: 0.33),
+            Color(red: 0.24, green: 0.14, blue: 0.07)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+}
+
+private struct PortalProgressCursor: View {
+    let progress: Double
+    let diameter: CGFloat
+    let isComplete: Bool
+    let breath: Double
+
+    var body: some View {
+        let clampedProgress = min(1, max(0, progress))
+        let angle = (-Double.pi / 2) + clampedProgress * Double.pi * 2
+        let radius = diameter / 2
+        let offset = CGSize(
+            width: cos(angle) * radius,
+            height: sin(angle) * radius
+        )
+
+        ZStack {
+            Circle()
+                .fill(Color.white.opacity(0.86))
+                .frame(width: 6.5 + breath * 2.0, height: 6.5 + breath * 2.0)
+                .shadow(color: Color.white.opacity(0.66), radius: 5)
+                .shadow(color: AnkyTheme.gold.opacity(0.58), radius: 8)
+
+            Circle()
+                .stroke(AnkyTheme.gold.opacity(0.74), lineWidth: 1)
+                .frame(width: 13 + breath * 5, height: 13 + breath * 5)
+        }
+        .offset(offset)
+        .opacity(clampedProgress > 0 || isComplete ? 1 : 0)
     }
 }
 
@@ -355,35 +562,43 @@ private struct RingSegment: View {
     let progress: Double
     let color: Color
     let lineWidth: CGFloat
+    let diameter: CGFloat
 
     var body: some View {
-        let start = Double(index) / 8
-        let end = min(Double(index + 1) / 8, progress)
+        let segmentStart = Double(index) / 8
+        let segmentEnd = Double(index + 1) / 8
+        let gap = 0.006
+        let start = segmentStart + gap
+        let fullEnd = segmentEnd - gap
+        let end = start + (fullEnd - start) * min(1, max(0, progress))
         Circle()
-            .trim(from: start, to: max(start, end))
+            .trim(from: start, to: max(start + 0.0001, end))
             .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
             .rotationEffect(.degrees(-90))
-            .frame(width: 186, height: 186)
+            .frame(width: diameter, height: diameter)
     }
 }
 
 private struct ForwardOnlyTextView: UIViewRepresentable {
-    let text: String
+    let glyphs: [WritingGlyph]
     let focusID: UUID
     let shouldFocus: Bool
     let bottomInset: CGFloat
+    let rightInset: CGFloat
+    let textOpacity: Double
     let onCharacter: (Character) -> Void
     let onRejectedInput: () -> Void
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = CenteredTextView()
+        let textView = BottomRightAnchoredTextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        textView.font = .preferredFont(forTextStyle: .title3)
+        textView.font = UIFont.monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .title3).pointSize, weight: .regular)
         textView.adjustsFontForContentSizeCategory = true
-        textView.textColor = UIColor.label.withAlphaComponent(0.33)
+        textView.textColor = UIColor.label.withAlphaComponent(textOpacity)
         textView.tintColor = .clear
-        textView.textAlignment = .natural
+        textView.textAlignment = .right
+        textView.isEditable = shouldFocus
         textView.keyboardDismissMode = .none
         textView.autocorrectionType = .no
         textView.autocapitalizationType = .none
@@ -392,10 +607,12 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.smartQuotesType = .no
         textView.smartInsertDeleteType = .no
         textView.textContainer.lineFragmentPadding = 0
-        textView.textContainerInset = UIEdgeInsets(top: 18, left: 0, bottom: bottomInset, right: 0)
-        textView.contentInset.bottom = bottomInset
+        textView.contentInsetAdjustmentBehavior = .never
+        textView.textContainerInset = UIEdgeInsets(top: 24, left: 24, bottom: bottomInset, right: rightInset)
+        textView.contentInset = .zero
         textView.verticalScrollIndicatorInsets.bottom = bottomInset
         textView.isScrollEnabled = true
+        textView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
 
         if shouldFocus {
             DispatchQueue.main.async {
@@ -407,12 +624,21 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.text != text {
-            uiView.text = text
+        let renderedText = String(glyphs.map(\.character))
+        if context.coordinator.renderedGlyphs != glyphs || uiView.text != renderedText {
+            uiView.attributedText = makeAttributedText(font: uiView.font)
+            context.coordinator.renderedGlyphs = glyphs
         }
-        uiView.textContainerInset.bottom = bottomInset
-        uiView.contentInset.bottom = bottomInset
+        uiView.textColor = UIColor.label.withAlphaComponent(textOpacity)
+        uiView.isEditable = shouldFocus
+        if let anchoredTextView = uiView as? BottomRightAnchoredTextView {
+            anchoredTextView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
+        } else {
+            uiView.textContainerInset.bottom = bottomInset
+            uiView.textContainerInset.right = rightInset
+        }
         uiView.verticalScrollIndicatorInsets.bottom = bottomInset
+        uiView.contentInset = .zero
 
         if context.coordinator.focusID != focusID {
             context.coordinator.focusID = focusID
@@ -434,15 +660,48 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
 
         let end = uiView.endOfDocument
         uiView.selectedTextRange = uiView.textRange(from: end, to: end)
-        uiView.scrollRangeToVisible(NSRange(location: (uiView.text as NSString).length, length: 0))
+        if let anchoredTextView = uiView as? BottomRightAnchoredTextView {
+            anchoredTextView.scrollToEndRespectingAnchor()
+        } else {
+            uiView.scrollRangeToVisible(NSRange(location: (uiView.text as NSString).length, length: 0))
+        }
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(focusID: focusID, onCharacter: onCharacter, onRejectedInput: onRejectedInput)
     }
 
+    private func makeAttributedText(font: UIFont?) -> NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        paragraph.lineBreakMode = .byWordWrapping
+
+        let textFont = font ?? UIFont.monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .title3).pointSize, weight: .regular)
+        let attributed = NSMutableAttributedString()
+        let latestIndex = glyphs.indices.last
+
+        for index in glyphs.indices {
+            let glyph = glyphs[index]
+            let isLatest = index == latestIndex
+            let alpha = isLatest ? 0.96 : max(0.28, textOpacity * 0.82)
+            attributed.append(
+                NSAttributedString(
+                    string: String(glyph.character),
+                    attributes: [
+                        .font: textFont,
+                        .foregroundColor: WritingRhythmColor.uiColor(progress: glyph.silenceProgress, alpha: alpha),
+                        .paragraphStyle: paragraph
+                    ]
+                )
+            )
+        }
+
+        return attributed
+    }
+
     final class Coordinator: NSObject, UITextViewDelegate {
         var focusID: UUID
+        var renderedGlyphs: [WritingGlyph] = []
         private let onCharacter: (Character) -> Void
         private let onRejectedInput: () -> Void
 
@@ -478,4 +737,82 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     }
 }
 
-private final class CenteredTextView: UITextView {}
+private final class BottomRightAnchoredTextView: UITextView {
+    private let minimumTopInset: CGFloat = 24
+    private let leftInset: CGFloat = 24
+    private var anchoredBottomInset: CGFloat = 24
+    private var anchoredRightInset: CGFloat = 24
+
+    func updateAnchorInsets(bottom: CGFloat, right: CGFloat) {
+        anchoredBottomInset = bottom
+        anchoredRightInset = right
+        updateTextContainerInsets()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateTextContainerInsets()
+    }
+
+    private func updateTextContainerInsets() {
+        guard bounds.width > 0, bounds.height > 0 else {
+            return
+        }
+
+        let availableWidth = max(1, bounds.width - leftInset - anchoredRightInset)
+        let textHeight = measuredTextHeight(width: availableWidth)
+        let topInset = max(minimumTopInset, bounds.height - anchoredBottomInset - textHeight)
+        let nextInsets = UIEdgeInsets(
+            top: topInset,
+            left: leftInset,
+            bottom: anchoredBottomInset,
+            right: anchoredRightInset
+        )
+
+        guard textContainerInset != nextInsets else {
+            return
+        }
+        textContainerInset = nextInsets
+    }
+
+    func scrollToEndRespectingAnchor() {
+        layoutIfNeeded()
+        guard !text.isEmpty else {
+            return
+        }
+
+        let endRange = NSRange(location: (text as NSString).length, length: 0)
+        scrollRangeToVisible(endRange)
+
+        let bottomLimit = max(
+            -adjustedContentInset.top,
+            contentSize.height - bounds.height + adjustedContentInset.bottom
+        )
+        if contentOffset.y > bottomLimit {
+            setContentOffset(CGPoint(x: contentOffset.x, y: bottomLimit), animated: false)
+        }
+    }
+
+    private func measuredTextHeight(width: CGFloat) -> CGFloat {
+        guard let font else {
+            return 0
+        }
+        guard !text.isEmpty else {
+            return font.lineHeight
+        }
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        paragraph.lineBreakMode = .byWordWrapping
+        let rect = (text as NSString).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [
+                .font: font,
+                .paragraphStyle: paragraph
+            ],
+            context: nil
+        )
+        return ceil(rect.height)
+    }
+}

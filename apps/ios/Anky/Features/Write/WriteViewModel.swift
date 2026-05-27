@@ -3,18 +3,28 @@ import SwiftUI
 import UIKit
 import AudioToolbox
 
+struct WritingGlyph: Equatable {
+    let character: Character
+    var silenceProgress: Double
+}
+
 @MainActor
 final class WriteViewModel: ObservableObject {
     @Published private(set) var displayedText: String = ""
+    @Published private(set) var displayedGlyphs: [WritingGlyph] = []
     @Published private(set) var protocolText: String = ""
     @Published private(set) var elapsedMs: Int64 = 0
     @Published private(set) var silenceElapsedMs: Int64 = 0
     @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.terminalSilenceMs
     @Published private(set) var lastCharacter: Character?
+    @Published private(set) var lastCharacterPulseID = UUID()
     @Published private(set) var keyboardFocusID = UUID()
     @Published private(set) var todayAnkyCount = 0
     @Published private(set) var errorMessage: String?
     @Published private(set) var isErrorMessageVisible = false
+    @Published private(set) var nudgeMessage: String?
+    @Published private(set) var isNudgeMessageVisible = false
+    @Published private(set) var isRequestingNudge = false
 
     var hasStarted: Bool {
         writer.isStarted
@@ -45,8 +55,11 @@ final class WriteViewModel: ObservableObject {
     private let archive: LocalAnkyArchive
     private let reflectionStore: ReflectionStore
     private let sessionIndexStore: SessionIndexStore
+    private let identityStore: WriterIdentityStore
+    private let userDefaults: UserDefaults
     private var silenceTask: Task<Void, Never>?
     private var tickerTask: Task<Void, Never>?
+    private var nudgeTask: Task<Void, Never>?
     private var completion: ((SavedAnky) -> Void)?
     private var needsImmediateClose = false
     private var isClosing = false
@@ -65,12 +78,16 @@ final class WriteViewModel: ObservableObject {
         draftStore: ActiveDraftStore = ActiveDraftStore(),
         archive: LocalAnkyArchive = LocalAnkyArchive(),
         reflectionStore: ReflectionStore = ReflectionStore(),
-        sessionIndexStore: SessionIndexStore = SessionIndexStore()
+        sessionIndexStore: SessionIndexStore = SessionIndexStore(),
+        identityStore: WriterIdentityStore = WriterIdentityStore(),
+        userDefaults: UserDefaults = .standard
     ) {
         self.draftStore = draftStore
         self.archive = archive
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
+        self.identityStore = identityStore
+        self.userDefaults = userDefaults
         resetDotAnkyIfNeeded()
         refreshTodayCount()
         restoreDraftIfPresent()
@@ -86,6 +103,7 @@ final class WriteViewModel: ObservableObject {
 
     func accept(_ character: Character) {
         let now = Self.nowMs()
+        freezeLatestGlyph(now: now)
         resumeIfFrozen(now: now)
 
         guard writer.accept(character, at: now) else {
@@ -93,11 +111,13 @@ final class WriteViewModel: ObservableObject {
         }
 
         lastCharacter = character
+        lastCharacterPulseID = UUID()
         keySelectionHaptic.selectionChanged()
         keyHaptic.impactOccurred(intensity: 0.75)
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         displayedText.append(character)
+        displayedGlyphs.append(WritingGlyph(character: character, silenceProgress: 0))
         updateLiveState(now: now)
         startTicker()
         persistDraftAndScheduleSilence()
@@ -107,6 +127,37 @@ final class WriteViewModel: ObservableObject {
         invalidInputHaptic.notificationOccurred(.warning)
         invalidInputHaptic.prepare()
         showTransientError("that doesn't work here. just keep writing without agenda.")
+    }
+
+    var shouldShowNudgeDialogue: Bool {
+        isRequestingNudge || isNudgeMessageVisible
+    }
+
+    var nudgeDialogueMessage: String {
+        if isRequestingNudge {
+            return "anky is listening to this .anky for one line."
+        }
+        return nudgeMessage ?? ""
+    }
+
+    @discardableResult
+    func startAnkyNudgeIfPossible() -> Bool {
+        guard writer.isStarted, !protocolText.isEmpty else {
+            return false
+        }
+        guard !isNudgeMessageVisible else {
+            return true
+        }
+        guard !isRequestingNudge else {
+            isNudgeMessageVisible = true
+            return true
+        }
+
+        nudgeTask?.cancel()
+        nudgeTask = Task { [weak self] in
+            await self?.requestAnkyNudge()
+        }
+        return true
     }
 
     func persistOnBackground() {
@@ -194,6 +245,7 @@ final class WriteViewModel: ObservableObject {
 
     func dismissCurrentPrompt() {
         clearErrorMessage()
+        clearNudgeMessage()
     }
 
     func prepareForWritingScene() {
@@ -231,6 +283,7 @@ final class WriteViewModel: ObservableObject {
             writer = restored
             protocolText = writer.text
             displayedText = AnkyReconstructor.reconstructText(parsed)
+            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
             lastCharacter = displayedText.last
             updateLiveState()
 
@@ -253,6 +306,51 @@ final class WriteViewModel: ObservableObject {
         protocolText = writer.text
         draftStore.save(protocolText)
         scheduleSilenceClose(afterMs: AnkyDuration.terminalSilenceMs)
+    }
+
+    private func requestAnkyNudge() async {
+        let text = protocolText
+        guard writer.isStarted, !text.isEmpty else {
+            return
+        }
+
+        guard let baseURL = URL(string: MirrorConfiguration.currentBaseURL(defaults: userDefaults)) else {
+            showTransientNudge("i can't reach the mirror url yet.")
+            return
+        }
+
+        isRequestingNudge = true
+        isNudgeMessageVisible = true
+        nudgeMessage = nil
+        defer { isRequestingNudge = false }
+
+        do {
+            let bytes = Data(text.utf8)
+            let identity = try identityStore.loadOrCreate()
+            let trialProof = await DeviceCheckTrialProofProvider.makeToken()
+            let response = try await MirrorClient(baseURL: baseURL).askAnky(
+                bytes: bytes,
+                identity: identity,
+                trialProof: trialProof,
+                appVersion: AnkyAppVersion.headerValue,
+                intent: .nudge
+            )
+
+            guard response.hash == AnkyHasher.sha256Hex(bytes) else {
+                throw MirrorClientError.hashMismatch
+            }
+
+            guard !Task.isCancelled else {
+                return
+            }
+            showTransientNudge(Self.oneLineNudge(from: response.reflection))
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+            let message = (error as? LocalizedError)?.errorDescription ?? "anky could not return a nudge right now."
+            showTransientNudge(Self.nudgeErrorMessage(from: message))
+        }
     }
 
     private func scheduleSilenceClose(afterMs milliseconds: Int64) {
@@ -322,17 +420,20 @@ final class WriteViewModel: ObservableObject {
         tickerTask?.cancel()
         writer = AnkyWriter()
         displayedText = ""
+        displayedGlyphs = []
         protocolText = ""
         elapsedMs = 0
         silenceElapsedMs = 0
         silenceRemainingMs = AnkyDuration.terminalSilenceMs
         lastCharacter = nil
+        lastCharacterPulseID = UUID()
         needsImmediateClose = false
         isClosing = false
         isFrozen = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         keyboardFocusID = UUID()
+        clearNudgeMessage()
     }
 
     private func showPersistentError(_ message: String) {
@@ -372,6 +473,49 @@ final class WriteViewModel: ObservableObject {
         errorRecallExpirationDate = nil
     }
 
+    private func showTransientNudge(_ message: String) {
+        nudgeTask?.cancel()
+        nudgeMessage = message
+        isNudgeMessageVisible = true
+        nudgeTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            if self?.nudgeMessage == message {
+                self?.clearNudgeMessage()
+            }
+        }
+    }
+
+    private func clearNudgeMessage() {
+        nudgeTask?.cancel()
+        nudgeMessage = nil
+        isNudgeMessageVisible = false
+    }
+
+    private static func oneLineNudge(from text: String) -> String {
+        let cleaned = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutHeading = cleaned.replacingOccurrences(
+            of: #"^#+\s*"#,
+            with: "",
+            options: .regularExpression
+        )
+        return withoutHeading.isEmpty ? "stay with the next true sentence." : withoutHeading
+    }
+
+    private static func nudgeErrorMessage(from message: String) -> String {
+        if message.localizedCaseInsensitiveContains("credit") {
+            return "that nudge needs one credit."
+        }
+        if message.localizedCaseInsensitiveContains("incomplete") {
+            return "the mirror is not ready to nudge unfinished ankys yet."
+        }
+        return "anky could not return a nudge right now."
+    }
+
     private func startTicker() {
         tickerTask?.cancel()
         tickerTask = Task { [weak self] in
@@ -392,6 +536,7 @@ final class WriteViewModel: ObservableObject {
         if let lastAcceptedMs = writer.lastAcceptedMs {
             silenceElapsedMs = max(0, now - lastAcceptedMs)
             silenceRemainingMs = max(0, AnkyDuration.terminalSilenceMs - silenceElapsedMs)
+            updateLatestGlyphColorProgress(silenceElapsedMs: silenceElapsedMs)
             if silenceElapsedMs < 1000 {
                 lastAlarmHapticSecond = 0
             }
@@ -405,12 +550,27 @@ final class WriteViewModel: ObservableObject {
             }
         }
 
-        let minute = min(8, Int(elapsedMs / 60_000))
+        let minute = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
         if minute > lastMinuteHaptic {
             minuteHaptic.impactOccurred(intensity: 0.8)
             minuteHaptic.prepare()
             lastMinuteHaptic = minute
         }
+    }
+
+    private func freezeLatestGlyph(now: Int64) {
+        guard writer.lastAcceptedMs != nil else {
+            return
+        }
+        updateLatestGlyphColorProgress(silenceElapsedMs: max(0, now - (writer.lastAcceptedMs ?? now)))
+    }
+
+    private func updateLatestGlyphColorProgress(silenceElapsedMs: Int64) {
+        guard !displayedGlyphs.isEmpty else {
+            return
+        }
+        let progress = min(1, max(0, Double(silenceElapsedMs) / Double(AnkyDuration.terminalSilenceMs)))
+        displayedGlyphs[displayedGlyphs.count - 1].silenceProgress = progress
     }
 
     private func closeOrFreezeAfterSilence() {

@@ -7,11 +7,17 @@ struct MirrorClient {
     let baseURL: URL
     var session: URLSession = .shared
 
+    enum Intent: String {
+        case reflection
+        case nudge
+    }
+
     func askAnky(
         bytes: Data,
         identity: WriterIdentity,
         trialProof: String? = nil,
-        appVersion: String? = nil
+        appVersion: String? = nil,
+        intent: Intent = .reflection
     ) async throws -> MirrorResponsePayload {
         let signed = try AnkyPostSigner.sign(body: bytes, identity: identity)
         var request = URLRequest(url: baseURL.appendingPathComponent("anky"))
@@ -25,6 +31,7 @@ struct MirrorClient {
         request.setValue(signed.signature, forHTTPHeaderField: "X-Anky-Signature")
         request.setValue(signed.requestTime, forHTTPHeaderField: "X-Anky-Request-Time")
         request.setValue(signed.client, forHTTPHeaderField: "X-Anky-Client")
+        request.setValue(intent.rawValue, forHTTPHeaderField: "X-Anky-Intent")
         if let appVersion {
             request.setValue(appVersion, forHTTPHeaderField: "X-Anky-App-Version")
         }

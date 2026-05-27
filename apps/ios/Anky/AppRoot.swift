@@ -7,12 +7,15 @@ struct AppRoot: View {
     @State private var selectedTab = 0
     @State private var revealAfterWriting: SavedAnky?
     @State private var isUnlocked = false
-    @State private var authFailed = false
+    @State private var failedAuthAttempts = 0
     @State private var isAuthenticating = false
+    @State private var recoveryPhraseInput = ""
     @State private var showsLaunchDialogue = true
     @State private var keyboardHeight: CGFloat = 0
+    @State private var companionMessageIndexByTab: [Int: Int] = [:]
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
+    @StateObject private var ankyCompanion = AnkyCompanionStore()
 
     private func showMap() {
         selectedTab = 1
@@ -44,7 +47,8 @@ struct AppRoot: View {
 
                 MapView(
                     revealAfterWriting: $revealAfterWriting,
-                    onTryAgain: beginRetryWriting
+                    onTryAgain: beginRetryWriting,
+                    onOpenCredits: openCredits
                 )
                     .tabItem {
                         Label("Map", systemImage: "map")
@@ -57,45 +61,44 @@ struct AppRoot: View {
                     }
                     .tag(2)
             }
+            .environmentObject(ankyCompanion)
 
             if faceIDLockEnabled && !isUnlocked {
-                LockFailureView(authFailed: authFailed, isAuthenticating: isAuthenticating) {
-                    Task {
-                        await authenticateIfNeeded()
-                    }
-                }
+                LockFailureView(
+                    allowsRecoveryPhrase: failedAuthAttempts >= 2,
+                    recoveryPhraseInput: $recoveryPhraseInput,
+                    retry: {
+                        Task {
+                            await authenticateIfNeeded()
+                        }
+                    },
+                    recover: recoverIdentity
+                )
+                .zIndex(100)
             }
 
             AnkyPresenceOverlay(
+                companion: ankyCompanion,
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
                 transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
-                dockedToDialogue: shouldShowWriteDialogue,
+                dockedToDialogue: false,
                 onTap: presenceTapHandler
             )
                 .zIndex(40)
-
-            if shouldShowWriteDialogue {
-                VStack {
-                    Spacer()
-
-                    writeDialogue
-                    .padding(.leading, 108)
-                    .padding(.trailing, 18)
-                    .padding(.bottom, dialogueBottomPadding)
-                }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-                .zIndex(60)
-            }
         }
         .ignoresSafeArea(.keyboard)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
             keyboardHeight = keyboardOverlap(from: notification)
+            syncWriteBubble()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardHeight = 0
+            syncWriteBubble()
         }
         .onAppear {
+            selectedTab = 0
+            revealAfterWriting = nil
             AppOpenStore().loadOrCreate()
             let identityStore = WriterIdentityStore()
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
@@ -106,6 +109,7 @@ struct AppRoot: View {
             Task {
                 await authenticateIfNeeded()
             }
+            syncWriteBubble()
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -118,7 +122,8 @@ struct AppRoot: View {
             case .background:
                 if faceIDLockEnabled {
                     isUnlocked = false
-                    authFailed = false
+                    failedAuthAttempts = 0
+                    recoveryPhraseInput = ""
                 }
             case .inactive:
                 break
@@ -129,25 +134,50 @@ struct AppRoot: View {
         .onChange(of: faceIDLockEnabled) { _, enabled in
             if enabled {
                 isUnlocked = false
+                failedAuthAttempts = 0
+                recoveryPhraseInput = ""
                 Task {
                     await authenticateIfNeeded()
                 }
             } else {
                 isUnlocked = true
-                authFailed = false
+                failedAuthAttempts = 0
+                recoveryPhraseInput = ""
             }
         }
         .onChange(of: writeViewModel.hasStarted) { _, hasStarted in
             if hasStarted {
                 showsLaunchDialogue = false
+                ankyCompanion.hideBubble(returningTo: .listening)
             }
+            syncWriteBubble()
+        }
+        .onChange(of: selectedTab) { _, tab in
+            if tab != 0 {
+                ankyCompanion.hideBubble()
+            } else {
+                syncWriteBubble()
+            }
+        }
+        .onChange(of: isUnlocked) { _, _ in
+            syncWriteBubble()
+        }
+        .onChange(of: writeViewModel.isErrorMessageVisible) { _, _ in
+            syncWriteBubble()
+        }
+        .onChange(of: writeViewModel.errorMessage) { _, _ in
+            syncWriteBubble()
+        }
+        .onChange(of: writeViewModel.shouldShowNudgeDialogue) { _, _ in
+            syncWriteBubble()
         }
     }
 
     private func authenticateIfNeeded() async {
         guard faceIDLockEnabled else {
             isUnlocked = true
-            authFailed = false
+            failedAuthAttempts = 0
+            recoveryPhraseInput = ""
             return
         }
         guard !isUnlocked, !isAuthenticating else {
@@ -156,28 +186,58 @@ struct AppRoot: View {
 
         isAuthenticating = true
         isUnlocked = false
-        authFailed = false
         let ok = await BiometricAuthClient().confirm(reason: "Unlock ANKY.")
         isUnlocked = ok
-        authFailed = !ok
+        if ok {
+            failedAuthAttempts = 0
+            recoveryPhraseInput = ""
+        } else {
+            failedAuthAttempts += 1
+        }
         isAuthenticating = false
+    }
+
+    private func recoverIdentity(_ phraseText: String) {
+        do {
+            _ = try WriterIdentityStore().importRecoveryPhrase(phraseText)
+            youViewModel.refresh()
+            recoveryPhraseInput = ""
+            failedAuthAttempts = 0
+            isUnlocked = true
+        } catch {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
     }
 
     private func closeLaunchDialogue() {
         withAnimation(.easeOut(duration: 0.22)) {
             showsLaunchDialogue = false
         }
+        ankyCompanion.hideBubble()
     }
 
     private func beginLaunchWriting() {
         closeLaunchDialogue()
+        ankyCompanion.hideBubble(returningTo: .listening)
         writeViewModel.openWritingPortal()
     }
 
     private func beginRetryWriting() {
         showsLaunchDialogue = false
+        ankyCompanion.hideBubble(returningTo: .listening)
         selectedTab = 0
         writeViewModel.openWritingPortal()
+    }
+
+    private func openCredits() {
+        selectedTab = 2
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            ankyCompanion.witness(
+                mood: .guiding,
+                sequence: .waveFront,
+                bubble: AnkyBubble(text: "open credits to restore the reflection gate.")
+            )
+        }
     }
 
     private var shouldFocusWrite: Bool {
@@ -202,27 +262,11 @@ struct AppRoot: View {
             && writeViewModel.errorMessage != nil
     }
 
-    private var shouldShowWriteDialogue: Bool {
-        shouldShowWriteErrorDialogue || shouldShowLaunchDialogue
-    }
-
-    @ViewBuilder
-    private var writeDialogue: some View {
-        if shouldShowWriteErrorDialogue, let errorMessage = writeViewModel.errorMessage {
-            AnkyConversationPromptView(
-                message: errorMessage,
-                actionTitle: nil,
-                action: nil,
-                close: writeViewModel.dismissCurrentPrompt
-            )
-        } else {
-            AnkyConversationPromptView(
-                message: launchDialogueMessage,
-                actionTitle: writeViewModel.todayAnkyCount > 0 ? "write again" : "write 8 minutes",
-                action: beginLaunchWriting,
-                close: closeLaunchDialogue
-            )
-        }
+    private var shouldShowWriteNudgeDialogue: Bool {
+        selectedTab == 0
+            && (!faceIDLockEnabled || isUnlocked)
+            && writeViewModel.shouldShowNudgeDialogue
+            && !writeViewModel.nudgeDialogueMessage.isEmpty
     }
 
     private var launchDialogueMessage: String {
@@ -231,10 +275,6 @@ struct AppRoot: View {
         }
 
         return "ankys today: \(writeViewModel.todayAnkyCount)"
-    }
-
-    private var dialogueBottomPadding: CGFloat {
-        keyboardHeight > 0 ? keyboardHeight + 8 : 18
     }
 
     private func keyboardOverlap(from notification: Notification) -> CGFloat {
@@ -259,42 +299,231 @@ struct AppRoot: View {
     }
 
     private var presenceTapHandler: (() -> Bool)? {
-        guard selectedTab == 0 else {
-            return nil
-        }
         return {
-            writeViewModel.replayRecentPromptIfAvailable()
+            if writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark {
+                return writeViewModel.startAnkyNudgeIfPossible()
+            }
+            if selectedTab == 0 && writeViewModel.replayRecentPromptIfAvailable() {
+                return true
+            }
+            showCompanionNote()
+            return true
+        }
+    }
+
+    private func syncWriteBubble() {
+        guard selectedTab == 0, !faceIDLockEnabled || isUnlocked else {
+            return
+        }
+
+        if shouldShowWriteErrorDialogue, let errorMessage = writeViewModel.errorMessage {
+            ankyCompanion.witness(
+                mood: .concerned,
+                sequence: .softConcern,
+                bubble: AnkyBubble(
+                    text: errorMessage,
+                    close: {
+                        writeViewModel.dismissCurrentPrompt()
+                        ankyCompanion.hideBubble()
+                    }
+                )
+            )
+            return
+        }
+
+        if shouldShowWriteNudgeDialogue {
+            ankyCompanion.witness(
+                mood: .listening,
+                sequence: .shyListening,
+                bubble: AnkyBubble(
+                    text: writeViewModel.nudgeDialogueMessage,
+                    close: {
+                        writeViewModel.dismissCurrentPrompt()
+                        ankyCompanion.hideBubble(returningTo: .listening)
+                    }
+                )
+            )
+            return
+        }
+
+        if shouldShowLaunchDialogue {
+            ankyCompanion.witness(
+                mood: .guiding,
+                sequence: .waveFront,
+                bubble: AnkyBubble(
+                    text: launchDialogueMessage,
+                    actions: [
+                        AnkyChatAction(writeViewModel.todayAnkyCount > 0 ? "write again" : "write \(AnkyDuration.completeRitualMinutes) minutes", isPrimary: true) {
+                            beginLaunchWriting()
+                        }
+                    ],
+                    steps: [
+                        AnkyBubbleStep("write one character"),
+                        AnkyBubbleStep("keep the thread alive"),
+                        AnkyBubbleStep("let silence close it")
+                    ],
+                    close: closeLaunchDialogue
+                )
+            )
+            return
+        }
+
+        if writeViewModel.hasStarted {
+            ankyCompanion.witness(mood: .listening, sequence: .findingThread)
+        } else {
+            ankyCompanion.hideBubble()
+        }
+    }
+
+    private func showCompanionNote() {
+        showsLaunchDialogue = false
+        let messages = companionMessages(for: selectedTab)
+        let index = companionMessageIndexByTab[selectedTab, default: 0]
+        companionMessageIndexByTab[selectedTab] = index + 1
+        let message = messages[index % messages.count]
+        ankyCompanion.witness(
+            mood: .guiding,
+            sequence: presenceSequence,
+            bubble: AnkyBubble(text: message)
+        )
+    }
+
+    private func dismissCompanionNote() {
+        ankyCompanion.hideBubble()
+    }
+
+    private func companionMessages(for tab: Int) -> [String] {
+        switch tab {
+        case 0:
+            if writeViewModel.hasReachedRitualMark {
+                return [
+                    "you are here. the ritual is complete; let the final silence close it.",
+                    "you are here. this .anky is ready to become an artifact.",
+                    "you are here. the thread crossed \(AnkyDuration.completeRitualMinutes) minutes. stay quiet and let it seal."
+                ]
+            }
+            return [
+                "you are here. this is the writing surface: one living thread, one character at a time.",
+                "you are here. deletion is blocked on purpose; keep moving forward without editing.",
+                "you are here. writing stays local unless you export it or ask for a reflection.",
+                "you are here. \(AnkyDuration.completeRitualMinutes) minutes turns a fragment into a complete .anky."
+            ]
+        case 1:
+            return [
+                "you are here. the map is your local trail; every day exists even when it is quiet.",
+                "you are here. tap a day to reopen its .ankys and saved reflections.",
+                "you are here. the trail begins on the first day this app opened on this device.",
+                "you are here. fragments and complete ankys both stay in your local archive."
+            ]
+        case 2:
+            return [
+                "you are here. this page is for identity, privacy, exports, and reflection credits.",
+                "you are here. your identity unlocks reflections, backups, and credit balance.",
+                "you are here. data leaves this phone only when you choose export or reflection.",
+                "you are here. credits buy reflections; writing itself stays free."
+            ]
+        default:
+            return ["you are here."]
         }
     }
 }
 
 private struct LockFailureView: View {
-    let authFailed: Bool
-    let isAuthenticating: Bool
+    let allowsRecoveryPhrase: Bool
+    @Binding var recoveryPhraseInput: String
     let retry: () -> Void
+    let recover: (String) -> Void
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Color.black
                 .ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                if authFailed {
-                    Text("face id didn't work. you should not be here")
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                } else {
-                    ProgressView()
-                }
-
-                Button("Try again") {
-                    retry()
-                }
-                .buttonStyle(.bordered)
-                .opacity(authFailed ? 1 : 0)
-                .disabled(!authFailed)
+            GeometryReader { geometry in
+                Image("tellmewhoyouare")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: geometry.size.height)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
             }
-            .padding(24)
+            .ignoresSafeArea()
+
+            if allowsRecoveryPhrase {
+                VStack {
+                    Spacer()
+
+                    SeedPhraseEntry(text: $recoveryPhraseInput)
+                        .frame(height: 116)
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 34)
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard !allowsRecoveryPhrase else {
+                return
+            }
+            retry()
+        }
+        .onChange(of: recoveryPhraseInput) { _, phrase in
+            let normalized = phrase
+                .lowercased()
+                .split { $0.isWhitespace || $0.isNewline }
+                .joined(separator: " ")
+            guard normalized.split(separator: " ").count == 12 else {
+                return
+            }
+            recover(normalized)
+        }
+    }
+}
+
+private struct SeedPhraseEntry: UIViewRepresentable {
+    @Binding var text: String
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.backgroundColor = UIColor.black.withAlphaComponent(0.18)
+        textView.textColor = UIColor.white.withAlphaComponent(0.88)
+        textView.tintColor = UIColor.white.withAlphaComponent(0.82)
+        textView.font = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+        textView.textAlignment = .center
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.spellCheckingType = .no
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        textView.textContainerInset = UIEdgeInsets(top: 16, left: 14, bottom: 16, right: 14)
+        textView.layer.cornerRadius = 6
+        textView.layer.borderWidth = 1
+        textView.layer.borderColor = UIColor.white.withAlphaComponent(0.16).cgColor
+        DispatchQueue.main.async {
+            textView.becomeFirstResponder()
+        }
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            text = textView.text
         }
     }
 }

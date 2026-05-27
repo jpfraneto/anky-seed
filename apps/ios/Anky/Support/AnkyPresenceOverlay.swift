@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct AnkyPresenceOverlay: View {
+    @ObservedObject var companion: AnkyCompanionStore
     let defaultSequence: AnkySequenceName
     let goldenGlow: Bool
     let transformToSigil: Bool
@@ -18,12 +19,14 @@ struct AnkyPresenceOverlay: View {
     @State private var keyboardHeight: CGFloat = 0
 
     init(
+        companion: AnkyCompanionStore,
         defaultSequence: AnkySequenceName = .idleFront,
         goldenGlow: Bool = false,
         transformToSigil: Bool = false,
         dockedToDialogue: Bool = false,
         onTap: (() -> Bool)? = nil
     ) {
+        self.companion = companion
         self.defaultSequence = defaultSequence
         self.goldenGlow = goldenGlow
         self.transformToSigil = transformToSigil
@@ -35,81 +38,101 @@ struct AnkyPresenceOverlay: View {
     var body: some View {
         GeometryReader { geometry in
             let size = presenceSize(for: geometry.size)
-            let point = resolvedPoint(in: geometry.size, presenceSize: size)
+            let isDockedToBubble = dockedToDialogue || companion.bubble != nil
+            let point = resolvedPoint(in: geometry.size, presenceSize: size, docked: isDockedToBubble)
+            let effectiveSequence = companion.sequenceOverride ?? sequence
 
             ZStack {
-                if showsCompanion && goldenGlow {
-                    TimelineView(.animation) { timeline in
-                        let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.0) + 1) / 2
-                        Circle()
-                            .fill(AnkyTheme.gold.opacity(0.12 + pulse * 0.08))
-                            .frame(width: size * 1.18, height: size * 1.18)
-                            .blur(radius: 7 + pulse * 4)
+                if let bubble = companion.bubble {
+                    VStack {
+                        Spacer()
+
+                        AnkyBubbleView(
+                            bubble: bubble,
+                            close: {
+                                companion.hideBubble()
+                            }
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 18)
                     }
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .zIndex(2)
                 }
 
-                AnkyWitnessView(mood: .warm, size: .companion, sequence: sequence)
-                    .frame(width: size, height: size)
-                    .scaleEffect(showsCompanion ? (breathing ? 1.025 : 0.985) : 0.86)
-                    .opacity(showsCompanion ? 1 : 0)
+                ZStack {
+                    if showsCompanion && goldenGlow {
+                        TimelineView(.animation) { timeline in
+                            let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.0) + 1) / 2
+                            Circle()
+                                .fill(AnkyTheme.gold.opacity(0.12 + pulse * 0.08))
+                                .frame(width: size * 1.18, height: size * 1.18)
+                                .blur(radius: 7 + pulse * 4)
+                        }
+                        .transition(.opacity)
+                    }
 
-                Image("AnkySigil")
-                    .resizable()
-                    .scaledToFit()
+                    AnkyWitnessView(mood: companion.mood.witnessMood, size: .companion, sequence: effectiveSequence)
+                        .frame(width: size, height: size)
+                        .scaleEffect(showsCompanion ? (breathing ? 1.025 : 0.985) : 0.86)
+                        .opacity(showsCompanion ? 1 : 0)
+
+                    Image("AnkySigil")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: size, height: size)
+                        .scaleEffect(showsCompanion ? 0.72 : 1)
+                        .opacity(showsCompanion ? 0 : 1)
+                }
                     .frame(width: size, height: size)
-                    .scaleEffect(showsCompanion ? 0.72 : 1)
-                    .opacity(showsCompanion ? 0 : 1)
-            }
-            .frame(width: size, height: size)
-            .animation(.easeInOut(duration: 0.4), value: goldenGlow)
-            .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
-            .contentShape(Circle())
-            .position(point)
-            .animation(.easeInOut(duration: 0.85), value: dockedToDialogue)
-            .animation(.easeInOut(duration: 0.35), value: keyboardHeight)
-            .gesture(dragGesture(in: geometry.size, presenceSize: size))
-            .onTapGesture {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if onTap?() == true {
-                    return
-                }
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                    isVisible.toggle()
-                }
-            }
-            .onLongPressGesture(minimumDuration: 3) {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                showMenu = true
-            }
-            .confirmationDialog("Anky", isPresented: $showMenu, titleVisibility: .visible) {
-                if isVisible {
-                    Button("Keep Anky here") {
+                    .animation(.easeInOut(duration: 0.4), value: goldenGlow)
+                    .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
+                    .contentShape(Circle())
+                    .position(point)
+                    .animation(.easeInOut(duration: 0.85), value: isDockedToBubble)
+                    .animation(.easeInOut(duration: 0.35), value: keyboardHeight)
+                    .gesture(dragGesture(in: geometry.size, presenceSize: size, docked: isDockedToBubble))
+                    .onTapGesture {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                    Button("Hide Anky") {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                            isVisible = false
+                        if onTap?() == true {
+                            return
                         }
                     }
-                } else {
-                    Button("Show Anky") {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                            isVisible = true
-                        }
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    .onLongPressGesture(minimumDuration: 3) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        showMenu = true
                     }
-                }
-                Button("Move Anky home") {
-                    resetPosition(in: geometry.size, presenceSize: size)
-                }
-                Button("Change motion") {
-                    sequence = sequence.next
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(isVisible ? "drag anky anywhere" : "tap the sigil to bring anky back")
+                    .confirmationDialog("Anky", isPresented: $showMenu, titleVisibility: .visible) {
+                        if isVisible {
+                            Button("Keep Anky here") {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                            Button("Hide Anky") {
+                                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                                    isVisible = false
+                                }
+                            }
+                        } else {
+                            Button("Show Anky") {
+                                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                                    isVisible = true
+                                }
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }
+                        Button("Move Anky home") {
+                            resetPosition(in: geometry.size, presenceSize: size)
+                        }
+                        Button("Change motion") {
+                            sequence = sequence.next
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text(isVisible ? "drag anky anywhere" : "tap the sigil to bring anky back")
+                    }
+                    .zIndex(3)
             }
             .onAppear {
                 breathing = true
@@ -123,7 +146,7 @@ struct AnkyPresenceOverlay: View {
             }
             .onChange(of: keyboardHeight) { _ in
                 let clamped = clamp(
-                    resolvedPoint(in: geometry.size, presenceSize: size),
+                    resolvedPoint(in: geometry.size, presenceSize: size, docked: isDockedToBubble),
                     in: geometry.size,
                     presenceSize: size
                 )
@@ -146,11 +169,11 @@ struct AnkyPresenceOverlay: View {
         isVisible && !transformToSigil
     }
 
-    private func dragGesture(in containerSize: CGSize, presenceSize: CGFloat) -> some Gesture {
+    private func dragGesture(in containerSize: CGSize, presenceSize: CGFloat, docked: Bool) -> some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
                 if dragStart == nil {
-                    dragStart = resolvedPoint(in: containerSize, presenceSize: presenceSize)
+                    dragStart = resolvedPoint(in: containerSize, presenceSize: presenceSize, docked: docked)
                 }
 
                 guard let dragStart else {
@@ -174,8 +197,8 @@ struct AnkyPresenceOverlay: View {
             }
     }
 
-    private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        if dockedToDialogue {
+    private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat, docked: Bool) -> CGPoint {
+        if docked {
             return clamp(dialoguePoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
         }
 

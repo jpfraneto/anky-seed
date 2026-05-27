@@ -34,6 +34,26 @@ describe("GET /health", () => {
   });
 });
 
+describe("GET /active", () => {
+  test("serves the local-only active composer", async () => {
+    const app = createApp({
+      env: ankyWorld({}),
+      logger: createSafeLogger({ log() {} }),
+    });
+
+    const response = await app.request("/active");
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(html).toContain("Anky Active writing surface");
+    expect(html).toContain("written via Anky");
+    expect(html).toContain("crypto.subtle.digest");
+    expect(html).not.toContain("fetch(");
+    expect(html).not.toContain("XMLHttpRequest");
+  });
+});
+
 describe("POST /anky", () => {
   test("returns a reflection for a complete signed .anky", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
@@ -295,6 +315,54 @@ describe("POST /anky", () => {
     expect(response.status).toBe(400);
     expect(json.error.code).toBe("INCOMPLETE_RITUAL");
     expect(creditCalls).toBe(0);
+  });
+
+  test("nudge intent accepts an unfinished .anky and spends after a one-line response", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
+    let creditHash: string | undefined;
+    let promptText = "";
+    let spendCalls = 0;
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async ({ ankyHash }) => {
+          creditHash = ankyHash;
+          return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
+        },
+        routeReflection: async ({ prompt }) => {
+          promptText = prompt;
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "nudge",
+            reflection: "Follow the sentence that still feels warm.",
+          };
+        },
+        spendPreparedReflectionCredit: async () => {
+          spendCalls += 1;
+          return { ok: true, creditsRemaining: 3, result: "spent", spentCredit: true };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { "X-Anky-Intent": "nudge" }),
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Anky-Intent")).toBe("nudge");
+    expect(response.headers.get("X-Anky-Hash")).toHaveLength(64);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("3");
+    expect(text).toBe("Follow the sentence that still feels warm.");
+    expect(text).not.toContain("#");
+    expect(promptText).toContain("unfinished .anky");
+    expect(promptText).toContain("one sentence");
+    expect(creditHash).toHaveLength(64);
+    expect(spendCalls).toBe(1);
   });
 
   test("rejects invalid ankys before trial grant, spend, or model", async () => {

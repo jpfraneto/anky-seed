@@ -3,7 +3,7 @@
  *
  * This file is the backend of Anky. There are no more dependencies. It is the only file in the backend directory.
  *
- * There is ONE endpoint: POST /anky. the payload is a .anky string compliant to the protocol: https://anky.app/protocol.md
+ * The mirror endpoint is POST /anky. the payload is a .anky string compliant to the protocol: https://anky.app/protocol.md
  *
  * A client writes a `.anky` file locally. When the writer asks to be witnessed,
  * the client signs the exact bytes and sends them to POST /anky. The server
@@ -67,7 +67,7 @@ export const mapOfThisFile = {
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
   providers:
     "routeReflection -> openRouterProvider -> defaultReflectionProvider",
-  prompt: "buildStorytellerPrompt",
+  prompt: "buildStorytellerPrompt / buildNudgePrompt",
   endpoint: "handleAnkyReflection",
   startServer: "import.meta.main",
 } as const;
@@ -269,6 +269,7 @@ export function createApp(
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true }));
+  app.get("/active", (c) => c.html(activeComposerHtml));
   app.post("/anky", (c) => {
     const deps = {
       ...input.ankyRouteDeps,
@@ -282,6 +283,341 @@ export function createApp(
 
   return app;
 }
+
+const activeComposerHtml = String.raw`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anky Active</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        background: #000;
+        color: #f5f5f0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: #000;
+      }
+
+      body {
+        display: flex;
+        align-items: stretch;
+      }
+
+      main {
+        width: min(920px, 100%);
+        margin: 0 auto;
+        padding: clamp(24px, 6vw, 72px);
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      #surface {
+        min-height: min(62vh, 680px);
+        width: 100%;
+        padding: 0;
+        border: 0;
+        outline: 0;
+        background: #000;
+        color: #f5f5f0;
+        caret-color: #f5f5f0;
+        font: inherit;
+        font-size: clamp(20px, 2.4vw, 32px);
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      #surface:focus {
+        outline: 0;
+      }
+
+      #surface[aria-readonly="true"] {
+        caret-color: transparent;
+      }
+
+      #result[hidden] {
+        display: none;
+      }
+
+      pre {
+        margin: 0;
+        padding: 18px 0 0;
+        border-top: 1px solid #242424;
+        color: #f5f5f0;
+        font: inherit;
+        font-size: clamp(17px, 1.8vw, 24px);
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      code {
+        font: inherit;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 18px;
+        color: #a9a9a2;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      #hash {
+        overflow-wrap: anywhere;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid #3a3a36;
+        border-radius: 4px;
+        background: #0d0d0c;
+        color: #f5f5f0;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        padding: 8px 11px;
+      }
+
+      button:focus-visible {
+        outline: 2px solid #f5f5f0;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="surface" role="textbox" aria-label="Anky Active writing surface" contenteditable="plaintext-only" spellcheck="true" autofocus></div>
+
+      <section id="result" hidden aria-live="polite">
+        <pre><code id="readable"></code></pre>
+        <div class="meta">
+          <span>written via Anky</span>
+          <span id="hash" aria-label=".anky sha256 hash"></span>
+          <button id="copy" type="button">Copy</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const TERMINAL_SILENCE_MS = 8000;
+
+        const surface = document.getElementById("surface");
+        const result = document.getElementById("result");
+        const readable = document.getElementById("readable");
+        const hashNode = document.getElementById("hash");
+        const copyButton = document.getElementById("copy");
+
+        const state = {
+          startedAt: 0,
+          lastAcceptedAt: 0,
+          accepted: [],
+          text: "",
+          idleTimer: 0,
+          finalized: false,
+          dotAnky: "",
+          hash: "",
+          displayArtifact: "",
+        };
+
+        function focusSurface() {
+          if (!state.finalized) surface.focus({ preventScroll: true });
+        }
+
+        function acceptedCharacters(input) {
+          return [...input].filter((character) => character !== "\n" && character !== "\r");
+        }
+
+        function acceptText(input) {
+          if (state.finalized) return;
+
+          const characters = acceptedCharacters(input);
+          if (characters.length === 0) return;
+
+          const now = Date.now();
+          for (const character of characters) {
+            const deltaMs = state.accepted.length === 0 ? 0 : Math.max(0, now - state.lastAcceptedAt);
+            if (state.accepted.length === 0) state.startedAt = now;
+            state.accepted.push({ deltaMs, character });
+            state.lastAcceptedAt = now;
+            state.text += character;
+          }
+
+          surface.textContent = state.text;
+          moveCaretToEnd();
+          resetSilenceTimer();
+        }
+
+        function resetSilenceTimer() {
+          window.clearTimeout(state.idleTimer);
+          state.idleTimer = window.setTimeout(finalize, TERMINAL_SILENCE_MS);
+        }
+
+        async function finalize() {
+          if (state.finalized || state.accepted.length === 0) return;
+
+          state.finalized = true;
+          window.clearTimeout(state.idleTimer);
+          surface.setAttribute("aria-readonly", "true");
+          surface.removeAttribute("contenteditable");
+
+          state.dotAnky = buildDotAnky();
+          state.hash = await sha256Hex(new TextEncoder().encode(state.dotAnky));
+          state.displayArtifact = state.text + "\n\nwritten via Anky\nsha256: " + state.hash;
+
+          readable.textContent = state.text;
+          hashNode.textContent = "sha256: " + state.hash;
+          result.hidden = false;
+          copyButton.focus({ preventScroll: true });
+        }
+
+        function buildDotAnky() {
+          const lines = state.accepted.map((event, index) => {
+            const time = index === 0 ? state.startedAt : event.deltaMs;
+            return String(time) + " " + event.character;
+          });
+          lines.push(String(TERMINAL_SILENCE_MS));
+          return lines.join("\n");
+        }
+
+        async function sha256Hex(bytes) {
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          return [...new Uint8Array(digest)]
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+        }
+
+        async function copyArtifact() {
+          const copied = await writeClipboardText(state.displayArtifact);
+          copyButton.textContent = copied ? "Copied" : "Copy failed";
+          window.setTimeout(() => {
+            copyButton.textContent = "Copy";
+          }, 1600);
+        }
+
+        async function writeClipboardText(text) {
+          if (navigator.clipboard?.writeText) {
+            try {
+              await navigator.clipboard.writeText(text);
+              return true;
+            } catch {
+              // Fall back for browsers that expose Clipboard API but deny it.
+            }
+          }
+
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.inset = "0 auto auto 0";
+          textarea.style.opacity = "0";
+          document.body.append(textarea);
+          textarea.select();
+          let copied = false;
+          try {
+            copied = document.execCommand("copy");
+          } finally {
+            textarea.remove();
+            copyButton.focus({ preventScroll: true });
+          }
+          return copied;
+        }
+
+        function moveCaretToEnd() {
+          const selection = window.getSelection();
+          if (!selection) return;
+          const range = document.createRange();
+          range.selectNodeContents(surface);
+          range.collapse(false);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        function block(event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        surface.addEventListener("keydown", (event) => {
+          if (state.finalized) {
+            block(event);
+            return;
+          }
+
+          const key = event.key;
+          const command = event.metaKey || event.ctrlKey;
+
+          if (
+            key === "Backspace" ||
+            key === "Delete" ||
+            key === "Enter" ||
+            key === "NumpadEnter" ||
+            (command && ["v", "x", "z", "y"].includes(key.toLowerCase()))
+          ) {
+            block(event);
+            return;
+          }
+
+          if (!command && !event.altKey && !event.isComposing && key.length === 1) {
+            block(event);
+            acceptText(key);
+          }
+        }, true);
+
+        surface.addEventListener("beforeinput", (event) => {
+          if (state.finalized) {
+            block(event);
+            return;
+          }
+
+          const inputType = event.inputType || "";
+          if (
+            inputType === "insertParagraph" ||
+            inputType === "insertLineBreak" ||
+            inputType === "insertFromPaste" ||
+            inputType === "insertReplacementText" ||
+            inputType.startsWith("delete") ||
+            inputType.includes("History")
+          ) {
+            block(event);
+            return;
+          }
+
+          if (inputType.startsWith("insert") && event.data) {
+            block(event);
+            acceptText(event.data);
+          }
+        }, true);
+
+        surface.addEventListener("paste", block, true);
+        surface.addEventListener("drop", block, true);
+        surface.addEventListener("cut", block, true);
+        surface.addEventListener("contextmenu", (event) => {
+          if (!state.finalized) event.preventDefault();
+        });
+        copyButton.addEventListener("click", copyArtifact);
+        document.addEventListener("click", focusSurface);
+
+        focusSurface();
+      })();
+    </script>
+  </body>
+</html>`;
 
 // -----------------------------------------------------------------------------
 // The Covenant
@@ -1871,6 +2207,8 @@ export type MirrorResponse = {
   reflection: string;
 };
 
+type AnkyRequestIntent = "reflection" | "nudge";
+
 export type ProviderPrivacy = {
   zeroDataRetentionConfirmed: boolean;
   contentLoggingDisabled: boolean;
@@ -2085,6 +2423,22 @@ export function buildStorytellerPrompt(writing: string): string {
   ].join("\n");
 }
 
+export function buildNudgePrompt(writing: string): string {
+  return [
+    "Someone is inside an unfinished .anky: stream-of-consciousness, no backspace, no editing, only forward motion.",
+    "",
+    "You are Anky. Give exactly one line that nudges them back toward the writing already opening here.",
+    "",
+    "Do not summarize. Do not analyze. Do not give advice. Do not mention credits, mirrors, prompts, or this instruction.",
+    "",
+    "Write in the same language as the writing. Return plain text only: one sentence, no markdown, no title, no quotes, under 22 words.",
+    "",
+    "Current writing:",
+    "",
+    writing,
+  ].join("\n");
+}
+
 function markdownPayload(raw: string): string {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/i);
@@ -2281,11 +2635,13 @@ export async function handleAnkyReflection(
   let modelProvider = "none";
   let modelFailure: string | undefined;
   let idempotencyKey: string | undefined;
+  let billingHash: string | undefined;
   let idempotencyAcquired = false;
   let x402Quote: X402Quote | undefined;
   let x402Payment: X402Payment | undefined;
   let x402Settlement: unknown;
   let freeFallbackWithoutCredit = false;
+  let requestIntent: AnkyRequestIntent = "reflection";
 
   try {
     await deps.progress?.({
@@ -2313,6 +2669,7 @@ export async function handleAnkyReflection(
     appVersion = normalizeMetadataValue(
       c.req.header("x-anky-app-version") ?? undefined,
     );
+    requestIntent = ankyRequestIntent(c.req.header("x-anky-intent") ?? undefined);
     const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
     const paymentSignature = c.req.header("payment-signature") ?? undefined;
     if (!signature || !requestTime) {
@@ -2383,7 +2740,7 @@ export async function handleAnkyReflection(
       errorCode = "INVALID_ANKY";
       return errorJson(c, "INVALID_ANKY");
     }
-    if (!validation.isComplete) {
+    if (!validation.isComplete && requestIntent === "reflection") {
       statusCode = 400;
       errorCode = "INCOMPLETE_RITUAL";
       return errorJson(c, "INCOMPLETE_RITUAL");
@@ -2391,15 +2748,22 @@ export async function handleAnkyReflection(
     durationMs = validation.durationMs;
     await deps.progress?.({
       stage: "protocol_validated",
-      message: "Anky validated a complete 8-minute ritual.",
+      message:
+        requestIntent === "nudge"
+          ? "Anky validated the current .anky fragment."
+          : "Anky validated a complete 8-minute ritual.",
       durationMs,
     });
 
-    idempotencyKey = await mirrorIdempotencyKey(accountId, ankyHash);
+    billingHash =
+      requestIntent === "nudge"
+        ? await sha256Hex(`nudge:${ankyHash}:${requestTime}`)
+        : ankyHash;
+    idempotencyKey = await mirrorIdempotencyKey(accountId, billingHash);
     const idempotency = await idempotencyStore.begin({
       key: idempotencyKey,
       addressHash: identityHash,
-      ankyHash,
+      ankyHash: billingHash,
     });
     if (!idempotency.acquired && idempotency.record.status === "succeeded") {
       statusCode = 409;
@@ -2422,7 +2786,7 @@ export async function handleAnkyReflection(
         env,
         accountId,
         accountIdHash: identityHash,
-        ankyHash,
+        ankyHash: billingHash,
         client: identity.client,
         appVersion,
         trialProof,
@@ -2503,10 +2867,16 @@ export async function handleAnkyReflection(
       }
 
       const writing = reconstructText(validation.parsed);
-      const prompt = buildStorytellerPrompt(writing);
+      const prompt =
+        requestIntent === "nudge"
+          ? buildNudgePrompt(writing)
+          : buildStorytellerPrompt(writing);
       await deps.progress?.({
         stage: "reflection_prepared",
-        message: "Anky reconstructed the writing in memory and prepared the mirror prompt.",
+        message:
+          requestIntent === "nudge"
+            ? "Anky reconstructed the writing in memory and prepared the nudge prompt."
+            : "Anky reconstructed the writing in memory and prepared the mirror prompt.",
       });
       let mirror: ReflectionProviderResult;
       try {
@@ -2568,7 +2938,7 @@ export async function handleAnkyReflection(
             env,
             accountId,
             accountIdHash: identityHash,
-            ankyHash,
+            ankyHash: billingHash,
             prepared: preparedCredit,
             trialProof,
           });
@@ -2593,7 +2963,7 @@ export async function handleAnkyReflection(
         });
       }
 
-      const responseBody = reflectionMarkdown(mirror);
+      const responseBody = responseTextForIntent(requestIntent, mirror);
       await idempotencyStore.markSucceeded(idempotencyKey);
       idempotencyAcquired = false;
       await deps.progress?.({
@@ -2606,6 +2976,7 @@ export async function handleAnkyReflection(
       return c.text(responseBody, 200, {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Anky-Hash": ankyHash,
+        "X-Anky-Intent": requestIntent,
         "X-Anky-Credits-Remaining":
           creditsRemaining === null ? "null" : String(creditsRemaining),
         ...(x402Settlement
@@ -2699,6 +3070,29 @@ function reflectionMarkdown(
 ): string {
   const markdown = mirror.reflection.trim();
   return /^#\s+/m.test(markdown) ? markdown : `# ${mirror.title}\n\n${markdown}`;
+}
+
+function nudgeText(mirror: Pick<ReflectionProviderResult, "reflection">): string {
+  const payload = markdownPayload(mirror.reflection)
+    .replace(/^#+\s*/gm, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return payload || "stay with the sentence that is asking to be written next.";
+}
+
+function responseTextForIntent(
+  intent: AnkyRequestIntent,
+  mirror: Pick<ReflectionProviderResult, "title" | "reflection">,
+): string {
+  return intent === "nudge" ? nudgeText(mirror) : reflectionMarkdown(mirror);
+}
+
+function ankyRequestIntent(value: string | undefined): AnkyRequestIntent {
+  return value?.toLowerCase() === "nudge" ? "nudge" : "reflection";
 }
 
 async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResult> {

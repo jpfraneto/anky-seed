@@ -6,6 +6,7 @@ import AudioToolbox
 struct YouView: View {
     @ObservedObject var viewModel: YouViewModel
     @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
     @AppStorage(MirrorConfiguration.userDefaultsKey) private var mirrorBaseURL = MirrorConfiguration.defaultBaseURL
     @AppStorage("anky.dailyReminderEnabled") private var dailyReminderEnabled = false
     @AppStorage("anky.dailyReminderTime") private var dailyReminderTime = 9.0 * 60.0 * 60.0
@@ -15,190 +16,314 @@ struct YouView: View {
     @State private var confirmClearWritingData = false
     @State private var confirmResetIdentity = false
     @State private var isImportingBackup = false
-    @State private var isImportingRecoveryPhrase = false
+    @State private var activePrompt: YouPrompt?
+    @State private var isShowingSystemPrompt = false
     @State private var isShowingAnkyExperience = false
-    @State private var recoveryPhraseInput = ""
 
     init(viewModel: YouViewModel) {
         self.viewModel = viewModel
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                YouCosmicBackground()
+        ZStack {
+            YouCosmicBackground()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        YouTitle(title: "you", subtitle: "your story. your uniqueness.")
-                            .padding(.top, 18)
-
-                        YouAvatar()
-
-                        YouStatsPanel(
-                            ankys: viewModel.completeAnkyCount,
-                            minutes: viewModel.totalWritingMinutes,
-                            streak: viewModel.currentStreak
-                        )
-
-                        statusMessages
-
-                        Button {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    YouTitle(title: "you", subtitle: "")
+                        .contentShape(Rectangle())
+                        .onTapGesture {
                             isShowingAnkyExperience = true
-                        } label: {
-                            YouPanel {
-                                YouMenuRow(icon: "today-anky-icon", title: "The Anky Experience", subtitle: "88 minutes. opening and closing ankys.")
-                            }
                         }
-                        .buttonStyle(.plain)
+                        .padding(.top, 18)
 
-                        YouPanel(spacing: 0) {
-                            NavigationLink {
-                                AccountPage(
-                                    viewModel: viewModel,
-                                    dailyReminderEnabled: $dailyReminderEnabled,
-                                    dailyReminderTime: $dailyReminderTime,
-                                    biometricIdentityConfirmation: $biometricIdentityConfirmation,
-                                    isImportingRecoveryPhrase: $isImportingRecoveryPhrase,
-                                    recoveryPhraseInput: $recoveryPhraseInput,
-                                    reminderDate: reminderDate,
-                                    reminderBinding: reminderBinding
-                                )
-                            } label: {
-                                YouMenuRow(icon: "you-icon-account", title: "local identity", subtitle: "private to this device")
-                            }
+                    YouStatsPanel(
+                        ankys: viewModel.completeAnkyCount,
+                        minutes: viewModel.totalWritingMinutes,
+                        streak: viewModel.currentStreak
+                    )
 
-                            YouDivider()
+                    YouPanel(spacing: 0) {
+                        promptButton(.identity, icon: "you-icon-account", title: "identity", subtitle: "save it to icloud keychain")
 
-                            NavigationLink {
-                                PrivacyPolicyPage()
-                            } label: {
-                                YouMenuRow(icon: "you-icon-privacy", title: "privacy", subtitle: "local-first. private. sovereign.")
-                            }
+                        YouDivider()
 
-                            YouDivider()
+                        promptButton(.privacy, icon: "you-icon-privacy", title: "privacy", subtitle: "what leaves this phone")
 
-                            NavigationLink {
-                                ExportDataPage(
-                                    viewModel: viewModel,
-                                    isImportingBackup: $isImportingBackup,
-                                    confirmClearWritingData: $confirmClearWritingData
-                                )
-                            } label: {
-                                YouMenuRow(icon: "you-icon-export", title: "export data", subtitle: "back up and restore local writing")
-                            }
+                        YouDivider()
 
-                            YouDivider()
+                        promptButton(.export, icon: "you-icon-export", title: "data", subtitle: "export or restore writing")
 
-                            NavigationLink {
-                                CreditsPage(viewModel: viewModel)
-                            } label: {
-                                YouMenuRow(icon: "you-icon-credits", title: "credits", subtitle: "reflections and trial credits")
-                            }
+                        YouDivider()
 
-                            if let whatsappURL = viewModel.freeCreditWhatsAppURL {
-                                Button {
-                                    openURL(whatsappURL)
-                                } label: {
-                                    YouMenuRow(icon: "you-icon-credits", title: "support", subtitle: "manual credit help")
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
+                        promptButton(.credits, icon: "you-icon-credits", title: "credits", subtitle: creditsMenuSubtitle)
 
-                        #if DEBUG
-                        NavigationLink {
-                            DeveloperPage(
-                                mirrorBaseURL: $mirrorBaseURL,
-                                confirmClearArchive: $confirmClearArchive,
-                                confirmClearReflections: $confirmClearReflections,
-                                confirmResetIdentity: $confirmResetIdentity,
-                                viewModel: viewModel
-                            )
-                        } label: {
-                            YouPanel {
-                                YouMenuRow(icon: "you-icon-settings", title: "developer", subtitle: "local tools")
-                            }
-                        }
-                        #endif
+                        YouDivider()
+
+                        promptButton(.support, icon: "you-icon-credits", title: "support / feedback", subtitle: "email support@anky.app")
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 120)
                 }
-                .safeAreaPadding(.top, 44)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 220)
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .enableSwipeBackGesture()
-            .confirmationDialog("delete local writing data?", isPresented: $confirmClearWritingData, titleVisibility: .visible) {
-                Button("delete local writing data", role: .destructive) {
-                    viewModel.clearLocalWritingData()
-                }
+            .safeAreaPadding(.top, 44)
+
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .fullScreenCover(isPresented: $isShowingAnkyExperience) {
+            AnkyExperienceView()
+        }
+        .confirmationDialog("delete local writing data?", isPresented: $confirmClearWritingData, titleVisibility: .visible) {
+            Button("delete local writing data", role: .destructive) {
+                viewModel.clearLocalWritingData()
             }
-            .confirmationDialog("clear local .anky archive?", isPresented: $confirmClearArchive, titleVisibility: .visible) {
-                Button("clear .anky archive", role: .destructive) {
-                    viewModel.clearLocalArchive()
-                }
+        }
+        .confirmationDialog("clear local .anky archive?", isPresented: $confirmClearArchive, titleVisibility: .visible) {
+            Button("clear .anky archive", role: .destructive) {
+                viewModel.clearLocalArchive()
             }
-            .confirmationDialog("clear local reflections?", isPresented: $confirmClearReflections, titleVisibility: .visible) {
-                Button("clear reflections", role: .destructive) {
-                    viewModel.clearLocalReflections()
-                }
+        }
+        .confirmationDialog("clear local reflections?", isPresented: $confirmClearReflections, titleVisibility: .visible) {
+            Button("clear reflections", role: .destructive) {
+                viewModel.clearLocalReflections()
             }
-            .confirmationDialog("reset local identity?", isPresented: $confirmResetIdentity, titleVisibility: .visible) {
-                Button("reset identity", role: .destructive) {
-                    viewModel.resetIdentityForDevelopment()
-                }
-            } message: {
-                Text("Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.")
+        }
+        .confirmationDialog("reset local identity?", isPresented: $confirmResetIdentity, titleVisibility: .visible) {
+            Button("reset identity", role: .destructive) {
+                viewModel.resetIdentityForDevelopment()
             }
-            .sheet(isPresented: $isImportingRecoveryPhrase) {
-                ImportRecoveryPhraseSheet(
-                    viewModel: viewModel,
-                    recoveryPhraseInput: $recoveryPhraseInput,
-                    isPresented: $isImportingRecoveryPhrase
-                )
+        } message: {
+            Text("Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.")
+        }
+        .fileImporter(
+            isPresented: $isImportingBackup,
+            allowedContentTypes: Self.importableContentTypes,
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                _ = viewModel.importBackup(from: url)
+            case .failure:
+                break
             }
-            .fullScreenCover(isPresented: $isShowingAnkyExperience) {
-                AnkyExperienceView()
-            }
-            .fileImporter(
-                isPresented: $isImportingBackup,
-                allowedContentTypes: Self.importableContentTypes,
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    _ = viewModel.importBackup(from: url)
-                case .failure:
-                    break
-                }
-            }
-            .onAppear {
-                viewModel.refresh()
-            }
+        }
+        .onAppear {
+            viewModel.refresh()
+            isShowingSystemPrompt = viewModel.errorMessage != nil || viewModel.statusMessage != nil
+            presentCurrentPromptIfNeeded()
+        }
+        .onChange(of: viewModel.statusMessage) { _, statusMessage in
+            guard statusMessage != nil else { return }
+            isShowingSystemPrompt = true
+            presentCurrentPromptIfNeeded()
+        }
+        .onChange(of: viewModel.errorMessage) { _, errorMessage in
+            guard errorMessage != nil else { return }
+            isShowingSystemPrompt = true
+            presentCurrentPromptIfNeeded()
+        }
+        .onChange(of: viewModel.creditsLoading) { _, _ in
+            refreshCreditsBubbleIfNeeded()
+        }
+        .onChange(of: viewModel.purchasingCreditPackageID) { _, _ in
+            refreshCreditsBubbleIfNeeded()
+        }
+        .onChange(of: viewModel.creditBalance) { _, _ in
+            refreshCreditsBubbleIfNeeded()
+        }
+        .onChange(of: viewModel.creditPackages.count) { _, _ in
+            refreshCreditsBubbleIfNeeded()
         }
     }
 
-    @ViewBuilder
-    private var statusMessages: some View {
-        if let errorMessage = viewModel.errorMessage {
-            AnkyCompanionPromptView(
-                state: .error,
-                message: errorMessage,
-                actionTitle: nil,
-                action: nil
-            )
+    private func promptButton(_ prompt: YouPrompt, icon: String, title: String, subtitle: String) -> some View {
+        Button {
+            activePrompt = prompt
+            isShowingSystemPrompt = false
+            presentCurrentPromptIfNeeded()
+            if prompt == .credits {
+                Task {
+                    await viewModel.refreshCredits(showError: false)
+                }
+            }
+        } label: {
+            YouMenuRow(icon: icon, title: title, subtitle: subtitle, showsDisclosure: false)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func presentCurrentPromptIfNeeded() {
+        guard isShowingSystemPrompt || activePrompt != nil else {
+            return
         }
 
-        if let statusMessage = viewModel.statusMessage {
-            AnkyCompanionPromptView(
-                state: .notice,
-                message: statusMessage,
-                actionTitle: nil,
-                action: nil
-            )
+        let mood: AnkyCompanionMood
+        if isConversationThinking {
+            mood = .thinking
+        } else if viewModel.errorMessage != nil {
+            mood = .concerned
+        } else {
+            mood = .guiding
         }
+
+        ankyCompanion.witness(
+            mood: mood,
+            bubble: AnkyBubble(
+                text: conversationMessage,
+                actions: conversationActions,
+                isThinking: isConversationThinking
+            )
+        )
+    }
+
+    private func refreshCreditsBubbleIfNeeded() {
+        guard activePrompt == .credits, !isShowingSystemPrompt else {
+            return
+        }
+        presentCurrentPromptIfNeeded()
+    }
+
+    private var conversationMessage: String {
+        if isShowingSystemPrompt {
+            return viewModel.errorMessage ?? viewModel.statusMessage ?? activePrompt?.message ?? ""
+        }
+
+        if activePrompt == .credits {
+            if let purchasingID = viewModel.purchasingCreditPackageID,
+               let package = viewModel.creditPackages.first(where: { $0.id == purchasingID }) {
+                return "anky is opening the \(package.title.lowercased()) pack."
+            }
+            if viewModel.creditsLoading {
+                return "anky is checking the credit gate."
+            }
+            return creditsPromptMessage
+        }
+
+        return activePrompt?.message ?? ""
+    }
+
+    private var conversationActions: [AnkyChatAction] {
+        if isShowingSystemPrompt && (viewModel.errorMessage != nil || viewModel.statusMessage != nil) {
+            return []
+        }
+        if isConversationThinking {
+            return []
+        }
+
+        return promptActions
+    }
+
+    private var isConversationThinking: Bool {
+        activePrompt == .credits
+            && !isShowingSystemPrompt
+            && (viewModel.creditsLoading || viewModel.purchasingCreditPackageID != nil)
+    }
+
+    private var promptActions: [AnkyChatAction] {
+        guard let activePrompt else {
+            return []
+        }
+
+        switch activePrompt {
+        case .identity:
+            return [
+                AnkyChatAction("back up identity", isPrimary: true) {
+                    Task { await viewModel.backUpIdentityToICloudKeychain() }
+                },
+                AnkyChatAction("copy account") {
+                    ClipboardClient().copy(viewModel.accountId)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            ]
+        case .privacy:
+            return [
+                AnkyChatAction("read privacy policy", isPrimary: true) {
+                    if let url = URL(string: "https://anky.app/privacy") {
+                        openURL(url)
+                    }
+                }
+            ]
+        case .export:
+            var actions = [
+                AnkyChatAction("restore backup") {
+                    isImportingBackup = true
+                }
+            ]
+            if let backupZipURL = viewModel.backupZipURL {
+                actions.insert(
+                    AnkyChatAction("export backup", isPrimary: true) {
+                        presentShareSheet(item: backupZipURL)
+                    },
+                    at: 0
+                )
+            }
+            return actions
+        case .credits:
+            let packages = Array(viewModel.creditPackages.prefix(3))
+            if packages.isEmpty {
+                return [
+                    AnkyChatAction(viewModel.creditsLoading ? "loading packs" : "refresh credits", isPrimary: true) {
+                        Task { await viewModel.refreshCredits() }
+                    }
+                ]
+            }
+
+            return packages.map { creditPackage in
+                let isRecommended = creditPackage.title == "99 credits"
+                    || creditPackage.id.contains("88_bonus_11")
+                return AnkyChatAction(
+                    creditPackage.title,
+                    subtitle: creditPackage.price,
+                    badge: isRecommended ? "recommended" : nil,
+                    isPrimary: isRecommended
+                ) {
+                    Task { await viewModel.purchaseCredits(creditPackage) }
+                }
+            }
+        case .support:
+            return [
+                AnkyChatAction("open email", isPrimary: true) {
+                    if let emailURL = viewModel.supportFeedbackEmailURL {
+                        openURL(emailURL)
+                    }
+                }
+            ]
+        case .developer:
+            return [
+                AnkyChatAction("repair map", isPrimary: true) {
+                    viewModel.rebuildSessionIndex()
+                },
+                AnkyChatAction("delete local data") {
+                    confirmClearWritingData = true
+                }
+            ]
+        }
+    }
+
+    private var creditsMenuSubtitle: String {
+        if viewModel.creditsLoading && viewModel.creditBalance == nil {
+            return "loading balance"
+        }
+
+        if let creditBalance = viewModel.creditBalance {
+            return "\(creditBalance) \(creditBalance == 1 ? "credit" : "credits")"
+        }
+
+        return "reflection balance"
+    }
+
+    private var creditsPromptMessage: String {
+        let balance: String
+        if viewModel.creditsLoading && viewModel.creditBalance == nil {
+            balance = "loading..."
+        } else if let creditBalance = viewModel.creditBalance {
+            balance = "\(creditBalance)"
+        } else {
+            balance = "unknown"
+        }
+
+        return "you have \(balance) reflection \(balance == "1" ? "credit" : "credits"). choose a pack to add more."
     }
 
     private static var importableContentTypes: [UTType] {
@@ -225,6 +350,41 @@ struct YouView: View {
                     await viewModel.setDailyReminder(enabled: true, date: newValue)
                 }
             }
+        }
+    }
+
+    private func presentShareSheet(item: Any) {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            return
+        }
+        let activityViewController = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+        rootViewController.present(activityViewController, animated: true)
+    }
+}
+
+private enum YouPrompt: Hashable {
+    case identity
+    case privacy
+    case export
+    case credits
+    case support
+    case developer
+
+    var message: String {
+        switch self {
+        case .identity:
+            return "your identity can be saved to icloud keychain."
+        case .privacy:
+            return "writing stays local unless you export or ask for a reflection."
+        case .export:
+            return "your archive is yours. export it or restore one."
+        case .credits:
+            return "credits are only for reflections. writing is free."
+        case .support:
+            return "send support or feedback by email. include only what you choose to write."
+        case .developer:
+            return "local tools. repair first, delete only when you mean it."
         }
     }
 }
@@ -532,17 +692,13 @@ struct CreditsPage: View {
             }
 
             YouPanel {
-                ShareLink(item: viewModel.freeCreditMessage) {
-                    YouActionLabel("share support request")
-                }
-
-                if let whatsappURL = viewModel.freeCreditWhatsAppURL {
-                    YouActionButton("contact jp / support") {
-                        openURL(whatsappURL)
+                YouActionButton("support / feedback") {
+                    if let emailURL = viewModel.supportFeedbackEmailURL {
+                        openURL(emailURL)
                     }
                 }
 
-                Text("support credit requests use your account id only. no writing is included.")
+                Text("email support@anky.app. include only what you choose to write.")
                     .youBody()
             }
         }
@@ -650,13 +806,14 @@ private struct DeveloperPage: View {
 private struct AnkyExperienceView: View {
     @StateObject private var viewModel = AnkyExperienceViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var showCopyPrompt = false
 
     var body: some View {
         ZStack {
             Color(.systemBackground)
                 .ignoresSafeArea()
 
-            if viewModel.isWriting {
+            if !viewModel.isFinished {
                 ExperienceForwardOnlyTextView(
                     text: viewModel.activeDisplayedText,
                     focusID: viewModel.keyboardFocusID,
@@ -668,6 +825,14 @@ private struct AnkyExperienceView: View {
 
             VStack {
                 HStack {
+                    Text(viewModel.elapsedClockText)
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.primary.opacity(0.58))
+                        .padding(.horizontal, 10)
+                        .frame(height: 32)
+                        .background(.thinMaterial, in: Capsule())
+                        .accessibilityLabel("Anky experience time \(viewModel.elapsedClockText)")
+
                     Spacer()
 
                     Button {
@@ -689,22 +854,52 @@ private struct AnkyExperienceView: View {
             .safeAreaPadding(.top, 8)
             .padding(.horizontal, 12)
 
-            VStack(spacing: 26) {
+            VStack {
                 Spacer()
 
-                ExperiencePortalRing(
-                    progress: viewModel.totalProgress,
-                    clockText: viewModel.clockText,
-                    subtitle: viewModel.centerSubtitle
-                )
+                HStack {
+                    Spacer()
 
-                Spacer()
+                    Button {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            showCopyPrompt = true
+                        }
+                    } label: {
+                        AnkyWitnessView(mood: .warm, size: .small, sequence: .idleBlink)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Anky companion")
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
+            }
 
-                ExperienceCopyControls(viewModel: viewModel)
+            if showCopyPrompt {
+                VStack {
+                    Spacer()
+
+                    AnkyConversationPromptView(
+                        message: "copy your .anky or copy your writing.",
+                        actions: [
+                            AnkyChatAction("copy your .anky", isPrimary: true) {
+                                viewModel.copyCurrentAnky()
+                            },
+                            AnkyChatAction("copy your writing") {
+                                viewModel.copyCurrentWriting()
+                            }
+                        ],
+                        close: {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                showCopyPrompt = false
+                            }
+                        }
+                    )
                     .padding(.horizontal, 18)
-                    .padding(.bottom, 18)
-                    .opacity(viewModel.shouldShowCopyControls ? 1 : 0)
-                    .allowsHitTesting(viewModel.shouldShowCopyControls)
+                    .padding(.bottom, 76)
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -883,15 +1078,19 @@ private final class AnkyExperienceViewModel: ObservableObject {
     private var finishedBellPlayed = false
 
     var isWriting: Bool {
-        phase == .openingAnky || phase == .closingAnky
+        phase != .finished
+    }
+
+    var isFinished: Bool {
+        phase == .finished
     }
 
     var activeDisplayedText: String {
-        phase == .closingAnky ? closingDisplayedText : openingDisplayedText
+        openingDisplayedText
     }
 
     var canCopyOpening: Bool {
-        openingClosed && !openingProtocolText.isEmpty
+        !openingProtocolText.isEmpty
     }
 
     var canCopyClosing: Bool {
@@ -910,18 +1109,22 @@ private final class AnkyExperienceViewModel: ObservableObject {
         Self.clock(totalRemainingSeconds)
     }
 
+    var elapsedClockText: String {
+        Self.clock(Constants.totalSeconds - totalRemainingSeconds)
+    }
+
     var centerSubtitle: String {
         switch phase {
         case .openingAnky:
-            return "this is the amount of time that things pass through here"
+            return "the experience is open"
         case .portal:
-            return "this is when the portal opens"
+            return "the experience is open"
         case .closingWarning:
-            return "the bell has sounded. prepare"
+            return "the experience is open"
         case .closingAnky:
-            return "the portal is open"
+            return "the experience is open"
         case .finished:
-            return "the portal is closed"
+            return "the experience is complete"
         }
     }
 
@@ -945,18 +1148,20 @@ private final class AnkyExperienceViewModel: ObservableObject {
 
     func accept(_ character: Character) {
         let now = Self.nowMs()
-        switch phase {
-        case .openingAnky:
-            guard openingWriter.accept(character, at: now) else { return }
-            openingDisplayedText.append(character)
-            openingProtocolText = openingWriter.text
-        case .closingAnky:
-            guard closingWriter.accept(character, at: now) else { return }
-            closingDisplayedText.append(character)
-            closingProtocolText = closingWriter.text
-        case .portal, .closingWarning, .finished:
+        guard phase != .finished else {
             return
         }
+        guard openingWriter.accept(character, at: now) else { return }
+        openingDisplayedText.append(character)
+        openingProtocolText = openingWriter.text
+    }
+
+    func copyCurrentAnky() {
+        copy(openingProtocolText, action: .openingAnky)
+    }
+
+    func copyCurrentWriting() {
+        copy(parsedText(from: openingProtocolText, fallback: openingDisplayedText), action: .openingText)
     }
 
     func copyOpeningAnky() {
@@ -994,23 +1199,8 @@ private final class AnkyExperienceViewModel: ObservableObject {
         let elapsed = max(0, Int(Date().timeIntervalSince(startDate)))
         totalRemainingSeconds = max(0, Constants.totalSeconds - elapsed)
 
-        if elapsed >= Constants.openingSeconds, !openingClosed {
+        if elapsed >= Constants.totalSeconds, !openingClosed {
             finishOpeningAnky()
-        }
-
-        if elapsed >= Constants.warningStartsAtSecond, !warningBellPlayed {
-            warningBellPlayed = true
-            playBell()
-        }
-
-        if elapsed >= Constants.closingStartsAtSecond, !closingBellPlayed {
-            closingBellPlayed = true
-            playBell()
-            keyboardFocusID = UUID()
-        }
-
-        if elapsed >= Constants.totalSeconds, !closingClosed {
-            finishClosingAnky()
         }
 
         let nextPhase = Self.phase(forElapsed: elapsed)
@@ -1069,15 +1259,6 @@ private final class AnkyExperienceViewModel: ObservableObject {
         if elapsed >= Constants.totalSeconds {
             return .finished
         }
-        if elapsed >= Constants.closingStartsAtSecond {
-            return .closingAnky
-        }
-        if elapsed >= Constants.warningStartsAtSecond {
-            return .closingWarning
-        }
-        if elapsed >= Constants.openingSeconds {
-            return .portal
-        }
         return .openingAnky
     }
 
@@ -1093,13 +1274,7 @@ private final class AnkyExperienceViewModel: ObservableObject {
     }
 
     private enum Constants {
-        static let openingSeconds = 8 * 60
-        static let closingSeconds = 8 * 60
-        static let warningLeadSeconds = 30
-        static let portalSeconds = 72 * 60
-        static let totalSeconds = openingSeconds + portalSeconds + closingSeconds
-        static let warningStartsAtSecond = totalSeconds - closingSeconds - warningLeadSeconds
-        static let closingStartsAtSecond = totalSeconds - closingSeconds
+        static let totalSeconds = 88 * 60
     }
 }
 
@@ -1340,9 +1515,11 @@ private struct YouTitle: View {
             Text(title)
                 .font(.custom("Georgia", size: 34).weight(.semibold))
                 .foregroundStyle(YouPalette.gold)
-            Text(subtitle)
-                .font(.system(size: 14, design: .serif))
-                .foregroundStyle(YouPalette.paperMuted)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.system(size: 14, design: .serif))
+                    .foregroundStyle(YouPalette.paperMuted)
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -1426,6 +1603,7 @@ private struct YouMenuRow: View {
     let icon: String
     let title: String
     let subtitle: String
+    var showsDisclosure = true
 
     var body: some View {
         HStack(spacing: 13) {
@@ -1445,11 +1623,13 @@ private struct YouMenuRow: View {
 
             Spacer()
 
-            Image("you-icon-chevron-right")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 14, height: 14)
-                .opacity(0.82)
+            if showsDisclosure {
+                Image("you-icon-chevron-right")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+                    .opacity(0.82)
+            }
         }
         .contentShape(Rectangle())
         .padding(.vertical, 14)

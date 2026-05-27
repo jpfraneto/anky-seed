@@ -1,7 +1,8 @@
 import Foundation
 
 public enum AnkyDuration {
-    public static let completeRitualMs: Int64 = 8 * 60 * 1000
+    public static let completeRitualMinutes = 8
+    public static let completeRitualMs: Int64 = Int64(completeRitualMinutes) * 60 * 1000
     public static let terminalSilenceMs: Int64 = 8000
 
     public static func writingDurationMs(_ parsed: ParsedAnky) -> Int64 {
