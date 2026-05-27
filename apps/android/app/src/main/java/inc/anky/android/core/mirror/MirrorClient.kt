@@ -18,6 +18,7 @@ class MirrorClient(
         bytes: ByteArray,
         identity: WriterIdentity,
         appVersion: String? = null,
+        intent: MirrorIntent = MirrorIntent.Reflection,
     ): MirrorResponsePayload {
         val signed = AnkyPostSigner.sign(body = bytes, identity = identity)
         val base = configuration.effectiveBaseUrl().trimEnd('/')
@@ -36,6 +37,7 @@ class MirrorClient(
             .header("X-Anky-Signature", signed.signature)
             .header("X-Anky-Request-Time", signed.requestTime)
             .header("X-Anky-Client", signed.client)
+            .header("X-Anky-Intent", intent.headerValue)
             .apply {
                 if (!appVersion.isNullOrBlank()) {
                     header("X-Anky-App-Version", appVersion)

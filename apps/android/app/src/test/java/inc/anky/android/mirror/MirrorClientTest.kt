@@ -8,6 +8,7 @@ import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.mirror.MirrorErrorCode
+import inc.anky.android.core.mirror.MirrorIntent
 import inc.anky.android.core.mirror.ReflectionCreditPresentation
 import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.mirror.effectiveBaseUrl
@@ -116,6 +117,7 @@ class MirrorClientTest {
             assertEquals("eip712", request.getHeader("X-Anky-Signature-Type"))
             assertEquals(null, request.getHeader("X-Anky-Public-Key"))
             assertEquals("android", request.getHeader("X-Anky-Client"))
+            assertEquals("reflection", request.getHeader("X-Anky-Intent"))
             assertEquals("1.0(1)", request.getHeader("X-Anky-App-Version"))
             assertEquals(null, request.getHeader("X-Anky-Trial-Proof"))
             val signature = request.getHeader("X-Anky-Signature")!!
@@ -124,6 +126,33 @@ class MirrorClientTest {
             assertTrue(signature.startsWith("0x"))
             assertEquals(132, signature.length)
             assertTrue(requestTime.isNotBlank())
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun canRequestNudgeIntent() {
+        val server = MockWebServer()
+        val body = "1770000000000 h\n4000 i".toByteArray(Charsets.UTF_8)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/plain; charset=utf-8")
+                .setHeader("X-Anky-Hash", AnkyHasher.sha256Hex(body))
+                .setHeader("X-Anky-Credits-Remaining", "6")
+                .setBody("follow the warm sentence."),
+        )
+        server.start()
+        try {
+            val client = MirrorClient(MirrorConfiguration(server.url("/").toString()))
+            val response = client.askAnky(body, identity, intent = MirrorIntent.Nudge)
+            val request = server.takeRequest()
+
+            assertEquals("nudge", request.getHeader("X-Anky-Intent"))
+            assertArrayEquals(body, request.body.readByteArray())
+            assertEquals("follow the warm sentence.", response.reflection)
+            assertEquals(6, response.creditsRemaining)
         } finally {
             server.shutdown()
         }

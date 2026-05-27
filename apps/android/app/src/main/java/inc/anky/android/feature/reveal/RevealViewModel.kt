@@ -37,6 +37,7 @@ data class RevealState(
     val creditsLoading: Boolean = false,
     val hasClaimedFreeCredits: Boolean = false,
     val creditsDenied: Boolean = false,
+    val reflectionStatusMessage: String = "",
     val error: String? = null,
 ) {
     val creditPromptState: ReflectionCreditPromptState
@@ -114,15 +115,18 @@ class RevealViewModel(
         val current = _state.value
         val artifact = current.artifact ?: return
         if (!current.canSubmitReflectionRequest) return
-        _state.update { it.copy(isAsking = true, error = null) }
+        _state.update { it.copy(isAsking = true, error = null, reflectionStatusMessage = "i am opening a quiet channel.") }
         viewModelScope.launch(dispatcher) {
             runCatching {
+                _state.update { it.copy(reflectionStatusMessage = "i found your writer key. staying close.") }
                 val identity = identityProvider()
+                _state.update { it.copy(reflectionStatusMessage = "i am carrying the thread to the mirror.") }
                 val payload = mirrorClientProvider().askAnky(
                     artifact.text.toByteArray(Charsets.UTF_8),
                     identity,
                     appVersion = "${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})",
                 )
+                _state.update { it.copy(reflectionStatusMessage = "something answered. i am threading it back.") }
                 if (payload.hash != artifact.hash) throw MirrorClientError.HashMismatch
                 val reflection = LocalReflection(
                     hash = payload.hash,
@@ -141,6 +145,7 @@ class RevealViewModel(
                         reflection = reflection,
                         canAskAnky = false,
                         isAsking = false,
+                        reflectionStatusMessage = "",
                         creditBalance = reflection.creditsRemaining ?: it.creditBalance,
                         hasClaimedFreeCredits = true,
                         creditsDenied = false,
@@ -151,6 +156,7 @@ class RevealViewModel(
                 _state.update {
                     it.copy(
                         isAsking = false,
+                        reflectionStatusMessage = "",
                         creditBalance = if (message.contains("credit", ignoreCase = true)) 0 else it.creditBalance,
                         creditsDenied = it.creditsDenied || message.contains("credit", ignoreCase = true),
                         error = message,

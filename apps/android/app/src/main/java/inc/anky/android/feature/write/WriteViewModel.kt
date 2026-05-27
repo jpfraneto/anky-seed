@@ -2,7 +2,14 @@ package inc.anky.android.feature.write
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import inc.anky.android.BuildConfig
+import inc.anky.android.core.identity.WriterIdentity
+import inc.anky.android.core.mirror.MirrorClient
+import inc.anky.android.core.mirror.MirrorClientError
+import inc.anky.android.core.mirror.MirrorIntent
+import inc.anky.android.core.mirror.MirrorResponsePayload
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.core.protocol.AnkyHasher
 import inc.anky.android.core.protocol.AnkyParser
 import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyValidator
@@ -27,6 +34,7 @@ import kotlinx.coroutines.launch
 data class WriteState(
     val latestGlyph: String = "",
     val displayedText: String = "",
+    val displayedGlyphs: List<WritingGlyph> = emptyList(),
     val elapsedMs: Long = 0,
     val silenceElapsedMs: Long = 0,
     val silenceRemainingMs: Long = AnkyDuration.TerminalSilenceMs,
@@ -35,18 +43,46 @@ data class WriteState(
     val completedHash: String? = null,
     val acceptedGlyphCount: Int = 0,
     val errorMessage: String? = null,
+    val nudgeMessage: String? = null,
+    val isRequestingNudge: Boolean = false,
 ) {
     val hasReachedRitualMark: Boolean
         get() = elapsedMs >= AnkyDuration.CompleteRitualMs
+
+    val shouldShowNudgeDialogue: Boolean
+        get() = isRequestingNudge || !nudgeMessage.isNullOrBlank()
+
+    val nudgeDialogueMessage: String
+        get() = if (isRequestingNudge) {
+            "anky is listening to this .anky for one line."
+        } else {
+            nudgeMessage.orEmpty()
+        }
 }
+
+data class WritingGlyph(
+    val glyph: String,
+    val silenceProgress: Float,
+)
 
 class WriteViewModel(
     private val activeDraftStore: ActiveDraftStore,
     private val archive: LocalAnkyArchive,
     private val reflectionStore: ReflectionStore,
     private val indexStore: SessionIndexStore,
+    private val identityProvider: () -> WriterIdentity = { error("Writer identity is not configured.") },
+    private val mirrorClientProvider: () -> MirrorClient = { error("Mirror client is not configured.") },
     private val nowMs: () -> Long = { System.currentTimeMillis() },
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val nudgeDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val nudgeRequester: (ByteArray, WriterIdentity, String, MirrorIntent) -> MirrorResponsePayload = { bytes, identity, appVersion, intent ->
+        mirrorClientProvider().askAnky(
+            bytes = bytes,
+            identity = identity,
+            appVersion = appVersion,
+            intent = intent,
+        )
+    },
 ) : ViewModel() {
     private val restoredDraftText = activeDraftForToday()
     private val restoredWriterResult = restoredDraftText?.let { runCatching { AnkyWriter.fromDraft(it) } }
@@ -56,8 +92,14 @@ class WriteViewModel(
     private var closeJob: Job? = null
     private var sessionStartMs: Long? = restoredStartMs()
     private var displayedText: String = restoredDisplayedText()
+    private var displayedGlyphs: List<WritingGlyph> = restoredDisplayedText().map { WritingGlyph(it.toString(), 1f) }
     private var acceptedGlyphCount = restoredGlyphCount()
     private var frozenAtMs: Long? = null
+    private var nudgeJob: Job? = null
+    private var nudgeClearJob: Job? = null
+    private var errorClearJob: Job? = null
+    private var nudgeMessage: String? = null
+    private var isRequestingNudge = false
 
     private val _state = MutableStateFlow(deriveState().copy(errorMessage = restoreErrorMessage))
     val state: StateFlow<WriteState> = _state
@@ -92,10 +134,12 @@ class WriteViewModel(
     }
 
     private fun acceptGlyphAt(glyph: String, now: Long) {
+        freezeLatestGlyph(now)
         if (!writer.isStarted) sessionStartMs = now
         resumeIfFrozen(now)
         if (!writer.accept(glyph, now)) return
         displayedText += glyph
+        displayedGlyphs = displayedGlyphs + WritingGlyph(glyph, 0f)
         acceptedGlyphCount += 1
         activeDraftStore.save(writer.text)
         scheduleClose(afterMs = AnkyDuration.TerminalSilenceMs)
@@ -103,7 +147,31 @@ class WriteViewModel(
     }
 
     fun ignoreBackspaceOrReplacement() {
-        _state.update { it.copy(isClosing = writer.isStarted) }
+        showTransientError("that doesn't work here. just keep writing without agenda.")
+    }
+
+    fun startAnkyNudgeIfPossible(): Boolean {
+        if (!writer.isStarted || writer.text.isBlank()) return false
+        if (_state.value.shouldShowNudgeDialogue) return true
+
+        isRequestingNudge = true
+        nudgeMessage = null
+        val nudgeText = writer.text
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+
+        nudgeJob?.cancel()
+        nudgeJob = viewModelScope.launch(nudgeDispatcher) {
+            requestAnkyNudge(nudgeText)
+        }
+        return true
+    }
+
+    fun dismissCurrentPrompt() {
+        nudgeJob?.cancel()
+        nudgeClearJob?.cancel()
+        nudgeMessage = null
+        isRequestingNudge = false
+        _state.update { it.copy(nudgeMessage = null, isRequestingNudge = false, errorMessage = null) }
     }
 
     fun abandonIfEmpty() {
@@ -171,6 +239,7 @@ class WriteViewModel(
         }.onSuccess { artifact ->
             writer = AnkyWriter()
             displayedText = ""
+            displayedGlyphs = emptyList()
             sessionStartMs = null
             acceptedGlyphCount = 0
             frozenAtMs = null
@@ -207,16 +276,75 @@ class WriteViewModel(
         } else {
             writer.lastAcceptedMs?.let { maxOf(0, now - it) } ?: 0
         }
+        updateLatestGlyphColorProgress(silenceElapsed)
         return WriteState(
             latestGlyph = latestGlyph,
             displayedText = displayedText,
+            displayedGlyphs = displayedGlyphs,
             elapsedMs = elapsed,
             silenceElapsedMs = silenceElapsed,
             silenceRemainingMs = maxOf(0, AnkyDuration.TerminalSilenceMs - silenceElapsed),
             progress = (elapsed.toFloat() / AnkyDuration.CompleteRitualMs).coerceIn(0f, 1f),
             isClosing = writer.isStarted && frozenAtMs == null && !writer.isClosed,
             acceptedGlyphCount = acceptedGlyphCount,
+            nudgeMessage = nudgeMessage,
+            isRequestingNudge = isRequestingNudge,
         )
+    }
+
+    private fun requestAnkyNudge(text: String) {
+        runCatching {
+            val bytes = text.toByteArray(Charsets.UTF_8)
+            val payload = nudgeRequester(
+                bytes,
+                identityProvider(),
+                "${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})",
+                MirrorIntent.Nudge,
+            )
+            if (payload.hash != AnkyHasher.sha256Hex(bytes)) throw MirrorClientError.HashMismatch
+            oneLineNudge(payload.reflection)
+        }.onSuccess { message ->
+            isRequestingNudge = false
+            showTransientNudge(message)
+        }.onFailure { error ->
+            isRequestingNudge = false
+            showTransientNudge(nudgeErrorMessage(error.message.orEmpty()))
+        }
+    }
+
+    private fun showTransientNudge(message: String) {
+        nudgeClearJob?.cancel()
+        nudgeMessage = message
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+        nudgeClearJob = viewModelScope.launch(dispatcher) {
+            delay(6_000)
+            if (nudgeMessage == message) {
+                nudgeMessage = null
+                _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+            }
+        }
+    }
+
+    private fun showTransientError(message: String) {
+        errorClearJob?.cancel()
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph).copy(errorMessage = message)
+        errorClearJob = viewModelScope.launch(dispatcher) {
+            delay(7_000)
+            if (_state.value.errorMessage == message) {
+                _state.value = deriveState(latestGlyph = _state.value.latestGlyph).copy(errorMessage = null)
+            }
+        }
+    }
+
+    private fun freezeLatestGlyph(now: Long) {
+        val lastAcceptedMs = writer.lastAcceptedMs ?: return
+        updateLatestGlyphColorProgress(maxOf(0, now - lastAcceptedMs))
+    }
+
+    private fun updateLatestGlyphColorProgress(silenceElapsedMs: Long) {
+        if (displayedGlyphs.isEmpty()) return
+        val progress = (silenceElapsedMs.toFloat() / AnkyDuration.TerminalSilenceMs).coerceIn(0f, 1f)
+        displayedGlyphs = displayedGlyphs.dropLast(1) + displayedGlyphs.last().copy(silenceProgress = progress)
     }
 
     private fun resumeIfFrozen(now: Long) {
@@ -256,3 +384,21 @@ class WriteViewModel(
     private fun restoredGlyphCount(): Int =
         runCatching { AnkyParser.parse(writer.text).events.size }.getOrDefault(0)
 }
+
+private fun oneLineNudge(text: String): String {
+    val cleaned = text
+        .replace("\r\n", "\n")
+        .lineSequence()
+        .map { it.trim() }
+        .firstOrNull { it.isNotEmpty() }
+        ?: text.trim()
+    val withoutHeading = cleaned.replace(Regex("^#+\\s*"), "")
+    return withoutHeading.ifBlank { "stay with the next true sentence." }
+}
+
+private fun nudgeErrorMessage(message: String): String =
+    when {
+        message.contains("credit", ignoreCase = true) -> "that nudge needs one credit."
+        message.contains("incomplete", ignoreCase = true) -> "the mirror is not ready to nudge unfinished ankys yet."
+        else -> "anky could not return a nudge right now."
+    }

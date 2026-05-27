@@ -77,6 +77,8 @@ import inc.anky.android.R
 import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.ui.components.AnkyChatAction
+import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.theme.AnkyActionButton
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyCosmicBackground
@@ -89,6 +91,9 @@ fun YouScreen(viewModel: YouViewModel) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val page = remember { mutableStateOf<YouPage?>(null) }
+    val activePrompt = remember { mutableStateOf(YouPrompt.Identity) }
+    val isPromptVisible = remember { mutableStateOf(true) }
+    val isShowingSystemPrompt = remember { mutableStateOf(false) }
     val mirrorUrl = remember(state.mirrorBaseUrl) { mutableStateOf(state.mirrorBaseUrl) }
     val showImportPhrase = remember { mutableStateOf(false) }
     val confirmDeleteLocalData = remember { mutableStateOf(false) }
@@ -125,15 +130,72 @@ fun YouScreen(viewModel: YouViewModel) {
         }
     }
 
-    LaunchedEffect(Unit) { viewModel.refreshLocalStats() }
+    LaunchedEffect(Unit) {
+        viewModel.refreshLocalStats()
+        viewModel.exportArchive()
+    }
+    LaunchedEffect(state.statusMessage) {
+        if (state.statusMessage != null) {
+            isShowingSystemPrompt.value = true
+            isPromptVisible.value = true
+        }
+    }
+    LaunchedEffect(state.error) {
+        if (state.error != null) {
+            isShowingSystemPrompt.value = true
+            isPromptVisible.value = true
+        }
+    }
 
     AnkyCosmicBackground(modifier = Modifier.testTag("you-screen")) {
         if (page.value == null) {
-            YouHome(
-                state = state,
-                onOpen = { page.value = it },
-                onFreeCredits = { context.openUrl(state.freeCreditWhatsAppUrl) },
-            )
+            Box(Modifier.fillMaxSize()) {
+                YouHome(
+                    state = state,
+                    activePrompt = activePrompt.value,
+                    onPrompt = {
+                        activePrompt.value = it
+                        isShowingSystemPrompt.value = false
+                        isPromptVisible.value = true
+                    },
+                )
+                if (isPromptVisible.value) {
+                    AnkyConversationPrompt(
+                        message = youConversationMessage(
+                            state = state,
+                            activePrompt = activePrompt.value,
+                            isShowingSystemPrompt = isShowingSystemPrompt.value,
+                        ),
+                        actions = if (isShowingSystemPrompt.value) {
+                            emptyList()
+                        } else {
+                            youPromptActions(
+                                prompt = activePrompt.value,
+                                state = state,
+                                context = context,
+                                viewModel = viewModel,
+                                page = { page.value = it },
+                                importBackup = {
+                                    backupImporter.launch(
+                                        arrayOf(
+                                            "application/zip",
+                                            "application/x-zip-compressed",
+                                            "application/octet-stream",
+                                            "application/json",
+                                            "text/plain",
+                                        ),
+                                    )
+                                },
+                                confirmDeleteLocalData = { confirmDeleteLocalData.value = true },
+                            )
+                        },
+                        onClose = { isPromptVisible.value = false },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
+                    )
+                }
+            }
         } else {
             YouDetailShell(page.value!!, onBack = { page.value = null }) {
                 when (page.value!!) {
@@ -354,33 +416,30 @@ private fun DestructiveConfirmDialog(
 }
 
 @Composable
-private fun YouHome(state: YouState, onOpen: (YouPage) -> Unit, onFreeCredits: () -> Unit) {
+private fun YouHome(state: YouState, activePrompt: YouPrompt, onPrompt: (YouPrompt) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 62.dp, bottom = 120.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 62.dp, bottom = 220.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text("you", style = AnkyType.Title)
-        Text("your story. your uniqueness.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
-        YouAvatar()
         YouStats(state)
-        YouStatusMessages(state)
         AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-            MenuRow(R.drawable.you_icon_account, "local identity", "private to this device", { onOpen(YouPage.Account) })
+            PromptRow(R.drawable.you_icon_account, "identity", "save it to secure storage", activePrompt == YouPrompt.Identity) { onPrompt(YouPrompt.Identity) }
             Divider()
-            MenuRow(R.drawable.you_icon_privacy, "privacy", "local-first. private. sovereign.", { onOpen(YouPage.Privacy) })
+            PromptRow(R.drawable.you_icon_privacy, "privacy", "what leaves this phone", activePrompt == YouPrompt.Privacy) { onPrompt(YouPrompt.Privacy) }
             Divider()
-            MenuRow(R.drawable.you_icon_export, "export data", "back up and restore local writing", { onOpen(YouPage.Export) })
+            PromptRow(R.drawable.you_icon_export, "data", "export or restore writing", activePrompt == YouPrompt.Export) { onPrompt(YouPrompt.Export) }
             Divider()
-            MenuRow(R.drawable.you_icon_credits, "credits", "reflections and trial credits", { onOpen(YouPage.Credits) })
-            Divider()
-            MenuRow(R.drawable.you_icon_settings, "\$ANKY", "the memetic layer", { onOpen(YouPage.Token) })
-            Divider()
-            MenuRow(R.drawable.you_icon_credits, "support", "manual credit help", onFreeCredits)
+            PromptRow(R.drawable.you_icon_credits, "credits", "reflection balance", activePrompt == YouPrompt.Credits) { onPrompt(YouPrompt.Credits) }
+            if (state.freeCreditWhatsAppUrl.isNotBlank()) {
+                Divider()
+                PromptRow(R.drawable.you_icon_credits, "support", "manual credit help", activePrompt == YouPrompt.Support) { onPrompt(YouPrompt.Support) }
+            }
         }
         if (BuildConfig.DEBUG) {
             AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-                MenuRow(R.drawable.you_icon_settings, "developer", "local tools", { onOpen(YouPage.Developer) })
+                PromptRow(R.drawable.you_icon_settings, "developer", "local repair tools", activePrompt == YouPrompt.Developer) { onPrompt(YouPrompt.Developer) }
             }
         }
     }
@@ -484,6 +543,28 @@ private fun MenuRow(icon: Int, title: String, subtitle: String, onClick: () -> U
             Text(subtitle, style = AnkyType.Caption.copy(fontSize = 12.sp, color = AnkyColors.PaperMuted), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Image(painterResource(R.drawable.you_icon_chevron_right), null, modifier = Modifier.size(14.dp).alpha(0.82f))
+    }
+}
+
+@Composable
+private fun PromptRow(icon: Int, title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(painterResource(icon), null, modifier = Modifier.size(24.dp).alpha(if (selected) 1f else 0.86f))
+        Column(Modifier.weight(1f).padding(start = 13.dp)) {
+            Text(
+                title,
+                style = AnkyType.Body.copy(
+                    fontSize = 17.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = if (selected) AnkyColors.Gold else AnkyColors.Paper,
+                ),
+                maxLines = 1,
+            )
+            Text(subtitle, style = AnkyType.Caption.copy(fontSize = 12.sp, color = AnkyColors.PaperMuted), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -930,6 +1011,74 @@ private enum class YouPage(val title: String, val subtitle: String) {
     Token("\$ANKY", "the memetic layer"),
     Developer("developer", "local tools"),
 }
+
+private enum class YouPrompt(val message: String) {
+    Identity("your identity can be saved to secure storage."),
+    Privacy("writing stays local unless you export or ask for a reflection."),
+    Export("your archive is yours. export it or restore one."),
+    Credits("credits are only for reflections. writing is free."),
+    Support("support messages include your account id, not your writing."),
+    Developer("local tools. repair first, delete only when you mean it."),
+}
+
+private fun youConversationMessage(
+    state: YouState,
+    activePrompt: YouPrompt,
+    isShowingSystemPrompt: Boolean,
+): String =
+    if (isShowingSystemPrompt) {
+        state.error ?: state.statusMessage ?: activePrompt.message
+    } else {
+        activePrompt.message
+    }
+
+private fun youPromptActions(
+    prompt: YouPrompt,
+    state: YouState,
+    context: Context,
+    viewModel: YouViewModel,
+    page: (YouPage) -> Unit,
+    importBackup: () -> Unit,
+    confirmDeleteLocalData: () -> Unit,
+): List<AnkyChatAction> =
+    when (prompt) {
+        YouPrompt.Identity -> listOf(
+            AnkyChatAction("back up identity", isPrimary = true) { viewModel.revealRecoveryPhrase() },
+            AnkyChatAction("copy account") { context.copyText("Anky address", state.accountId) },
+        )
+        YouPrompt.Privacy -> listOf(
+            AnkyChatAction("copy privacy email", isPrimary = true) { context.copyText("ANKY privacy", "jp@anky.app") },
+        )
+        YouPrompt.Export -> buildList {
+            state.exportedFile?.let { file ->
+                add(AnkyChatAction("export backup", isPrimary = true) { context.shareFile(file) })
+            }
+            add(AnkyChatAction("restore backup") { importBackup() })
+        }
+        YouPrompt.Credits -> {
+            val firstPackage = state.creditState.packages.firstOrNull()
+            buildList {
+                if (firstPackage != null) {
+                    add(AnkyChatAction("buy reflections", isPrimary = true) {
+                        viewModel.purchaseCredits(firstPackage.packageId, context.findActivity())
+                    })
+                }
+                add(AnkyChatAction("refresh credits") { viewModel.refreshCredits() })
+            }
+        }
+        YouPrompt.Support -> listOf(
+            AnkyChatAction("share request", isPrimary = true) { context.shareText(state.freeCreditMessage, "share credit request") },
+            AnkyChatAction("message support") { context.openUrl(state.freeCreditWhatsAppUrl) },
+        )
+        YouPrompt.Developer -> if (BuildConfig.DEBUG) {
+            listOf(
+                AnkyChatAction("repair map", isPrimary = true) { viewModel.rebuildSessionIndex() },
+                AnkyChatAction("delete local data") { confirmDeleteLocalData() },
+            )
+        } else {
+            emptyList()
+        }
+    }
 
 private fun Context.copyText(label: String, text: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

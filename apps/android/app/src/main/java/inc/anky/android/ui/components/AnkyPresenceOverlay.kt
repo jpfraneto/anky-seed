@@ -76,6 +76,7 @@ fun AnkyPresenceOverlay(
     defaultSequence: AnkySequenceName,
     goldenGlow: Boolean = false,
     transformToSigil: Boolean = false,
+    onTap: (() -> Boolean)? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -166,6 +167,9 @@ fun AnkyPresenceOverlay(
                 .combinedClickable(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (onTap?.invoke() == true) {
+                            return@combinedClickable
+                        }
                         if (transformToSigil && visible && !forceCompanion) {
                             forceCompanion = true
                         } else {

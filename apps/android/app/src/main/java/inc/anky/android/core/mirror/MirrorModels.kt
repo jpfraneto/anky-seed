@@ -7,6 +7,11 @@ data class MirrorResponsePayload(
     val creditsRemaining: Int?,
 )
 
+enum class MirrorIntent(val headerValue: String) {
+    Reflection("reflection"),
+    Nudge("nudge"),
+}
+
 enum class MirrorErrorCode {
     InvalidAnky,
     IncompleteRitual,

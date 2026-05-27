@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -53,6 +54,7 @@ import inc.anky.android.feature.you.YouScreen
 import inc.anky.android.feature.you.YouViewModel
 import inc.anky.android.core.storage.SingleAnkyImporter
 import inc.anky.android.ui.components.AnkyPresenceOverlay
+import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.components.AnkySequenceName
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyTheme
@@ -154,15 +156,19 @@ fun AnkyApp(container: AppContainer) {
             }
         }
 
+        val currentMirrorBaseUrl = rememberUpdatedState(settings.mirrorBaseUrl)
         val writeViewModel = remember {
             WriteViewModel(
                 activeDraftStore = container.activeDraftStore,
                 archive = container.archive,
                 reflectionStore = container.reflectionStore,
                 indexStore = container.sessionIndexStore,
+                identityProvider = { container.identityStore.loadOrCreate() },
+                mirrorClientProvider = { container.mirrorClient(currentMirrorBaseUrl.value) },
             )
         }
-        val writeState = writeViewModel.state.collectAsStateWithLifecycle().value
+        val writeViewModelWithCurrentMirror = writeViewModel
+        val writeState = writeViewModelWithCurrentMirror.state.collectAsStateWithLifecycle().value
 
         Box(Modifier.fillMaxSize()) {
             Scaffold(
@@ -209,7 +215,7 @@ fun AnkyApp(container: AppContainer) {
                 ) {
                     composable(AnkyRoute.Write.route) {
                         WriteScreen(
-                            viewModel = writeViewModel,
+                            viewModel = writeViewModelWithCurrentMirror,
                             onReveal = { hash ->
                                 navController.navigate(AnkyRoute.Map.route) {
                                     launchSingleTop = true
@@ -293,8 +299,29 @@ fun AnkyApp(container: AppContainer) {
                 defaultSequence = presenceSequence(currentRoute, writeState.hasReachedRitualMark),
                 goldenGlow = currentRoute == AnkyRoute.Write.route && writeState.hasReachedRitualMark,
                 transformToSigil = currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark,
+                onTap = {
+                    if (currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark) {
+                        writeViewModelWithCurrentMirror.startAnkyNudgeIfPossible()
+                    } else {
+                        false
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
+            if (
+                currentRoute == AnkyRoute.Write.route &&
+                writeState.shouldShowNudgeDialogue &&
+                writeState.nudgeDialogueMessage.isNotBlank()
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    AnkyConversationPrompt(
+                        message = writeState.nudgeDialogueMessage,
+                        onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
+                        modifier = Modifier
+                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
+                    )
+                }
+            }
         }
     }
 }

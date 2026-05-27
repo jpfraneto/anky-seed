@@ -1,5 +1,52 @@
 # iOS Delta Parity Log
 
+## 2026-05-27 Delta Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky`.
+- Android delta target: port the new Write portal/nudge, Reveal chat invitation/copy behavior, You prompt-driven home, and mirror intent header.
+
+Migrated Android changes:
+
+- Mirror requests now send `X-Anky-Intent: reflection` by default and can send `X-Anky-Intent: nudge` for the new in-writing Anky nudge path.
+- Write now tracks per-glyph settling color, renders the smaller bottom-right portal-style ritual ring, keeps the latest glyph red-to-white through silence, and lets tapping Anky during an unfinished session request a one-line nudge from the mirror.
+- Write nudge copy matches the iOS shape: `anky is listening to this .anky for one line.`, one-line heading stripping, credit/incomplete-specific errors, and a transient six-second prompt.
+- Write rejected-input handling now matches the current iOS nudge: rejected deletion/replacement/paste surfaces `that doesn't work here. just keep writing without agenda.` transiently and uses Android haptics from the input surface.
+- Reveal now uses the bottom Anky conversation invitation instead of the old inline/floating mirror controls, including reflection-status progress copy while the mirror request is running.
+- Reveal writing is tap-to-copy with a clipboard burst, saved reflection display removes a duplicated leading markdown heading matching the reflection title, and inline `*emphasis*` markdown is rendered.
+- Reveal saved-reflection tap-copy was removed on Android because the current iOS view only wires tap-copy on reconstructed writing; a source parity guard now keeps Android from reintroducing an `Anky mirror` clipboard path without an iOS surface change.
+- You home now follows the prompt-driven iOS update: no subtitle/avatar on the first screen, prompt rows for identity/privacy/data/credits/support/developer, no disclosure chevrons, and a bottom Anky conversation panel with up to two contextual actions.
+- You backup prompt behavior now matches the current iOS shape: You home prepares the backup on entry, `export backup` appears only after a backup file exists, `restore backup` is always available, and the earlier Android-only `prepare backup` chat action is gone.
+- Shared Android companion prompt UI now supports up to two chat actions with primary/secondary styling like the updated Swift `AnkyChatAction`.
+- The presence overlay can delegate taps to Write before toggling hide/show, matching the new iOS Anky-tap nudge behavior.
+
+Validation run in this pass:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.mirror.MirrorClientTest --tests inc.anky.android.privacy.SourceInvariantTest --tests inc.anky.android.feature.reveal.RevealViewModelTest` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.write.WriteViewModelTest` passed with focused nudge coverage for immediate listening copy, `X-Anky-Intent: nudge` request intent, one-line heading stripping, six-second prompt clearing, and iOS rejected-input copy clearing.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest --tests inc.anky.android.feature.reveal.RevealViewModelTest` passed after aligning Reveal copy behavior to the current iOS writing-only tap surface.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest --tests inc.anky.android.mirror.MirrorClientTest` passed after tightening the explicit Write nudge test seam.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest --tests inc.anky.android.feature.you.YouViewModelStateTest` passed with `BUILD SUCCESSFUL in 2s` after aligning the You export prompt actions to current iOS.
+- `./gradlew :app:test :app:assembleDebug :app:lintDebug` passed with `BUILD SUCCESSFUL in 9s` after the Write nudge test seam, immediate-listening prompt update, rejected-input copy alignment, and Reveal writing-only copy alignment.
+- `./gradlew :app:test :app:assembleDebug :app:lintDebug :app:printReleaseSigningStatus` passed with `BUILD SUCCESSFUL in 10s`; release identity is `app.anky.mobile`, debug identity is `app.anky.mobile.debug`, version is `0.1.0` / `2026052002`, and `releaseSigningConfigured=false`.
+- `xcodebuild -project ios/Anky.xcodeproj -scheme Anky -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' -derivedDataPath /tmp/anky-ios-parity-dd build` passed with `BUILD SUCCEEDED`.
+- `git diff --check -- android` passed.
+- Fresh Android 30 emulator screenshots were captured from the current debug APK:
+  - `qa-screenshots/android-emulator-20260527-write-idle.png`
+  - `qa-screenshots/android-emulator-20260527-write-active.png`
+  - `qa-screenshots/android-emulator-20260527-map-current-seeded.png`
+  - `qa-screenshots/android-emulator-20260527-map-day-current-seeded.png`
+  - `qa-screenshots/android-emulator-20260527-reveal-saved-reflection.png`
+  - `qa-screenshots/android-emulator-20260527-you-main.png`
+- The seeded Reveal run used a same-day complete `.anky` plus local reflection sidecar and verified the updated saved-reflection hierarchy: duplicated leading title heading removed, inline emphasis rendered, quote and bullets rendered, and `7 reflections left` shown.
+
+Privacy/protocol notes:
+
+- Write now has an explicit, user-triggered mirror path only for tapping Anky during an unfinished session. The source invariant was updated to allow only that nudge path and still reject direct OkHttp/RevenueCat/purchase clients in Write.
+- Android still does not send `X-Anky-Trial-Proof`.
+- No asset migration was required for this delta; the iOS changes reused existing migrated sprites/icons/backgrounds.
+
 ## 2026-05-16 Delta Pass
 
 Baseline:

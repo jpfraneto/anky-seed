@@ -1,5 +1,10 @@
 package inc.anky.android.write
 
+import inc.anky.android.core.identity.RecoveryPhrase
+import inc.anky.android.core.identity.WriterIdentity
+import inc.anky.android.core.mirror.MirrorIntent
+import inc.anky.android.core.mirror.MirrorResponsePayload
+import inc.anky.android.core.protocol.AnkyHasher
 import inc.anky.android.core.storage.ActiveDraftStore
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
@@ -9,8 +14,10 @@ import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -206,13 +213,14 @@ class WriteViewModelTest {
     fun rejectedDeletionOrReplacementDoesNotMutateDraft() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
+        val dispatcher = StandardTestDispatcher(testScheduler)
         val viewModel = WriteViewModel(
             activeDraftStore = stores.draft,
             archive = stores.archive,
             reflectionStore = stores.reflections,
             indexStore = stores.index,
             nowMs = { start },
-            dispatcher = StandardTestDispatcher(testScheduler),
+            dispatcher = dispatcher,
         )
 
         viewModel.acceptGlyph("h")
@@ -221,6 +229,14 @@ class WriteViewModelTest {
 
         assertEquals("$start h", stores.draft.load())
         assertEquals(1, stores.archive.list().size)
+        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+
+        advanceTimeBy(6_999)
+        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertNull(viewModel.state.value.errorMessage)
     }
 
     @Test
@@ -278,6 +294,74 @@ class WriteViewModelTest {
         assertEquals("$start h", stores.draft.load())
     }
 
+    @Test
+    fun ankyNudgeShowsListeningThenOneLineAndClears() = runTest {
+        val stores = stores()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        var now = 1_770_000_000_000
+        var capturedText: String? = null
+        var capturedIntent: MirrorIntent? = null
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            nowMs = { now },
+            dispatcher = dispatcher,
+            nudgeDispatcher = dispatcher,
+            nudgeRequester = { bytes, _, _, intent ->
+                capturedText = bytes.toString(Charsets.UTF_8)
+                capturedIntent = intent
+                MirrorResponsePayload(
+                    hash = AnkyHasher.sha256Hex(bytes),
+                    title = "Small Nudge",
+                    reflection = "# Stay here\n\nsecond line should not show",
+                    creditsRemaining = null,
+                )
+            },
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 120
+
+        assertEquals(true, viewModel.startAnkyNudgeIfPossible())
+        assertEquals("anky is listening to this .anky for one line.", viewModel.state.value.nudgeDialogueMessage)
+        assertEquals(true, viewModel.state.value.isRequestingNudge)
+
+        runCurrent()
+
+        assertEquals("1770000000000 h", capturedText)
+        assertEquals(MirrorIntent.Nudge, capturedIntent)
+        assertEquals("Stay here", viewModel.state.value.nudgeDialogueMessage)
+        assertEquals(false, viewModel.state.value.isRequestingNudge)
+
+        advanceTimeBy(5_999)
+        assertEquals("Stay here", viewModel.state.value.nudgeDialogueMessage)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(false, viewModel.state.value.shouldShowNudgeDialogue)
+    }
+
+    @Test
+    fun ankyNudgeIsUnavailableBeforeWritingStarts() = runTest {
+        val stores = stores()
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            dispatcher = StandardTestDispatcher(testScheduler),
+            nudgeDispatcher = StandardTestDispatcher(testScheduler),
+            nudgeRequester = { _, _, _, _ -> error("Nudge should not request the mirror before writing starts.") },
+        )
+
+        assertEquals(false, viewModel.startAnkyNudgeIfPossible())
+        assertEquals(false, viewModel.state.value.shouldShowNudgeDialogue)
+    }
+
     private fun TestScope.stores(): Stores {
         val root = temp.newFolder()
         val ankys = File(root, "ankys")
@@ -295,4 +379,11 @@ class WriteViewModelTest {
         val reflections: ReflectionStore,
         val index: SessionIndexStore,
     )
+
+    private fun identity(): WriterIdentity =
+        WriterIdentity.fromRecoveryPhrase(
+            RecoveryPhrase.parse(
+                "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            ),
+        )
 }

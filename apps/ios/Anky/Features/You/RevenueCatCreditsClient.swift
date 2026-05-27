@@ -6,7 +6,12 @@ struct RevenueCatCreditPackage: Identifiable {
     let title: String
     let subtitle: String
     let price: String
-    fileprivate let package: Package
+    fileprivate let purchaseTarget: RevenueCatCreditPurchaseTarget
+}
+
+private enum RevenueCatCreditPurchaseTarget {
+    case package(Package)
+    case product(StoreProduct)
 }
 
 enum RevenueCatCreditsConfiguration {
@@ -69,31 +74,34 @@ final class RevenueCatCreditsClient {
     @MainActor
     func fetchCreditPackages() async throws -> [RevenueCatCreditPackage] {
         let offerings = try await fetchOfferings()
-        guard let offering = offerings.offering(identifier: RevenueCatCreditsConfiguration.offeringIdentifier) ?? offerings.current else {
-            return []
+        let offering = offerings.offering(identifier: RevenueCatCreditsConfiguration.offeringIdentifier) ?? offerings.current
+        let offeringPackages = offering?.availablePackages ?? []
+        let packageModels = offeringPackages.map(Self.creditPackage)
+        let packagedProductIds = Set(packageModels.map(\.id))
+        let missingProductIds = RevenueCatCreditsConfiguration.productOrder.filter { !packagedProductIds.contains($0) }
+
+        let directProductModels: [RevenueCatCreditPackage]
+        if missingProductIds.isEmpty {
+            directProductModels = []
+        } else {
+            directProductModels = await Purchases.shared.products(missingProductIds).map(Self.creditPackage)
         }
 
-        let packages = offering.availablePackages.map { package in
-            RevenueCatCreditPackage(
-                id: package.storeProduct.productIdentifier,
-                title: title(for: package.storeProduct.productIdentifier),
-                subtitle: package.storeProduct.localizedTitle,
-                price: package.storeProduct.localizedPriceString,
-                package: package
-            )
-        }
+        let packages = packageModels + directProductModels
 
-        return packages.sorted { lhs, rhs in
-            let lhsIndex = RevenueCatCreditsConfiguration.productOrder.firstIndex(of: lhs.id) ?? Int.max
-            let rhsIndex = RevenueCatCreditsConfiguration.productOrder.firstIndex(of: rhs.id) ?? Int.max
-            return lhsIndex < rhsIndex
-        }
+        return packages
+            .uniquedByProductId()
+            .sorted { lhs, rhs in
+                let lhsIndex = RevenueCatCreditsConfiguration.productOrder.firstIndex(of: lhs.id) ?? Int.max
+                let rhsIndex = RevenueCatCreditsConfiguration.productOrder.firstIndex(of: rhs.id) ?? Int.max
+                return lhsIndex < rhsIndex
+            }
     }
 
     @MainActor
     func purchase(_ creditPackage: RevenueCatCreditPackage) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            Purchases.shared.purchase(package: creditPackage.package) { _, _, error, userCancelled in
+            let completion: PurchaseCompletedBlock = { _, _, error, userCancelled in
                 if userCancelled {
                     continuation.resume()
                 } else if let error {
@@ -102,6 +110,13 @@ final class RevenueCatCreditsClient {
                     Purchases.shared.invalidateVirtualCurrenciesCache()
                     continuation.resume()
                 }
+            }
+
+            switch creditPackage.purchaseTarget {
+            case .package(let package):
+                Purchases.shared.purchase(package: package, completion: completion)
+            case .product(let product):
+                Purchases.shared.purchase(product: product, completion: completion)
             }
         }
     }
@@ -126,8 +141,28 @@ final class RevenueCatCreditsClient {
         }
     }
 
-    @MainActor
-    private func title(for productIdentifier: String) -> String {
+    private static func creditPackage(for package: Package) -> RevenueCatCreditPackage {
+        let product = package.storeProduct
+        return RevenueCatCreditPackage(
+            id: product.productIdentifier,
+            title: title(for: product.productIdentifier),
+            subtitle: product.localizedTitle,
+            price: product.localizedPriceString,
+            purchaseTarget: .package(package)
+        )
+    }
+
+    private static func creditPackage(for product: StoreProduct) -> RevenueCatCreditPackage {
+        RevenueCatCreditPackage(
+            id: product.productIdentifier,
+            title: title(for: product.productIdentifier),
+            subtitle: product.localizedTitle,
+            price: product.localizedPriceString,
+            purchaseTarget: .product(product)
+        )
+    }
+
+    private static func title(for productIdentifier: String) -> String {
         switch productIdentifier {
         case "inc.dev.anky.credits.22":
             return "22 credits"
@@ -137,6 +172,15 @@ final class RevenueCatCreditsClient {
             return "421 credits"
         default:
             return "credits"
+        }
+    }
+}
+
+private extension Array where Element == RevenueCatCreditPackage {
+    func uniquedByProductId() -> [RevenueCatCreditPackage] {
+        var seen = Set<String>()
+        return filter { package in
+            seen.insert(package.id).inserted
         }
     }
 }

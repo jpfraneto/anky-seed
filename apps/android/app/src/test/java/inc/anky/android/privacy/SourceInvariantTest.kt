@@ -9,11 +9,9 @@ import org.junit.Test
 
 class SourceInvariantTest {
     @Test
-    fun writeFeatureDoesNotReferenceNetworkMirrorOrPurchaseClients() {
+    fun writeFeatureOnlyUsesMirrorForExplicitAnkyNudge() {
         val writeSources = sourceFiles("apps/android/app/src/main/java/inc/anky/android/feature/write")
         val forbidden = listOf(
-            "MirrorClient",
-            "askAnky",
             "OkHttp",
             "RequestBody",
             "RevenueCat",
@@ -28,6 +26,28 @@ class SourceInvariantTest {
         }
 
         assertEquals(emptyList<String>(), violations)
+
+        val writeViewModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteViewModel.kt")
+            .readText()
+        assertTrue(writeViewModel.contains("fun startAnkyNudgeIfPossible()"))
+        assertTrue(writeViewModel.contains("MirrorIntent.Nudge"))
+    }
+
+    @Test
+    fun revealCopySurfaceMatchesCurrentIosWritingTapOnly() {
+        val androidReveal = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
+            .readText()
+        val iosReveal = repoRoot()
+            .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
+            .readText()
+
+        assertTrue(iosReveal.contains("copyWriting(at: location)"))
+        assertTrue(iosReveal.contains("private func copyReflection()"))
+        assertTrue(!iosReveal.substringBefore("private func copyReflection()").contains("copyReflection()"))
+        assertTrue(androidReveal.contains("""copyText("Anky writing", artifact.reconstructedText)"""))
+        assertTrue(!androidReveal.contains("""copyText("Anky mirror""""))
     }
 
     @Test
@@ -232,11 +252,12 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun mirrorUploadCodeOnlyLivesBehindExplicitRevealAskAnkyPath() {
+    fun mirrorUploadCodeOnlyLivesBehindExplicitRevealOrWriteNudgePaths() {
         val allowedRelativePaths = setOf(
             "apps/android/app/src/main/java/inc/anky/android/app/AppContainer.kt",
             "apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt",
             "apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealViewModel.kt",
+            "apps/android/app/src/main/java/inc/anky/android/feature/write/WriteViewModel.kt",
         )
         val uploadTokens = listOf(
             "import inc.anky.android.core.mirror.MirrorClient",
@@ -276,6 +297,26 @@ class SourceInvariantTest {
     }
 
     @Test
+    fun youExportPromptMatchesCurrentIosPreparedBackupActions() {
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+
+        assertTrue(iosYou.contains("""AnkyChatAction("restore backup")"""))
+        assertTrue(iosYou.contains("""AnkyChatAction("export backup", isPrimary: true)"""))
+        assertTrue(iosYou.contains("if let backupZipURL = viewModel.backupZipURL"))
+        assertTrue(!iosYou.contains("""AnkyChatAction("prepare backup""""))
+
+        assertTrue(androidYou.contains("""AnkyChatAction("restore backup")"""))
+        assertTrue(androidYou.contains("""AnkyChatAction("export backup", isPrimary = true)"""))
+        assertTrue(androidYou.contains("state.exportedFile?.let"))
+        assertTrue(!androidYou.contains("""AnkyChatAction("prepare backup""""))
+    }
+
+    @Test
     fun youDeveloperToolsRemainDebugOnly() {
         val youScreen = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
@@ -283,7 +324,7 @@ class SourceInvariantTest {
 
         assertTrue(youScreen.contains("YouPage.Developer -> if (BuildConfig.DEBUG)"))
         assertTrue(
-            Regex("""if \(BuildConfig\.DEBUG\) \{[\s\S]*MenuRow\(R\.drawable\.you_icon_settings, "developer", "local tools"""")
+            Regex("""if \(BuildConfig\.DEBUG\) \{[\s\S]*PromptRow\(R\.drawable\.you_icon_settings, "developer", "local repair tools"""")
                 .containsMatchIn(youScreen),
         )
     }
