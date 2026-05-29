@@ -485,10 +485,28 @@ private fun reflectionInvitationMessage(state: RevealState): String =
 
 private fun shortSessionMessage(state: RevealState): String =
     if (state.artifact?.isComplete == false) {
-        "write 8 minutes to ask anky for reflection"
+        stableShortSessionMessage(
+            hash = state.artifact.hash,
+            wordCount = state.artifact.reconstructedText
+                .splitToSequence(Regex("\\s+"))
+                .filter { it.isNotBlank() }
+                .count(),
+        )
     } else {
-        "ready to ask anky for reflection"
+        "ready to mirror this artifact"
     }
+
+private fun stableShortSessionMessage(hash: String, wordCount: Int): String {
+    val messages = listOf(
+        "keep going until you get to ${AnkyDuration.CompleteRitualMinutes} minutes.",
+        "the thread opened, but it needs the full ${AnkyDuration.CompleteRitualMinutes} minutes.",
+        "that was a spark. stay with it until ${AnkyDuration.CompleteRitualMinutes} minutes.",
+        "anky needs the whole ritual. come back and write ${AnkyDuration.CompleteRitualMinutes} minutes.",
+        "you stopped too soon. try again and cross the ${AnkyDuration.CompleteRitualMinutes}-minute mark.",
+    )
+    val stableValue = hash.take(8).toLongOrNull(radix = 16) ?: wordCount.toLong()
+    return messages[(stableValue % messages.size.toLong()).toInt()]
+}
 
 @Composable
 private fun MarkdownishText(text: String) {

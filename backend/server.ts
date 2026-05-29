@@ -1052,6 +1052,12 @@ export interface IdempotencyStore {
     ankyHash: string;
     now?: number;
   }): Promise<IdempotencyBeginResult>;
+  beginSucceededRetry(input: {
+    key: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult>;
   markSucceeded(key: string, now?: number): Promise<void>;
   markFailed(key: string, now?: number): Promise<void>;
 }
@@ -1076,6 +1082,31 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
     const existing = this.records.get(input.key);
     if (existing?.status === "processing" || existing?.status === "succeeded") {
       return { acquired: false, record: existing };
+    }
+
+    const record: IdempotencyRecord = {
+      key: input.key,
+      status: "processing",
+      addressHash: input.addressHash,
+      ankyHash: input.ankyHash,
+      updatedAt: now,
+    };
+    this.records.set(input.key, record);
+    return { acquired: true, record };
+  }
+
+  async beginSucceededRetry(input: {
+    key: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult> {
+    const now = input.now ?? Date.now();
+    const existing = this.records.get(input.key);
+    if (existing?.status !== "succeeded") {
+      return existing
+        ? { acquired: false, record: existing }
+        : this.begin(input);
     }
 
     const record: IdempotencyRecord = {
@@ -2637,6 +2668,8 @@ export async function handleAnkyReflection(
   let idempotencyKey: string | undefined;
   let billingHash: string | undefined;
   let idempotencyAcquired = false;
+  let retryingSucceededReflection = false;
+  let recoveredPreviousSpend = false;
   let x402Quote: X402Quote | undefined;
   let x402Payment: X402Payment | undefined;
   let x402Settlement: unknown;
@@ -2766,11 +2799,19 @@ export async function handleAnkyReflection(
       ankyHash: billingHash,
     });
     if (!idempotency.acquired && idempotency.record.status === "succeeded") {
-      statusCode = 409;
-      errorCode = "DUPLICATE_SUCCEEDED";
-      return errorJson(c, "DUPLICATE_SUCCEEDED");
-    }
-    if (!idempotency.acquired) {
+      const retry = await idempotencyStore.beginSucceededRetry({
+        key: idempotencyKey,
+        addressHash: identityHash,
+        ankyHash: billingHash,
+      });
+      if (retry.acquired) {
+        retryingSucceededReflection = true;
+      } else {
+        statusCode = 409;
+        errorCode = "DUPLICATE_IN_PROGRESS";
+        return errorJson(c, "DUPLICATE_IN_PROGRESS");
+      }
+    } else if (!idempotency.acquired) {
       statusCode = 409;
       errorCode = "DUPLICATE_IN_PROGRESS";
       return errorJson(c, "DUPLICATE_IN_PROGRESS");
@@ -2782,21 +2823,68 @@ export async function handleAnkyReflection(
     });
 
     try {
-      const preparedCredit = await prepareCredit({
-        env,
-        accountId,
-        accountIdHash: identityHash,
-        ankyHash: billingHash,
-        client: identity.client,
-        appVersion,
-        trialProof,
-      });
+      let preparedCredit: PreparedReflectionCredit = retryingSucceededReflection
+        ? {
+            ok: true,
+            source: "bypass",
+            creditsRemaining: null,
+            result: "bypassed",
+            spentCredit: false,
+          }
+        : await prepareCredit({
+            env,
+            accountId,
+            accountIdHash: identityHash,
+            ankyHash: billingHash,
+            client: identity.client,
+            appVersion,
+            trialProof,
+          });
+      if (
+        !preparedCredit.ok &&
+        preparedCredit.result === "insufficient" &&
+        preparedCredit.spendIdempotencyKey
+      ) {
+        const recoveredCredit = await spendCredit({
+          env,
+          accountId,
+          accountIdHash: identityHash,
+          ankyHash: billingHash,
+          prepared: {
+            ok: true,
+            source: "balance",
+            creditsRemaining: null,
+            spendIdempotencyKey: preparedCredit.spendIdempotencyKey,
+          },
+          trialProof,
+        });
+        if (recoveredCredit.ok) {
+          recoveredPreviousSpend = true;
+          preparedCredit = {
+            ok: true,
+            source: "bypass",
+            creditsRemaining: recoveredCredit.creditsRemaining,
+            result: "bypassed",
+            spentCredit: false,
+            spendIdempotencyKey: preparedCredit.spendIdempotencyKey,
+          };
+        }
+      }
       await deps.progress?.({
         stage: "credit_checked",
-        message: preparedCredit.ok
+        message: retryingSucceededReflection
+          ? "Anky already reflected this artifact and will retry without spending credits."
+          : recoveredPreviousSpend
+          ? "Anky found a previous credit spend for this artifact and will retry without spending again."
+          : preparedCredit.ok
           ? "Anky found an available reflection credit path."
           : "Anky did not find available credits and is checking x402.",
       });
+      if (retryingSucceededReflection) {
+        creditResult = "duplicate_succeeded_retry_bypass";
+      } else if (recoveredPreviousSpend) {
+        creditResult = "recovered_previous_spend";
+      }
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
         x402Quote = quoteAnkyReflection(env);
@@ -2901,7 +2989,7 @@ export async function handleAnkyReflection(
       let creditsRemaining = preparedCredit.ok
         ? preparedCredit.creditsRemaining
         : null;
-      if (mirror.chargeable) {
+      if (mirror.chargeable && !retryingSucceededReflection && !recoveredPreviousSpend) {
         if (x402Payment) {
           const x402Settler = deps.settleX402Payment ?? settleX402Payment;
           const settlement = await x402Settler({ env, payment: x402Payment });
@@ -2964,6 +3052,16 @@ export async function handleAnkyReflection(
       }
 
       const responseBody = responseTextForIntent(requestIntent, mirror);
+      const responseHeaders: Record<string, string> = {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Anky-Hash": ankyHash,
+        "X-Anky-Intent": requestIntent,
+        "X-Anky-Credits-Remaining":
+          creditsRemaining === null ? "null" : String(creditsRemaining),
+        ...(x402Settlement
+          ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
+          : {}),
+      };
       await idempotencyStore.markSucceeded(idempotencyKey);
       idempotencyAcquired = false;
       await deps.progress?.({
@@ -2973,19 +3071,14 @@ export async function handleAnkyReflection(
         chargeable: mirror.chargeable,
         status: 200,
       });
-      return c.text(responseBody, 200, {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Anky-Hash": ankyHash,
-        "X-Anky-Intent": requestIntent,
-        "X-Anky-Credits-Remaining":
-          creditsRemaining === null ? "null" : String(creditsRemaining),
-        ...(x402Settlement
-          ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
-          : {}),
-      });
+      return c.text(responseBody, 200, responseHeaders);
     } finally {
       if (idempotencyAcquired && idempotencyKey) {
-        await idempotencyStore.markFailed(idempotencyKey);
+        if (retryingSucceededReflection) {
+          await idempotencyStore.markSucceeded(idempotencyKey);
+        } else {
+          await idempotencyStore.markFailed(idempotencyKey);
+        }
       }
     }
   } catch {

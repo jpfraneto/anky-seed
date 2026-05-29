@@ -9,6 +9,8 @@ struct WriteView: View {
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
+    private static let restingTextBottomInset: CGFloat = 24
+    private static let keyboardTextBottomInset: CGFloat = 88
 
     init(
         viewModel: WriteViewModel,
@@ -29,7 +31,7 @@ struct WriteView: View {
                 let keyboardTop = keyboardFrame?.minY ?? globalFrame.maxY
                 let visibleHeight = max(1, min(globalFrame.maxY, keyboardTop) - globalFrame.minY)
                 let keyboardIsVisible = keyboardTop < globalFrame.maxY
-                let surfaceBottomInset: CGFloat = keyboardIsVisible ? 12 : 24
+                let surfaceBottomInset: CGFloat = keyboardIsVisible ? Self.keyboardTextBottomInset : Self.restingTextBottomInset
                 let textViewHeight = visibleHeight
                 let contentBottomY = max(24, visibleHeight - surfaceBottomInset)
                 let ringSize = RitualRingsView.size
@@ -115,7 +117,13 @@ struct WriteView: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
-            keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+            updateKeyboardFrame(from: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidChangeFrameNotification)) { notification in
+            updateKeyboardFrame(from: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
+            updateKeyboardFrame(from: notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardFrame = nil
@@ -169,6 +177,10 @@ struct WriteView: View {
 
     private var latestCharacterColorProgress: Double {
         min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(AnkyDuration.terminalSilenceMs)))
+    }
+
+    private func updateKeyboardFrame(from notification: Notification) {
+        keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
     }
 
 }
@@ -813,6 +825,6 @@ private final class BottomRightAnchoredTextView: UITextView {
             ],
             context: nil
         )
-        return ceil(rect.height)
+        return ceil(rect.height + font.lineHeight)
     }
 }

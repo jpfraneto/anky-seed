@@ -36,6 +36,9 @@ final class RevealViewModel: ObservableObject {
     private let requestStore: ReflectionRequestStore
     private let userDefaults: UserDefaults
     private var reflectionWatcherTask: Task<Void, Never>?
+    private var reflectionRetryTask: Task<Void, Never>?
+    private var reflectionRetryStartedAt: Date?
+    private let reflectionRetryLimit: TimeInterval = 120
     private static let hasClaimedFreeCreditsKey = "anky.hasClaimedFreeReflections"
 
     init(
@@ -71,7 +74,9 @@ final class RevealViewModel: ObservableObject {
         self.hasClaimedFreeCredits = userDefaults.bool(forKey: Self.hasClaimedFreeCreditsKey) || !reflectionStore.list().isEmpty
         if reflection == nil, self.requestStore.isPending(hash: artifact.hash) {
             self.isAskingAnky = true
+            self.reflectionRetryStartedAt = Date()
             startPendingReflectionWatcher()
+            schedulePendingReflectionRetry()
         }
 
     }
@@ -173,7 +178,18 @@ final class RevealViewModel: ObservableObject {
     }
 
     func askAnky() async {
-        guard canSubmitReflectionRequest else {
+        await submitReflectionRequest(allowWhileAsking: false)
+    }
+
+    private func submitReflectionRequest(allowWhileAsking: Bool) async {
+        guard canAskAnky else {
+            return
+        }
+        if !allowWhileAsking {
+            guard canSubmitReflectionRequest else {
+                return
+            }
+        } else if case .unavailable = creditPromptState {
             return
         }
 
@@ -185,6 +201,9 @@ final class RevealViewModel: ObservableObject {
         isAskingAnky = true
         errorMessage = nil
         reflectionStatusMessage = "i am opening a quiet channel."
+        if reflectionRetryStartedAt == nil {
+            reflectionRetryStartedAt = Date()
+        }
         requestStore.markPending(hash: artifact.hash)
         startPendingReflectionWatcher()
 
@@ -224,6 +243,8 @@ final class RevealViewModel: ObservableObject {
             reflection = saved
             reflectionStatusMessage = ""
             reflectionWatcherTask?.cancel()
+            reflectionRetryTask?.cancel()
+            reflectionRetryStartedAt = nil
             isAskingAnky = false
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? "Anky could not return a reflection right now."
@@ -233,6 +254,7 @@ final class RevealViewModel: ObservableObject {
                 reflectionStatusMessage = "the mirror is already holding this thread."
                 errorMessage = nil
                 startPendingReflectionWatcher()
+                schedulePendingReflectionRetry()
                 return
             }
             if message.localizedCaseInsensitiveContains("credit") {
@@ -242,6 +264,8 @@ final class RevealViewModel: ObservableObject {
             requestStore.clear(hash: artifact.hash)
             errorMessage = message
             reflectionStatusMessage = ""
+            reflectionRetryTask?.cancel()
+            reflectionRetryStartedAt = nil
             isAskingAnky = false
         }
     }
@@ -288,6 +312,8 @@ final class RevealViewModel: ObservableObject {
             reflection = savedReflection
             requestStore.clear(hash: artifact.hash)
             reflectionWatcherTask?.cancel()
+            reflectionRetryTask?.cancel()
+            reflectionRetryStartedAt = nil
             reflectionStatusMessage = ""
             isAskingAnky = false
         } else if requestStore.isPending(hash: artifact.hash) {
@@ -296,8 +322,11 @@ final class RevealViewModel: ObservableObject {
                 reflectionStatusMessage = "i am waiting with the mirror."
             }
             startPendingReflectionWatcher()
+            schedulePendingReflectionRetry()
         } else if isAskingAnky {
             reflectionStatusMessage = ""
+            reflectionRetryTask?.cancel()
+            reflectionRetryStartedAt = nil
             isAskingAnky = false
         }
     }
@@ -316,5 +345,45 @@ final class RevealViewModel: ObservableObject {
                 self?.refreshLocalReflection()
             }
         }
+    }
+
+    private func schedulePendingReflectionRetry() {
+        guard reflection == nil else {
+            return
+        }
+        guard reflectionRetryTask == nil || reflectionRetryTask?.isCancelled == true else {
+            return
+        }
+
+        let startedAt = reflectionRetryStartedAt ?? Date()
+        reflectionRetryStartedAt = startedAt
+        guard Date().timeIntervalSince(startedAt) < reflectionRetryLimit else {
+            requestStore.clear(hash: artifact.hash)
+            reflectionStatusMessage = ""
+            errorMessage = "Anky could not return a reflection right now."
+            isAskingAnky = false
+            reflectionRetryStartedAt = nil
+            return
+        }
+
+        reflectionRetryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else {
+                return
+            }
+            await self?.retryPendingReflectionIfNeeded()
+        }
+    }
+
+    private func retryPendingReflectionIfNeeded() async {
+        reflectionRetryTask = nil
+        refreshLocalReflection()
+        guard reflection == nil,
+              requestStore.isPending(hash: artifact.hash),
+              canAskAnky else {
+            return
+        }
+
+        await submitReflectionRequest(allowWhileAsking: true)
     }
 }

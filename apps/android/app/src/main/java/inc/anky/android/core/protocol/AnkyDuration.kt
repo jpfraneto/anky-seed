@@ -4,7 +4,8 @@ import java.time.Instant
 import java.time.ZoneOffset
 
 object AnkyDuration {
-    const val CompleteRitualMs: Long = 8 * 60 * 1000
+    const val CompleteRitualMinutes: Int = 8
+    const val CompleteRitualMs: Long = CompleteRitualMinutes * 60 * 1000L
     const val TerminalSilenceMs: Long = 8000
 
     fun durationMs(parsed: ParsedAnky): Long =

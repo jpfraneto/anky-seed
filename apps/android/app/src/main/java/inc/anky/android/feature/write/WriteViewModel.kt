@@ -86,15 +86,16 @@ class WriteViewModel(
 ) : ViewModel() {
     private val restoredDraftText = activeDraftForToday()
     private val restoredWriterResult = restoredDraftText?.let { runCatching { AnkyWriter.fromDraft(it) } }
+    private val restoredWriter = restoredWriterResult?.getOrNull()
     private val restoreErrorMessage =
         if (restoredWriterResult?.isFailure == true) "Could not restore the active draft." else null
-    private var writer: AnkyWriter = restoredWriterResult?.getOrNull() ?: AnkyWriter()
+    private var writer: AnkyWriter =
+        if (restoredWriter?.isClosed == true) AnkyWriter() else restoredWriter ?: AnkyWriter()
     private var closeJob: Job? = null
     private var sessionStartMs: Long? = restoredStartMs()
     private var displayedText: String = restoredDisplayedText()
     private var displayedGlyphs: List<WritingGlyph> = restoredDisplayedText().map { WritingGlyph(it.toString(), 1f) }
     private var acceptedGlyphCount = restoredGlyphCount()
-    private var frozenAtMs: Long? = null
     private var nudgeJob: Job? = null
     private var nudgeClearJob: Job? = null
     private var errorClearJob: Job? = null
@@ -116,10 +117,6 @@ class WriteViewModel(
     fun acceptGlyphs(glyphs: List<String>) {
         if (glyphs.isEmpty()) return
         val now = nowMs()
-        if (frozenAtMs != null) {
-            glyphs.forEach { glyph -> acceptGlyphAt(glyph, now) }
-            return
-        }
         val previousAcceptedMs = writer.lastAcceptedMs
         if (previousAcceptedMs == null) {
             glyphs.forEach { glyph -> acceptGlyphAt(glyph, now) }
@@ -136,7 +133,6 @@ class WriteViewModel(
     private fun acceptGlyphAt(glyph: String, now: Long) {
         freezeLatestGlyph(now)
         if (!writer.isStarted) sessionStartMs = now
-        resumeIfFrozen(now)
         if (!writer.accept(glyph, now)) return
         displayedText += glyph
         displayedGlyphs = displayedGlyphs + WritingGlyph(glyph, 0f)
@@ -194,36 +190,13 @@ class WriteViewModel(
         closeJob?.cancel()
         closeJob = viewModelScope.launch(dispatcher) {
             delay(maxOf(0, afterMs))
-            freezeOrSealSession()
+            closeAfterTerminalSilence()
         }
     }
 
-    private fun freezeOrSealSession() {
+    private fun closeAfterTerminalSilence() {
         if (!writer.isStarted) return
-        if (wouldBeCompleteWithTerminalSilence()) {
-            sealSession()
-        } else {
-            freezeSession()
-        }
-    }
-
-    private fun freezeSession() {
-        if (!writer.isStarted) return
-        val text = writer.text
-        runCatching {
-            activeDraftStore.save(text)
-            val artifact = archive.save(text)
-            val summary = SessionSummary.make(artifact, reflectionStore.load(artifact.hash))
-            indexStore.upsert(summary)
-        }.onSuccess {
-            frozenAtMs = writer.lastAcceptedMs?.plus(AnkyDuration.TerminalSilenceMs) ?: nowMs()
-            _state.value = deriveState().copy(isClosing = false, errorMessage = null)
-        }.onFailure {
-            _state.value = deriveState().copy(
-                isClosing = false,
-                errorMessage = "Could not save this .anky.",
-            )
-        }
+        sealSession()
     }
 
     private fun sealSession() {
@@ -242,7 +215,6 @@ class WriteViewModel(
             displayedGlyphs = emptyList()
             sessionStartMs = null
             acceptedGlyphCount = 0
-            frozenAtMs = null
             _state.value = deriveState().copy(completedHash = artifact.hash, isClosing = false, errorMessage = null)
         }.onFailure {
             activeDraftStore.save(text)
@@ -263,7 +235,7 @@ class WriteViewModel(
 
     private fun deriveState(latestGlyph: String = ""): WriteState {
         val validation = AnkyValidator.validate(writer.text)
-        val now = frozenAtMs ?: nowMs()
+        val now = nowMs()
         val elapsed = if (writer.isClosed) {
             (validation as? AnkyValidation.Valid)?.durationMs ?: 0
         } else {
@@ -285,7 +257,7 @@ class WriteViewModel(
             silenceElapsedMs = silenceElapsed,
             silenceRemainingMs = maxOf(0, AnkyDuration.TerminalSilenceMs - silenceElapsed),
             progress = (elapsed.toFloat() / AnkyDuration.CompleteRitualMs).coerceIn(0f, 1f),
-            isClosing = writer.isStarted && frozenAtMs == null && !writer.isClosed,
+            isClosing = writer.isStarted && !writer.isClosed,
             acceptedGlyphCount = acceptedGlyphCount,
             nudgeMessage = nudgeMessage,
             isRequestingNudge = isRequestingNudge,
@@ -346,22 +318,6 @@ class WriteViewModel(
         val progress = (silenceElapsedMs.toFloat() / AnkyDuration.TerminalSilenceMs).coerceIn(0f, 1f)
         displayedGlyphs = displayedGlyphs.dropLast(1) + displayedGlyphs.last().copy(silenceProgress = progress)
     }
-
-    private fun resumeIfFrozen(now: Long) {
-        val frozenAt = frozenAtMs ?: return
-        val sessionStart = sessionStartMs
-        if (sessionStart != null) {
-            sessionStartMs = sessionStart + maxOf(0, now - frozenAt)
-        }
-        writer.prepareToResume(now)
-        frozenAtMs = null
-    }
-
-    private fun wouldBeCompleteWithTerminalSilence(): Boolean =
-        runCatching {
-            val parsed = AnkyParser.parse(writer.text)
-            AnkyDuration.durationMs(parsed) + AnkyDuration.TerminalSilenceMs >= AnkyDuration.CompleteRitualMs
-        }.getOrDefault(false)
 
     private fun activeDraftForToday(): String? {
         val text = activeDraftStore.load()?.takeIf { it.isNotBlank() } ?: return null

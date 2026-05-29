@@ -619,6 +619,51 @@ describe("POST /anky", () => {
     expect(modelCalls).toBe(0);
   });
 
+  test("previously spent artifact can recover reflection without another credit spend", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let spendCalls = 0;
+    let routerCalls = 0;
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async ({ ankyHash }) => ({
+          ok: false,
+          creditsRemaining: null,
+          result: "insufficient",
+          spendIdempotencyKey: `spend:${ankyHash}`,
+        }),
+        spendPreparedReflectionCredit: async ({ prepared }) => {
+          spendCalls += 1;
+          expect(prepared.ok).toBe(true);
+          return { ok: true, creditsRemaining: 0, result: "spent", spentCredit: true };
+        },
+        routeReflection: async () => {
+          routerCalls += 1;
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "recovered thread",
+            reflection: "hey, thanks for being who you are. my thoughts: recovered",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(text).toContain("recovered");
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("0");
+    expect(spendCalls).toBe(1);
+    expect(routerCalls).toBe(1);
+  });
+
   test("same accountId and ankyHash duplicate does not double spend while in flight", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const now = Date.now();
@@ -651,9 +696,10 @@ describe("POST /anky", () => {
     expect(creditCalls).toBe(1);
   });
 
-  test("duplicate succeeded does not double spend or store reflection", async () => {
+  test("duplicate succeeded reflects again without double spending", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let creditCalls = 0;
+    let routerCalls = 0;
     const app = createApp({
       env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
@@ -662,18 +708,31 @@ describe("POST /anky", () => {
           creditCalls += 1;
           return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
         },
+        routeReflection: async () => {
+          routerCalls += 1;
+          return {
+            provider: "test",
+            chargeable: true,
+            title: `retry thread ${routerCalls}`,
+            reflection: `hey, thanks for being who you are. my thoughts: retry ${routerCalls}`,
+          };
+        },
       },
     });
 
     const first = await app.request("/anky", { method: "POST", headers: await signedHeaders(body, {}, String(Date.now())), body });
+    const firstText = await first.text();
     const duplicate = await app.request("/anky", { method: "POST", headers: await signedHeaders(body, {}, String(Date.now() + 1)), body });
-    const json = await duplicate.json();
+    const duplicateText = await duplicate.text();
 
     expect(first.status).toBe(200);
-    expect(duplicate.status).toBe(409);
-    expect(json.error.code).toBe("DUPLICATE_SUCCEEDED");
+    expect(firstText).toContain("retry 1");
+    expect(duplicate.status).toBe(200);
+    expect(duplicate.headers.get("content-type")).toContain("text/plain");
+    expect(duplicate.headers.get("X-Anky-Hash")).toHaveLength(64);
+    expect(duplicateText).toContain("retry 2");
     expect(creditCalls).toBe(1);
-    expect(JSON.stringify(json)).not.toContain("Here is what I saw");
+    expect(routerCalls).toBe(2);
   });
 
   test("failed reflection releases duplicate protection for a retry", async () => {

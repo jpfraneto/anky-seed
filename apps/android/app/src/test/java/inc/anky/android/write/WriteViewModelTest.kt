@@ -29,7 +29,7 @@ class WriteViewModelTest {
     @get:Rule val temp = TemporaryFolder()
 
     @Test
-    fun restoredIncompleteDraftFreezesAfterElapsedSilenceWithoutClosingAnky() = runTest {
+    fun restoredIncompleteDraftClosesAfterElapsedSilenceLikeIos() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n471000 e")
@@ -45,20 +45,20 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         val saved = stores.archive.list().single()
-        assertEquals("$start h\n471000 e", saved.text)
-        assertEquals(471000, saved.durationMs)
+        assertEquals("$start h\n471000 e\n8000", saved.text)
+        assertEquals(479000, saved.durationMs)
         assertEquals(false, saved.isComplete)
         assertEquals(saved.text, stores.draft.load())
         assertEquals(saved.hash, stores.index.load().single().hash)
     }
 
     @Test
-    fun restoredClosedDraftStaysVisibleWithoutAppendingTerminalTwice() = runTest {
+    fun restoredClosedDraftResetsWriteStateLikeIos() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n472000 e\n8000")
 
-        WriteViewModel(
+        val viewModel = WriteViewModel(
             activeDraftStore = stores.draft,
             archive = stores.archive,
             reflectionStore = stores.reflections,
@@ -70,6 +70,9 @@ class WriteViewModelTest {
 
         assertEquals("$start h\n472000 e\n8000", stores.archive.list().single().text)
         assertEquals("$start h\n472000 e\n8000", stores.draft.load())
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(0, viewModel.state.value.elapsedMs)
     }
 
     @Test
@@ -147,7 +150,7 @@ class WriteViewModelTest {
     }
 
     @Test
-    fun frozenDraftResumesWithoutCountingIdleGap() = runTest {
+    fun shortSessionTerminalSilenceResetsWriteStateLikeIos() = runTest {
         val stores = stores()
         var now = 1_770_000_000_000
         val viewModel = WriteViewModel(
@@ -162,14 +165,14 @@ class WriteViewModelTest {
         viewModel.acceptGlyph("h")
         now += 8_000
         advanceUntilIdle()
-        assertEquals("1770000000000 h", stores.draft.load())
-        assertEquals(8_000, viewModel.state.value.elapsedMs)
 
-        now += 60_000
-        viewModel.acceptGlyph("i")
-
-        assertEquals("1770000000000 h\n0 i", stores.draft.load())
-        assertEquals(8_000, viewModel.state.value.elapsedMs)
+        val saved = stores.archive.list().single()
+        assertEquals("1770000000000 h\n8000", saved.text)
+        assertEquals(saved.text, stores.draft.load())
+        assertEquals(saved.hash, viewModel.state.value.completedHash)
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(0, viewModel.state.value.elapsedMs)
     }
 
     @Test
