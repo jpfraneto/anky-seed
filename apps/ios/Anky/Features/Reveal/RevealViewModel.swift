@@ -16,6 +16,8 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var hasClaimedFreeCredits = false
     @Published private(set) var creditsDenied = false
     @Published private(set) var reflectionStatusMessage: String = ""
+    @Published private(set) var streamingReflectionMarkdown: String = ""
+    @Published private(set) var progressStage: String?
     @Published var errorMessage: String?
 
     let reconstructedText: String
@@ -114,6 +116,10 @@ final class RevealViewModel: ObservableObject {
         MirrorEligibility.canAskAnky(isComplete: isComplete, hasReflection: reflection != nil)
     }
 
+    var streamingReflectionCharacterCount: Int {
+        streamingReflectionMarkdown.count
+    }
+
     var creditPromptState: ReflectionCreditPromptState {
         ReflectionCreditPresentation.state(
             creditsRemaining: creditBalance,
@@ -200,6 +206,8 @@ final class RevealViewModel: ObservableObject {
 
         isAskingAnky = true
         errorMessage = nil
+        streamingReflectionMarkdown = ""
+        progressStage = "stream_open"
         reflectionStatusMessage = "i am opening a quiet channel."
         if reflectionRetryStartedAt == nil {
             reflectionRetryStartedAt = Date()
@@ -216,7 +224,19 @@ final class RevealViewModel: ObservableObject {
                 bytes: Data(artifact.text.utf8),
                 identity: identity,
                 trialProof: trialProof,
-                appVersion: AnkyAppVersion.headerValue
+                appVersion: AnkyAppVersion.headerValue,
+                progress: { [weak self] event in
+                    await MainActor.run {
+                        self?.progressStage = event.stage
+                        self?.reflectionStatusMessage = Self.progressMessage(for: event.stage, fallback: event.message)
+                    }
+                },
+                reflectionChunk: { [weak self] event in
+                    await MainActor.run {
+                        self?.streamingReflectionMarkdown += event.chunk
+                        self?.reflectionStatusMessage = "writing the reflection... \(event.generatedCharacters) characters"
+                    }
+                }
             )
             reflectionStatusMessage = "something answered. i am threading it back."
 
@@ -228,11 +248,12 @@ final class RevealViewModel: ObservableObject {
                 hash: response.hash,
                 title: response.title,
                 reflection: response.reflection,
+                tags: response.tags,
                 createdAt: Date(),
                 creditsRemaining: response.creditsRemaining
             )
             try reflectionStore.save(saved)
-            try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title)
+            try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title, tags: response.tags)
             requestStore.clear(hash: response.hash)
             userDefaults.set(true, forKey: Self.hasClaimedFreeCreditsKey)
             hasClaimedFreeCredits = true
@@ -241,7 +262,9 @@ final class RevealViewModel: ObservableObject {
                 creditBalance = response.creditsRemaining
             }
             reflection = saved
+            streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
+            progressStage = nil
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
@@ -251,6 +274,7 @@ final class RevealViewModel: ObservableObject {
             if message.localizedCaseInsensitiveContains("already being reflected") {
                 requestStore.markPending(hash: artifact.hash)
                 isAskingAnky = true
+                streamingReflectionMarkdown = ""
                 reflectionStatusMessage = "the mirror is already holding this thread."
                 errorMessage = nil
                 startPendingReflectionWatcher()
@@ -263,10 +287,51 @@ final class RevealViewModel: ObservableObject {
             }
             requestStore.clear(hash: artifact.hash)
             errorMessage = message
+            streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
+            progressStage = nil
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
             isAskingAnky = false
+        }
+    }
+
+    static func progressMessage(for stage: String?, fallback: String? = nil) -> String {
+        switch stage {
+        case "stream_open":
+            return "opening the mirror..."
+        case "request_received":
+            return "received your writing..."
+        case "dot_anky_read":
+            return "reading your .anky..."
+        case "hash_computed":
+            return "verifying the seal..."
+        case "identity_verified":
+            return "confirming your identity..."
+        case "protocol_validated":
+            return "validating the ritual..."
+        case "credit_checked":
+            return "checking reflection access..."
+        case "reflection_prepared":
+            return "preparing the reflection..."
+        case "provider_started":
+            return "anky is writing..."
+        case "provider_finished":
+            return "bringing it back..."
+        case "credit_spent":
+            return "settling..."
+        case "x402_quote_created":
+            return "checking payment options..."
+        case "x402_verified":
+            return "payment verified..."
+        case "x402_settled":
+            return "settling..."
+        case "credit_not_spent":
+            return "no credit spent..."
+        case "complete":
+            return "opening the scroll..."
+        default:
+            return fallback ?? "anky is working..."
         }
     }
 
@@ -310,6 +375,7 @@ final class RevealViewModel: ObservableObject {
 
         if let savedReflection = reflectionStore.load(hash: artifact.hash) {
             reflection = savedReflection
+            streamingReflectionMarkdown = ""
             requestStore.clear(hash: artifact.hash)
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
@@ -324,6 +390,7 @@ final class RevealViewModel: ObservableObject {
             startPendingReflectionWatcher()
             schedulePendingReflectionRetry()
         } else if isAskingAnky {
+            streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil

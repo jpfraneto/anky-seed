@@ -6,13 +6,9 @@ struct AnkyPresenceOverlay: View {
     let defaultSequence: AnkySequenceName
     let goldenGlow: Bool
     let transformToSigil: Bool
-    let dockedToDialogue: Bool
     let onTap: (() -> Bool)?
 
-    @AppStorage("ankyPresenceX") private var storedX = -1.0
-    @AppStorage("ankyPresenceY") private var storedY = -1.0
     @State private var isVisible = true
-    @State private var dragStart: CGPoint?
     @State private var breathing = false
     @State private var showMenu = false
     @State private var sequence: AnkySequenceName
@@ -23,14 +19,12 @@ struct AnkyPresenceOverlay: View {
         defaultSequence: AnkySequenceName = .idleFront,
         goldenGlow: Bool = false,
         transformToSigil: Bool = false,
-        dockedToDialogue: Bool = false,
         onTap: (() -> Bool)? = nil
     ) {
         self.companion = companion
         self.defaultSequence = defaultSequence
         self.goldenGlow = goldenGlow
         self.transformToSigil = transformToSigil
-        self.dockedToDialogue = dockedToDialogue
         self.onTap = onTap
         _sequence = State(initialValue: defaultSequence)
     }
@@ -38,8 +32,7 @@ struct AnkyPresenceOverlay: View {
     var body: some View {
         GeometryReader { geometry in
             let size = presenceSize(for: geometry.size)
-            let isDockedToBubble = dockedToDialogue || companion.bubble != nil
-            let point = resolvedPoint(in: geometry.size, presenceSize: size, docked: isDockedToBubble)
+            let point = resolvedPoint(in: geometry.size, presenceSize: size)
             let effectiveSequence = companion.sequenceOverride ?? sequence
 
             ZStack {
@@ -90,9 +83,6 @@ struct AnkyPresenceOverlay: View {
                     .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
                     .contentShape(Circle())
                     .position(point)
-                    .animation(.easeInOut(duration: 0.85), value: isDockedToBubble)
-                    .animation(.easeInOut(duration: 0.35), value: keyboardHeight)
-                    .gesture(dragGesture(in: geometry.size, presenceSize: size, docked: isDockedToBubble))
                     .onTapGesture {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         if onTap?() == true {
@@ -121,37 +111,22 @@ struct AnkyPresenceOverlay: View {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             }
                         }
-                        Button("Move Anky home") {
-                            resetPosition(in: geometry.size, presenceSize: size)
-                        }
                         Button("Change motion") {
                             sequence = sequence.next
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text(isVisible ? "drag anky anywhere" : "tap the sigil to bring anky back")
+                        Text(isVisible ? "anky stays beside the writing" : "tap the sigil to bring anky back")
                     }
                     .zIndex(3)
             }
             .onAppear {
                 breathing = true
                 sequence = defaultSequence
-                if storedX < 0 || storedY < 0 {
-                    resetPosition(in: geometry.size, presenceSize: size)
-                }
             }
-            .onChange(of: defaultSequence) { newSequence in
+            .onChange(of: defaultSequence) { _, newSequence in
                 sequence = newSequence
-            }
-            .onChange(of: keyboardHeight) { _ in
-                let clamped = clamp(
-                    resolvedPoint(in: geometry.size, presenceSize: size, docked: isDockedToBubble),
-                    in: geometry.size,
-                    presenceSize: size
-                )
-                storedX = clamped.x
-                storedY = clamped.y
             }
             .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: breathing)
             .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isVisible)
@@ -169,75 +144,22 @@ struct AnkyPresenceOverlay: View {
         isVisible && !transformToSigil
     }
 
-    private func dragGesture(in containerSize: CGSize, presenceSize: CGFloat, docked: Bool) -> some Gesture {
-        DragGesture(minimumDistance: 2)
-            .onChanged { value in
-                if dragStart == nil {
-                    dragStart = resolvedPoint(in: containerSize, presenceSize: presenceSize, docked: docked)
-                }
-
-                guard let dragStart else {
-                    return
-                }
-
-                let next = clamp(
-                    CGPoint(
-                        x: dragStart.x + value.translation.width,
-                        y: dragStart.y + value.translation.height
-                    ),
-                    in: containerSize,
-                    presenceSize: presenceSize
-                )
-
-                storedX = next.x
-                storedY = next.y
-            }
-            .onEnded { _ in
-                dragStart = nil
-            }
-    }
-
-    private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat, docked: Bool) -> CGPoint {
-        if docked {
-            return clamp(dialoguePoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
-        }
-
-        let fallback = defaultPoint(in: containerSize, presenceSize: presenceSize)
-        let point = CGPoint(
-            x: storedX < 0 ? fallback.x : storedX,
-            y: storedY < 0 ? fallback.y : storedY
-        )
-
-        return clamp(point, in: containerSize, presenceSize: presenceSize)
-    }
-
-    private func resetPosition(in containerSize: CGSize, presenceSize: CGFloat) {
-        let point = defaultPoint(in: containerSize, presenceSize: presenceSize)
-        storedX = point.x
-        storedY = point.y
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
+        clamp(defaultPoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
     }
 
     private func defaultPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
         CGPoint(
-            x: max(presenceSize / 2 + 12, containerSize.width - presenceSize / 2 - 20),
-            y: max(presenceSize / 2 + 12, containerSize.height - keyboardHeight - presenceSize / 2 - 110)
-        )
-    }
-
-    private func dialoguePoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        CGPoint(
-            x: presenceSize / 2 + 18,
-            y: max(presenceSize / 2 + 12, containerSize.height - keyboardHeight - presenceSize / 2 - 18)
+            x: containerSize.width - presenceSize / 2 - 20,
+            y: containerSize.height / 2
         )
     }
 
     private func clamp(_ point: CGPoint, in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
         let radius = presenceSize / 2
-        let bottomLimit = max(radius + 8, containerSize.height - keyboardHeight - radius - 12)
         return CGPoint(
             x: min(max(point.x, radius + 8), max(radius + 8, containerSize.width - radius - 8)),
-            y: min(max(point.y, radius + 8), bottomLimit)
+            y: min(max(point.y, radius + 8), max(radius + 8, containerSize.height - radius - 8))
         )
     }
 

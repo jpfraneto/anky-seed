@@ -23,6 +23,7 @@ struct SessionSummary: Codable, Hashable, Identifiable {
     let wordCount: Int
     let hasReflection: Bool
     let reflectionTitle: String?
+    let tags: [String]
 
     var title: String {
         reflectionTitle ?? (isComplete ? "Anky" : "Fragment")
@@ -37,7 +38,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         preview: String,
         wordCount: Int = 0,
         hasReflection: Bool,
-        reflectionTitle: String?
+        reflectionTitle: String?,
+        tags: [String] = []
     ) {
         self.hash = hash
         self.createdAt = createdAt
@@ -48,6 +50,7 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         self.wordCount = wordCount
         self.hasReflection = hasReflection
         self.reflectionTitle = reflectionTitle
+        self.tags = tags
     }
 
     enum CodingKeys: String, CodingKey {
@@ -60,6 +63,7 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         case wordCount
         case hasReflection
         case reflectionTitle
+        case tags
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +77,7 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         wordCount = try container.decodeIfPresent(Int.self, forKey: .wordCount) ?? Self.wordCount(from: preview)
         hasReflection = try container.decode(Bool.self, forKey: .hasReflection)
         reflectionTitle = try container.decodeIfPresent(String.self, forKey: .reflectionTitle)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
     }
 
     static func make(artifact: SavedAnky, reflection: LocalReflection?) -> SessionSummary {
@@ -85,7 +90,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
             preview: Self.preview(from: artifact.reconstructedText),
             wordCount: Self.wordCount(from: artifact.reconstructedText),
             hasReflection: reflection != nil,
-            reflectionTitle: reflection?.title
+            reflectionTitle: reflection?.title,
+            tags: reflection?.tags ?? []
         )
     }
 
@@ -216,7 +222,7 @@ struct SessionIndexStore {
         return sessions
     }
 
-    func updateReflection(hash: String, title: String) throws {
+    func updateReflection(hash: String, title: String, tags: [String] = []) throws {
         let sessions = load().map { summary in
             guard summary.hash == hash else {
                 return summary
@@ -230,10 +236,31 @@ struct SessionIndexStore {
                 preview: summary.preview,
                 wordCount: summary.wordCount,
                 hasReflection: true,
-                reflectionTitle: title
+                reflectionTitle: title,
+                tags: tags
             )
         }
         try save(sessions)
+    }
+
+    func sessionsWithTag(_ tag: String) -> [SessionSummary] {
+        let normalized = Self.normalizedTag(tag)
+        guard !normalized.isEmpty else {
+            return []
+        }
+        return load().filter { summary in
+            summary.tags.contains { Self.normalizedTag($0) == normalized }
+        }
+    }
+
+    func savedAnkysWithTag(_ tag: String, archive: LocalAnkyArchive = LocalAnkyArchive()) -> [SavedAnky] {
+        sessionsWithTag(tag).compactMap { try? archive.load(url: $0.localFileURL) }
+    }
+
+    private static func normalizedTag(_ tag: String) -> String {
+        tag
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func delete(hash: String) throws {

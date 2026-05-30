@@ -17,7 +17,7 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/anky")
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "text/plain; charset=utf-8")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/markdown, text/plain")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/event-stream")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Intent"), "reflection")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
@@ -35,16 +35,18 @@ final class MirrorClientTests: XCTestCase {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "Content-Type": "text/plain; charset=utf-8",
-                    "X-Anky-Hash": expectedHash,
-                    "X-Anky-Credits-Remaining": "null"
+                    "Content-Type": "text/event-stream; charset=utf-8"
                 ]
             )!
-            let payload = Data("""
-            # Small Thread
-
-            Here is what I saw.
-            """.utf8)
+            var payload = Data("event: update\ndata: {\"stage\":\"request_received\",\"message\":\"received\"}\n\n".utf8)
+            payload.append(Data("event: reflection_chunk\ndata: {\"chunk\":\"# Small \",\"generatedCharacters\":8}\n\n".utf8))
+            payload.append(Data("event: reflection_chunk\ndata: {\"chunk\":\"Thread\",\"generatedCharacters\":14}\n\n".utf8))
+            payload.append(sseReflection(
+                markdown: "# Small Thread\n\nHere is what I saw.",
+                hash: expectedHash,
+                creditsRemaining: "null",
+                tags: ["steady thread"]
+            ))
             return (response, payload)
         }
 
@@ -52,18 +54,27 @@ final class MirrorClientTests: XCTestCase {
         configuration.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: configuration)
         let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
+        var streamedChunks: [MirrorReflectionChunkEvent] = []
 
         let response = try await client.askAnky(
             bytes: body,
             identity: identity,
             trialProof: "trial-proof",
-            appVersion: "1.0(1)"
+            appVersion: "1.0(1)",
+            reflectionChunk: { event in
+                streamedChunks.append(event)
+            }
         )
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.title, "Small Thread")
         XCTAssertEqual(response.reflection, "# Small Thread\n\nHere is what I saw.")
+        XCTAssertEqual(response.tags, ["steady thread"])
         XCTAssertNil(response.creditsRemaining)
+        XCTAssertEqual(streamedChunks, [
+            MirrorReflectionChunkEvent(chunk: "# Small ", generatedCharacters: 8),
+            MirrorReflectionChunkEvent(chunk: "Thread", generatedCharacters: 14)
+        ])
     }
 
     func testMirrorClientCanRequestNudgeIntent() async throws {
@@ -80,12 +91,15 @@ final class MirrorClientTests: XCTestCase {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "Content-Type": "text/plain; charset=utf-8",
-                    "X-Anky-Hash": expectedHash,
-                    "X-Anky-Credits-Remaining": "6"
+                    "Content-Type": "text/event-stream; charset=utf-8"
                 ]
             )!
-            return (response, Data("follow the warm sentence.".utf8))
+            let payload = sseReflection(
+                markdown: "follow the warm sentence.",
+                hash: expectedHash,
+                creditsRemaining: "6"
+            )
+            return (response, payload)
         }
 
         let configuration = URLSessionConfiguration.ephemeral
@@ -111,16 +125,14 @@ final class MirrorClientTests: XCTestCase {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "Content-Type": "text/plain; charset=utf-8",
-                    "X-Anky-Hash": expectedHash,
-                    "X-Anky-Credits-Remaining": "7"
+                    "Content-Type": "text/event-stream; charset=utf-8"
                 ]
             )!
-            let payload = Data("""
-            # Small Thread
-
-            Here is what I saw.
-            """.utf8)
+            let payload = sseReflection(
+                markdown: "# Small Thread\n\nHere is what I saw.",
+                hash: expectedHash,
+                creditsRemaining: "7"
+            )
             return (response, payload)
         }
 
@@ -140,6 +152,24 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertFalse(token!.isEmpty)
         }
     }
+}
+
+private func sseReflection(
+    markdown: String,
+    hash: String,
+    creditsRemaining: String,
+    tags: [String] = []
+) -> Data {
+    let object: [String: Any] = [
+        "markdown": markdown,
+        "tags": tags,
+        "headers": [
+            "X-Anky-Hash": hash,
+            "X-Anky-Credits-Remaining": creditsRemaining
+        ]
+    ]
+    let json = String(data: try! JSONSerialization.data(withJSONObject: object), encoding: .utf8)!
+    return Data("event: reflection\ndata: \(json)\n\n".utf8)
 }
 
 private final class MockURLProtocol: URLProtocol {

@@ -6,8 +6,44 @@ struct LocalReflection: Codable, Hashable, Identifiable {
     let hash: String
     let title: String
     let reflection: String
+    let tags: [String]
     let createdAt: Date
     let creditsRemaining: Int?
+
+    init(
+        hash: String,
+        title: String,
+        reflection: String,
+        tags: [String] = [],
+        createdAt: Date,
+        creditsRemaining: Int?
+    ) {
+        self.hash = hash
+        self.title = title
+        self.reflection = reflection
+        self.tags = tags
+        self.createdAt = createdAt
+        self.creditsRemaining = creditsRemaining
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case hash
+        case title
+        case reflection
+        case tags
+        case createdAt
+        case creditsRemaining
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hash = try container.decode(String.self, forKey: .hash)
+        title = try container.decode(String.self, forKey: .title)
+        reflection = try container.decode(String.self, forKey: .reflection)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        creditsRemaining = try container.decodeIfPresent(Int.self, forKey: .creditsRemaining)
+    }
 }
 
 struct ReflectionStore {

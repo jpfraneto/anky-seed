@@ -109,6 +109,42 @@ describe("POST /anky", () => {
     expect(text).not.toContain("1770000000000");
   });
 
+  test("streams reflection chunks before the final markdown reflection", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
+        routeReflection: async ({ onChunk }) => {
+          await onChunk?.({ chunk: "# Live ", generatedCharacters: 7 });
+          await onChunk?.({ chunk: "Mirror\n\nbody", generatedCharacters: 19 });
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "Live Mirror",
+            reflection: "# Live Mirror\n\nbody",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { Accept: "text/event-stream" }),
+      body,
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(text).toContain("event: reflection_chunk");
+    expect(text).toContain('"chunk":"# Live "');
+    expect(text).toContain('"generatedCharacters":19');
+    expect(text.indexOf("event: reflection_chunk")).toBeLessThan(text.lastIndexOf("event: reflection"));
+    expect(text).toContain("event: reflection");
+    expect(text).toContain("# Live Mirror");
+  });
+
   test("rejects JSON writing bodies", async () => {
     const body = new TextEncoder().encode(JSON.stringify({ writing: "hello" }));
     const headers = await signedHeaders(body, { "Content-Type": "application/json" });
@@ -434,7 +470,7 @@ describe("POST /anky", () => {
   test("returns no-charge fallback when no paid provider is configured", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
-      env: ankyWorld(),
+      env: ankyWorld({ openrouterApiKey: "" }),
       logger: createSafeLogger({ log() {} }),
     });
 

@@ -82,7 +82,6 @@ struct AppRoot: View {
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
                 transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
-                dockedToDialogue: false,
                 onTap: presenceTapHandler
             )
                 .zIndex(40)

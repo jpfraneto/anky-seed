@@ -7,5 +7,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["server.ts", "test"]
+  "include": ["server.ts", "reflection.ts", "test"]
 }

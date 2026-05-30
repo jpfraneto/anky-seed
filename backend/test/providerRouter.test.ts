@@ -25,6 +25,39 @@ describe("provider router", () => {
     expect(body.response_format).toBeUndefined();
   });
 
+  test("OpenRouter can stream reflection chunks before returning the final markdown", async () => {
+    let body: any;
+    const chunks: string[] = [];
+    const result = await openRouterProvider.reflect({
+      env: ankyWorld({
+        openrouterApiKey: "key",
+        openrouterModel: "model",
+      }),
+      prompt: "transient prompt",
+      fetchImpl: async (_url, init) => {
+        body = JSON.parse(String(init.body));
+        return new Response(
+          [
+            'data: {"choices":[{"delta":{"content":"# living "}}]}',
+            "",
+            'data: {"choices":[{"delta":{"content":"thread\\n\\nbody"}}]}',
+            "",
+            "data: [DONE]",
+            "",
+          ].join("\n"),
+        );
+      },
+      onChunk: async ({ chunk }) => {
+        chunks.push(chunk);
+      },
+    });
+
+    expect(body.stream).toBe(true);
+    expect(result.provider).toBe("openrouter");
+    expect(result.reflection).toBe("# living thread\n\nbody");
+    expect(chunks).toEqual(["# living ", "thread\n\nbody"]);
+  });
+
   test("unconfirmed providers are skipped when ZDR is required", async () => {
     const result = await routeReflection({
       env: ankyWorld({ providerOrder: ["bankr", "poiesis", "default"], requireZdr: true }),

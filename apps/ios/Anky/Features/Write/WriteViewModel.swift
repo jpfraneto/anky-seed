@@ -66,6 +66,8 @@ final class WriteViewModel: ObservableObject {
     private var isFrozen = false
     private var errorMessageTask: Task<Void, Never>?
     private var errorRecallExpirationDate: Date?
+    private var lastLocalNudgeDate: Date?
+    private var localNudgeOffset = 0
     private var lastMinuteHaptic = 0
     private var lastAlarmHapticSecond = 0
     private let keySelectionHaptic = UISelectionFeedbackGenerator()
@@ -148,15 +150,15 @@ final class WriteViewModel: ObservableObject {
         guard !isNudgeMessageVisible else {
             return true
         }
-        guard !isRequestingNudge else {
-            isNudgeMessageVisible = true
+        if let lastLocalNudgeDate, Date().timeIntervalSince(lastLocalNudgeDate) < 3 {
+            if nudgeMessage != nil {
+                isNudgeMessageVisible = true
+                return true
+            }
             return true
         }
 
-        nudgeTask?.cancel()
-        nudgeTask = Task { [weak self] in
-            await self?.requestAnkyNudge()
-        }
+        showContextualNudge()
         return true
     }
 
@@ -224,6 +226,10 @@ final class WriteViewModel: ObservableObject {
 
     @discardableResult
     func replayRecentPromptIfAvailable() -> Bool {
+        if writer.isStarted, !protocolText.isEmpty {
+            return startAnkyNudgeIfPossible()
+        }
+
         guard let errorMessage,
               !errorMessage.isEmpty,
               !isErrorMessageVisible,
@@ -434,6 +440,8 @@ final class WriteViewModel: ObservableObject {
         lastAlarmHapticSecond = 0
         keyboardFocusID = UUID()
         clearNudgeMessage()
+        lastLocalNudgeDate = nil
+        localNudgeOffset = 0
     }
 
     private func showPersistentError(_ message: String) {
@@ -490,6 +498,22 @@ final class WriteViewModel: ObservableObject {
         nudgeTask?.cancel()
         nudgeMessage = nil
         isNudgeMessageVisible = false
+    }
+
+    private func showContextualNudge() {
+        let writing = displayedText.isEmpty ? protocolText : displayedText
+        let wordCount = writing
+            .split { $0.isWhitespace || $0.isNewline }
+            .count
+        let message = AnkyNudgeGenerator.generateNudge(
+            from: writing,
+            timeWritten: TimeInterval(elapsedMs) / 1000,
+            wordCount: wordCount,
+            offset: localNudgeOffset
+        )
+        localNudgeOffset += 1
+        lastLocalNudgeDate = Date()
+        showTransientNudge(message)
     }
 
     private static func oneLineNudge(from text: String) -> String {

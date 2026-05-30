@@ -68,6 +68,14 @@ struct RevealView: View {
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
                                 .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            } else if !viewModel.streamingReflectionMarkdown.isEmpty {
+                                StreamingReflectionPanel(
+                                    markdown: viewModel.streamingReflectionMarkdown,
+                                    generatedCharacters: viewModel.streamingReflectionCharacterCount
+                                )
+                                .padding(.top, 36)
+                                .id(RevealScrollTarget.reflection)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                         }
                         .padding(.horizontal, 28)
@@ -82,6 +90,14 @@ struct RevealView: View {
                             withAnimation(.easeInOut(duration: 0.55)) {
                                 scrollProxy.scrollTo(RevealScrollTarget.reflection, anchor: .top)
                             }
+                        }
+                    }
+                    .onChange(of: viewModel.streamingReflectionCharacterCount) { _, count in
+                        guard count > 0 else {
+                            return
+                        }
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            scrollProxy.scrollTo(RevealScrollTarget.reflection, anchor: .bottom)
                         }
                     }
                 }
@@ -388,7 +404,7 @@ private enum RevealScrollTarget {
     case reflection
 }
 
-private struct RevealBackgroundTexture: View {
+struct RevealBackgroundTexture: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
@@ -602,7 +618,7 @@ private struct RevealReflectionDock: View {
                         .foregroundStyle(RevealPalette.gold.opacity(0.86))
 
                     if viewModel.isAskingAnky {
-                        MirrorProgressLine()
+                        MirrorProgressLine(stage: viewModel.progressStage)
                     } else {
                         Text(subtitle)
                             .font(.system(size: 13, weight: .medium, design: .monospaced))
@@ -771,22 +787,15 @@ private struct RevealReflectionDock: View {
 }
 
 private struct MirrorProgressLine: View {
-    private let messages = [
-        "carrying your writing to the mirror...",
-        "listening for the shape underneath...",
-        "bringing the reflection back..."
-    ]
+    let stage: String?
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            let index = Int(timeline.date.timeIntervalSinceReferenceDate / 2.1) % messages.count
-            Text(messages[index])
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .lineSpacing(3)
-                .foregroundStyle(RevealPalette.paper.opacity(0.82))
-                .fixedSize(horizontal: false, vertical: true)
-                .transition(.opacity)
-        }
+        Text(RevealViewModel.progressMessage(for: stage))
+            .font(.system(size: 13, weight: .medium, design: .monospaced))
+            .lineSpacing(3)
+            .foregroundStyle(RevealPalette.paper.opacity(0.82))
+            .fixedSize(horizontal: false, vertical: true)
+            .contentTransition(.opacity)
     }
 }
 
@@ -887,6 +896,8 @@ private struct ReflectionScrollPage: View {
                     }
                     .padding(.top, 8)
 
+                    ReflectionTagPills(tags: reflection.tags)
+
                     SelectableReflectionText(text: reflection.displayBody, isHighlighted: false, style: .readingPage)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -900,6 +911,35 @@ private struct ReflectionScrollPage: View {
         .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+}
+
+private struct ReflectionTagPills: View {
+    let tags: [String]
+
+    var body: some View {
+        if !tags.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(tags, id: \.self) { tag in
+                        NavigationLink {
+                            TagSessionsListView(tag: tag)
+                        } label: {
+                            Text(tag)
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                .foregroundStyle(RevealPalette.gold)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.black.opacity(0.2), in: Capsule())
+                                .overlay(Capsule().stroke(RevealPalette.gold.opacity(0.3), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.top, 2)
+        }
     }
 }
 
@@ -1150,6 +1190,26 @@ private struct SavedReflectionPanel: View {
     }
 }
 
+private struct StreamingReflectionPanel: View {
+    let markdown: String
+    let generatedCharacters: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("writing reflection · \(generatedCharacters) characters")
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(RevealPalette.gold.opacity(0.72))
+                .textCase(.lowercase)
+
+            SelectableReflectionText(
+                text: markdown,
+                isHighlighted: false
+            )
+            .opacity(0.92)
+        }
+    }
+}
+
 private extension LocalReflection {
     var displayBody: String {
         reflection.removingLeadingMarkdownHeading(matching: title)
@@ -1312,6 +1372,13 @@ private struct SelectableReflectionText: UIViewRepresentable {
         paragraph.lineSpacing = style.lineSpacing
         paragraph.paragraphSpacing = trimmed.isEmpty ? style.paragraphSpacing + 5 : style.paragraphSpacing
 
+        if isHorizontalRule(trimmed) {
+            paragraph.lineSpacing = 0
+            paragraph.paragraphSpacingBefore = 12
+            paragraph.paragraphSpacing = 12
+            return NSAttributedString(string: "", attributes: [.paragraphStyle: paragraph])
+        }
+
         if trimmed.isEmpty {
             return NSAttributedString(string: "", attributes: [.paragraphStyle: paragraph])
         }
@@ -1356,6 +1423,18 @@ private struct SelectableReflectionText: UIViewRepresentable {
             }
         }
         return nil
+    }
+
+    private func isHorizontalRule(_ line: String) -> Bool {
+        if line == "---" || line == "***" || line == "___" || line == "\u{2014}" {
+            return true
+        }
+        guard line.count <= 5 else {
+            return false
+        }
+        return !line.isEmpty && line.allSatisfy { character in
+            character == "-" || character == "*" || character == "_" || character == "\u{2014}"
+        }
     }
 
     private func bulletText(from line: String) -> String? {
@@ -1491,7 +1570,7 @@ private struct SelectableReflectionText: UIViewRepresentable {
     }
 }
 
-private enum RevealPalette {
+enum RevealPalette {
     static let appBackground = Color(hex: 0x08090B)
     static let ink = Color(hex: 0x080713)
     static let paper = Color(hex: 0xFFF0C9)

@@ -17,14 +17,124 @@ struct MirrorClient {
         identity: WriterIdentity,
         trialProof: String? = nil,
         appVersion: String? = nil,
-        intent: Intent = .reflection
+        intent: Intent = .reflection,
+        progress: ((MirrorProgressEvent) async -> Void)? = nil,
+        reflectionChunk: ((MirrorReflectionChunkEvent) async -> Void)? = nil
     ) async throws -> MirrorResponsePayload {
+        let request = try makeRequest(
+            bytes: bytes,
+            identity: identity,
+            trialProof: trialProof,
+            appVersion: appVersion,
+            intent: intent
+        )
+        let (stream, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw MirrorClientError.invalidResponse
+        }
+
+        if !(200..<300).contains(http.statusCode) {
+            let data = try await Self.collect(stream)
+            if let envelope = try? JSONDecoder().decode(MirrorErrorEnvelope.self, from: data) {
+                throw MirrorClientError.server(envelope.error.message)
+            }
+            throw MirrorClientError.server("Anky could not return a reflection right now.")
+        }
+
+        var currentEvent: String?
+        var dataLines: [String] = []
+
+        func flushEvent() async throws -> MirrorResponsePayload? {
+            guard let currentEvent else {
+                dataLines.removeAll()
+                return nil
+            }
+            let payload = dataLines.joined(separator: "\n")
+            dataLines.removeAll()
+            switch currentEvent {
+            case "update":
+                if let data = payload.data(using: .utf8),
+                   let event = try? JSONDecoder().decode(MirrorProgressEvent.self, from: data) {
+                    await progress?(event)
+                }
+                return nil
+            case "reflection_chunk":
+                if let data = payload.data(using: .utf8),
+                   let event = try? JSONDecoder().decode(MirrorReflectionChunkEvent.self, from: data) {
+                    await reflectionChunk?(event)
+                }
+                return nil
+            case "reflection":
+                guard let data = payload.data(using: .utf8),
+                      let event = try? JSONDecoder().decode(MirrorReflectionEvent.self, from: data) else {
+                    throw MirrorClientError.invalidResponse
+                }
+                let reflection = event.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !reflection.isEmpty else {
+                    throw MirrorClientError.invalidResponse
+                }
+                let hash = event.headers.value(forHTTPHeaderField: "X-Anky-Hash") ?? AnkyHasher.sha256Hex(bytes)
+                let creditsRemaining = event.headers
+                    .value(forHTTPHeaderField: "X-Anky-Credits-Remaining")
+                    .flatMap(Self.creditsRemaining)
+                let tags = event.tags ?? event.headers
+                    .value(forHTTPHeaderField: "X-Anky-Tags")
+                    .flatMap(Self.tags)
+                    ?? []
+                return MirrorResponsePayload(
+                    hash: hash,
+                    title: Self.title(fromMarkdown: reflection),
+                    reflection: reflection,
+                    tags: tags,
+                    creditsRemaining: creditsRemaining
+                )
+            case "error":
+                throw MirrorClientError.server(Self.errorMessage(fromSSEPayload: payload))
+            default:
+                return nil
+            }
+        }
+
+        for try await line in stream.lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            if trimmedLine.isEmpty {
+                if let payload = try await flushEvent() {
+                    return payload
+                }
+                currentEvent = nil
+                continue
+            }
+            if trimmedLine.hasPrefix("event:") {
+                if currentEvent != nil {
+                    if let payload = try await flushEvent() {
+                        return payload
+                    }
+                }
+                currentEvent = String(trimmedLine.dropFirst("event:".count)).trimmingCharacters(in: .whitespaces)
+            } else if trimmedLine.hasPrefix("data:") {
+                dataLines.append(String(trimmedLine.dropFirst("data:".count)).trimmingCharacters(in: .whitespaces))
+            }
+        }
+
+        if let payload = try await flushEvent() {
+            return payload
+        }
+        throw MirrorClientError.invalidResponse
+    }
+
+    private func makeRequest(
+        bytes: Data,
+        identity: WriterIdentity,
+        trialProof: String?,
+        appVersion: String?,
+        intent: Intent
+    ) throws -> URLRequest {
         let signed = try AnkyPostSigner.sign(body: bytes, identity: identity)
         var request = URLRequest(url: baseURL.appendingPathComponent("anky"))
         request.httpMethod = "POST"
         request.httpBody = bytes
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("text/markdown, text/plain", forHTTPHeaderField: "Accept")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue(signed.identityVersion, forHTTPHeaderField: "X-Anky-Identity-Version")
         request.setValue(signed.accountId, forHTTPHeaderField: "X-Anky-Account")
         request.setValue(signed.signatureType, forHTTPHeaderField: "X-Anky-Signature-Type")
@@ -38,35 +148,43 @@ struct MirrorClient {
         if let trialProof {
             request.setValue(trialProof, forHTTPHeaderField: "X-Anky-Trial-Proof")
         }
+        return request
+    }
 
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw MirrorClientError.invalidResponse
+    private static func collect(_ bytes: URLSession.AsyncBytes) async throws -> Data {
+        var data = Data()
+        for try await byte in bytes {
+            data.append(contentsOf: [byte])
         }
-
-        if (200..<300).contains(http.statusCode) {
-            guard let reflection = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !reflection.isEmpty else {
-                throw MirrorClientError.invalidResponse
-            }
-            let hash = http.value(forHTTPHeaderField: "X-Anky-Hash") ?? AnkyHasher.sha256Hex(bytes)
-            let creditsRemaining = http.value(forHTTPHeaderField: "X-Anky-Credits-Remaining").flatMap(Self.creditsRemaining)
-            return MirrorResponsePayload(
-                hash: hash,
-                title: Self.title(fromMarkdown: reflection),
-                reflection: reflection,
-                creditsRemaining: creditsRemaining
-            )
-        }
-
-        if let envelope = try? JSONDecoder().decode(MirrorErrorEnvelope.self, from: data) {
-            throw MirrorClientError.server(envelope.error.message)
-        }
-        throw MirrorClientError.server("Anky could not return a reflection right now.")
+        return data
     }
 
     private static func creditsRemaining(_ value: String) -> Int? {
         value == "null" ? nil : Int(value)
+    }
+
+    private static func tags(_ value: String) -> [String]? {
+        guard let data = value.data(using: .utf8),
+              let tags = try? JSONDecoder().decode([String].self, from: data) else {
+            return nil
+        }
+        return tags
+    }
+
+    private static func errorMessage(fromSSEPayload payload: String) -> String {
+        guard let data = payload.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return "Anky could not return a reflection right now."
+        }
+        if let body = object["body"] as? [String: Any],
+           let error = body["error"] as? [String: Any],
+           let message = error["message"] as? String {
+            return message
+        }
+        if let message = object["message"] as? String {
+            return message
+        }
+        return "Anky could not return a reflection right now."
     }
 
     private static func title(fromMarkdown markdown: String) -> String {
@@ -80,10 +198,21 @@ struct MirrorClient {
     }
 }
 
+struct MirrorProgressEvent: Codable, Equatable {
+    let stage: String
+    let message: String?
+}
+
+struct MirrorReflectionChunkEvent: Codable, Equatable {
+    let chunk: String
+    let generatedCharacters: Int
+}
+
 struct MirrorResponsePayload: Codable, Equatable {
     let hash: String
     let title: String
     let reflection: String
+    let tags: [String]
     let creditsRemaining: Int?
 }
 
@@ -113,4 +242,16 @@ private struct MirrorErrorEnvelope: Decodable {
 
 private struct MirrorError: Decodable {
     let message: String
+}
+
+private struct MirrorReflectionEvent: Decodable {
+    let markdown: String
+    let tags: [String]?
+    let headers: [String: String]
+}
+
+private extension Dictionary where Key == String, Value == String {
+    func value(forHTTPHeaderField field: String) -> String? {
+        first { key, _ in key.caseInsensitiveCompare(field) == .orderedSame }?.value
+    }
 }

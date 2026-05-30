@@ -31,7 +31,7 @@ import {
   ankyMirrorRequestMessage,
   bodySha256Bytes32,
   parseBaseAccountId,
-  reconstructText,
+  reconstructText as reconstructProtocolText,
   sha256Hex,
   validateAnky,
   verifyAnkyMirrorRequestSignature,
@@ -39,6 +39,7 @@ import {
   type Hex,
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
+import { buildReflectDotAnkyPrompt } from "./reflection";
 
 // -----------------------------------------------------------------------------
 // Start Here
@@ -240,6 +241,7 @@ export type AnkyRouteDeps = {
   verifyX402Payment?: typeof verifyX402Payment;
   settleX402Payment?: typeof settleX402Payment;
   progress?: AnkyProgressSink;
+  reflectionChunk?: AnkyReflectionChunkSink;
 };
 
 export type AnkyProgressEvent = {
@@ -254,6 +256,15 @@ export type AnkyProgressEvent = {
 
 export type AnkyProgressSink = (
   event: AnkyProgressEvent,
+) => void | Promise<void>;
+
+export type AnkyReflectionChunkEvent = {
+  chunk: string;
+  generatedCharacters: number;
+};
+
+export type AnkyReflectionChunkSink = (
+  event: AnkyReflectionChunkEvent,
 ) => void | Promise<void>;
 
 export function createApp(
@@ -2236,6 +2247,7 @@ type ProviderFetch = (url: string, init: RequestInit) => Promise<Response>;
 export type MirrorResponse = {
   title: string;
   reflection: string;
+  tags?: string[];
 };
 
 type AnkyRequestIntent = "reflection" | "nudge";
@@ -2258,6 +2270,7 @@ export type ReflectionProvider = {
     env: Env;
     prompt: string;
     fetchImpl?: ProviderFetch;
+    onChunk?: AnkyReflectionChunkSink;
   }): Promise<ReflectionProviderResult>;
 };
 
@@ -2266,6 +2279,7 @@ export async function routeReflection(input: {
   prompt: string;
   fetchImpl?: ProviderFetch;
   providers?: ReflectionProvider[];
+  onChunk?: AnkyReflectionChunkSink;
 }): Promise<ReflectionProviderResult> {
   const providers = input.providers ?? providersForEnv(input.env);
   const failures: string[] = [];
@@ -2280,6 +2294,7 @@ export async function routeReflection(input: {
         env: input.env,
         prompt: input.prompt,
         fetchImpl: input.fetchImpl,
+        onChunk: input.onChunk,
       });
     } catch (error) {
       failures.push(`${provider.name}:${safeProviderFailure(error)}`);
@@ -2319,6 +2334,11 @@ export const openRouterProvider: ReflectionProvider = {
   async reflect(input) {
     if (!input.env.openrouterApiKey || !input.env.openrouterModel) {
       throw new Error("OPENROUTER_NOT_CONFIGURED");
+    }
+
+    const onChunk = input.onChunk;
+    if (onChunk) {
+      return streamOpenRouterProvider({ ...input, onChunk });
     }
 
     const fetcher = input.fetchImpl ?? fetch;
@@ -2387,6 +2407,105 @@ export const poiesisProvider: ReflectionProvider = {
   },
 };
 
+async function streamOpenRouterProvider(input: {
+  env: Env;
+  prompt: string;
+  fetchImpl?: ProviderFetch;
+  onChunk: AnkyReflectionChunkSink;
+}): Promise<ReflectionProviderResult> {
+  const fetcher = input.fetchImpl ?? fetch;
+  const response = await fetcher(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      signal: AbortSignal.timeout(input.env.openrouterTimeoutMs),
+      headers: {
+        Authorization: `Bearer ${input.env.openrouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://anky.app",
+        "X-Title": "Anky Mirror",
+      },
+      body: JSON.stringify({
+        model: input.env.openrouterModel,
+        stream: true,
+        messages: [{ role: "user", content: input.prompt }],
+        provider: { data_collection: "deny", zdr: true },
+      }),
+    },
+  );
+
+  if (!response.ok) throw new Error(`OPENROUTER_HTTP_${response.status}`);
+  if (!response.body) throw new Error("OPENROUTER_EMPTY");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let reflection = "";
+
+  const consumeBlock = async (block: string) => {
+    for (const chunk of openRouterChunksFromSseBlock(block)) {
+      reflection += chunk;
+      await input.onChunk({
+        chunk,
+        generatedCharacters: [...reflection].length,
+      });
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split(/\n\n/);
+    buffer = blocks.pop() ?? "";
+
+    for (const block of blocks) {
+      await consumeBlock(block);
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    await consumeBlock(buffer);
+  }
+
+  if (!reflection.trim()) throw new Error("OPENROUTER_EMPTY");
+
+  return {
+    ...parseMirrorResponse(reflection),
+    provider: "openrouter",
+    chargeable: true,
+  };
+}
+
+function openRouterChunksFromSseBlock(block: string): string[] {
+  const chunks: string[] = [];
+
+  for (const line of block.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice("data:".length).trim();
+    if (!payload || payload === "[DONE]") continue;
+
+    try {
+      const json = JSON.parse(payload) as {
+        choices?: Array<{
+          delta?: { content?: unknown };
+          message?: { content?: unknown };
+        }>;
+      };
+      const content =
+        json.choices?.[0]?.delta?.content ??
+        json.choices?.[0]?.message?.content;
+      if (typeof content === "string") chunks.push(content);
+    } catch {
+      continue;
+    }
+  }
+
+  return chunks;
+}
+
 export const defaultFallbackProvider: ReflectionProvider = {
   name: "default",
   privacy: {
@@ -2399,6 +2518,7 @@ export const defaultFallbackProvider: ReflectionProvider = {
       provider: "default",
       chargeable: false,
       title: "mirror unavailable",
+      tags: [],
       reflection:
         "# mirror unavailable\n\nhey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
     };
@@ -2406,7 +2526,23 @@ export const defaultFallbackProvider: ReflectionProvider = {
 };
 
 export function parseMirrorResponse(raw: string): MirrorResponse {
-  const reflection = markdownPayload(raw);
+  const payload = markdownPayload(raw);
+  const lines = payload.split(/\r?\n/);
+  let tags: string[] = [];
+  let markdownStart = 0;
+  const firstLine = lines[0]?.trim();
+
+  if (firstLine?.startsWith("{") && firstLine.includes('"tags"')) {
+    try {
+      const parsed = JSON.parse(firstLine) as { tags?: unknown };
+      tags = normalizeMirrorTags(parsed.tags);
+      markdownStart = 1;
+    } catch {
+      markdownStart = 1;
+    }
+  }
+
+  const reflection = lines.slice(markdownStart).join("\n").trim();
   if (!reflection) {
     throw new Error("INVALID_MIRROR_RESPONSE");
   }
@@ -2414,10 +2550,40 @@ export function parseMirrorResponse(raw: string): MirrorResponse {
   return {
     title: titleFromMarkdown(reflection),
     reflection,
+    ...(tags.length > 0 ? { tags } : {}),
   };
 }
 
+const LANG_NAMES: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+};
+
+const LANGUAGE_GREETINGS: Record<string, string> = {
+  en: "hey, thanks for being who you are. my thoughts:",
+  es: "hola, gracias por ser quien eres. mis pensamientos:",
+};
+
+export function detectLanguage(text: string): string {
+  const lower = text.toLowerCase();
+  const spanishScore =
+    countMatches(
+      lower,
+      /\b(que|el|la|los|las|de|del|en|con|por|para|un|una|es|son|estoy|esta|este|esto|me|te|se|lo|le|y|o|no|si|como|muy|mas|más|pero|todo|mismo|aqui|aquí|ahora|bien|porque|cuando|quiero|siento|tengo|hay)\b/g,
+    ) + countMatches(lower, /[áéíóúñ¿¡]/g) * 3;
+  const englishScore = countMatches(
+    lower,
+    /\b(the|and|for|are|but|not|you|all|can|was|one|our|out|day|get|has|him|his|how|new|now|old|see|two|way|who|did|its|let|put|say|she|too|use|that|this|with|have|what|been|from|will|your|come|them|just|know|want|when|like|time|could|people|there|first|may|should|very|than|these|would|other|which|their|after|over|such|also|back|only|then|feel|think|write|work)\b/g,
+  );
+
+  return spanishScore > englishScore ? "es" : "en";
+}
+
 export function buildStorytellerPrompt(writing: string): string {
+  const detectedLang = detectLanguage(writing);
+  const langName = LANG_NAMES[detectedLang] ?? LANG_NAMES.en;
+  const greeting = LANGUAGE_GREETINGS[detectedLang] ?? LANGUAGE_GREETINGS.en;
+
   return [
     "Someone just wrote a complete .anky: stream-of-consciousness, no backspace, no editing, just forward motion until something true broke the surface. This is your first time reading them.",
     "",
@@ -2433,18 +2599,26 @@ export function buildStorytellerPrompt(writing: string): string {
     "",
     "Name what feels NEW in this session: the shift, the opening, the sentence that changes the direction. Name what feels OLD: the loop, the defense, the familiar weather system they are still inside.",
     "",
-    "Respond in the same language they wrote in.",
+    `LANGUAGE: The user wrote primarily in ${langName} (${detectedLang}).`,
+    `You MUST respond in ${langName}. Do not switch languages.`,
+    `The greeting after the H1 must be in ${langName}.`,
     "",
-    "Return exactly one markdown file and nothing else.",
+    "Before the markdown document, output exactly one line of JSON:",
+    '{"tags": ["theme1", "theme2", "theme3"]}',
     "",
-    "Do not wrap it in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like \"here is\". Your entire reply must be the markdown document.",
+    "Rules for tags: 3 to 5 tags maximum; each tag is 1-3 words describing an emotional theme or topic; use lowercase letters, numbers, and spaces only; do not use hashtags or markdown.",
+    "",
+    "Do not wrap the markdown body in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like \"here is\".",
+    "",
+    "After the one-line JSON tags block, return exactly one markdown file and nothing else.",
+    "",
+    "Do not use horizontal rule separators (--- or ***). Separate sections with extra blank lines instead.",
     "",
     "The markdown document must begin with one H1 title: 3-5 words naming what this session is really about, not what they said, but the thing under the thing.",
     "",
-    "After the H1, the first paragraph must begin with the natural equivalent, in the same language the user wrote in, of:",
-    "hey, thanks for being who you are. my thoughts:",
+    `After the H1, the first paragraph must begin with this exact greeting: ${greeting}`,
     "",
-    "Use native markdown for everything else: headings, paragraphs, lists, blockquotes, links, images, tags, or any other document element. If you include tags, write them as markdown text. If you include an image reference, write it as markdown image syntax. Keep it readable on a phone with short paragraphs and only occasional lists.",
+    "Use native markdown for everything else: headings, paragraphs, lists, blockquotes, links, images, or any other document element. Do not include tags anywhere in the markdown body. If you include an image reference, write it as markdown image syntax. Keep it readable on a phone with short paragraphs and only occasional lists.",
     "",
     "Let the document feel like a scroll Anky found and brought back: simple, intimate, lucid, and complete.",
     "",
@@ -2475,6 +2649,36 @@ function markdownPayload(raw: string): string {
   const fenced = trimmed.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/i);
   if (fenced) return fenced[1].trim();
   return trimmed;
+}
+
+function countMatches(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0;
+}
+
+function normalizeMirrorTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const tag = item
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .slice(0, 3)
+      .join(" ");
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    tags.push(tag);
+    if (tags.length >= 5) break;
+  }
+
+  return tags;
 }
 
 function titleFromMarkdown(markdown: string): string {
@@ -2586,6 +2790,7 @@ export function handleAnkyReflectionStream(
         const response = await handleAnkyReflection(c, env, logger, {
           ...deps,
           progress: (event) => send("update", event),
+          reflectionChunk: (event) => send("reflection_chunk", event),
         });
         const body = await response.text();
         const headers = responseHeadersObject(response.headers);
@@ -2593,6 +2798,7 @@ export function handleAnkyReflectionStream(
         if (response.ok) {
           send("reflection", {
             markdown: body,
+            tags: tagsFromHeader(headers["x-anky-tags"]),
             headers,
           });
         } else {
@@ -2887,6 +3093,16 @@ export async function handleAnkyReflection(
       }
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
+        if (
+          preparedCredit.result === "trial_disabled" ||
+          preparedCredit.result === "trial_ineligible" ||
+          preparedCredit.result === "trial_proof_missing" ||
+          preparedCredit.result === "trial_proof_invalid"
+        ) {
+          statusCode = 402;
+          errorCode = "INSUFFICIENT_CREDITS";
+          return errorJson(c, "INSUFFICIENT_CREDITS");
+        }
         x402Quote = quoteAnkyReflection(env);
         await deps.progress?.({
           stage: "x402_quote_created",
@@ -2897,10 +3113,7 @@ export async function handleAnkyReflection(
           chargeable: x402Quote.chargeable,
           price: x402Quote.price,
         });
-        const canReturnFreeFallbackWithoutCredit =
-          preparedCredit.result === "not_configured" ||
-          preparedCredit.result === "unavailable";
-        if (!x402Quote.chargeable && canReturnFreeFallbackWithoutCredit) {
+        if (!x402Quote.chargeable) {
           freeFallbackWithoutCredit = true;
           creditResult = "x402_not_required_default_fallback";
         } else if (x402Quote.chargeable) {
@@ -2954,11 +3167,11 @@ export async function handleAnkyReflection(
         return errorJson(c, "MIRROR_FAILED");
       }
 
-      const writing = reconstructText(validation.parsed);
+      const writing = reconstructProtocolText(validation.parsed);
       const prompt =
         requestIntent === "nudge"
           ? buildNudgePrompt(writing)
-          : buildStorytellerPrompt(writing);
+          : buildReflectDotAnkyPrompt(dotAnky);
       await deps.progress?.({
         stage: "reflection_prepared",
         message:
@@ -2973,7 +3186,12 @@ export async function handleAnkyReflection(
           message: "Anky is asking the reflection provider.",
           provider: x402Quote?.provider,
         });
-        mirror = await reflectionRouter({ env, prompt });
+        mirror = await reflectionRouter({
+          env,
+          prompt,
+          onChunk:
+            requestIntent === "reflection" ? deps.reflectionChunk : undefined,
+        });
         modelProvider = mirror.provider;
         await deps.progress?.({
           stage: "provider_finished",
@@ -3058,6 +3276,9 @@ export async function handleAnkyReflection(
         "X-Anky-Intent": requestIntent,
         "X-Anky-Credits-Remaining":
           creditsRemaining === null ? "null" : String(creditsRemaining),
+        ...(requestIntent === "reflection"
+          ? { "X-Anky-Tags": JSON.stringify(mirror.tags ?? []) }
+          : {}),
         ...(x402Settlement
           ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
           : {}),
@@ -3184,6 +3405,15 @@ function responseTextForIntent(
   return intent === "nudge" ? nudgeText(mirror) : reflectionMarkdown(mirror);
 }
 
+function tagsFromHeader(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    return normalizeMirrorTags(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
 function ankyRequestIntent(value: string | undefined): AnkyRequestIntent {
   return value?.toLowerCase() === "nudge" ? "nudge" : "reflection";
 }
@@ -3193,6 +3423,7 @@ async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResul
     provider: "mock",
     chargeable: true,
     title: "Small Steady Thread",
+    tags: ["steady thread", "self trust", "quiet attention"],
     reflection:
       "# Small Steady Thread\n\nHere is what I saw: the writing kept returning to the same living thread.",
   };
