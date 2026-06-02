@@ -4,7 +4,18 @@ data class MirrorResponsePayload(
     val hash: String,
     val title: String,
     val reflection: String,
+    val tags: List<String> = emptyList(),
     val creditsRemaining: Int?,
+)
+
+data class MirrorProgressEvent(
+    val stage: String,
+    val message: String?,
+)
+
+data class MirrorReflectionChunkEvent(
+    val chunk: String,
+    val generatedCharacters: Int,
 )
 
 enum class MirrorIntent(val headerValue: String) {

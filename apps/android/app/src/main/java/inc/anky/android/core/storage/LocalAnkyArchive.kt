@@ -18,37 +18,50 @@ class LocalAnkyArchive private constructor(
     }
 
     fun save(ankyText: String): SavedAnky {
-        val artifact = artifactFrom(ankyText, canonicalFile())
         val bytes = ankyText.toByteArray(Charsets.UTF_8)
-        canonicalFile().writeBytes(bytes)
+        val hash = AnkyHasher.sha256Hex(bytes)
+        val target = hashFile(hash)
+        val artifact = artifactFrom(ankyText, target)
+        target.writeBytes(bytes)
         return artifact
     }
 
     fun load(hash: String): SavedAnky {
         require(hash.matches(Sha256Hex)) { "Invalid .anky hash." }
-        val artifact = load(canonicalFile())
-        if (artifact.hash != hash) throw IllegalArgumentException("No local .anky exists for that hash.")
-        return artifact
+        val directFile = hashFile(hash)
+        if (directFile.exists()) return load(directFile)
+
+        if (canonicalFile().exists()) {
+            val canonical = load(canonicalFile())
+            if (canonical.hash == hash) return canonical
+        }
+
+        return list().firstOrNull { it.hash == hash }
+            ?: throw IllegalArgumentException("No local .anky exists for that hash.")
     }
 
     fun load(file: File): SavedAnky =
         artifactFrom(file.readText(Charsets.UTF_8), file)
 
-    fun list(): List<SavedAnky> =
-        if (canonicalFile().exists()) {
-            listOfNotNull(runCatching { load(canonicalFile()) }.getOrNull())
-        } else {
-            emptyList()
-        }
+    fun list(): List<SavedAnky> {
+        val seen = mutableSetOf<String>()
+        return directory.listFiles { file -> file.extension == "anky" }
+            ?.mapNotNull { runCatching { load(it) }.getOrNull() }
+            ?.filter { seen.add(it.hash) }
+            ?.sortedByDescending { it.createdAt }
+            ?: emptyList()
+    }
 
     fun fileList(): List<File> =
-        if (canonicalFile().exists()) listOf(canonicalFile()) else emptyList()
+        list().map { it.file }
 
     fun delete(hash: String) {
         require(hash.matches(Sha256Hex)) { "Invalid .anky hash." }
-        val file = canonicalFile()
-        val shouldDelete = file.exists() && runCatching { load(file).hash == hash }.getOrDefault(false)
-        if (shouldDelete && !file.delete()) {
+        val files = listOf(hashFile(hash), canonicalFile()).distinct()
+        val deleted = files
+            .filter { file -> file.exists() && runCatching { load(file).hash == hash }.getOrDefault(false) }
+            .map { file -> file.delete() }
+        if (deleted.any { !it }) {
             throw IllegalStateException("Could not delete .anky file.")
         }
     }
@@ -59,6 +72,8 @@ class LocalAnkyArchive private constructor(
     }
 
     private fun canonicalFile(): File = File(directory, CanonicalFileName)
+
+    private fun hashFile(hash: String): File = File(directory, "$hash.anky")
 
     private fun artifactFrom(ankyText: String, file: File): SavedAnky {
         val parsed = AnkyParser.parse(ankyText)

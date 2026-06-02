@@ -46,15 +46,28 @@ class SessionIndexStore private constructor(
         return sessions
     }
 
-    fun updateReflection(hash: String, title: String) {
+    fun updateReflection(hash: String, title: String, tags: List<String> = emptyList()) {
         save(load().map { summary ->
             if (summary.hash == hash) {
-                summary.copy(hasReflection = true, reflectionTitle = title)
+                summary.copy(hasReflection = true, reflectionTitle = title, tags = tags)
             } else {
                 summary
             }
         })
     }
+
+    fun sessionsWithTag(tag: String): List<SessionSummary> {
+        val normalized = normalizedTag(tag)
+        if (normalized.isEmpty()) return emptyList()
+        return load().filter { summary ->
+            summary.tags.any { normalizedTag(it) == normalized }
+        }
+    }
+
+    fun savedAnkysWithTag(tag: String, archive: LocalAnkyArchive): List<SavedAnky> =
+        sessionsWithTag(tag).mapNotNull { summary ->
+            runCatching { archive.load(summary.hash) }.getOrNull()
+        }
 
     fun delete(hash: String) {
         save(load().filter { it.hash != hash })
@@ -66,6 +79,9 @@ class SessionIndexStore private constructor(
 
     companion object {
         fun forFile(file: File): SessionIndexStore = SessionIndexStore(file)
+
+        fun normalizedTag(tag: String): String =
+            tag.lowercase().trim()
 
         fun groupByDay(sessions: List<SessionSummary>, zoneId: ZoneId = ZoneOffset.UTC): List<SessionDay> {
             val grouped = sessions.groupBy { it.createdAt.atZone(zoneId).toLocalDate() }
@@ -143,6 +159,7 @@ private fun SessionSummary.toJson(): JSONObject =
         .put("wordCount", wordCount)
         .put("hasReflection", hasReflection)
         .put("reflectionTitle", reflectionTitle)
+        .put("tags", JSONArray(tags))
 
 private fun JSONObject.toSessionSummary(): SessionSummary =
     SessionSummary(
@@ -155,4 +172,12 @@ private fun JSONObject.toSessionSummary(): SessionSummary =
         wordCount = optInt("wordCount", SessionSummary.wordCount(getString("preview"))),
         hasReflection = getBoolean("hasReflection"),
         reflectionTitle = if (isNull("reflectionTitle")) null else getString("reflectionTitle"),
+        tags = optJSONArray("tags").stringList(),
     )
+
+private fun JSONArray?.stringList(): List<String> {
+    if (this == null) return emptyList()
+    return (0 until length()).mapNotNull { index ->
+        optString(index).trim().takeIf { it.isNotEmpty() }
+    }
+}

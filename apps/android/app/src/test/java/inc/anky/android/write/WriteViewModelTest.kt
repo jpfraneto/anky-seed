@@ -48,7 +48,7 @@ class WriteViewModelTest {
         assertEquals("$start h\n471000 e\n8000", saved.text)
         assertEquals(479000, saved.durationMs)
         assertEquals(false, saved.isComplete)
-        assertEquals(saved.text, stores.draft.load())
+        assertNull(stores.draft.load())
         assertEquals(saved.hash, stores.index.load().single().hash)
     }
 
@@ -98,7 +98,28 @@ class WriteViewModelTest {
     }
 
     @Test
-    fun completedSessionResetsWriteStateLikeIos() = runTest {
+    fun todayAnkyCountCountsCompleteUtcSessionsLikeIosLaunchPrompt() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        val complete = stores.archive.save("$start h\n472000 e\n8000")
+        val fragment = stores.archive.save("${start + 20_000} h\n1000 e\n8000")
+        stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(complete, null))
+        stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(fragment, null))
+
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start + 60_000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertEquals(1, viewModel.state.value.todayAnkyCount)
+    }
+
+    @Test
+    fun completedSessionFreezesWriteStateLikeIos() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n472000 e")
@@ -115,13 +136,14 @@ class WriteViewModelTest {
         val completedHash = viewModel.state.value.completedHash
 
         assertEquals(stores.archive.list().single().hash, completedHash)
-        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals("he", viewModel.state.value.displayedText)
         assertEquals("", viewModel.state.value.latestGlyph)
-        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
-        assertEquals(0, viewModel.state.value.elapsedMs)
-        assertEquals(0, viewModel.state.value.silenceElapsedMs)
-        assertEquals(8000, viewModel.state.value.silenceRemainingMs)
-        assertEquals(0f, viewModel.state.value.progress)
+        assertEquals(2, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(480000, viewModel.state.value.elapsedMs)
+        assertEquals(8000, viewModel.state.value.silenceElapsedMs)
+        assertEquals(0, viewModel.state.value.silenceRemainingMs)
+        assertEquals(1f, viewModel.state.value.progress)
+        assertNull(stores.draft.load())
     }
 
     @Test
@@ -150,7 +172,7 @@ class WriteViewModelTest {
     }
 
     @Test
-    fun shortSessionTerminalSilenceResetsWriteStateLikeIos() = runTest {
+    fun shortSessionTerminalSilenceFreezesWriteStateLikeIos() = runTest {
         val stores = stores()
         var now = 1_770_000_000_000
         val viewModel = WriteViewModel(
@@ -168,11 +190,14 @@ class WriteViewModelTest {
 
         val saved = stores.archive.list().single()
         assertEquals("1770000000000 h\n8000", saved.text)
-        assertEquals(saved.text, stores.draft.load())
+        assertNull(stores.draft.load())
         assertEquals(saved.hash, viewModel.state.value.completedHash)
-        assertEquals("", viewModel.state.value.displayedText)
-        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
-        assertEquals(0, viewModel.state.value.elapsedMs)
+        assertEquals("h", viewModel.state.value.displayedText)
+        assertEquals(1, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(480000, viewModel.state.value.elapsedMs)
+        assertEquals(8000, viewModel.state.value.silenceElapsedMs)
+        assertEquals(0, viewModel.state.value.silenceRemainingMs)
+        assertEquals(1f, viewModel.state.value.progress)
     }
 
     @Test
@@ -234,12 +259,60 @@ class WriteViewModelTest {
         assertEquals(1, stores.archive.list().size)
         assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
 
-        advanceTimeBy(6_999)
+        advanceTimeBy(1_999)
         assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
 
         advanceTimeBy(1)
         runCurrent()
         assertNull(viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun recentWriteErrorCanBeReplayedFromAnkyTapLikeIos() = runTest {
+        val stores = stores()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            dispatcher = dispatcher,
+        )
+
+        viewModel.ignoreBackspaceOrReplacement()
+        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertNull(viewModel.state.value.errorMessage)
+
+        assertEquals(true, viewModel.replayRecentPromptIfAvailable())
+        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertNull(viewModel.state.value.errorMessage)
+
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(false, viewModel.replayRecentPromptIfAvailable())
+    }
+
+    @Test
+    fun openWritingPortalRequestsFreshKeyboardFocusLikeIos() = runTest {
+        val stores = stores()
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        val initialFocusRequest = viewModel.state.value.keyboardFocusRequestId
+
+        viewModel.openWritingPortal()
+
+        assertEquals(initialFocusRequest + 1, viewModel.state.value.keyboardFocusRequestId)
     }
 
     @Test

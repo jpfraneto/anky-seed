@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import org.json.JSONArray
 import org.json.JSONObject
 
 interface BackupExporting {
@@ -83,6 +84,7 @@ internal object BackupZipWriter {
             .put("hash", hash)
             .put("title", title)
             .put("reflection", reflection)
+            .put("tags", JSONArray(tags))
             .put("createdAt", createdAt.truncatedTo(ChronoUnit.SECONDS).toString())
             .put("creditsRemaining", creditsRemaining)
 

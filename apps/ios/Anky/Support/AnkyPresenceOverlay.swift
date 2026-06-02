@@ -1,11 +1,23 @@
 import SwiftUI
 import UIKit
 
+enum AnkyPresencePlacement: Equatable {
+    case trailingCenter
+    case writeRightLane
+}
+
+enum AnkyBubblePlacement: Equatable {
+    case top
+    case bottom
+}
+
 struct AnkyPresenceOverlay: View {
     @ObservedObject var companion: AnkyCompanionStore
     let defaultSequence: AnkySequenceName
     let goldenGlow: Bool
     let transformToSigil: Bool
+    let placement: AnkyPresencePlacement
+    let bubblePlacement: AnkyBubblePlacement
     let onTap: (() -> Bool)?
 
     @State private var isVisible = true
@@ -13,18 +25,24 @@ struct AnkyPresenceOverlay: View {
     @State private var showMenu = false
     @State private var sequence: AnkySequenceName
     @State private var keyboardHeight: CGFloat = 0
+    @State private var storedPoint: CGPoint?
+    @GestureState private var dragTranslation: CGSize = .zero
 
     init(
         companion: AnkyCompanionStore,
         defaultSequence: AnkySequenceName = .idleFront,
         goldenGlow: Bool = false,
         transformToSigil: Bool = false,
+        placement: AnkyPresencePlacement = .trailingCenter,
+        bubblePlacement: AnkyBubblePlacement = .bottom,
         onTap: (() -> Bool)? = nil
     ) {
         self.companion = companion
         self.defaultSequence = defaultSequence
         self.goldenGlow = goldenGlow
         self.transformToSigil = transformToSigil
+        self.placement = placement
+        self.bubblePlacement = bubblePlacement
         self.onTap = onTap
         _sequence = State(initialValue: defaultSequence)
     }
@@ -33,24 +51,16 @@ struct AnkyPresenceOverlay: View {
         GeometryReader { geometry in
             let size = presenceSize(for: geometry.size)
             let point = resolvedPoint(in: geometry.size, presenceSize: size)
+            let draggedPoint = clamp(
+                CGPoint(x: point.x + dragTranslation.width, y: point.y + dragTranslation.height),
+                in: geometry.size,
+                presenceSize: size
+            )
             let effectiveSequence = companion.sequenceOverride ?? sequence
 
             ZStack {
                 if let bubble = companion.bubble {
-                    VStack {
-                        Spacer()
-
-                        AnkyBubbleView(
-                            bubble: bubble,
-                            close: {
-                                companion.hideBubble()
-                            }
-                        )
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 18)
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    bubbleView(bubble)
                     .zIndex(2)
                 }
 
@@ -82,13 +92,26 @@ struct AnkyPresenceOverlay: View {
                     .animation(.easeInOut(duration: 0.4), value: goldenGlow)
                     .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
                     .contentShape(Circle())
-                    .position(point)
+                    .position(draggedPoint)
                     .onTapGesture {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         if onTap?() == true {
                             return
                         }
                     }
+                    .gesture(
+                        DragGesture(minimumDistance: 3)
+                            .updating($dragTranslation) { value, state, _ in
+                                state = value.translation
+                            }
+                            .onEnded { value in
+                                storedPoint = clamp(
+                                    CGPoint(x: point.x + value.translation.width, y: point.y + value.translation.height),
+                                    in: geometry.size,
+                                    presenceSize: size
+                                )
+                            }
+                    )
                     .onLongPressGesture(minimumDuration: 3) {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         showMenu = true
@@ -128,6 +151,9 @@ struct AnkyPresenceOverlay: View {
             .onChange(of: defaultSequence) { _, newSequence in
                 sequence = newSequence
             }
+            .onChange(of: placement) { _, _ in
+                storedPoint = nil
+            }
             .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: breathing)
             .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isVisible)
         }
@@ -145,14 +171,61 @@ struct AnkyPresenceOverlay: View {
     }
 
     private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        clamp(defaultPoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
+        clamp(storedPoint ?? defaultPoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
     }
 
     private func defaultPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        CGPoint(
+        if placement == .writeRightLane {
+            let writeRingSize: CGFloat = 106
+            let visibleHeight = max(1, containerSize.height - keyboardHeight)
+            let bottomGap: CGFloat = keyboardHeight > 0 ? 8 : 0
+            let rightLaneCenterX = containerSize.width - writeRingSize / 2 - 8
+            return CGPoint(
+                x: rightLaneCenterX,
+                y: max(presenceSize / 2 + 8, (visibleHeight - bottomGap) / 2)
+            )
+        }
+
+        return CGPoint(
             x: containerSize.width - presenceSize / 2 - 20,
             y: containerSize.height / 2
         )
+    }
+
+    @ViewBuilder
+    private func bubbleView(_ bubble: AnkyBubble) -> some View {
+        switch bubblePlacement {
+        case .top:
+            VStack {
+                AnkyBubbleView(
+                    bubble: bubble,
+                    close: {
+                        companion.hideBubble()
+                    }
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+
+                Spacer()
+            }
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        case .bottom:
+            VStack {
+                Spacer()
+
+                AnkyBubbleView(
+                    bubble: bubble,
+                    close: {
+                        companion.hideBubble()
+                    }
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 18)
+                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 18)
+            }
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
     }
 
     private func clamp(_ point: CGPoint, in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {

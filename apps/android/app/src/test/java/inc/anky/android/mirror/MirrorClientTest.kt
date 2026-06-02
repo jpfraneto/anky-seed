@@ -98,6 +98,7 @@ class MirrorClientTest {
                 .setHeader("Content-Type", "text/markdown; charset=utf-8")
                 .setHeader("X-Anky-Hash", AnkyHasher.sha256Hex(body))
                 .setHeader("X-Anky-Credits-Remaining", "7")
+                .setHeader("X-Anky-Tags", """["truth","body"]""")
                 .setBody("# Small Steady Thread\n\nHere is what I saw."),
         )
         server.start()
@@ -107,11 +108,12 @@ class MirrorClientTest {
             val request = server.takeRequest()
 
             assertEquals("Small Steady Thread", response.title)
+            assertEquals(listOf("truth", "body"), response.tags)
             assertArrayEquals(body, request.body.readByteArray())
             assertEquals("POST", request.method)
             assertEquals("/anky", request.path)
             assertEquals("text/plain; charset=utf-8", request.getHeader("Content-Type"))
-            assertEquals("text/markdown, text/plain", request.getHeader("Accept"))
+            assertEquals("text/event-stream", request.getHeader("Accept"))
             assertEquals("anky.base.eoa.v1", request.getHeader("X-Anky-Identity-Version"))
             assertEquals(identity.accountId, request.getHeader("X-Anky-Account"))
             assertEquals("eip712", request.getHeader("X-Anky-Signature-Type"))
@@ -126,6 +128,53 @@ class MirrorClientTest {
             assertTrue(signature.startsWith("0x"))
             assertEquals(132, signature.length)
             assertTrue(requestTime.isNotBlank())
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun parsesStreamingReflectionEventsAndChunks() {
+        val server = MockWebServer()
+        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+            .toByteArray(Charsets.UTF_8)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody(
+                    """
+                    event: update
+                    data: {"stage":"provider_started","message":"writing"}
+
+                    event: reflection_chunk
+                    data: {"chunk":"# Small","generatedCharacters":7}
+
+                    event: reflection_chunk
+                    data: {"chunk":" Thread","generatedCharacters":14}
+
+                    event: reflection
+                    data: {"markdown":"# Small Thread\n\nHere is what I saw.","tags":["truth","body"],"headers":{"X-Anky-Hash":"${AnkyHasher.sha256Hex(body)}","X-Anky-Credits-Remaining":"5"}}
+
+                    """.trimIndent(),
+                ),
+        )
+        server.start()
+        try {
+            val events = mutableListOf<String>()
+            val chunks = StringBuilder()
+            val response = MirrorClient(MirrorConfiguration(server.url("/").toString())).askAnky(
+                body,
+                identity,
+                progress = { events += it.stage },
+                reflectionChunk = { chunks.append(it.chunk) },
+            )
+
+            assertEquals(listOf("provider_started"), events)
+            assertEquals("# Small Thread", chunks.toString())
+            assertEquals("Small Thread", response.title)
+            assertEquals(listOf("truth", "body"), response.tags)
+            assertEquals(5, response.creditsRemaining)
         } finally {
             server.shutdown()
         }

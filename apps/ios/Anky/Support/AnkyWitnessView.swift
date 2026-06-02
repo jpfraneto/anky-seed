@@ -245,14 +245,23 @@ struct AnkyChatAction: Identifiable {
     let subtitle: String?
     let badge: String?
     let isPrimary: Bool
+    let preservesCase: Bool
     let action: () -> Void
 
-    init(_ title: String, subtitle: String? = nil, badge: String? = nil, isPrimary: Bool = false, action: @escaping () -> Void) {
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        badge: String? = nil,
+        isPrimary: Bool = false,
+        preservesCase: Bool = false,
+        action: @escaping () -> Void
+    ) {
         self.id = [title, subtitle, badge].compactMap(\.self).joined(separator: "-")
         self.title = title
         self.subtitle = subtitle
         self.badge = badge
         self.isPrimary = isPrimary
+        self.preservesCase = preservesCase
         self.action = action
     }
 }
@@ -468,25 +477,40 @@ private struct AnkyDialoguePanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("anky")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(1.2)
-                    .foregroundStyle(AnkyTheme.gold.opacity(0.82))
+        let hasMessage = !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isActionOnly = !hasMessage && steps.isEmpty && !isThinking
 
-                if isThinking {
-                    AnkyThinkingGlyph()
-                        .frame(width: 28, height: 16)
-                        .transition(.opacity.combined(with: .scale(scale: 0.88)))
+        VStack(alignment: .leading, spacing: 10) {
+            if hasMessage || isThinking {
+                HStack(spacing: 8) {
+                    Text("anky")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(1.2)
+                        .foregroundStyle(AnkyTheme.gold.opacity(0.82))
+
+                    if isThinking {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .controlSize(.mini)
+                            .tint(AnkyTheme.goldBright)
+                            .frame(width: 14, height: 14)
+                            .accessibilityLabel("Anky is thinking")
+                            .transition(.opacity.combined(with: .scale(scale: 0.88)))
+
+                        AnkyThinkingGlyph()
+                            .frame(width: 28, height: 16)
+                            .transition(.opacity.combined(with: .scale(scale: 0.88)))
+                    }
                 }
             }
 
-            Text(message.lowercased())
-                .font(.system(size: 15, weight: .medium, design: .monospaced))
-                .lineSpacing(5)
-                .foregroundStyle(AnkyTheme.text.opacity(0.92))
-                .fixedSize(horizontal: false, vertical: true)
+            if hasMessage {
+                Text(message.lowercased())
+                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .lineSpacing(5)
+                    .foregroundStyle(AnkyTheme.text.opacity(0.92))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if !steps.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
@@ -507,21 +531,21 @@ private struct AnkyDialoguePanel: View {
                         Button(action: chatAction.action) {
                             VStack(spacing: 2) {
                                 if let badge = chatAction.badge {
-                                    Text(badge.lowercased())
+                                    Text(displayText(badge, preservesCase: chatAction.preservesCase))
                                         .font(.system(size: 8, weight: .bold, design: .monospaced))
                                         .tracking(0.35)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.65)
                                 }
 
-                                Text(chatAction.title.lowercased())
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                Text(displayText(chatAction.title, preservesCase: chatAction.preservesCase))
+                                    .font(.system(size: isActionOnly ? 15 : 12, weight: .bold, design: .monospaced))
                                     .tracking(0.35)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.65)
 
                                 if let subtitle = chatAction.subtitle {
-                                    Text(subtitle.lowercased())
+                                    Text(displayText(subtitle, preservesCase: chatAction.preservesCase))
                                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                         .tracking(0.25)
                                         .lineLimit(1)
@@ -529,9 +553,9 @@ private struct AnkyDialoguePanel: View {
                                 }
                             }
                                 .foregroundStyle(chatAction.isPrimary ? Color.black.opacity(0.88) : AnkyTheme.goldBright)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, isActionOnly ? 14 : 8)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: chatAction.subtitle == nil && chatAction.badge == nil ? 32 : 58)
+                                .frame(height: isActionOnly ? 58 : (chatAction.subtitle == nil && chatAction.badge == nil ? 32 : 58))
                                 .background(
                                     chatAction.isPrimary ? AnkyTheme.goldBright : Color.black.opacity(0.22),
                                     in: RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -552,6 +576,10 @@ private struct AnkyDialoguePanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(dialogueBackground)
         .animation(.easeInOut(duration: 0.20), value: isThinking)
+    }
+
+    private func displayText(_ text: String, preservesCase: Bool) -> String {
+        preservesCase ? text : text.lowercased()
     }
 
     private var dialogueBackground: some View {

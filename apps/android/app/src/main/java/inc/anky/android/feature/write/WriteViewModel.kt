@@ -42,6 +42,8 @@ data class WriteState(
     val isClosing: Boolean = false,
     val completedHash: String? = null,
     val acceptedGlyphCount: Int = 0,
+    val todayAnkyCount: Int = 0,
+    val keyboardFocusRequestId: Int = 0,
     val errorMessage: String? = null,
     val nudgeMessage: String? = null,
     val isRequestingNudge: Boolean = false,
@@ -101,9 +103,14 @@ class WriteViewModel(
     private var errorClearJob: Job? = null
     private var nudgeMessage: String? = null
     private var isRequestingNudge = false
+    private var visibleErrorMessage: String? = restoreErrorMessage
+    private var recentErrorMessage: String? = null
+    private var keyboardFocusRequestId = 0
 
-    private val _state = MutableStateFlow(deriveState().copy(errorMessage = restoreErrorMessage))
+    private val _state = MutableStateFlow(deriveState())
     val state: StateFlow<WriteState> = _state
+    val devSampleAnkyArtifact: String
+        get() = DevAnkyFixture.validArtifact
 
     init {
         scheduleCloseForRestoredDraft()
@@ -162,11 +169,32 @@ class WriteViewModel(
         return true
     }
 
+    fun replayRecentPromptIfAvailable(): Boolean {
+        if (writer.isStarted && writer.text.isNotBlank()) {
+            return startAnkyNudgeIfPossible()
+        }
+        val message = recentErrorMessage?.takeIf { it.isNotBlank() } ?: return false
+        if (visibleErrorMessage != null) return true
+
+        visibleErrorMessage = message
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+        scheduleErrorFade(message, keepRecall = false)
+        return true
+    }
+
+    fun openWritingPortal() {
+        keyboardFocusRequestId += 1
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+    }
+
     fun dismissCurrentPrompt() {
         nudgeJob?.cancel()
         nudgeClearJob?.cancel()
+        errorClearJob?.cancel()
         nudgeMessage = null
         isRequestingNudge = false
+        visibleErrorMessage = null
+        recentErrorMessage = null
         _state.update { it.copy(nudgeMessage = null, isRequestingNudge = false, errorMessage = null) }
     }
 
@@ -210,18 +238,20 @@ class WriteViewModel(
             indexStore.upsert(summary)
             artifact
         }.onSuccess { artifact ->
-            writer = AnkyWriter()
-            displayedText = ""
-            displayedGlyphs = emptyList()
-            sessionStartMs = null
-            acceptedGlyphCount = 0
-            _state.value = deriveState().copy(completedHash = artifact.hash, isClosing = false, errorMessage = null)
+            activeDraftStore.clear()
+            visibleErrorMessage = null
+            recentErrorMessage = null
+            _state.value = deriveState().copy(
+                completedHash = artifact.hash,
+                elapsedMs = maxOf(artifact.durationMs, AnkyDuration.CompleteRitualMs),
+                silenceElapsedMs = AnkyDuration.TerminalSilenceMs,
+                silenceRemainingMs = 0,
+                progress = 1f,
+                isClosing = false,
+            )
         }.onFailure {
             activeDraftStore.save(text)
-            _state.value = deriveState().copy(
-                isClosing = false,
-                errorMessage = "Could not save this .anky.",
-            )
+            showPersistentError("Could not save this .anky.", isClosing = false)
         }
     }
 
@@ -259,9 +289,19 @@ class WriteViewModel(
             progress = (elapsed.toFloat() / AnkyDuration.CompleteRitualMs).coerceIn(0f, 1f),
             isClosing = writer.isStarted && !writer.isClosed,
             acceptedGlyphCount = acceptedGlyphCount,
+            todayAnkyCount = todayAnkyCount(now),
+            keyboardFocusRequestId = keyboardFocusRequestId,
+            errorMessage = visibleErrorMessage,
             nudgeMessage = nudgeMessage,
             isRequestingNudge = isRequestingNudge,
         )
+    }
+
+    private fun todayAnkyCount(now: Long): Int {
+        val today = Instant.ofEpochMilli(now).atZone(ZoneOffset.UTC).toLocalDate()
+        return indexStore.load().count { summary ->
+            summary.isComplete && summary.createdAt.atZone(ZoneOffset.UTC).toLocalDate() == today
+        }
     }
 
     private fun requestAnkyNudge(text: String) {
@@ -298,12 +338,33 @@ class WriteViewModel(
     }
 
     private fun showTransientError(message: String) {
+        visibleErrorMessage = message
+        recentErrorMessage = message
+        _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+        scheduleErrorFade(message, keepRecall = false)
+    }
+
+    private fun showPersistentError(message: String, isClosing: Boolean? = null) {
         errorClearJob?.cancel()
-        _state.value = deriveState(latestGlyph = _state.value.latestGlyph).copy(errorMessage = message)
+        visibleErrorMessage = message
+        recentErrorMessage = null
+        val nextState = deriveState(latestGlyph = _state.value.latestGlyph)
+        _state.value = if (isClosing == null) nextState else nextState.copy(isClosing = isClosing)
+    }
+
+    private fun scheduleErrorFade(message: String, keepRecall: Boolean) {
+        errorClearJob?.cancel()
         errorClearJob = viewModelScope.launch(dispatcher) {
-            delay(7_000)
-            if (_state.value.errorMessage == message) {
-                _state.value = deriveState(latestGlyph = _state.value.latestGlyph).copy(errorMessage = null)
+            delay(2_000)
+            if (visibleErrorMessage == message) {
+                visibleErrorMessage = null
+                _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
+            }
+            if (!keepRecall) {
+                delay(5_000)
+                if (recentErrorMessage == message) {
+                    recentErrorMessage = null
+                }
             }
         }
     }

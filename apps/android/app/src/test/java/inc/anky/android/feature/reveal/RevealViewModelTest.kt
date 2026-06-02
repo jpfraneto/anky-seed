@@ -1,11 +1,15 @@
 package inc.anky.android.feature.reveal
 
+import android.app.Activity
+import inc.anky.android.core.credits.CreditState
+import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
+import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionIndexStore
 import java.io.File
@@ -27,6 +31,25 @@ import org.junit.rules.TemporaryFolder
 @OptIn(ExperimentalCoroutinesApi::class)
 class RevealViewModelTest {
     @get:Rule val temp = TemporaryFolder()
+
+    @Test
+    fun mirrorThreadProgressMatchesIosMonotonicCap() {
+        assertEquals(0.08f, mirrorThreadProgress(0), 0.0001f)
+        assertTrue(mirrorThreadProgress(1000) > mirrorThreadProgress(500))
+        assertTrue(mirrorThreadProgress(2400) > mirrorThreadProgress(1000))
+        assertEquals(0.92f, mirrorThreadProgress(10_000), 0.0001f)
+        assertEquals(1f, mirrorThreadProgress(10_000, isComplete = true), 0.0001f)
+    }
+
+    @Test
+    fun markdownHorizontalRulesMatchIos() {
+        listOf("---", "***", "___", "—", "--", "__").forEach { rule ->
+            assertTrue(isMarkdownHorizontalRule(rule))
+        }
+        listOf("", "------", "- body", "truth").forEach { text ->
+            assertFalse(isMarkdownHorizontalRule(text))
+        }
+    }
 
     @Test
     fun askAnkyDoesNotUploadWhenReflectionAlreadyExists() = runTest {
@@ -83,6 +106,7 @@ class RevealViewModelTest {
                 hash = artifact.hash,
                 archive = stores.archive,
                 reflectionStore = stores.reflections,
+                requestStore = stores.requests,
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
@@ -101,6 +125,7 @@ class RevealViewModelTest {
             assertFalse(viewModel.state.value.isAsking)
             assertNotNull(stores.reflections.load(artifact.hash))
             assertEquals("Small Thread", stores.index.load().single().reflectionTitle)
+            assertEquals(listOf("truth", "body"), stores.index.load().single().tags)
         } finally {
             server.shutdown()
         }
@@ -183,8 +208,42 @@ class RevealViewModelTest {
             advanceUntilIdle()
 
             assertEquals(7, stores.reflections.load(artifact.hash)?.creditsRemaining)
+            assertEquals(listOf("truth", "body"), stores.reflections.load(artifact.hash)?.tags)
+            assertFalse(stores.requests.isPending(artifact.hash))
             assertEquals(7, viewModel.state.value.creditBalance)
             assertTrue(viewModel.state.value.hasClaimedFreeCredits)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun askAnkyStreamsProgressAndClearsDraftStreamAfterSave() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        stores.index.rebuild(stores.archive, stores.reflections)
+        server.enqueue(streamingReflectionResponse(artifact.hash))
+        server.start()
+        try {
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isAsking)
+            assertEquals("", viewModel.state.value.streamingReflectionMarkdown)
+            assertEquals(null, viewModel.state.value.progressStage)
+            assertEquals("Small Thread", viewModel.state.value.reflection?.title)
+            assertEquals(listOf("truth", "body"), viewModel.state.value.reflection?.tags)
         } finally {
             server.shutdown()
         }
@@ -213,6 +272,32 @@ class RevealViewModelTest {
         viewModel.askAnky()
         advanceUntilIdle()
         assertFalse(viewModel.state.value.isAsking)
+    }
+
+    @Test
+    fun refreshCreditsConfiguresIdentityAndUpdatesRevealBalanceLikeIos() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val credits = FakeCreditsClient(balance = 2)
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Refreshing credits should not ask the mirror.") },
+            creditsClient = credits,
+            hasClaimedFreeCreditsProvider = { true },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.refreshCredits()
+        advanceUntilIdle()
+
+        assertEquals(identity().accountId, credits.configuredAppUserId)
+        assertEquals(2, viewModel.state.value.creditBalance)
+        assertFalse(viewModel.state.value.creditsDenied)
+        assertFalse(viewModel.state.value.creditsLoading)
     }
 
     @Test
@@ -315,6 +400,7 @@ class RevealViewModelTest {
         return Stores(
             archive = LocalAnkyArchive.forDirectory(File(root, "archive")),
             reflections = ReflectionStore.forDirectory(File(root, "reflections")),
+            requests = ReflectionRequestStore.forFile(File(root, "pending-reflection-requests.json")),
             index = SessionIndexStore.forFile(File(root, "session-index.json")),
         )
     }
@@ -335,11 +421,55 @@ class RevealViewModelTest {
             .setHeader("Content-Type", "text/markdown; charset=utf-8")
             .setHeader("X-Anky-Hash", hash)
             .setHeader("X-Anky-Credits-Remaining", creditsRemaining?.toString() ?: "null")
+            .setHeader("X-Anky-Tags", """["truth","body"]""")
             .setBody("# Small Thread\n\nHere is what I saw.")
+
+    private fun streamingReflectionResponse(hash: String): MockResponse =
+        MockResponse()
+            .setResponseCode(200)
+            .setHeader("Content-Type", "text/event-stream")
+            .setBody(
+                """
+                event: update
+                data: {"stage":"provider_started","message":"writing"}
+
+                event: reflection_chunk
+                data: {"chunk":"# Small","generatedCharacters":7}
+
+                event: reflection_chunk
+                data: {"chunk":" Thread","generatedCharacters":14}
+
+                event: reflection
+                data: {"markdown":"# Small Thread\n\nHere is what I saw.","tags":["truth","body"],"headers":{"X-Anky-Hash":"$hash","X-Anky-Credits-Remaining":"4"}}
+
+                """.trimIndent(),
+            )
 
     private data class Stores(
         val archive: LocalAnkyArchive,
         val reflections: ReflectionStore,
+        val requests: ReflectionRequestStore,
         val index: SessionIndexStore,
     )
+
+    private class FakeCreditsClient(
+        private val balance: Int?,
+    ) : CreditsClient {
+        var configuredAppUserId: String? = null
+
+        override suspend fun configure(appUserId: String) {
+            configuredAppUserId = appUserId
+        }
+
+        override suspend fun refresh(): CreditState =
+            CreditState(isConfigured = true, balance = balance, message = "credits refreshed.")
+
+        override suspend fun purchase(packageId: String, activity: Activity?): CreditState =
+            refresh()
+
+        override suspend fun restorePurchases(): CreditState =
+            refresh()
+
+        override suspend fun invalidateCreditBalanceCache() = Unit
+    }
 }

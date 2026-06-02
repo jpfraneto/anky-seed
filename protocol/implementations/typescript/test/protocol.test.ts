@@ -63,4 +63,9 @@ describe(".anky protocol", () => {
     const parsed = parseAnky("1770000000000 h\n0042  \n8000");
     expect(reconstructText(parsed)).toBe("h ");
   });
+
+  test("parser accepts one user-visible grapheme per event", () => {
+    const parsed = parseAnky("1770000000000 a\n0042 🧘🏽\n0042 é\n8000");
+    expect(reconstructText(parsed)).toBe("a🧘🏽é");
+  });
 });

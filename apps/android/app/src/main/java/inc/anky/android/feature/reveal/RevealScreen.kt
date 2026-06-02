@@ -4,14 +4,18 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,20 +37,18 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,17 +58,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -78,7 +77,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import inc.anky.android.R
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyConversationPrompt
@@ -87,12 +85,19 @@ import inc.anky.android.ui.theme.AnkyType
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RevealScreen(
     viewModel: RevealViewModel,
+    startsReflectionOnAppear: Boolean = false,
+    onOpenTag: (String) -> Unit = {},
+    onOpenCredits: () -> Unit = {},
     onBack: () -> Unit,
+    onDeleted: () -> Unit = {},
+    onTryAgain: () -> Unit = {},
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -101,6 +106,25 @@ fun RevealScreen(
     val scrollState = rememberScrollState()
     var confirmDelete by remember { mutableStateOf(false) }
     var showCopyBurst by remember { mutableStateOf(false) }
+    var showReflectionSheet by remember { mutableStateOf(false) }
+    var didAutoStartReflection by remember { mutableStateOf(false) }
+    val reflectionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshCredits(showError = false)
+    }
+
+    LaunchedEffect(startsReflectionOnAppear, state.reflection) {
+        if (
+            startsReflectionOnAppear &&
+            !didAutoStartReflection &&
+            state.reflection == null
+        ) {
+            didAutoStartReflection = true
+            showReflectionSheet = true
+            viewModel.askAnky()
+        }
+    }
 
     LaunchedEffect(showCopyBurst) {
         if (!showCopyBurst) return@LaunchedEffect
@@ -109,7 +133,10 @@ fun RevealScreen(
     }
 
     LaunchedEffect(state.isDeleted) {
-        if (state.isDeleted) onBack()
+        if (state.isDeleted) {
+            onDeleted()
+            onBack()
+        }
     }
 
     Box(
@@ -148,7 +175,7 @@ fun RevealScreen(
                         .fillMaxSize()
                         .verticalScroll(scrollState)
                         .padding(horizontal = 28.dp)
-                        .padding(top = 20.dp, bottom = if (state.reflection == null) 238.dp else 72.dp),
+                        .padding(top = 20.dp, bottom = 238.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 Text(
@@ -166,25 +193,6 @@ fun RevealScreen(
                         },
                 )
                 PrivacyDivider(Modifier.padding(top = 28.dp))
-                state.reflection?.let { reflection ->
-                    Column(
-                        modifier = Modifier
-                            .padding(top = 36.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(reflection.title.lowercase(), style = AnkyType.Heading.copy(fontSize = 23.sp))
-                        MarkdownishText(reflection.displayBody)
-                        reflection.creditsRemaining?.let { creditsRemaining ->
-                            Text(
-                                "$creditsRemaining ${if (creditsRemaining == 1) "reflection" else "reflections"} left",
-                                style = AnkyType.Caption.copy(
-                                    fontSize = 12.sp,
-                                    color = AnkyColors.GoldSoft.copy(alpha = 0.78f),
-                                ),
-                            )
-                        }
-                    }
-                }
             }
         }
         if (showCopyBurst) {
@@ -200,15 +208,35 @@ fun RevealScreen(
                     .padding(8.dp),
             )
         }
-        if (state.reflection == null) {
+        RevealEdgeBackSwipe(onBack = onBack, modifier = Modifier.align(Alignment.CenterStart))
+        if (artifact != null) {
             RevealAnkyReflectionChat(
                 state = state,
-                onAsk = viewModel::askAnky,
-                onTryAgain = onBack,
+                onAsk = {
+                    showReflectionSheet = true
+                    viewModel.askAnky()
+                },
+                onRead = { showReflectionSheet = true },
+                onOpenCredits = onOpenCredits,
+                onTryAgain = onTryAgain,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             )
+        }
+        if (showReflectionSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showReflectionSheet = false },
+                sheetState = reflectionSheetState,
+                containerColor = AnkyColors.Ink,
+                contentColor = AnkyColors.Paper,
+            ) {
+                ReflectionBottomSheetContent(
+                    state = state,
+                    onOpenTag = onOpenTag,
+                    onAsk = { viewModel.askAnky() },
+                )
+            }
         }
         if (confirmDelete) {
             AlertDialog(
@@ -239,6 +267,35 @@ fun RevealScreen(
             )
         }
     }
+}
+
+@Composable
+private fun RevealEdgeBackSwipe(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(32.dp)
+            .pointerInput(onBack) {
+                var totalDrag = Offset.Zero
+                detectDragGestures(
+                    onDragStart = {
+                        totalDrag = Offset.Zero
+                    },
+                    onDrag = { _, dragAmount ->
+                        totalDrag += dragAmount
+                    },
+                    onDragEnd = {
+                        val isHorizontalBackSwipe = totalDrag.x > 80.dp.toPx() && abs(totalDrag.y) < 60.dp.toPx()
+                        if (isHorizontalBackSwipe) {
+                            onBack()
+                        }
+                    },
+                    onDragCancel = {
+                        totalDrag = Offset.Zero
+                    },
+                )
+            },
+    )
 }
 
 @Composable
@@ -277,12 +334,12 @@ private fun RevealHeader(
                 IconButton(
                     onClick = onDelete,
                     enabled = !isDeleting,
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.24f)).border(1.dp, AnkyColors.Gold.copy(alpha = 0.24f), CircleShape),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.24f)).border(1.dp, AnkyColors.Danger.copy(alpha = 0.22f), CircleShape),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "delete forever",
-                        tint = AnkyColors.Paper,
+                        contentDescription = "Delete writing session",
+                        tint = AnkyColors.Danger.copy(alpha = 0.88f),
                         modifier = Modifier.size(19.dp),
                     )
                 }
@@ -295,8 +352,8 @@ private fun RevealHeader(
 }
 
 @Composable
-private fun RevealTexture() {
-    Canvas(Modifier.fillMaxSize()) {
+private fun RevealTexture(modifier: Modifier = Modifier.fillMaxSize()) {
+    Canvas(modifier) {
         val bloomHeight = 280.dp.toPx()
         val bloomCenterY = size.height * 0.4f
         listOf(
@@ -369,6 +426,8 @@ private fun PrivacyDivider(modifier: Modifier = Modifier) {
 private fun RevealAnkyReflectionChat(
     state: RevealState,
     onAsk: () -> Unit,
+    onRead: () -> Unit,
+    onOpenCredits: () -> Unit,
     onTryAgain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -377,22 +436,34 @@ private fun RevealAnkyReflectionChat(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (state.isAsking) {
-            RevealThinkingPrompt(status = state.reflectionStatusMessage)
+            val status = state.reflectionStatusMessage.ifBlank { "i am staying with this .anky." }
+            AnkyConversationPrompt(
+                message = "$status\n\ni am reading slowly. not looking for a summary.",
+                actions = listOf(AnkyChatAction("open mirror", isPrimary = true, action = onRead)),
+                isThinking = true,
+            )
         } else if (state.artifact?.isComplete == false) {
             AnkyConversationPrompt(
                 message = shortSessionMessage(state),
                 actions = listOf(AnkyChatAction("write again", isPrimary = true, action = onTryAgain)),
-                onClose = {},
+            )
+        } else if (state.reflection != null) {
+            AnkyConversationPrompt(
+                message = "this anky has a reflection.",
+                actions = listOf(AnkyChatAction("read reflection", isPrimary = true, action = onRead)),
             )
         } else {
             AnkyConversationPrompt(
                 message = reflectionInvitationMessage(state),
-                actions = if (state.canSubmitReflectionRequest) {
-                    listOf(AnkyChatAction("reflect with anky", isPrimary = true, action = onAsk))
-                } else {
-                    emptyList()
+                actions = buildList {
+                    if (state.canSubmitReflectionRequest) {
+                        add(AnkyChatAction("reflect this anky", isPrimary = true, action = onAsk))
+                    }
+                    if (state.shouldShowCreditsLink) {
+                        add(AnkyChatAction("open credits", action = onOpenCredits))
+                    }
                 },
-                onClose = {},
+                isThinking = state.creditsLoading,
             )
         }
 
@@ -404,72 +475,291 @@ private fun RevealAnkyReflectionChat(
             )
         }
 
-        if (state.shouldShowCreditsLink) {
-            Text(
-                "open reflection credits",
-                style = AnkyType.Caption.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.GoldSoft),
-            )
+    }
+}
+
+@Composable
+private fun ReflectionBottomSheetContent(
+    state: RevealState,
+    onOpenTag: (String) -> Unit,
+    onAsk: () -> Unit,
+) {
+    var revealLiveText by remember { mutableStateOf(false) }
+    val reflection = state.reflection
+    val isStreamingSheet = state.isAsking || state.streamingReflectionMarkdown.isNotBlank()
+    val sheetTopPadding = when {
+        reflection != null -> 10.dp
+        isStreamingSheet -> 24.dp
+        else -> 28.dp
+    }
+    val sheetBottomPadding = if (reflection != null) 56.dp else 48.dp
+    val sheetSpacing = if (isStreamingSheet) 22.dp else 18.dp
+    val sheetScrollState = rememberScrollState()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AnkyColors.Ink),
+    ) {
+        RevealTexture(Modifier.matchParentSize())
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(sheetScrollState)
+                .padding(horizontal = 22.dp)
+                .padding(top = sheetTopPadding, bottom = sheetBottomPadding),
+            verticalArrangement = Arrangement.spacedBy(sheetSpacing),
+        ) {
+            when {
+                reflection != null -> {
+                    ReflectionScrollGlyph(modifier = Modifier.padding(top = 8.dp))
+                    ReflectionTags(tags = reflection.tags, onOpenTag = onOpenTag)
+                    MarkdownishText(reflection.displayBody)
+                }
+                isStreamingSheet -> {
+                    Text(
+                        "the mirror is forming",
+                        style = AnkyType.Heading.copy(fontSize = 28.sp, color = AnkyColors.Gold),
+                    )
+                    MirrorProgress(
+                        status = state.reflectionStatusMessage,
+                        generatedCharacters = state.streamingReflectionCharacterCount,
+                    )
+                    if (state.streamingReflectionMarkdown.isNotBlank()) {
+                        if (!revealLiveText) {
+                            TextButton(
+                                onClick = { revealLiveText = true },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .border(1.dp, AnkyColors.Gold.copy(alpha = 0.34f), RoundedCornerShape(4.dp)),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Visibility,
+                                        contentDescription = null,
+                                        tint = AnkyColors.GoldSoft,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        "reveal live",
+                                        style = AnkyType.Caption.copy(fontWeight = FontWeight.Bold, color = AnkyColors.GoldSoft),
+                                    )
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        if (revealLiveText) {
+                            Text(
+                                "writing reflection · ${state.streamingReflectionCharacterCount} characters",
+                                style = AnkyType.Caption.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AnkyColors.Gold.copy(alpha = 0.72f),
+                                ),
+                            )
+                            MarkdownishText(state.streamingReflectionMarkdown)
+                        }
+                    }
+                }
+                else -> {
+                    Text(
+                        "mirror",
+                        style = AnkyType.Heading.copy(fontSize = 24.sp, color = AnkyColors.Gold),
+                    )
+                    Text(
+                        state.creditPromptMessage.lowercase(),
+                        style = AnkyType.Mono.copy(fontSize = 13.sp, lineHeight = 18.sp, color = AnkyColors.Paper.copy(alpha = 0.72f)),
+                    )
+                    TextButton(
+                        onClick = onAsk,
+                        enabled = state.canSubmitReflectionRequest,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(
+                                if (state.canSubmitReflectionRequest) AnkyColors.Gold else AnkyColors.Gold.copy(alpha = 0.34f),
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.44f), RoundedCornerShape(5.dp)),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                tint = if (state.canSubmitReflectionRequest) AnkyColors.Ink else AnkyColors.Ink.copy(alpha = 0.52f),
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                "reflect this anky",
+                                style = AnkyType.Caption.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (state.canSubmitReflectionRequest) AnkyColors.Ink else AnkyColors.Ink.copy(alpha = 0.52f),
+                                ),
+                                textAlign = TextAlign.Start,
+                            )
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RevealThinkingPrompt(status: String) {
-    val messages = listOf(
-        "i am reading slowly. not looking for a summary.",
-        "i am listening for the pressure under the words.",
-        "i am keeping the thread intact while the mirror answers.",
-        "still here. some reflections take a little longer.",
-        "i am bringing it back without flattening it.",
-        "stay close. the page is not gone.",
-    )
-    val pulse by rememberInfiniteTransition(label = "reveal-thinking").animateFloat(
+private fun ReflectionScrollGlyph(modifier: Modifier = Modifier) {
+    val pulse by rememberInfiniteTransition(label = "reflection-scroll-glyph").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(durationMillis = 3400),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "reveal-thinking-value",
+        label = "reflection-scroll-glyph-pulse",
     )
-    val index = ((pulse * messages.size).toInt()).coerceIn(0, messages.lastIndex)
-    val firstLine = status.ifBlank { "i am staying with this .anky." }
-    Box(Modifier.padding(top = 24.dp)) {
-        AnkyConversationPrompt(
-            message = "$firstLine\n\n${messages[index]}",
-            onClose = {},
+    Box(
+        modifier = modifier.size(54.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size((42 + pulse * 4).dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Gold.copy(alpha = 0.22f + pulse * 0.18f)),
         )
-        ReflectionSeekingSpinner(Modifier.align(Alignment.TopCenter).offset(y = (-24).dp))
+        Box(
+            Modifier
+                .size(width = 24.dp, height = 32.dp)
+                .rotate(-8f + pulse * 3f)
+                .clip(RoundedCornerShape(5.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            AnkyColors.Paper,
+                            AnkyColors.Gold,
+                            AnkyColors.Paper,
+                        ),
+                    ),
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.64f), RoundedCornerShape(5.dp)),
+        )
+        Icon(
+            imageVector = Icons.Filled.AutoAwesome,
+            contentDescription = null,
+            tint = AnkyColors.Ink.copy(alpha = 0.78f),
+            modifier = Modifier
+                .size(12.dp)
+                .offset(x = 1.dp, y = (-1).dp),
+        )
     }
 }
 
 @Composable
-private fun ReflectionSeekingSpinner(modifier: Modifier = Modifier) {
-    val spin by rememberInfiniteTransition(label = "mirror-spinner").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(durationMillis = 2400, easing = LinearEasing),
-        ),
-        label = "mirror-spinner-value",
-    )
-    Canvas(modifier.size(58.dp)) {
-        drawCircle(AnkyColors.Gold.copy(alpha = 0.08f), style = Stroke(width = 8.dp.toPx()))
-        drawArc(
-            color = AnkyColors.GoldSoft.copy(alpha = 0.36f),
-            startAngle = spin,
-            sweepAngle = 100f,
-            useCenter = false,
-            size = Size(size.width, size.height),
-            style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round),
+private fun MirrorProgress(status: String, generatedCharacters: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val statusLine = if (generatedCharacters > 0) {
+            "anky is drawing a thread from the writing. $generatedCharacters characters have arrived."
+        } else {
+            status.ifBlank { "anky is reading..." }
+        }
+        MirrorThreadProgress(
+            progress = mirrorThreadProgress(generatedCharacters),
+            generatedCharacters = generatedCharacters,
         )
-        drawArc(
-            color = AnkyColors.Paper.copy(alpha = 0.18f),
-            startAngle = -spin * 0.63f,
-            sweepAngle = 50f,
-            useCenter = false,
-            size = Size(size.width, size.height),
-            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+        Text(
+            statusLine,
+            style = AnkyType.Mono.copy(fontSize = 13.sp, color = AnkyColors.Paper.copy(alpha = 0.74f)),
         )
+    }
+}
+
+@Composable
+private fun MirrorThreadProgress(progress: Float, generatedCharacters: Int, isComplete: Boolean = false) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.Black.copy(alpha = 0.28f))
+                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(3.dp)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                AnkyColors.Gold.copy(alpha = 0.72f),
+                                AnkyColors.Paper.copy(alpha = 0.66f),
+                                AnkyColors.Gold.copy(alpha = 0.84f),
+                            ),
+                        ),
+                    ),
+            )
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Text(
+                if (isComplete) "complete" else "receiving",
+                style = AnkyType.Caption.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Paper.copy(alpha = 0.52f)),
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "$generatedCharacters chars",
+                style = AnkyType.Caption.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Paper.copy(alpha = 0.52f)),
+            )
+        }
+    }
+}
+
+internal fun mirrorThreadProgress(generatedCharacters: Int, isComplete: Boolean = false): Float {
+    if (isComplete) return 1f
+    if (generatedCharacters <= 0) return 0.08f
+    return (0.12f + generatedCharacters.toFloat() / 3200f).coerceAtMost(0.92f)
+}
+
+@Composable
+private fun ReflectionTags(tags: List<String>, onOpenTag: (String) -> Unit) {
+    if (tags.isEmpty()) return
+    val tagScrollState = rememberScrollState()
+    Column(modifier = Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "tags",
+            style = AnkyType.Mono.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = AnkyColors.Paper.copy(alpha = 0.46f),
+                letterSpacing = 1.sp,
+            ),
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(tagScrollState),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            tags.forEach { tag ->
+                Text(
+                    tag,
+                    style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Gold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { onOpenTag(tag) }
+                        .background(Color.Black.copy(alpha = 0.2f))
+                        .border(1.dp, AnkyColors.Gold.copy(alpha = 0.3f), CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
+            }
+        }
     }
 }
 
@@ -526,6 +816,13 @@ private fun MarkdownLine(line: String) {
 
     when {
         trimmed.isEmpty() -> Spacer(Modifier.height(12.dp))
+        isMarkdownHorizontalRule(trimmed) -> Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 12.dp)
+                .height(1.dp)
+                .background(AnkyColors.Gold.copy(alpha = 0.22f)),
+        )
         headingText(trimmed) != null -> Text(
             inlineMarkdown(headingText(trimmed)!!),
             style = AnkyType.Heading.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
@@ -572,6 +869,12 @@ private fun MarkdownListRow(marker: String, body: String) {
 
 private fun headingText(line: String): String? =
     listOf("### ", "## ", "# ").firstOrNull { line.startsWith(it) }?.let { line.drop(it.length) }
+
+internal fun isMarkdownHorizontalRule(line: String): Boolean {
+    if (line == "---" || line == "***" || line == "___" || line == "—") return true
+    if (line.length > 5 || line.isEmpty()) return false
+    return line.all { it == '-' || it == '*' || it == '_' || it == '—' }
+}
 
 private fun numberedText(line: String): Pair<String, String>? {
     val dotIndex = line.indexOf('.')

@@ -23,8 +23,9 @@ struct AppRoot: View {
 
     private func revealOnMap(_ artifact: SavedAnky) {
         revealAfterWriting = artifact
-        showsLaunchDialogue = true
         selectedTab = 1
+        showsLaunchDialogue = false
+        syncWriteBubble()
     }
 
     var body: some View {
@@ -47,8 +48,7 @@ struct AppRoot: View {
 
                 MapView(
                     revealAfterWriting: $revealAfterWriting,
-                    onTryAgain: beginRetryWriting,
-                    onOpenCredits: openCredits
+                    onTryAgain: beginRetryWriting
                 )
                     .tabItem {
                         Label("Map", systemImage: "map")
@@ -82,6 +82,8 @@ struct AppRoot: View {
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
                 transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
+                placement: selectedTab == 0 ? .writeRightLane : .trailingCenter,
+                bubblePlacement: selectedTab == 0 ? .top : .bottom,
                 onTap: presenceTapHandler
             )
                 .zIndex(40)
@@ -153,6 +155,9 @@ struct AppRoot: View {
         }
         .onChange(of: selectedTab) { _, tab in
             if tab != 0 {
+                if writeViewModel.hasActiveDotAnky {
+                    writeViewModel.clearCurrentSession()
+                }
                 ankyCompanion.hideBubble()
             } else {
                 syncWriteBubble()
@@ -168,6 +173,12 @@ struct AppRoot: View {
             syncWriteBubble()
         }
         .onChange(of: writeViewModel.shouldShowNudgeDialogue) { _, _ in
+            syncWriteBubble()
+        }
+        .onChange(of: writeViewModel.nudgeMessage) { _, _ in
+            syncWriteBubble()
+        }
+        .onChange(of: writeViewModel.isRequestingNudge) { _, _ in
             syncWriteBubble()
         }
     }
@@ -223,20 +234,10 @@ struct AppRoot: View {
 
     private func beginRetryWriting() {
         showsLaunchDialogue = false
+        writeViewModel.clearCompletedSession()
         ankyCompanion.hideBubble(returningTo: .listening)
         selectedTab = 0
         writeViewModel.openWritingPortal()
-    }
-
-    private func openCredits() {
-        selectedTab = 2
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            ankyCompanion.witness(
-                mood: .guiding,
-                sequence: .waveFront,
-                bubble: AnkyBubble(text: "open credits to restore the reflection gate.")
-            )
-        }
     }
 
     private var shouldFocusWrite: Bool {
@@ -331,11 +332,20 @@ struct AppRoot: View {
         }
 
         if shouldShowWriteNudgeDialogue {
+            let actions = writeViewModel.isPausedOnDraft
+                ? [
+                    AnkyChatAction("start again", isPrimary: true) {
+                        beginRetryWriting()
+                    }
+                ]
+                : []
             ankyCompanion.witness(
                 mood: .listening,
                 sequence: .shyListening,
                 bubble: AnkyBubble(
                     text: writeViewModel.nudgeDialogueMessage,
+                    actions: actions,
+                    isThinking: writeViewModel.isRequestingNudge,
                     close: {
                         writeViewModel.dismissCurrentPrompt()
                         ankyCompanion.hideBubble(returningTo: .listening)

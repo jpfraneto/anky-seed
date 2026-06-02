@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.Density
@@ -152,9 +153,16 @@ fun AnkyPresenceOverlay(
         } else {
             R.drawable.anky_sigil_smal
         }
+        fun persistCurrentPosition() {
+            preferences.edit()
+                .putFloat("x", offsetX ?: homeX)
+                .putFloat("y", offsetY ?: homeY)
+                .apply()
+        }
 
         Box(
             modifier = Modifier
+                .testTag("anky-presence")
                 .offset {
                     IntOffset(
                         (offsetX ?: 0f).roundToInt(),
@@ -183,13 +191,16 @@ fun AnkyPresenceOverlay(
                 )
                 .pointerInput(maxWidthPx, maxHeightPx, keyboardHeightPx, sizePx) {
                     detectDragGestures(
+                        onDragStart = {
+                            showMenu = false
+                            followsHomePosition = false
+                        },
                         onDragEnd = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            followsHomePosition = false
-                            preferences.edit()
-                                .putFloat("x", offsetX ?: 0f)
-                                .putFloat("y", offsetY ?: 0f)
-                                .apply()
+                            persistCurrentPosition()
+                        },
+                        onDragCancel = {
+                            persistCurrentPosition()
                         },
                     ) { change, dragAmount ->
                         change.consume()
@@ -214,7 +225,7 @@ fun AnkyPresenceOverlay(
             )
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(
-                    text = { Text(if (visible) "drag anky anywhere" else "tap the sigil to bring anky back") },
+                    text = { Text(if (visible) "anky stays beside the writing" else "tap the sigil to bring anky back") },
                     enabled = false,
                     onClick = {},
                 )
@@ -241,26 +252,16 @@ fun AnkyPresenceOverlay(
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text("Move Anky home") },
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        offsetX = homeX
-                        offsetY = homeY
-                        followsHomePosition = true
-                        preferences.edit()
-                            .putFloat("x", offsetX ?: 0f)
-                            .putFloat("y", offsetY ?: 0f)
-                            .apply()
-                        showMenu = false
-                    },
-                )
-                DropdownMenuItem(
                     text = { Text("Change motion") },
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         sequence = sequence.next()
                         showMenu = false
                     },
+                )
+                DropdownMenuItem(
+                    text = { Text("Cancel") },
+                    onClick = { showMenu = false },
                 )
             }
         }

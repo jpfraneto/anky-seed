@@ -153,6 +153,7 @@ class BackupImporter(
                 reflection = json.getString("reflection"),
                 createdAt = Instant.parse(json.getString("createdAt")),
                 creditsRemaining = if (json.isNull("creditsRemaining")) null else json.getInt("creditsRemaining"),
+                tags = json.optJSONArray("tags").stringList(),
             )
             reflectionStore.save(reflection)
         }.isSuccess
@@ -195,6 +196,7 @@ class BackupImporter(
                 reflection = decodeUtf8StrictOrNull(bytes) ?: return false,
                 createdAt = createdAt,
                 creditsRemaining = creditsRemaining,
+                tags = emptyList(),
             ),
         )
         return true
@@ -303,6 +305,13 @@ class BackupImporter(
 
     private companion object {
         val Sha256Hex = Regex("^[0-9a-f]{64}$")
+    }
+}
+
+private fun org.json.JSONArray?.stringList(): List<String> {
+    if (this == null) return emptyList()
+    return (0 until length()).mapNotNull { index ->
+        optString(index).trim().takeIf { it.isNotEmpty() }
     }
 }
 

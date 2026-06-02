@@ -2,6 +2,8 @@ package inc.anky.android.reveal
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,9 +15,13 @@ class YouFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun youShowsPublicKeySurface() {
+    fun youTabOpensIdentitySurface() {
+        compose.onNodeWithContentDescription("Open Map").performClick()
+        compose.waitUntil {
+            compose.onAllNodesWithText("You").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("You").performClick()
         compose.onNodeWithTag("you-screen").assertIsDisplayed()
-        compose.onNodeWithTag("public-key").assertIsDisplayed()
+        compose.onNodeWithText("identity").assertIsDisplayed()
     }
 }

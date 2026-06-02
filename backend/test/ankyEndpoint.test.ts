@@ -353,21 +353,23 @@ describe("POST /anky", () => {
     expect(creditCalls).toBe(0);
   });
 
-  test("nudge intent accepts an unfinished .anky and spends after a one-line response", async () => {
+  test("nudge intent accepts an unfinished .anky without spending a reflection credit", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
-    let creditHash: string | undefined;
+    let prepareCalls = 0;
     let promptText = "";
+    let routedModel = "";
     let spendCalls = 0;
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        prepareReflectionCredit: async ({ ankyHash }) => {
-          creditHash = ankyHash;
+        prepareReflectionCredit: async () => {
+          prepareCalls += 1;
           return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };
         },
-        routeReflection: async ({ prompt }) => {
+        routeReflection: async ({ env, prompt }) => {
           promptText = prompt;
+          routedModel = env.openrouterModel;
           return {
             provider: "test",
             chargeable: true,
@@ -392,13 +394,21 @@ describe("POST /anky", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("X-Anky-Intent")).toBe("nudge");
     expect(response.headers.get("X-Anky-Hash")).toHaveLength(64);
-    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("3");
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("null");
     expect(text).toBe("Follow the sentence that still feels warm.");
     expect(text).not.toContain("#");
     expect(promptText).toContain("unfinished .anky");
+    expect(promptText).toContain("one live thread already present");
+    expect(promptText).toContain("pulls that thread forward");
+    expect(promptText).toContain("Texture matters");
+    expect(promptText).toContain("make it concrete and answerable");
+    expect(promptText).toContain("Use clean, natural language");
+    expect(promptText).toContain("Do not mention how long they wrote");
+    expect(promptText).not.toContain("They wrote for about");
     expect(promptText).toContain("one sentence");
-    expect(creditHash).toHaveLength(64);
-    expect(spendCalls).toBe(1);
+    expect(routedModel).toBe("deepseek/deepseek-v4-flash");
+    expect(prepareCalls).toBe(0);
+    expect(spendCalls).toBe(0);
   });
 
   test("rejects invalid ankys before trial grant, spend, or model", async () => {

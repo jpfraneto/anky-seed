@@ -19,6 +19,7 @@ import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionIndexStore
 import java.io.File
+import java.net.URLEncoder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -53,7 +54,17 @@ data class YouState(
             .appendQueryParameter("text", freeCreditMessage)
             .build()
             .toString()
+
+    val supportFeedbackEmailUrl: String
+        get() {
+            val subject = mailtoQueryValue("Anky support / feedback")
+            val body = mailtoQueryValue("account id: $accountId\n\n")
+            return "mailto:support@anky.app?subject=$subject&body=$body"
+        }
 }
+
+private fun mailtoQueryValue(value: String): String =
+    URLEncoder.encode(value, Charsets.UTF_8.name()).replace("+", "%20")
 
 class YouViewModel(
     private val identityStore: WriterIdentityStore,
@@ -104,7 +115,7 @@ class YouViewModel(
 
     fun revealRecoveryPhrase() {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Show your ANKY recovery key.")) {
+            if (!biometricGate.authenticate("Show your ANKY recovery phrase.")) {
                 _state.update { it.copy(error = "Could not confirm identity.") }
                 return@launch
             }
@@ -125,6 +136,27 @@ class YouViewModel(
 
     fun hideRecoveryPhrase() {
         _state.update { it.copy(recoveryPhrase = null) }
+    }
+
+    fun backUpIdentityToDeviceSecureStorage() {
+        viewModelScope.launch {
+            if (!biometricGate.authenticate("Back up your ANKY recovery phrase to device secure storage.")) {
+                _state.update { it.copy(error = "Could not confirm identity.") }
+                return@launch
+            }
+            runCatching {
+                identityStore.backUpRecoveryPhraseToDeviceSecureStorage()
+            }.onSuccess {
+                _state.update {
+                    it.copy(
+                        statusMessage = YouStatusCopy.IdentityBackupSaved,
+                        error = null,
+                    )
+                }
+            }.onFailure {
+                _state.update { it.copy(error = YouStatusCopy.CouldNotBackUpAnkyIdentity) }
+            }
+        }
     }
 
     fun importRecoveryPhrase(text: String, onImported: () -> Unit = {}) {
@@ -480,13 +512,6 @@ class YouViewModel(
     private fun pluralize(count: Int, singular: String, plural: String): String =
         "$count ${if (count == 1) singular else plural}"
 
-    private fun recoveryImportErrorMessage(error: Throwable): String =
-        when (error.message) {
-            "Recovery phrase must contain 12 words." -> "Recovery key must be 12 words."
-            "Recovery phrase contains an unsupported word." -> "Recovery key contains an unrecognized word."
-            else -> "Could not recover that identity."
-        }
-
     companion object {
         fun formatReminderTime(minutes: Int): String {
             val hour = (minutes / 60).coerceIn(0, 23)
@@ -495,6 +520,13 @@ class YouViewModel(
         }
     }
 }
+
+internal fun recoveryImportErrorMessage(error: Throwable): String =
+    when (error.message) {
+        "Recovery phrase must contain 12 words." -> "Recovery phrase must be 12 words."
+        "Recovery phrase contains an unsupported word." -> "Recovery phrase contains an unrecognized word."
+        else -> "Could not recover that identity."
+    }
 
 internal fun mergeRefreshedYouState(previous: YouState, refreshed: YouState): YouState =
     refreshed.copy(
@@ -516,6 +548,7 @@ internal fun creditLoadFailureState(): CreditState =
     CreditState(false, null, YouStatusCopy.CouldNotLoadCredits)
 
 internal object YouStatusCopy {
+    const val IdentityBackupSaved = "Anky identity backup saved to device secure storage. Anky cannot read or recover it."
     const val RecoveryPhraseImported = "Identity recovered."
     const val MapIndexRepaired = "Map index repaired."
     const val LocalReflectionsCleared = "Local reflections cleared."
@@ -523,8 +556,9 @@ internal object YouStatusCopy {
     const val LocalWritingDataCleared = "Local writing data cleared."
     const val LocalIdentityReset = "Local identity reset."
     const val CouldNotCreateBackupZip = "Could not create a backup zip."
-    const val CouldNotLoadLocalWriterIdentity = "Could not load the local identity."
-    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery key."
+    const val CouldNotLoadLocalWriterIdentity = "Could not load the local Base identity."
+    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery phrase."
+    const val CouldNotBackUpAnkyIdentity = "Could not back up Anky identity."
     const val CouldNotScheduleDailyReminder = "Could not schedule the daily reminder."
     const val CouldNotLoadCredits = "Could not load credits."
 }

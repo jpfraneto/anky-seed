@@ -9,6 +9,7 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var statusMessage: String?
     @Published private(set) var identityStatus = "Local identity"
+    @Published private(set) var isIdentityBackedUpToICloud = false
     @Published private(set) var sensitiveIdentityConfirmed = false
     @Published private(set) var recoveryPhraseText = ""
     @Published private(set) var completeAnkyCount = 0
@@ -66,6 +67,7 @@ final class YouViewModel: ObservableObject {
             reflectionFileURLs = reflectionStore.fileURLs()
             backupZipURL = try backupExporter.exportBackup()
             identityStatus = "Local identity"
+            isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             updateStats()
             errorMessage = nil
         } catch {
@@ -110,6 +112,7 @@ final class YouViewModel: ObservableObject {
 
         do {
             try identityStore.backUpRecoveryPhraseToICloudKeychain()
+            isIdentityBackedUpToICloud = true
             statusMessage = "Anky identity backup saved to iCloud Keychain. Anky cannot read or recover it."
             errorMessage = nil
         } catch {
@@ -128,6 +131,7 @@ final class YouViewModel: ObservableObject {
             accountId = identity.accountId
             recoveryPhraseText = ""
             sensitiveIdentityConfirmed = false
+            isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             refresh()
             statusMessage = "Identity recovered."
             errorMessage = nil

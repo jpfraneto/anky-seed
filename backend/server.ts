@@ -702,6 +702,8 @@ const errorStatuses: Record<
   MIRROR_FAILED: 500,
 };
 
+const nudgeOpenRouterModel = "deepseek/deepseek-v4-flash";
+
 export function errorJson(c: Context, code: ErrorCode) {
   return c.json(
     { error: { code, message: errorMessages[code] } },
@@ -2570,7 +2572,8 @@ export function detectLanguage(text: string): string {
     countMatches(
       lower,
       /\b(que|el|la|los|las|de|del|en|con|por|para|un|una|es|son|estoy|esta|este|esto|me|te|se|lo|le|y|o|no|si|como|muy|mas|más|pero|todo|mismo|aqui|aquí|ahora|bien|porque|cuando|quiero|siento|tengo|hay)\b/g,
-    ) + countMatches(lower, /[áéíóúñ¿¡]/g) * 3;
+    ) +
+    countMatches(lower, /[áéíóúñ¿¡]/g) * 3;
   const englishScore = countMatches(
     lower,
     /\b(the|and|for|are|but|not|you|all|can|was|one|our|out|day|get|has|him|his|how|new|now|old|see|two|way|who|did|its|let|put|say|she|too|use|that|this|with|have|what|been|from|will|your|come|them|just|know|want|when|like|time|could|people|there|first|may|should|very|than|these|would|other|which|their|after|over|such|also|back|only|then|feel|think|write|work)\b/g,
@@ -2608,7 +2611,7 @@ export function buildStorytellerPrompt(writing: string): string {
     "",
     "Rules for tags: 3 to 5 tags maximum; each tag is 1-3 words describing an emotional theme or topic; use lowercase letters, numbers, and spaces only; do not use hashtags or markdown.",
     "",
-    "Do not wrap the markdown body in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like \"here is\".",
+    'Do not wrap the markdown body in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like "here is".',
     "",
     "After the one-line JSON tags block, return exactly one markdown file and nothing else.",
     "",
@@ -2628,19 +2631,33 @@ export function buildStorytellerPrompt(writing: string): string {
   ].join("\n");
 }
 
-export function buildNudgePrompt(writing: string): string {
+export function buildNudgePrompt(input: {
+  writing: string;
+  durationMs: number;
+  wordCount: number;
+}): string {
   return [
     "Someone is inside an unfinished .anky: stream-of-consciousness, no backspace, no editing, only forward motion.",
     "",
-    "You are Anky. Give exactly one line that nudges them back toward the writing already opening here.",
+    "You are Anky. Read the current writing and find one live thread already present: an image, tension, noun, contradiction, desire, fear, question, or strange phrase.",
     "",
-    "Do not summarize. Do not analyze. Do not give advice. Do not mention credits, mirrors, prompts, or this instruction.",
+    "Give exactly one line, preferably a question, that pulls that thread forward with curiosity and invites them back into the writing.",
     "",
-    "Write in the same language as the writing. Return plain text only: one sentence, no markdown, no title, no quotes, under 22 words.",
+    "Make it specific to these words. Texture matters. The line must make sense on its own while clearly belonging to this fragment.",
+    "",
+    "If you ask a question, make it concrete and answerable by continuing the writing. Avoid vague coaching questions.",
+    "",
+    "Use clean, natural language even if the fragment is messy. Do not imitate typos unless a typo is the live thread.",
+    "",
+    "Do not give generic encouragement, productivity advice, praise, summary, analysis, therapy language, or instructions.",
+    "",
+    "Do not mention how long they wrote, word count, credits, mirrors, prompts, or this instruction.",
+    "",
+    "Write in the same language as the writing. Return plain text only: one sentence, no markdown, no title, no quotes, under 26 words.",
     "",
     "Current writing:",
     "",
-    writing,
+    input.writing,
   ].join("\n");
 }
 
@@ -2649,6 +2666,10 @@ function markdownPayload(raw: string): string {
   const fenced = trimmed.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/i);
   if (fenced) return fenced[1].trim();
   return trimmed;
+}
+
+function countPromptWords(text: string): number {
+  return text.trim().match(/\S+/g)?.length ?? 0;
 }
 
 function countMatches(text: string, pattern: RegExp): number {
@@ -2683,7 +2704,8 @@ function normalizeMirrorTags(value: unknown): string[] {
 
 function titleFromMarkdown(markdown: string): string {
   const heading = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  const firstLine = heading ?? markdown.split(/\r?\n/)[0]?.trim() ?? "reflection";
+  const firstLine =
+    heading ?? markdown.split(/\r?\n/)[0]?.trim() ?? "reflection";
   return (
     firstLine
       .replace(/^#+\s*/, "")
@@ -2776,11 +2798,23 @@ export function handleAnkyReflectionStream(
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: string, data: unknown) => {
-        controller.enqueue(
-          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-        );
+      let closed = false;
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
+      const enqueue = (value: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(value));
+        } catch {
+          closed = true;
+          if (heartbeat) clearInterval(heartbeat);
+        }
       };
+      const send = (event: string, data: unknown) => {
+        enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+      heartbeat = setInterval(() => {
+        enqueue(": keep-alive\n\n");
+      }, 15_000);
 
       try {
         send("update", {
@@ -2819,7 +2853,13 @@ export function handleAnkyReflectionStream(
           },
         });
       } finally {
-        controller.close();
+        clearInterval(heartbeat);
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          // The client may have already cancelled the stream.
+        }
       }
     },
   });
@@ -2908,7 +2948,9 @@ export async function handleAnkyReflection(
     appVersion = normalizeMetadataValue(
       c.req.header("x-anky-app-version") ?? undefined,
     );
-    requestIntent = ankyRequestIntent(c.req.header("x-anky-intent") ?? undefined);
+    requestIntent = ankyRequestIntent(
+      c.req.header("x-anky-intent") ?? undefined,
+    );
     const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
     const paymentSignature = c.req.header("payment-signature") ?? undefined;
     if (!signature || !requestTime) {
@@ -3029,23 +3071,24 @@ export async function handleAnkyReflection(
     });
 
     try {
-      let preparedCredit: PreparedReflectionCredit = retryingSucceededReflection
-        ? {
-            ok: true,
-            source: "bypass",
-            creditsRemaining: null,
-            result: "bypassed",
-            spentCredit: false,
-          }
-        : await prepareCredit({
-            env,
-            accountId,
-            accountIdHash: identityHash,
-            ankyHash: billingHash,
-            client: identity.client,
-            appVersion,
-            trialProof,
-          });
+      let preparedCredit: PreparedReflectionCredit =
+        requestIntent === "nudge" || retryingSucceededReflection
+          ? {
+              ok: true,
+              source: "bypass",
+              creditsRemaining: null,
+              result: "bypassed",
+              spentCredit: false,
+            }
+          : await prepareCredit({
+              env,
+              accountId,
+              accountIdHash: identityHash,
+              ankyHash: billingHash,
+              client: identity.client,
+              appVersion,
+              trialProof,
+            });
       if (
         !preparedCredit.ok &&
         preparedCredit.result === "insufficient" &&
@@ -3080,14 +3123,18 @@ export async function handleAnkyReflection(
         stage: "credit_checked",
         message: retryingSucceededReflection
           ? "Anky already reflected this artifact and will retry without spending credits."
-          : recoveredPreviousSpend
-          ? "Anky found a previous credit spend for this artifact and will retry without spending again."
-          : preparedCredit.ok
-          ? "Anky found an available reflection credit path."
-          : "Anky did not find available credits and is checking x402.",
+          : requestIntent === "nudge"
+            ? "Anky will return a lightweight nudge without spending a reflection credit."
+            : recoveredPreviousSpend
+              ? "Anky found a previous credit spend for this artifact and will retry without spending again."
+              : preparedCredit.ok
+                ? "Anky found an available reflection credit path."
+                : "Anky did not find available credits and is checking x402.",
       });
       if (retryingSucceededReflection) {
         creditResult = "duplicate_succeeded_retry_bypass";
+      } else if (requestIntent === "nudge") {
+        creditResult = "nudge_not_charged";
       } else if (recoveredPreviousSpend) {
         creditResult = "recovered_previous_spend";
       }
@@ -3170,7 +3217,11 @@ export async function handleAnkyReflection(
       const writing = reconstructProtocolText(validation.parsed);
       const prompt =
         requestIntent === "nudge"
-          ? buildNudgePrompt(writing)
+          ? buildNudgePrompt({
+              writing,
+              durationMs: validation.durationMs,
+              wordCount: countPromptWords(writing),
+            })
           : buildReflectDotAnkyPrompt(dotAnky);
       await deps.progress?.({
         stage: "reflection_prepared",
@@ -3187,7 +3238,10 @@ export async function handleAnkyReflection(
           provider: x402Quote?.provider,
         });
         mirror = await reflectionRouter({
-          env,
+          env:
+            requestIntent === "nudge"
+              ? { ...env, openrouterModel: nudgeOpenRouterModel }
+              : env,
           prompt,
           onChunk:
             requestIntent === "reflection" ? deps.reflectionChunk : undefined,
@@ -3207,7 +3261,12 @@ export async function handleAnkyReflection(
       let creditsRemaining = preparedCredit.ok
         ? preparedCredit.creditsRemaining
         : null;
-      if (mirror.chargeable && !retryingSucceededReflection && !recoveredPreviousSpend) {
+      if (
+        requestIntent === "reflection" &&
+        mirror.chargeable &&
+        !retryingSucceededReflection &&
+        !recoveredPreviousSpend
+      ) {
         if (x402Payment) {
           const x402Settler = deps.settleX402Payment ?? settleX402Payment;
           const settlement = await x402Settler({ env, payment: x402Payment });
@@ -3235,7 +3294,8 @@ export async function handleAnkyReflection(
           creditsRemaining = null;
           await deps.progress?.({
             stage: "x402_settled",
-            message: "Anky settled the x402 payment after a successful reflection.",
+            message:
+              "Anky settled the x402 payment after a successful reflection.",
             provider: x402Payment.quote.provider,
             price: x402Payment.quote.price,
           });
@@ -3262,10 +3322,16 @@ export async function handleAnkyReflection(
           });
         }
       } else {
-        creditResult = "not_spent_default_fallback";
+        creditResult =
+          requestIntent === "nudge"
+            ? "nudge_not_charged"
+            : "not_spent_default_fallback";
         await deps.progress?.({
           stage: "credit_not_spent",
-          message: "Anky used the fallback reflection and did not charge.",
+          message:
+            requestIntent === "nudge"
+              ? "Anky returned the lightweight nudge without charging."
+              : "Anky used the fallback reflection and did not charge.",
         });
       }
 
@@ -3287,7 +3353,8 @@ export async function handleAnkyReflection(
       idempotencyAcquired = false;
       await deps.progress?.({
         stage: "complete",
-        message: "Anky is returning the markdown reflection and forgetting the writing.",
+        message:
+          "Anky is returning the markdown reflection and forgetting the writing.",
         provider: mirror.provider,
         chargeable: mirror.chargeable,
         status: 200,
@@ -3383,10 +3450,14 @@ function reflectionMarkdown(
   mirror: Pick<ReflectionProviderResult, "title" | "reflection">,
 ): string {
   const markdown = mirror.reflection.trim();
-  return /^#\s+/m.test(markdown) ? markdown : `# ${mirror.title}\n\n${markdown}`;
+  return /^#\s+/m.test(markdown)
+    ? markdown
+    : `# ${mirror.title}\n\n${markdown}`;
 }
 
-function nudgeText(mirror: Pick<ReflectionProviderResult, "reflection">): string {
+function nudgeText(
+  mirror: Pick<ReflectionProviderResult, "reflection">,
+): string {
   const payload = markdownPayload(mirror.reflection)
     .replace(/^#+\s*/gm, "")
     .split(/\r?\n/)

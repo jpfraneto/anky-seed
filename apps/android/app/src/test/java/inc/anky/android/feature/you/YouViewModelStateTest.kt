@@ -5,6 +5,7 @@ import inc.anky.android.core.privacy.PrivacyMessages
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YouViewModelStateTest {
@@ -57,6 +58,15 @@ class YouViewModelStateTest {
     }
 
     @Test
+    fun supportFeedbackEmailUrlMatchesIosMailtoShape() {
+        val state = YouState(accountId = "0x9858EfFD232B4033E47d90003D41EC34EcaEda94")
+
+        assertTrue(state.supportFeedbackEmailUrl.startsWith("mailto:support@anky.app?"))
+        assertTrue(state.supportFeedbackEmailUrl.contains("subject=Anky%20support%20%2F%20feedback"))
+        assertTrue(state.supportFeedbackEmailUrl.contains("body=account%20id%3A%200x9858EfFD232B4033E47d90003D41EC34EcaEda94"))
+    }
+
+    @Test
     fun localIdentityLoadFailureShowsIosCopyAndStopsCreditLoading() {
         val failed = localIdentityLoadFailureState(
             YouState(
@@ -65,7 +75,7 @@ class YouViewModelStateTest {
             ),
         )
 
-        assertEquals("Could not load the local identity.", failed.error)
+        assertEquals("Could not load the local Base identity.", failed.error)
         assertEquals(false, failed.creditState.isLoading)
         assertEquals("no credit packs available", failed.creditState.message)
     }
@@ -107,9 +117,27 @@ class YouViewModelStateTest {
         assertEquals("Local writing data cleared.", YouStatusCopy.LocalWritingDataCleared)
         assertEquals("Local identity reset.", YouStatusCopy.LocalIdentityReset)
         assertEquals("Could not create a backup zip.", YouStatusCopy.CouldNotCreateBackupZip)
-        assertEquals("Could not load the local identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
-        assertEquals("Could not load the recovery key.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
+        assertEquals("Could not load the local Base identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
+        assertEquals("Could not load the recovery phrase.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
+        assertEquals("Anky identity backup saved to device secure storage. Anky cannot read or recover it.", YouStatusCopy.IdentityBackupSaved)
+        assertEquals("Could not back up Anky identity.", YouStatusCopy.CouldNotBackUpAnkyIdentity)
         assertEquals("Could not schedule the daily reminder.", YouStatusCopy.CouldNotScheduleDailyReminder)
         assertEquals("Could not load credits.", YouStatusCopy.CouldNotLoadCredits)
+    }
+
+    @Test
+    fun recoveryImportValidationCopyMatchesIosPhraseLanguage() {
+        assertEquals(
+            "Recovery phrase must be 12 words.",
+            recoveryImportErrorMessage(IllegalArgumentException("Recovery phrase must contain 12 words.")),
+        )
+        assertEquals(
+            "Recovery phrase contains an unrecognized word.",
+            recoveryImportErrorMessage(IllegalArgumentException("Recovery phrase contains an unsupported word.")),
+        )
+        assertEquals(
+            "Could not recover that identity.",
+            recoveryImportErrorMessage(IllegalArgumentException("boom")),
+        )
     }
 }

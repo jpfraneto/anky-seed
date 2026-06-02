@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,12 +53,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -71,12 +79,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.BuildConfig
 import inc.anky.android.R
 import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.core.protocol.AnkyParser
+import inc.anky.android.core.protocol.AnkyReconstructor
+import inc.anky.android.core.protocol.AnkyWriter
+import inc.anky.android.feature.write.HiddenTextInput
 import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.theme.AnkyActionButton
@@ -85,14 +100,26 @@ import inc.anky.android.ui.theme.AnkyCosmicBackground
 import inc.anky.android.ui.theme.AnkyPanel
 import inc.anky.android.ui.theme.AnkyType
 import java.io.File
+import kotlinx.coroutines.delay
+
+private const val AnkyExperienceTotalSeconds = 88 * 60
+
+enum class YouInitialPage {
+    Credits,
+}
 
 @Composable
-fun YouScreen(viewModel: YouViewModel) {
+fun YouScreen(
+    viewModel: YouViewModel,
+    initialPage: YouInitialPage? = null,
+    onInitialPageBack: (() -> Unit)? = null,
+    onExperienceVisibilityChanged: (Boolean) -> Unit = {},
+) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
-    val page = remember { mutableStateOf<YouPage?>(null) }
-    val activePrompt = remember { mutableStateOf(YouPrompt.Identity) }
-    val isPromptVisible = remember { mutableStateOf(true) }
+    val page = remember(initialPage) { mutableStateOf(initialPage?.toYouPage()) }
+    val activePrompt = remember { mutableStateOf<YouPrompt?>(null) }
+    val isPromptVisible = remember { mutableStateOf(false) }
     val isShowingSystemPrompt = remember { mutableStateOf(false) }
     val mirrorUrl = remember(state.mirrorBaseUrl) { mutableStateOf(state.mirrorBaseUrl) }
     val showImportPhrase = remember { mutableStateOf(false) }
@@ -101,6 +128,7 @@ fun YouScreen(viewModel: YouViewModel) {
     val confirmClearReflections = remember { mutableStateOf(false) }
     val confirmResetIdentity = remember { mutableStateOf(false) }
     val showReminderTime = remember { mutableStateOf(false) }
+    val isShowingAnkyExperience = remember { mutableStateOf(false) }
     val phraseInput = remember { mutableStateOf("") }
     val reminderHourInput = remember(state.dailyReminderMinutes) {
         mutableStateOf((state.dailyReminderMinutes / 60).toString().padStart(2, '0'))
@@ -146,17 +174,27 @@ fun YouScreen(viewModel: YouViewModel) {
             isPromptVisible.value = true
         }
     }
+    LaunchedEffect(isShowingAnkyExperience.value) {
+        onExperienceVisibilityChanged(isShowingAnkyExperience.value)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onExperienceVisibilityChanged(false) }
+    }
 
     AnkyCosmicBackground(modifier = Modifier.testTag("you-screen")) {
-        if (page.value == null) {
-            Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
+            if (page.value == null) {
                 YouHome(
                     state = state,
                     activePrompt = activePrompt.value,
+                    onOpenExperience = { isShowingAnkyExperience.value = true },
                     onPrompt = {
                         activePrompt.value = it
                         isShowingSystemPrompt.value = false
                         isPromptVisible.value = true
+                        if (it == YouPrompt.Credits) {
+                            viewModel.refreshCredits()
+                        }
                     },
                 )
                 if (isPromptVisible.value) {
@@ -167,6 +205,8 @@ fun YouScreen(viewModel: YouViewModel) {
                             isShowingSystemPrompt = isShowingSystemPrompt.value,
                         ),
                         actions = if (isShowingSystemPrompt.value) {
+                            emptyList()
+                        } else if (isConversationThinking(activePrompt.value, state)) {
                             emptyList()
                         } else {
                             youPromptActions(
@@ -190,70 +230,86 @@ fun YouScreen(viewModel: YouViewModel) {
                             )
                         },
                         onClose = { isPromptVisible.value = false },
+                        isThinking = !isShowingSystemPrompt.value && isConversationThinking(activePrompt.value, state),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
-            }
-        } else {
-            YouDetailShell(page.value!!, onBack = { page.value = null }) {
-                when (page.value!!) {
-                    YouPage.Account -> AccountPage(
-                        state = state,
-                        onCopyAccountId = { context.copyText("Anky address", state.accountId) },
-                        onRevealRecovery = viewModel::revealRecoveryPhrase,
-                        onCopyRecovery = { state.recoveryPhrase?.let { context.copyText("Anky recovery key", it) } },
-                        onHideRecovery = viewModel::hideRecoveryPhrase,
-                        onImportPhrase = {
-                            phraseInput.value = ""
-                            showImportPhrase.value = true
-                        },
-                        onAppLock = viewModel::setAppLock,
-                        onReminder = setReminderWithPermission,
-                        onReminderTime = { showReminderTime.value = true },
-                    )
-                    YouPage.Privacy -> PrivacyPage()
-                    YouPage.Export -> ExportPage(
-                        state = state,
-                        onExport = viewModel::exportArchive,
-                        onShare = { state.exportedFile?.let(context::shareFile) },
-                        onRestore = {
-                            backupImporter.launch(
-                                arrayOf(
-                                    "application/zip",
-                                    "application/x-zip-compressed",
-                                    "application/octet-stream",
-                                    "application/json",
-                                    "text/plain",
-                                ),
-                            )
-                        },
-                        onDeleteLocalData = { confirmDeleteLocalData.value = true },
-                    )
-                    YouPage.Credits -> CreditsPage(
-                        state = state,
-                        onRefresh = viewModel::refreshCredits,
-                        onRestorePurchases = viewModel::restorePurchases,
-                        onPurchase = { packageId -> viewModel.purchaseCredits(packageId, context.findActivity()) },
-                        onShareFreeCredit = { context.shareText(state.freeCreditMessage, "share credit request") },
-                        onDmJp = { context.openUrl(state.freeCreditWhatsAppUrl) },
-                    )
-                    YouPage.Token -> TokenPage(
-                        onCopy = { context.copyText("Anky contract address", PrivacyMessages.AnkyCoinContractAddress) },
-                    )
-                    YouPage.Developer -> if (BuildConfig.DEBUG) {
-                        DeveloperPage(
-                            mirrorUrl = mirrorUrl.value,
-                            onMirrorUrl = { mirrorUrl.value = it },
-                            onSaveMirrorUrl = { viewModel.setMirrorBaseUrl(mirrorUrl.value) },
-                            onRepairMapIndex = viewModel::rebuildSessionIndex,
-                            onClearReflections = { confirmClearReflections.value = true },
-                            onClearArchive = { confirmClearArchive.value = true },
-                            onResetIdentity = { confirmResetIdentity.value = true },
+            } else {
+                YouDetailShell(
+                    page = page.value!!,
+                    onBack = {
+                        if (initialPage != null && onInitialPageBack != null) {
+                            onInitialPageBack()
+                        } else {
+                            page.value = null
+                        }
+                    },
+                ) {
+                    when (page.value!!) {
+                        YouPage.Account -> AccountPage(
+                            state = state,
+                            onCopyAccountId = { context.copyText("Anky address", state.accountId) },
+                            onRevealRecovery = viewModel::revealRecoveryPhrase,
+                            onBackupIdentity = viewModel::backUpIdentityToDeviceSecureStorage,
+                            onCopyRecovery = { state.recoveryPhrase?.let { context.copyText("Anky recovery phrase", it) } },
+                            onHideRecovery = viewModel::hideRecoveryPhrase,
+                            onImportPhrase = {
+                                phraseInput.value = ""
+                                showImportPhrase.value = true
+                            },
+                            onAppLock = viewModel::setAppLock,
+                            onReminder = setReminderWithPermission,
+                            onReminderTime = { showReminderTime.value = true },
                         )
+                        YouPage.Privacy -> PrivacyPage()
+                        YouPage.Export -> ExportPage(
+                            state = state,
+                            onExport = viewModel::exportArchive,
+                            onShare = { state.exportedFile?.let(context::shareFile) },
+                            onRestore = {
+                                backupImporter.launch(
+                                    arrayOf(
+                                        "application/zip",
+                                        "application/x-zip-compressed",
+                                        "application/octet-stream",
+                                        "application/json",
+                                        "text/plain",
+                                    ),
+                                )
+                            },
+                            onDeleteLocalData = { confirmDeleteLocalData.value = true },
+                        )
+                        YouPage.Credits -> CreditsPage(
+                            state = state,
+                            onRefresh = viewModel::refreshCredits,
+                            onRestorePurchases = viewModel::restorePurchases,
+                            onPurchase = { packageId -> viewModel.purchaseCredits(packageId, context.findActivity()) },
+                            onSupportFeedback = { context.openUrl(state.supportFeedbackEmailUrl) },
+                        )
+                        YouPage.Token -> TokenPage(
+                            onCopy = { context.copyText("Anky contract address", PrivacyMessages.AnkyCoinContractAddress) },
+                        )
+                        YouPage.Developer -> if (BuildConfig.DEBUG) {
+                            DeveloperPage(
+                                mirrorUrl = mirrorUrl.value,
+                                onMirrorUrl = { mirrorUrl.value = it },
+                                onSaveMirrorUrl = { viewModel.setMirrorBaseUrl(mirrorUrl.value) },
+                                onRepairMapIndex = viewModel::rebuildSessionIndex,
+                                onClearReflections = { confirmClearReflections.value = true },
+                                onClearArchive = { confirmClearArchive.value = true },
+                                onResetIdentity = { confirmResetIdentity.value = true },
+                            )
+                        }
                     }
                 }
+            }
+            if (isShowingAnkyExperience.value) {
+                AnkyExperienceOverlay(
+                    onClose = { isShowingAnkyExperience.value = false },
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -269,7 +325,7 @@ fun YouScreen(viewModel: YouViewModel) {
                         onValueChange = { phraseInput.value = it },
                         textStyle = AnkyType.Mono,
                         minLines = 4,
-                        label = { Text("recovery key") },
+                        label = { Text("recovery phrase") },
                     )
                     Text("recovering replaces the local identity used for ask anky and future credit balances. local .anky files stay on this device.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
                 }
@@ -345,6 +401,7 @@ fun YouScreen(viewModel: YouViewModel) {
         DestructiveConfirmDialog(
             title = "reset local identity?",
             action = "reset identity",
+            message = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.",
             onDismiss = { confirmResetIdentity.value = false },
             onConfirm = {
                 confirmResetIdentity.value = false
@@ -399,12 +456,16 @@ fun YouScreen(viewModel: YouViewModel) {
 private fun DestructiveConfirmDialog(
     title: String,
     action: String,
+    message: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = AnkyType.Heading.copy(color = AnkyColors.Danger)) },
+        text = message?.let {
+            { Text(it, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted)) }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(action, color = AnkyColors.Danger) }
         },
@@ -416,13 +477,288 @@ private fun DestructiveConfirmDialog(
 }
 
 @Composable
-private fun YouHome(state: YouState, activePrompt: YouPrompt, onPrompt: (YouPrompt) -> Unit) {
+private fun AnkyExperienceOverlay(
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnkyExperienceSystemBarsHidden()
+    val context = LocalContext.current
+    val startedAtMs = remember { System.currentTimeMillis() }
+    val elapsedSeconds = remember { mutableStateOf(0) }
+    val writer = remember { mutableStateOf(AnkyWriter()) }
+    val displayedText = remember { mutableStateOf("") }
+    val protocolText = remember { mutableStateOf("") }
+    val showCopyPrompt = remember { mutableStateOf(false) }
+
+    fun finishIfNeeded() {
+        if (elapsedSeconds.value < AnkyExperienceTotalSeconds) return
+        if (!writer.value.isStarted || writer.value.isClosed) return
+        writer.value.closeWithTerminalSilence()
+        protocolText.value = writer.value.text
+    }
+
+    fun acceptGlyph(glyph: String) {
+        finishIfNeeded()
+        if (elapsedSeconds.value >= AnkyExperienceTotalSeconds) return
+        if (writer.value.accept(glyph, System.currentTimeMillis())) {
+            displayedText.value += glyph
+            protocolText.value = writer.value.text
+        }
+    }
+
+    fun copyCurrentAnky() {
+        finishIfNeeded()
+        if (protocolText.value.isNotBlank()) {
+            context.copyText("Anky experience .anky", protocolText.value)
+        }
+    }
+
+    fun copyCurrentWriting() {
+        finishIfNeeded()
+        val writing = runCatching {
+            AnkyReconstructor.reconstructText(AnkyParser.parse(protocolText.value))
+        }.getOrDefault(displayedText.value)
+        if (writing.isNotBlank()) {
+            context.copyText("Anky experience writing", writing)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            elapsedSeconds.value = minOf(
+                AnkyExperienceTotalSeconds,
+                ((System.currentTimeMillis() - startedAtMs) / 1000L).toInt(),
+            )
+            finishIfNeeded()
+            if (elapsedSeconds.value >= AnkyExperienceTotalSeconds) break
+            delay(250)
+        }
+    }
+
+    val isFinished = elapsedSeconds.value >= AnkyExperienceTotalSeconds
+    val remainingSeconds = maxOf(0, AnkyExperienceTotalSeconds - elapsedSeconds.value)
+    val elapsedClock = experienceClock(elapsedSeconds.value)
+    val remainingClock = experienceClock(remainingSeconds)
+    val subtitle = if (isFinished) "the experience is complete" else "the experience is open"
+    val progress = 1f - (remainingSeconds.toFloat() / AnkyExperienceTotalSeconds.toFloat())
+
+    Box(
+        modifier = modifier
+            .background(AnkyColors.Ink.copy(alpha = 0.98f))
+            .testTag("anky-experience"),
+    ) {
+        if (!isFinished) {
+            HiddenTextInput(
+                onGlyph = ::acceptGlyph,
+                onGlyphs = { glyphs -> glyphs.forEach(::acceptGlyph) },
+                onRejectedMutation = {},
+                modifier = Modifier.fillMaxSize(),
+            )
+            Text(
+                displayedText.value,
+                style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.Paper.copy(alpha = 0.34f)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+            )
+        }
+
+        Text(
+            elapsedClock,
+            style = AnkyType.Mono.copy(fontSize = 13.sp, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 48.dp, start = 12.dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Panel.copy(alpha = 0.70f))
+                .semantics {
+                    contentDescription = "Anky experience time $elapsedClock"
+                }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 42.dp, end = 12.dp)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Panel.copy(alpha = 0.70f))
+                .clickable(onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "x",
+                style = AnkyType.Body.copy(fontSize = 18.sp, color = AnkyColors.Paper.copy(alpha = 0.72f)),
+                modifier = Modifier.semantics {
+                    contentDescription = "Close The Anky Experience"
+                },
+            )
+        }
+
+        ExperiencePortalRing(
+            progress = progress,
+            clockText = remainingClock,
+            subtitle = subtitle,
+            modifier = Modifier.align(Alignment.Center),
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 18.dp, bottom = 18.dp)
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable { showCopyPrompt.value = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.anky001),
+                contentDescription = "Anky companion",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(44.dp),
+            )
+        }
+
+        if (showCopyPrompt.value) {
+            AnkyConversationPrompt(
+                message = "copy your .anky or copy your writing.",
+                actions = listOf(
+                    AnkyChatAction("copy your .anky", isPrimary = true) { copyCurrentAnky() },
+                    AnkyChatAction("copy your writing") { copyCurrentWriting() },
+                ),
+                onClose = { showCopyPrompt.value = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 18.dp, end = 18.dp, bottom = 76.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnkyExperienceSystemBarsHidden() {
+    val activity = LocalContext.current.findActivity() ?: return
+    DisposableEffect(activity) {
+        val window = activity.window
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+        onDispose {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+        }
+    }
+}
+
+@Composable
+private fun ExperiencePortalRing(
+    progress: Float,
+    clockText: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = listOf(
+        Color.Red,
+        Color(0xFFFF9800),
+        Color.Yellow,
+        Color.Green,
+        Color.Blue,
+        Color(0xFF4B0082),
+        Color(0xFF8A2BE2),
+        Color.White,
+    )
+
+    Box(
+        modifier = modifier
+            .size(220.dp)
+            .semantics {
+                contentDescription = "$clockText. $subtitle"
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(220.dp)) {
+            val diameter = 206.dp.toPx()
+            val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
+            val arcSize = Size(diameter, diameter)
+            colors.forEachIndexed { index, color ->
+                val segmentProgress = ((progress * 8f) - index).coerceIn(0f, 1f)
+                val start = -90f + index * 45f
+                drawArc(
+                    color = color.copy(alpha = 0.18f),
+                    startAngle = start,
+                    sweepAngle = 45f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Butt),
+                )
+                if (segmentProgress > 0f) {
+                    drawArc(
+                        color = color,
+                        startAngle = start,
+                        sweepAngle = 45f * segmentProgress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Butt),
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(176.dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Panel.copy(alpha = 0.82f))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    clockText,
+                    style = AnkyType.Mono.copy(fontSize = 38.sp, color = AnkyColors.Paper.copy(alpha = 0.88f)),
+                    maxLines = 1,
+                )
+                Text(
+                    subtitle,
+                    style = AnkyType.Caption.copy(fontSize = 11.sp, color = AnkyColors.PaperMuted.copy(alpha = 0.86f)),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.size(width = 128.dp, height = 36.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun experienceClock(seconds: Int): String {
+    val safeSeconds = maxOf(0, seconds)
+    val minutes = safeSeconds / 60
+    val remainder = safeSeconds % 60
+    return "$minutes:${remainder.toString().padStart(2, '0')}"
+}
+
+@Composable
+private fun YouHome(
+    state: YouState,
+    activePrompt: YouPrompt?,
+    onOpenExperience: () -> Unit,
+    onPrompt: (YouPrompt) -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 62.dp, bottom = 220.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text("you", style = AnkyType.Title)
+        Text(
+            "you",
+            style = AnkyType.Title,
+            modifier = Modifier.clickable(onClick = onOpenExperience),
+        )
         YouStats(state)
         AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
             PromptRow(R.drawable.you_icon_account, "identity", "save it to secure storage", activePrompt == YouPrompt.Identity) { onPrompt(YouPrompt.Identity) }
@@ -431,11 +767,9 @@ private fun YouHome(state: YouState, activePrompt: YouPrompt, onPrompt: (YouProm
             Divider()
             PromptRow(R.drawable.you_icon_export, "data", "export or restore writing", activePrompt == YouPrompt.Export) { onPrompt(YouPrompt.Export) }
             Divider()
-            PromptRow(R.drawable.you_icon_credits, "credits", "reflection balance", activePrompt == YouPrompt.Credits) { onPrompt(YouPrompt.Credits) }
-            if (state.freeCreditWhatsAppUrl.isNotBlank()) {
-                Divider()
-                PromptRow(R.drawable.you_icon_credits, "support", "manual credit help", activePrompt == YouPrompt.Support) { onPrompt(YouPrompt.Support) }
-            }
+            PromptRow(R.drawable.you_icon_credits, "credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onPrompt(YouPrompt.Credits) }
+            Divider()
+            PromptRow(R.drawable.you_icon_credits, "support / feedback", "email support@anky.app", activePrompt == YouPrompt.Support) { onPrompt(YouPrompt.Support) }
         }
         if (BuildConfig.DEBUG) {
             AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
@@ -606,6 +940,7 @@ private fun AccountPage(
     state: YouState,
     onCopyAccountId: () -> Unit,
     onRevealRecovery: () -> Unit,
+    onBackupIdentity: () -> Unit,
     onCopyRecovery: () -> Unit,
     onHideRecovery: () -> Unit,
     onImportPhrase: () -> Unit,
@@ -618,7 +953,7 @@ private fun AccountPage(
     AnkyPanel {
         Text("local identity", style = AnkyType.Caption)
         Text(
-            "anky created a private identity for this device.",
+            "anky created a Base account for this device.",
             style = AnkyType.Body.copy(
                 fontSize = 17.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
@@ -629,20 +964,23 @@ private fun AccountPage(
     }
     AnkyPanel {
         Text("advanced recovery", style = AnkyType.Caption)
-        Text("anyone with this recovery key can restore this identity. keep it private.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("this phrase controls your Anky Base account. never share it. anky cannot recover it for you.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         Divider()
         SwitchRow("$lockLabel app lock", state.appLockEnabled, onAppLock)
-        Text("your recovery key can only be shown after $lockLabel lock is enabled.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("your recovery phrase can only be shown after $lockLabel lock is enabled.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("Your password/biometrics protect local access. They are not an Anky login.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         if (state.recoveryPhrase == null) {
-            AnkyActionButton("show recovery key", enabled = state.appLockEnabled, onClick = onRevealRecovery)
+            AnkyActionButton("reveal recovery phrase", enabled = state.appLockEnabled, onClick = onRevealRecovery)
         } else {
             Text(state.recoveryPhrase, style = AnkyType.Mono.copy(color = AnkyColors.Paper))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnkyActionButton("export recovery key", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
+                AnkyActionButton("copy recovery phrase", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
                 AnkyActionButton("hide", modifier = Modifier.weight(1f), onClick = onHideRecovery)
             }
         }
         AnkyActionButton("recover identity", onClick = onImportPhrase)
+        AnkyActionButton("Back up Anky identity", onClick = onBackupIdentity)
+        Text("This stores your recovery phrase in device secure storage. Anky cannot read it.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         Text("Anky address", style = AnkyType.Caption)
         Text(state.accountId, style = AnkyType.Mono.copy(color = AnkyColors.PaperMuted))
         AnkyActionButton("copy account", onClick = onCopyAccountId)
@@ -718,8 +1056,7 @@ private fun CreditsPage(
     onRefresh: () -> Unit,
     onRestorePurchases: () -> Unit,
     onPurchase: (String) -> Unit,
-    onShareFreeCredit: () -> Unit,
-    onDmJp: () -> Unit,
+    onSupportFeedback: () -> Unit,
 ) {
     AnkyPanel {
         Text(
@@ -761,9 +1098,8 @@ private fun CreditsPage(
         Text(CreditCatalog.RestoreIdentityNote, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
     AnkyPanel {
-        AnkyActionButton("share support request", onClick = onShareFreeCredit)
-        AnkyActionButton("contact jp / support", onClick = onDmJp)
-        Text("support credit requests use your account id only. no writing is included.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        AnkyActionButton("support / feedback", onClick = onSupportFeedback)
+        Text("email support@anky.app. include only what you choose to write.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
 }
 
@@ -961,14 +1297,14 @@ private val PrivacyCopy = listOf(
     ArticleItem.Heading("the private artifact"),
     ArticleItem.Paragraph("your `.anky` writing is stored on your device by default. a saved `.anky` file contains the accepted writing stream and timing data for a session."),
     ArticleItem.Paragraph("anky computes a SHA-256 hash of the exact `.anky` bytes. the hash is for integrity. it is not encryption. if someone has the same `.anky` bytes, they can compute the same hash."),
-    ArticleItem.Paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/ios/Anky/Core/Protocol)."),
+    ArticleItem.Paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/storage/LocalAnkyArchive.kt), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/android/app/src/main/java/inc/anky/android/core/protocol)."),
     ArticleItem.Heading("local identity"),
-    ArticleItem.Paragraph("anky creates a local identity, stores its recovery key in device secure storage, and derives the writing identity locally. the recovery key is not sent to anky."),
-    ArticleItem.Paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/WriterIdentityStore.swift) and [keychain storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/KeychainClient.swift)."),
+    ArticleItem.Paragraph("anky creates a local Base account, stores its recovery phrase in device secure storage, and derives the Anky address locally. the recovery phrase is not sent to anky."),
+    ArticleItem.Paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/identity/WriterIdentityStore.kt) and [android keystore storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/identity/WriterIdentityStore.kt)."),
     ArticleItem.Heading("when plaintext leaves"),
     ArticleItem.Paragraph("writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
     ArticleItem.Paragraph("plaintext can leave when you choose an action that sends it somewhere: asking anky for a reflection, exporting or sharing files, importing a backup from a place you chose, or contacting support with text you provide."),
-    ArticleItem.Paragraph("the processing and backup paths are [reflection client](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Mirror/MirrorClient.swift), [backup importer](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/BackupImporter.swift), and [you page model](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Features/You/YouViewModel.swift)."),
+    ArticleItem.Paragraph("the processing and backup paths are [reflection client](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt), [backup importer](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/storage/BackupImporter.kt), and [you page model](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt)."),
     ArticleItem.Heading("reflections"),
     ArticleItem.Paragraph("when you ask for a reflection, the app sends the saved `.anky` bytes to the configured mirror service. the mirror checks the hash, reconstructs readable text for processing, and returns a reflection."),
     ArticleItem.Paragraph("the local app stores the returned reflection as a local sidecar. reflections are optional. writing is free and does not depend on reflections."),
@@ -1012,28 +1348,61 @@ private enum class YouPage(val title: String, val subtitle: String) {
     Developer("developer", "local tools"),
 }
 
+private fun YouInitialPage.toYouPage(): YouPage =
+    when (this) {
+        YouInitialPage.Credits -> YouPage.Credits
+    }
+
 private enum class YouPrompt(val message: String) {
     Identity("your identity can be saved to secure storage."),
     Privacy("writing stays local unless you export or ask for a reflection."),
     Export("your archive is yours. export it or restore one."),
     Credits("credits are only for reflections. writing is free."),
-    Support("support messages include your account id, not your writing."),
+    Support("send support or feedback by email. include only what you choose to write."),
     Developer("local tools. repair first, delete only when you mean it."),
 }
 
 private fun youConversationMessage(
     state: YouState,
-    activePrompt: YouPrompt,
+    activePrompt: YouPrompt?,
     isShowingSystemPrompt: Boolean,
 ): String =
     if (isShowingSystemPrompt) {
-        state.error ?: state.statusMessage ?: activePrompt.message
+        state.error ?: state.statusMessage ?: activePrompt?.message.orEmpty()
+    } else if (activePrompt == YouPrompt.Credits) {
+        val purchasingPackage = state.purchasingCreditPackageId
+            ?.let { packageId -> state.creditState.packages.firstOrNull { it.packageId == packageId } }
+        when {
+            purchasingPackage != null -> "anky is opening the ${purchasingPackage.title.lowercase()} pack."
+            state.creditState.isLoading -> "anky is checking the credit gate."
+            else -> creditsPromptMessage(state)
+        }
     } else {
-        activePrompt.message
+        activePrompt?.message.orEmpty()
     }
 
+private fun isConversationThinking(activePrompt: YouPrompt?, state: YouState): Boolean =
+    activePrompt == YouPrompt.Credits &&
+        (state.creditState.isLoading || state.purchasingCreditPackageId != null)
+
+private fun creditsMenuSubtitle(state: YouState): String =
+    when {
+        state.creditState.isLoading && state.creditState.balance == null -> "loading balance"
+        state.creditState.balance != null -> "${state.creditState.balance} ${if (state.creditState.balance == 1) "credit" else "credits"}"
+        else -> "reflection balance"
+    }
+
+private fun creditsPromptMessage(state: YouState): String {
+    val balance = when {
+        state.creditState.isLoading && state.creditState.balance == null -> "loading..."
+        state.creditState.balance != null -> state.creditState.balance.toString()
+        else -> "unknown"
+    }
+    return "you have $balance reflection ${if (balance == "1") "credit" else "credits"}. choose a pack to add more."
+}
+
 private fun youPromptActions(
-    prompt: YouPrompt,
+    prompt: YouPrompt?,
     state: YouState,
     context: Context,
     viewModel: YouViewModel,
@@ -1043,11 +1412,11 @@ private fun youPromptActions(
 ): List<AnkyChatAction> =
     when (prompt) {
         YouPrompt.Identity -> listOf(
-            AnkyChatAction("back up identity", isPrimary = true) { viewModel.revealRecoveryPhrase() },
+            AnkyChatAction("back up identity", isPrimary = true) { viewModel.backUpIdentityToDeviceSecureStorage() },
             AnkyChatAction("copy account") { context.copyText("Anky address", state.accountId) },
         )
         YouPrompt.Privacy -> listOf(
-            AnkyChatAction("copy privacy email", isPrimary = true) { context.copyText("ANKY privacy", "jp@anky.app") },
+            AnkyChatAction("read privacy policy", isPrimary = true) { context.openUrl("https://anky.app/privacy") },
         )
         YouPrompt.Export -> buildList {
             state.exportedFile?.let { file ->
@@ -1056,19 +1425,30 @@ private fun youPromptActions(
             add(AnkyChatAction("restore backup") { importBackup() })
         }
         YouPrompt.Credits -> {
-            val firstPackage = state.creditState.packages.firstOrNull()
-            buildList {
-                if (firstPackage != null) {
-                    add(AnkyChatAction("buy reflections", isPrimary = true) {
-                        viewModel.purchaseCredits(firstPackage.packageId, context.findActivity())
-                    })
+            val packages = state.creditState.packages.take(3)
+            if (packages.isEmpty()) {
+                listOf(
+                    AnkyChatAction(if (state.creditState.isLoading) "loading packs" else "refresh credits", isPrimary = true) {
+                        viewModel.refreshCredits()
+                    },
+                )
+            } else {
+                packages.map { creditPackage ->
+                    val isRecommended = creditPackage.title == "99 credits" ||
+                        creditPackage.packageId.contains("88_bonus_11")
+                    AnkyChatAction(
+                        title = creditPackage.title,
+                        isPrimary = isRecommended,
+                        subtitle = creditPackage.price,
+                        badge = if (isRecommended) "recommended" else null,
+                    ) {
+                        viewModel.purchaseCredits(creditPackage.packageId, context.findActivity())
+                    }
                 }
-                add(AnkyChatAction("refresh credits") { viewModel.refreshCredits() })
             }
         }
         YouPrompt.Support -> listOf(
-            AnkyChatAction("share request", isPrimary = true) { context.shareText(state.freeCreditMessage, "share credit request") },
-            AnkyChatAction("message support") { context.openUrl(state.freeCreditWhatsAppUrl) },
+            AnkyChatAction("open email", isPrimary = true) { context.openUrl(state.supportFeedbackEmailUrl) },
         )
         YouPrompt.Developer -> if (BuildConfig.DEBUG) {
             listOf(
@@ -1078,6 +1458,7 @@ private fun youPromptActions(
         } else {
             emptyList()
         }
+        null -> emptyList()
     }
 
 private fun Context.copyText(label: String, text: String) {
@@ -1087,13 +1468,6 @@ private fun Context.copyText(label: String, text: String) {
 
 private fun Context.openUrl(url: String) {
     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-}
-
-private fun Context.shareText(text: String, title: String) {
-    val intent = Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        .putExtra(Intent.EXTRA_TEXT, text)
-    startActivity(Intent.createChooser(intent, title))
 }
 
 private fun Context.shareFile(file: File) {

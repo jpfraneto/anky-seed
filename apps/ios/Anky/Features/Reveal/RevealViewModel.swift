@@ -24,9 +24,8 @@ final class RevealViewModel: ObservableObject {
     let duration: String
     let hash: String
     let isComplete: Bool
-    let createdDate: String
-    let createdTime: String
     let wordCount: Int
+    let compactHeaderLine: String
 
     private let clipboard: ClipboardClient
     private let artifact: SavedAnky
@@ -40,8 +39,17 @@ final class RevealViewModel: ObservableObject {
     private var reflectionWatcherTask: Task<Void, Never>?
     private var reflectionRetryTask: Task<Void, Never>?
     private var reflectionRetryStartedAt: Date?
+    private var reflectionRequestInFlight = false
     private let reflectionRetryLimit: TimeInterval = 120
     private static let hasClaimedFreeCreditsKey = "anky.hasClaimedFreeReflections"
+    private static let compactDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "d.MM.yyyy h:mma"
+        formatter.amSymbol = "am"
+        formatter.pmSymbol = "pm"
+        return formatter
+    }()
 
     init(
         artifact: SavedAnky,
@@ -56,14 +64,20 @@ final class RevealViewModel: ObservableObject {
     ) {
         self.artifact = artifact
         self.reconstructedText = artifact.reconstructedText
-        self.duration = AnkyDuration.formatted(artifact.durationMs)
-        self.hash = artifact.hash
-        self.isComplete = artifact.isComplete
-        self.createdDate = artifact.createdAt.formatted(date: .complete, time: .omitted)
-        self.createdTime = artifact.createdAt.formatted(date: .omitted, time: .shortened)
-        self.wordCount = artifact.reconstructedText
+        let formattedDuration = AnkyDuration.formatted(artifact.durationMs)
+        let words = artifact.reconstructedText
             .split { $0.isWhitespace || $0.isNewline }
             .count
+
+        self.duration = formattedDuration
+        self.hash = artifact.hash
+        self.isComplete = artifact.isComplete
+        self.wordCount = words
+        self.compactHeaderLine = Self.compactHeaderLine(
+            createdAt: artifact.createdAt,
+            wordCount: words,
+            duration: formattedDuration
+        )
         self.clipboard = clipboard
         self.archive = archive
         self.reflectionStore = reflectionStore
@@ -87,31 +101,6 @@ final class RevealViewModel: ObservableObject {
         isComplete ? "Anky" : "Fragment"
     }
 
-    var metadataLine: String {
-        "\(duration) / \(wordCount) \(wordCount == 1 ? "word" : "words")"
-    }
-
-    var reflectionActionStatus: String {
-        if reflection != nil {
-            return ""
-        }
-        if isComplete {
-            return "ready to mirror this artifact"
-        }
-        return "write \(AnkyDuration.completeRitualMinutes) minutes to mirror this artifact"
-    }
-
-    var shortSessionMessage: String {
-        let messages = [
-            "keep going until you get to \(AnkyDuration.completeRitualMinutes) minutes.",
-            "the thread opened, but it needs the full \(AnkyDuration.completeRitualMinutes) minutes.",
-            "that was a spark. stay with it until \(AnkyDuration.completeRitualMinutes) minutes.",
-            "anky needs the whole ritual. come back and write \(AnkyDuration.completeRitualMinutes) minutes.",
-            "you stopped too soon. try again and cross the \(AnkyDuration.completeRitualMinutes)-minute mark."
-        ]
-        return messages[stableMessageIndex(count: messages.count)]
-    }
-
     var canAskAnky: Bool {
         MirrorEligibility.canAskAnky(isComplete: isComplete, hasReflection: reflection != nil)
     }
@@ -128,10 +117,6 @@ final class RevealViewModel: ObservableObject {
         )
     }
 
-    var creditPromptMessage: String {
-        ReflectionCreditPresentation.message(for: creditPromptState)
-    }
-
     var canSubmitReflectionRequest: Bool {
         guard canAskAnky, !isAskingAnky else {
             return false
@@ -140,13 +125,6 @@ final class RevealViewModel: ObservableObject {
             return false
         }
         return true
-    }
-
-    var shouldShowCreditsLink: Bool {
-        if case .unavailable = creditPromptState {
-            return true
-        }
-        return false
     }
 
     func copy(_ section: RevealCopySection) {
@@ -188,6 +166,9 @@ final class RevealViewModel: ObservableObject {
     }
 
     private func submitReflectionRequest(allowWhileAsking: Bool) async {
+        guard !reflectionRequestInFlight else {
+            return
+        }
         guard canAskAnky else {
             return
         }
@@ -205,6 +186,7 @@ final class RevealViewModel: ObservableObject {
         }
 
         isAskingAnky = true
+        reflectionRequestInFlight = true
         errorMessage = nil
         streamingReflectionMarkdown = ""
         progressStage = "stream_open"
@@ -268,12 +250,14 @@ final class RevealViewModel: ObservableObject {
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
+            reflectionRequestInFlight = false
             isAskingAnky = false
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? "Anky could not return a reflection right now."
             if message.localizedCaseInsensitiveContains("already being reflected") {
                 requestStore.markPending(hash: artifact.hash)
                 isAskingAnky = true
+                reflectionRequestInFlight = false
                 streamingReflectionMarkdown = ""
                 reflectionStatusMessage = "the mirror is already holding this thread."
                 errorMessage = nil
@@ -292,6 +276,7 @@ final class RevealViewModel: ObservableObject {
             progressStage = nil
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
+            reflectionRequestInFlight = false
             isAskingAnky = false
         }
     }
@@ -335,6 +320,12 @@ final class RevealViewModel: ObservableObject {
         }
     }
 
+    private static func compactHeaderLine(createdAt: Date, wordCount: Int, duration: String) -> String {
+        let words = "\(wordCount) \(wordCount == 1 ? "word" : "words")"
+        let compactDuration = duration.replacingOccurrences(of: " ", with: "")
+        return "\(compactDateFormatter.string(from: createdAt)) \(words) \(compactDuration)"
+    }
+
     func refreshCredits(showError: Bool = true) async {
         refreshLocalReflection()
         guard canAskAnky else {
@@ -359,15 +350,6 @@ final class RevealViewModel: ObservableObject {
         }
     }
 
-    private func stableMessageIndex(count: Int) -> Int {
-        guard count > 0 else {
-            return 0
-        }
-        let prefix = hash.prefix(8)
-        let value = UInt64(prefix, radix: 16) ?? UInt64(wordCount)
-        return Int(value % UInt64(count))
-    }
-
     private func refreshLocalReflection() {
         guard reflection == nil else {
             return
@@ -380,6 +362,7 @@ final class RevealViewModel: ObservableObject {
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
+            reflectionRequestInFlight = false
             reflectionStatusMessage = ""
             isAskingAnky = false
         } else if requestStore.isPending(hash: artifact.hash) {
@@ -394,6 +377,7 @@ final class RevealViewModel: ObservableObject {
             reflectionStatusMessage = ""
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
+            reflectionRequestInFlight = false
             isAskingAnky = false
         }
     }
@@ -418,6 +402,9 @@ final class RevealViewModel: ObservableObject {
         guard reflection == nil else {
             return
         }
+        guard !reflectionRequestInFlight else {
+            return
+        }
         guard reflectionRetryTask == nil || reflectionRetryTask?.isCancelled == true else {
             return
         }
@@ -430,6 +417,7 @@ final class RevealViewModel: ObservableObject {
             errorMessage = "Anky could not return a reflection right now."
             isAskingAnky = false
             reflectionRetryStartedAt = nil
+            reflectionRequestInFlight = false
             return
         }
 
@@ -447,6 +435,7 @@ final class RevealViewModel: ObservableObject {
         refreshLocalReflection()
         guard reflection == nil,
               requestStore.isPending(hash: artifact.hash),
+              !reflectionRequestInFlight,
               canAskAnky else {
             return
         }

@@ -19,6 +19,7 @@ data class LocalReflection(
     val reflection: String,
     val createdAt: Instant,
     val creditsRemaining: Int?,
+    val tags: List<String> = emptyList(),
 )
 
 data class SessionSummary(
@@ -31,6 +32,7 @@ data class SessionSummary(
     val wordCount: Int,
     val hasReflection: Boolean,
     val reflectionTitle: String?,
+    val tags: List<String> = emptyList(),
 ) {
     val title: String
         get() = reflectionTitle ?: if (isComplete) "Anky" else "Fragment"
@@ -47,6 +49,7 @@ data class SessionSummary(
                 wordCount = wordCount(artifact.reconstructedText),
                 hasReflection = reflection != null,
                 reflectionTitle = reflection?.title,
+                tags = reflection?.tags.orEmpty(),
             )
 
         fun preview(text: String): String {

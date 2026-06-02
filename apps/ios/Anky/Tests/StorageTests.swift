@@ -165,6 +165,27 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(index.load().count, 1)
     }
 
+    func testSessionIndexFindsSessionsByReflectionTag() throws {
+        let root = temporaryDirectory()
+        let archive = LocalAnkyArchive(directoryURL: root.appendingPathComponent("ankys", isDirectory: true))
+        let reflections = ReflectionStore(directoryURL: root.appendingPathComponent("reflections", isDirectory: true))
+        let index = SessionIndexStore(url: root.appendingPathComponent("session-index.json"))
+        let anky = try archive.save("1770000100000 y\n480000 o\n8000")
+        try reflections.save(LocalReflection(
+            hash: anky.hash,
+            title: "Reflected Title",
+            reflection: "Private reflection",
+            tags: ["truth", "body"],
+            createdAt: anky.createdAt,
+            creditsRemaining: 2
+        ))
+
+        try index.rebuild(archive: archive, reflectionStore: reflections)
+
+        XCTAssertEqual(index.sessionsWithTag(" truth ").map(\.hash), [anky.hash])
+        XCTAssertEqual(index.sessionsWithTag("missing"), [])
+    }
+
     func testDeletingWritingSessionRemovesArchiveReflectionAndIndexEntry() throws {
         let root = temporaryDirectory()
         let archive = LocalAnkyArchive(directoryURL: root.appendingPathComponent("ankys", isDirectory: true))

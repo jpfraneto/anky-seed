@@ -53,6 +53,10 @@ struct WriterIdentityStore {
         (try? loadRecoveryPhrase()) != nil
     }
 
+    func hasICloudRecoveryPhraseBackup() -> Bool {
+        (try? keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true)) != nil
+    }
+
     func backUpRecoveryPhraseToICloudKeychain() throws {
         let phrase = try loadOrCreateRecoveryPhrase()
         try keychain.save(

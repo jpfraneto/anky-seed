@@ -1,6 +1,7 @@
 package inc.anky.android.core.storage
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
@@ -65,6 +66,7 @@ private fun LocalReflection.toJson(): JSONObject =
         .put("reflection", reflection)
         .put("createdAt", createdAt.toString())
         .put("creditsRemaining", creditsRemaining)
+        .put("tags", JSONArray(tags))
 
 private fun JSONObject.toLocalReflection(): LocalReflection =
     LocalReflection(
@@ -73,4 +75,12 @@ private fun JSONObject.toLocalReflection(): LocalReflection =
         reflection = getString("reflection"),
         createdAt = Instant.parse(getString("createdAt")),
         creditsRemaining = if (isNull("creditsRemaining")) null else getInt("creditsRemaining"),
+        tags = optJSONArray("tags").stringList(),
     )
+
+private fun JSONArray?.stringList(): List<String> {
+    if (this == null) return emptyList()
+    return (0 until length()).mapNotNull { index ->
+        optString(index).trim().takeIf { it.isNotEmpty() }
+    }
+}

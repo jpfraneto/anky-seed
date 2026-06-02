@@ -7,6 +7,7 @@ import inc.anky.android.core.storage.BackupZipWriter
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.core.storage.ReflectionStore
+import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
 import inc.anky.android.core.storage.SingleAnkyImporter
@@ -42,25 +43,59 @@ class StorageTest {
     }
 
     @Test
+    fun activeDraftLoadsOnlyOpenLegacyDraftLikeIos() {
+        val active = temp.newFolder("active-drafts")
+        val legacy = temp.newFolder("legacy-ankys")
+        val legacyFile = File(legacy, LocalAnkyArchive.CanonicalFileName)
+        val store = ActiveDraftStore.forDirectories(active, legacy)
+
+        legacyFile.writeText("1770000000000 h", Charsets.UTF_8)
+        assertEquals("1770000000000 h", store.load())
+
+        legacyFile.writeText("1770000000000 h\n8000", Charsets.UTF_8)
+        assertNull(store.load())
+    }
+
+    @Test
+    fun activeDraftClearOnlyRemovesOpenLegacyDraftLikeIos() {
+        val active = temp.newFolder("active-drafts")
+        val legacy = temp.newFolder("legacy-ankys")
+        val activeFile = File(active, LocalAnkyArchive.CanonicalFileName)
+        val legacyFile = File(legacy, LocalAnkyArchive.CanonicalFileName)
+        val store = ActiveDraftStore.forDirectories(active, legacy)
+
+        store.save("1770000000000 h")
+        legacyFile.writeText("1770000001000 i", Charsets.UTF_8)
+        store.clear()
+        assertFalse(activeFile.exists())
+        assertFalse(legacyFile.exists())
+
+        legacyFile.writeText("1770000001000 i\n8000", Charsets.UTF_8)
+        store.clear()
+        assertTrue(legacyFile.exists())
+    }
+
+    @Test
     fun archiveSaveReadListWorks() {
         val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
         val artifact = archive.save("1770000000000 h\n0042 e\n8000")
         assertEquals("he", artifact.reconstructedText)
-        assertEquals(LocalAnkyArchive.CanonicalFileName, artifact.file.name)
+        assertEquals("${artifact.hash}.anky", artifact.file.name)
         assertEquals(artifact.hash, archive.load(artifact.hash).hash)
         assertEquals(1, archive.list().size)
     }
 
     @Test
-    fun archiveOverwritesSingleCanonicalDotAnkyString() {
+    fun archivePersistsMultipleHashNamedDotAnkyFiles() {
         val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
-        archive.save("1770000000000 h\n8000")
-        val latest = archive.save("1770000001000 i\n8000")
+        val first = archive.save("1770000000000 h\n8000")
+        val second = archive.save("1770000001000 i\n8000")
 
-        assertEquals(1, archive.fileList().size)
-        assertEquals(LocalAnkyArchive.CanonicalFileName, archive.fileList().single().name)
-        assertEquals(latest.hash, archive.list().single().hash)
-        assertEquals("i", archive.list().single().reconstructedText)
+        assertEquals(2, archive.fileList().size)
+        assertEquals(setOf("${first.hash}.anky", "${second.hash}.anky"), archive.fileList().map { it.name }.toSet())
+        assertEquals(listOf(second.hash, first.hash), archive.list().map { it.hash })
+        assertEquals("h", archive.load(first.hash).reconstructedText)
+        assertEquals("i", archive.load(second.hash).reconstructedText)
     }
 
     @Test
@@ -99,7 +134,7 @@ class StorageTest {
     @Test
     fun reflectionSaveReadByHashWorks() {
         val store = ReflectionStore.forDirectory(temp.newFolder("reflections"))
-        val reflection = LocalReflection(validHash, "Small Thread", "Here is what I saw.", Instant.EPOCH, 3)
+        val reflection = LocalReflection(validHash, "Small Thread", "Here is what I saw.", Instant.EPOCH, 3, tags = listOf("truth", "body"))
         store.save(reflection)
         assertEquals(reflection, store.load(validHash))
     }
@@ -128,6 +163,19 @@ class StorageTest {
     }
 
     @Test
+    fun reflectionRequestStoreTracksAndExpiresPendingHashes() {
+        val store = ReflectionRequestStore.forFile(File(temp.newFolder("requests"), "pending.json"), expirationMs = 1000)
+        store.markPending(validHash, nowMs = 10_000)
+
+        assertTrue(store.isPending(validHash, nowMs = 10_500))
+        assertFalse(store.isPending(validHash, nowMs = 11_500))
+
+        store.markPending(validHash, nowMs = 12_000)
+        store.clear(validHash, nowMs = 12_100)
+        assertFalse(store.isPending(validHash, nowMs = 12_200))
+    }
+
+    @Test
     fun sessionIndexRebuildAndReflectionUpdateWorks() {
         val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
         val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
@@ -139,8 +187,10 @@ class StorageTest {
         assertEquals("he", sessions.first().preview)
         assertTrue(SessionIndexStore.groupByDay(sessions).isNotEmpty())
 
-        index.updateReflection(artifact.hash, "Small Thread")
+        index.updateReflection(artifact.hash, "Small Thread", tags = listOf("truth", "body"))
         assertEquals("Small Thread", index.load().first().reflectionTitle)
+        assertEquals(listOf("truth", "body"), index.load().first().tags)
+        assertEquals(listOf(artifact.hash), index.sessionsWithTag("truth").map { it.hash })
 
         index.clear()
         assertEquals(0, index.load().size)
@@ -357,6 +407,7 @@ class StorageTest {
         val result = importer.importBackupBytes(zip.readBytes())
 
         assertEquals(BackupImportResult(ankyCount = 2, reflectionCount = 0), result)
+        assertEquals(2, archive.list().size)
         assertEquals(Instant.ofEpochMilli(1_770_000_000_000), recorded)
     }
 
@@ -530,7 +581,7 @@ class StorageTest {
         val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
 
         val saved = SingleAnkyImporter.importText(
-            rawText = "1770000000000 h\n0042 i\n8000\n",
+            rawText = "1770000000000 h\n480000 i\n8000\n",
             archive = archive,
             reflectionStore = reflections,
             indexStore = index,
@@ -540,6 +591,64 @@ class StorageTest {
         assertEquals(saved.hash, archive.load(saved.hash).hash)
         assertEquals(saved.hash, index.load().single().hash)
         assertFalse(index.load().single().hasReflection)
+    }
+
+    @Test
+    fun singleAnkyImporterImportsPastedMarkdownAnkyLikeIos() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
+        val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
+        val pasted = """
+            here is the .anky:
+
+            ```anky
+            1770000000000 h
+            480000 i
+            8000
+            ```
+        """.trimIndent()
+
+        val saved = SingleAnkyImporter.importText(pasted, archive, reflections, index)
+
+        assertEquals("hi", saved.reconstructedText)
+        assertEquals(saved.hash, index.load().single().hash)
+    }
+
+    @Test
+    fun singleAnkyImporterNormalizesSpacePlaceholderAndTrailingWhitespaceLikeIos() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
+        val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
+        val pasted = listOf(
+            "",
+            "    1770000000000 h",
+            "    240000 SPACE",
+            "    240000 i   ",
+            "    8000",
+            "",
+        ).joinToString("\n")
+
+        val saved = SingleAnkyImporter.importText(pasted, archive, reflections, index)
+
+        assertEquals("1770000000000 h\n240000  \n240000 i\n8000", saved.text)
+        assertEquals("h i", saved.reconstructedText)
+    }
+
+    @Test
+    fun singleAnkyImporterRejectsPastedFragmentUnderEightMinutesLikeIos() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val reflections = ReflectionStore.forDirectory(temp.newFolder("reflections"))
+        val index = SessionIndexStore.forFile(File(temp.newFolder("index"), "session-index.json"))
+
+        try {
+            SingleAnkyImporter.importText("1770000000000 h\n471999 i\n8000", archive, reflections, index)
+            fail("Expected incomplete import rejection")
+        } catch (expected: IllegalStateException) {
+            assertEquals("i couldn't find a readable .anky in that.", expected.message)
+        }
+
+        assertEquals(0, archive.list().size)
+        assertEquals(0, index.load().size)
     }
 
     @Test

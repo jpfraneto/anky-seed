@@ -13,6 +13,7 @@ import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.Exporter
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
+import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.SessionIndexStore
 
 class AppContainer(
@@ -24,6 +25,7 @@ class AppContainer(
     val activeDraftStore = ActiveDraftStore(appContext)
     val archive = LocalAnkyArchive(appContext)
     val reflectionStore = ReflectionStore(appContext)
+    val reflectionRequestStore = ReflectionRequestStore(appContext)
     val sessionIndexStore = SessionIndexStore(appContext)
     val appOpenStore = AppOpenStore(appContext)
     val settingsStore = UserSettingsStore(appContext)

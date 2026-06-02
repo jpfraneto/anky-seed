@@ -38,6 +38,11 @@ class WriterIdentityStore(
 
     fun hasRecoveryPhrase(): Boolean = loadRecoveryPhrase() != null
 
+    fun backUpRecoveryPhraseToDeviceSecureStorage() {
+        val phrase = loadOrCreateRecoveryPhrase()
+        saveRecoveryPhrase(phrase)
+    }
+
     fun resetForDevelopment() {
         encryptedPhraseFile.delete()
         ivFile.delete()

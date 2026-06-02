@@ -13,6 +13,10 @@ struct SavedAnky: Hashable {
     let createdAt: Date
 }
 
+extension SavedAnky: Identifiable {
+    var id: String { hash }
+}
+
 enum AnkyImportError: Error, Equatable {
     case invalidArtifact
 }

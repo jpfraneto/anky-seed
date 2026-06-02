@@ -27,6 +27,7 @@ fun HiddenTextInput(
     onGlyph: (String) -> Unit,
     onGlyphs: (List<String>) -> Unit,
     onRejectedMutation: () -> Unit,
+    focusRequestId: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val value = remember { mutableStateOf("") }
@@ -63,7 +64,7 @@ fun HiddenTextInput(
         )
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(focusRequestId) {
         focusRequester.requestFocus()
         keyboard?.show()
     }

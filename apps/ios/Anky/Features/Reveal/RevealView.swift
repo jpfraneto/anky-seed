@@ -8,20 +8,25 @@ struct RevealView: View {
     @State private var confirmDelete = false
     @State private var copiedSection: RevealCopySection?
     @State private var copyBurst: RevealCopyBurst?
+    @State private var didAutoStartReflection = false
+    @State private var reflectionScrollRequest = 0
+    @State private var inlineReflectionActive = false
+    @State private var didScrollToStreamingStart = false
+    @State private var isReflectionVisible = false
     private let onDeleted: () -> Void
     private let onTryAgain: () -> Void
-    private let onOpenCredits: () -> Void
+    private let startsReflectionOnAppear: Bool
 
     init(
         viewModel: RevealViewModel,
+        startsReflectionOnAppear: Bool = false,
         onDeleted: @escaping () -> Void = {},
-        onTryAgain: @escaping () -> Void = {},
-        onOpenCredits: @escaping () -> Void = {}
+        onTryAgain: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.startsReflectionOnAppear = startsReflectionOnAppear
         self.onDeleted = onDeleted
         self.onTryAgain = onTryAgain
-        self.onOpenCredits = onOpenCredits
     }
 
     var body: some View {
@@ -32,18 +37,6 @@ struct RevealView: View {
             RevealBackgroundTexture()
 
             VStack(spacing: 0) {
-                RevealHeader(
-                    date: viewModel.createdDate,
-                    time: viewModel.createdTime,
-                    metadata: viewModel.metadataLine,
-                    isDeleting: viewModel.isDeleting,
-                    dismiss: dismiss,
-                    delete: {
-                        RevealHaptics.warning()
-                        confirmDelete = true
-                    }
-                )
-
                 ScrollViewReader { scrollProxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
@@ -67,37 +60,49 @@ struct RevealView: View {
                                 )
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
+                                .trackReflectionVisibility()
                                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                             } else if !viewModel.streamingReflectionMarkdown.isEmpty {
                                 StreamingReflectionPanel(
-                                    markdown: viewModel.streamingReflectionMarkdown,
-                                    generatedCharacters: viewModel.streamingReflectionCharacterCount
+                                    markdown: viewModel.streamingReflectionMarkdown
                                 )
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
+                                .trackReflectionVisibility()
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            } else if inlineReflectionActive, let errorMessage = viewModel.errorMessage {
+                                ReflectionErrorPanel(
+                                    message: errorMessage
+                                )
+                                .padding(.top, 36)
+                                .id(RevealScrollTarget.reflection)
+                                .trackReflectionVisibility()
                                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                         }
                         .padding(.horizontal, 28)
                         .padding(.top, 20)
-                        .padding(.bottom, viewModel.reflection == nil ? 238 : 72)
+                        .padding(.bottom, shouldShowBottomAction ? 138 : 72)
+                    }
+                    .onChange(of: reflectionScrollRequest) { _, _ in
+                        scrollToReflection(with: scrollProxy, anchor: .top)
                     }
                     .onChange(of: viewModel.reflection?.id) { _, reflectionID in
-                        guard reflectionID != nil else {
-                            return
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-                            withAnimation(.easeInOut(duration: 0.55)) {
-                                scrollProxy.scrollTo(RevealScrollTarget.reflection, anchor: .top)
-                            }
-                        }
+                        guard reflectionID != nil else { return }
+                        scrollToReflection(with: scrollProxy, anchor: .top)
                     }
-                    .onChange(of: viewModel.streamingReflectionCharacterCount) { _, count in
-                        guard count > 0 else {
-                            return
-                        }
-                        withAnimation(.easeInOut(duration: 0.35)) {
-                            scrollProxy.scrollTo(RevealScrollTarget.reflection, anchor: .bottom)
+                    .onChange(of: viewModel.streamingReflectionMarkdown) { oldValue, newValue in
+                        guard oldValue.isEmpty, !newValue.isEmpty, !didScrollToStreamingStart else { return }
+                        didScrollToStreamingStart = true
+                        scrollToReflection(with: scrollProxy, anchor: .top)
+                    }
+                    .onChange(of: viewModel.errorMessage) { _, errorMessage in
+                        guard inlineReflectionActive, errorMessage != nil else { return }
+                        scrollToReflection(with: scrollProxy, anchor: .top)
+                    }
+                    .onPreferenceChange(ReflectionVisibilityPreferenceKey.self) { isVisible in
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                            isReflectionVisible = isVisible
                         }
                     }
                 }
@@ -109,24 +114,65 @@ struct RevealView: View {
                     .allowsHitTesting(false)
                     .zIndex(80)
             }
+
+            if shouldShowBottomAction {
+                RevealBottomActionButton(
+                    title: bottomActionTitle,
+                    isLoading: viewModel.isAskingAnky,
+                    isEnabled: bottomActionIsEnabled,
+                    action: bottomAction
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, 22)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(60)
+            }
         }
         .coordinateSpace(name: "revealRoot")
-        .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .confirmationDialog("delete forever?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("delete forever", role: .destructive) {
+        .navigationTitle(viewModel.compactHeaderLine.lowercased())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    RevealHaptics.warning()
+                    confirmDelete = true
+                } label: {
+                    if viewModel.isDeleting {
+                        ProgressView()
+                            .tint(RevealPalette.paper)
+                    } else {
+                        Image(systemName: "trash")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.red.opacity(0.88))
+                    }
+                }
+                .disabled(viewModel.isDeleting)
+                .accessibilityLabel("Delete writing session")
+            }
+        }
+        .confirmationDialog("Delete forever?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
                 RevealHaptics.warning()
                 viewModel.deleteSession()
             }
             Button("cancel", role: .cancel) {}
         } message: {
-            Text("This permanently deletes this writing session and its saved reflection from this device. This cannot be undone.")
+            Text("This permanently deletes this writing session. This cannot be undone.")
         }
         .onAppear {
             Task {
                 await viewModel.refreshCredits(showError: false)
             }
-            syncRevealBubble()
+            ankyCompanion.hideBubble()
+            if startsReflectionOnAppear, !didAutoStartReflection, viewModel.reflection == nil {
+                didAutoStartReflection = true
+                beginInlineReflection()
+            }
         }
         .onDisappear {
             ankyCompanion.hideBubble()
@@ -137,24 +183,6 @@ struct RevealView: View {
             }
             onDeleted()
             dismiss()
-        }
-        .onChange(of: viewModel.isAskingAnky) { _, _ in
-            syncRevealBubble()
-        }
-        .onChange(of: viewModel.reflection?.id) { _, _ in
-            syncRevealBubble()
-        }
-        .onChange(of: viewModel.reflectionStatusMessage) { _, _ in
-            syncRevealBubble()
-        }
-        .onChange(of: viewModel.creditsLoading) { _, _ in
-            syncRevealBubble()
-        }
-        .onChange(of: viewModel.creditPromptState) { _, _ in
-            syncRevealBubble()
-        }
-        .onChange(of: viewModel.errorMessage) { _, _ in
-            syncRevealBubble()
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 30)
@@ -167,90 +195,71 @@ struct RevealView: View {
                     }
                 }
         )
+        .animation(.spring(response: 0.34, dampingFraction: 0.88), value: shouldShowBottomAction)
     }
 
-    private func syncRevealBubble() {
-        guard viewModel.reflection == nil else {
-            ankyCompanion.hideBubble()
-            return
+    private func beginInlineReflection() {
+        inlineReflectionActive = true
+        didScrollToStreamingStart = false
+        requestReflectionScroll()
+        ankyCompanion.hideBubble(returningTo: .thinking)
+        Task {
+            await viewModel.askAnky()
+            requestReflectionScroll()
         }
+    }
 
+    private func requestReflectionScroll() {
+        withAnimation(.easeInOut(duration: 0.45)) {
+            reflectionScrollRequest += 1
+        }
+    }
+
+    private func scrollToReflection(with proxy: ScrollViewProxy, anchor: UnitPoint) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            withAnimation(.easeInOut(duration: 0.58)) {
+                proxy.scrollTo(RevealScrollTarget.reflection, anchor: anchor)
+            }
+        }
+    }
+
+    private var shouldShowBottomAction: Bool {
+        if viewModel.reflection != nil {
+            return !isReflectionVisible
+        }
+        return true
+    }
+
+    private var bottomActionTitle: String {
         if viewModel.isAskingAnky {
-            let status = viewModel.reflectionStatusMessage.isEmpty
-                ? "i am staying with this .anky."
-                : viewModel.reflectionStatusMessage
-            ankyCompanion.witness(
-                mood: .thinking,
-                sequence: .shyListening,
-                bubble: AnkyBubble(
-                    text: "\(status)\n\ni am reading slowly. not looking for a summary.",
-                    isThinking: true
-                )
-            )
-            return
+            return "LOADING"
         }
-
-        if !viewModel.isComplete {
-            ankyCompanion.witness(
-                mood: .guiding,
-                sequence: .waveFront,
-                bubble: AnkyBubble(
-                    text: viewModel.shortSessionMessage,
-                    actions: [
-                        AnkyChatAction("write again", isPrimary: true) {
-                            onTryAgain()
-                        }
-                    ]
-                )
-            )
-            return
+        if viewModel.reflection != nil {
+            return "READ REFLECTION"
         }
-
-        var actions: [AnkyChatAction] = []
-        if viewModel.canSubmitReflectionRequest {
-            actions.append(
-                AnkyChatAction("reflect with anky", isPrimary: true) {
-                    Task {
-                        await viewModel.askAnky()
-                    }
-                }
-            )
+        if viewModel.isComplete {
+            return "REFLECT THIS ANKY"
         }
-        if viewModel.shouldShowCreditsLink {
-            actions.append(
-                AnkyChatAction("open credits") {
-                    onOpenCredits()
-                }
-            )
-        }
-
-        let text = [reflectionInvitationMessage, viewModel.errorMessage]
-            .compactMap { $0 }
-            .joined(separator: "\n\n")
-
-        ankyCompanion.witness(
-            mood: viewModel.errorMessage == nil ? .guiding : .concerned,
-            sequence: viewModel.errorMessage == nil ? .waveFront : .softConcern,
-            bubble: AnkyBubble(
-                text: text,
-                actions: actions,
-                isThinking: viewModel.creditsLoading
-            )
-        )
+        return "WRITE \(AnkyDuration.completeRitualMinutes) MINUTES"
     }
 
-    private var reflectionInvitationMessage: String {
-        if viewModel.creditsLoading {
-            return "i am checking whether the mirror is open.\n\nyour writing stays here unless you ask me to reflect it."
+    private var bottomActionIsEnabled: Bool {
+        if viewModel.isAskingAnky {
+            return false
         }
+        if viewModel.reflection != nil {
+            return true
+        }
+        return viewModel.isComplete ? viewModel.canSubmitReflectionRequest : true
+    }
 
-        switch viewModel.creditPromptState {
-        case .available, .freeGift:
-            return "i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now."
-        case .unavailable:
-            return "i want to reflect this with you, but reflection access is empty right now."
-        case .unknown:
-            return "the mirror may be open.\n\nyour writing only leaves this device if you ask me now."
+    private func bottomAction() {
+        if viewModel.reflection != nil {
+            requestReflectionScroll()
+        } else if viewModel.isComplete {
+            beginInlineReflection()
+        } else {
+            onTryAgain()
         }
     }
 
@@ -313,6 +322,48 @@ private struct RevealCopyEmojiBurst: View {
     }
 }
 
+private struct RevealBottomActionButton: View {
+    let title: String
+    let isLoading: Bool
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Spacer(minLength: 0)
+
+                if isLoading {
+                    ProgressView()
+                        .tint(RevealPalette.ink)
+                }
+
+                Text(title)
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .tracking(0.35)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(RevealPalette.ink)
+            .padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .frame(height: 62)
+            .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color.white.opacity(0.48), lineWidth: 1)
+            )
+            .shadow(color: RevealPalette.gold.opacity(0.28), radius: 18, y: 8)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled || isLoading ? 1 : 0.48)
+        .accessibilityLabel(title)
+    }
+}
+
 private enum RevealHaptics {
     static func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
@@ -328,65 +379,40 @@ private enum RevealHaptics {
 }
 
 private struct RevealHeader: View {
-    let date: String
-    let time: String
     let metadata: String
     let isDeleting: Bool
     let dismiss: DismissAction
     let delete: () -> Void
 
-    private let backButtonSize: CGFloat = 40
-
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(RevealPalette.paper)
-                    .frame(width: backButtonSize, height: backButtonSize)
-                    .background(Color.black.opacity(0.24), in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(RevealPalette.gold.opacity(0.24), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
+            RevealHeaderGlassButton(
+                systemName: "chevron.left",
+                accessibilityLabel: "Back",
+                tint: RevealPalette.paper,
+                stroke: RevealPalette.gold.opacity(0.24),
+                action: {
+                    dismiss()
+                }
+            )
 
-            VStack(spacing: 4) {
-                Text("\(date) / \(time)".lowercased())
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RevealPalette.paper.opacity(0.78))
-                    .multilineTextAlignment(.center)
-
-                Text(metadata.lowercased())
-                    .font(.system(size: 12, weight: .regular).monospacedDigit())
-                    .foregroundStyle(RevealPalette.paper.opacity(0.54))
-            }
+            Text(metadata.lowercased())
+                .font(.system(size: 12, weight: .medium).monospacedDigit())
+                .foregroundStyle(RevealPalette.paper.opacity(0.72))
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+                .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
 
-            Button(action: delete) {
-                if isDeleting {
-                    ProgressView()
-                        .tint(RevealPalette.paper)
-                        .frame(width: backButtonSize, height: backButtonSize)
-                } else {
-                    Image(systemName: "trash")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.red.opacity(0.88))
-                        .frame(width: backButtonSize, height: backButtonSize)
-                        .background(Color.black.opacity(0.24), in: Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.red.opacity(0.22), lineWidth: 1)
-                        )
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(isDeleting)
-            .accessibilityLabel("Delete writing session")
+            RevealHeaderGlassButton(
+                systemName: "trash",
+                accessibilityLabel: "Delete writing session",
+                tint: Color.red.opacity(0.88),
+                stroke: Color.red.opacity(0.22),
+                isLoading: isDeleting,
+                isEnabled: !isDeleting,
+                action: delete
+            )
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -399,9 +425,98 @@ private struct RevealHeader: View {
     }
 }
 
+private struct RevealHeaderGlassButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    let tint: Color
+    let stroke: Color
+    var isLoading: Bool = false
+    var isEnabled: Bool = true
+    let action: () -> Void
+
+    private let size: CGFloat = 40
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.regular)
+            .tint(tint)
+            .frame(width: 50, height: 50)
+            .disabled(!isEnabled)
+            .accessibilityLabel(accessibilityLabel)
+        } else {
+            Button(action: action) {
+                label
+                    .background(Color.black.opacity(0.24), in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(stroke, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(!isEnabled)
+            .accessibilityLabel(accessibilityLabel)
+        }
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        if #available(iOS 26.0, *) {
+            if isLoading {
+                ProgressView()
+                    .tint(RevealPalette.paper)
+            } else {
+                Image(systemName: systemName)
+                    .font(.system(size: systemName == "trash" ? 17 : 18, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 42, height: 42)
+                    .contentShape(Circle())
+            }
+        } else {
+            if isLoading {
+                ProgressView()
+                    .tint(RevealPalette.paper)
+                    .frame(width: size, height: size)
+            } else {
+                Image(systemName: systemName)
+                    .font(.system(size: systemName == "trash" ? 15 : 16, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: size, height: size)
+                    .contentShape(Circle())
+            }
+        }
+    }
+}
+
 private enum RevealScrollTarget {
     case writing
     case reflection
+}
+
+private struct ReflectionVisibilityPreferenceKey: PreferenceKey {
+    static var defaultValue = false
+
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
+private extension View {
+    func trackReflectionVisibility() -> some View {
+        background(
+            GeometryReader { proxy in
+                let frame = proxy.frame(in: .global)
+                let screenHeight = UIScreen.main.bounds.height
+                let isVisible = frame.minY < screenHeight - 138 && frame.maxY > 128
+
+                Color.clear.preference(key: ReflectionVisibilityPreferenceKey.self, value: isVisible)
+            }
+        )
+    }
 }
 
 struct RevealBackgroundTexture: View {
@@ -429,517 +544,23 @@ struct RevealBackgroundTexture: View {
 }
 
 private struct PrivacyDivider: View {
-    @State private var disclosure = PrivacyLockDisclosure()
-
     var body: some View {
-        VStack(spacing: 12) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    disclosure.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Rectangle()
-                        .fill(RevealPalette.gold.opacity(0.22))
-                        .frame(height: 1)
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(RevealPalette.gold.opacity(0.22))
+                .frame(height: 1)
 
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(RevealPalette.goldSoft)
-                        .frame(width: 28, height: 28)
-                        .background(Color.black.opacity(0.18), in: Circle())
+            Image(systemName: "lock.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(RevealPalette.goldSoft)
+                .frame(width: 28, height: 28)
+                .background(Color.black.opacity(0.18), in: Circle())
 
-                    Rectangle()
-                        .fill(RevealPalette.gold.opacity(0.22))
-                        .frame(height: 1)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(disclosure.isExpanded ? "Hide privacy note" : "Show privacy note")
-
-            if disclosure.isExpanded {
-                Text("your writing only leaves this device if you ask for a reflection. the mirror processes it transiently and does not keep a writing archive.")
-                    .font(.system(size: 13))
-                    .lineSpacing(3)
-                    .foregroundStyle(RevealPalette.paper.opacity(0.62))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            Rectangle()
+                .fill(RevealPalette.gold.opacity(0.22))
+                .frame(height: 1)
         }
-    }
-}
-
-private struct RevealAnkyReflectionChat: View {
-    @ObservedObject var viewModel: RevealViewModel
-    let tryAgain: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if viewModel.isAskingAnky {
-                RevealAnkyThinkingPrompt(status: viewModel.reflectionStatusMessage)
-            } else if !viewModel.isComplete {
-                AnkyCompanionPromptView(
-                    state: .notice,
-                    message: viewModel.shortSessionMessage,
-                    actionTitle: "write again",
-                    action: tryAgain
-                )
-            } else {
-                AnkyCompanionPromptView(
-                    state: .importedReady,
-                    message: reflectionInvitationMessage,
-                    actionTitle: viewModel.canSubmitReflectionRequest ? "reflect with anky" : nil,
-                    action: {
-                        Task {
-                            await viewModel.askAnky()
-                        }
-                    }
-                )
-            }
-
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage.lowercased())
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .lineSpacing(3)
-                    .foregroundStyle(Color.red.opacity(0.82))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if viewModel.shouldShowCreditsLink {
-                NavigationLink {
-                    CreditsPage(viewModel: YouViewModel())
-                } label: {
-                        Text("open reflection credits")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(RevealPalette.goldSoft)
-                    }
-                    .buttonStyle(.plain)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var reflectionInvitationMessage: String {
-        if viewModel.creditsLoading {
-            return "i am checking whether the mirror is open.\n\nyour writing stays here unless you ask me to reflect it."
-        }
-
-        switch viewModel.creditPromptState {
-        case .available, .freeGift:
-            return "i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now."
-        case .unavailable:
-            return "i want to reflect this with you, but reflection access is empty right now."
-        case .unknown:
-            return "the mirror may be open.\n\nyour writing only leaves this device if you ask me now."
-        }
-    }
-}
-
-private struct RevealAnkyThinkingPrompt: View {
-    let status: String
-
-    private let messages = [
-        "i am reading slowly. not looking for a summary.",
-        "i am listening for the pressure under the words.",
-        "i am keeping the thread intact while the mirror answers.",
-        "still here. some reflections take a little longer.",
-        "i am bringing it back without flattening it.",
-        "stay close. the page is not gone."
-    ]
-
-    var body: some View {
-        TimelineView(.animation) { timeline in
-            let index = Int(timeline.date.timeIntervalSinceReferenceDate / 3.4) % messages.count
-            let firstLine = status.isEmpty ? "i am staying with this .anky." : status
-            ZStack(alignment: .top) {
-                AnkyCompanionPromptView(
-                    state: .mirrorLoading,
-                    message: "\(firstLine)\n\n\(messages[index])"
-                )
-
-                ReflectionSeekingSpinner(time: timeline.date.timeIntervalSinceReferenceDate)
-                    .frame(width: 58, height: 58)
-                    .offset(x: sin(timeline.date.timeIntervalSinceReferenceDate * 1.05) * 24, y: -28)
-                    .allowsHitTesting(false)
-            }
-            .padding(.top, 24)
-        }
-        .onAppear {
-            RevealHaptics.subtle()
-        }
-    }
-}
-
-private struct ReflectionSeekingSpinner: View {
-    let time: TimeInterval
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(RevealPalette.gold.opacity(0.08), lineWidth: 8)
-
-            Circle()
-                .trim(from: 0.08, to: 0.36)
-                .stroke(
-                    RevealPalette.goldSoft.opacity(0.36),
-                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                )
-                .rotationEffect(.degrees(time * 150))
-
-            Circle()
-                .trim(from: 0.58, to: 0.72)
-                .stroke(
-                    RevealPalette.paper.opacity(0.18),
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-time * 95))
-        }
-        .blur(radius: 0.25)
-        .opacity(0.72)
-        .scaleEffect(0.94 + sin(time * 2.0) * 0.035)
         .accessibilityHidden(true)
-    }
-}
-
-private struct RevealReflectionDock: View {
-    @ObservedObject var viewModel: RevealViewModel
-    let openPrivacy: () -> Void
-    let tryAgain: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .tracking(1)
-                        .foregroundStyle(RevealPalette.gold.opacity(0.86))
-
-                    if viewModel.isAskingAnky {
-                        MirrorProgressLine(stage: viewModel.progressStage)
-                    } else {
-                        Text(subtitle)
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .lineSpacing(3)
-                            .foregroundStyle(subtitleColor)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage.lowercased())
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .lineSpacing(3)
-                            .foregroundStyle(Color.red.opacity(0.82))
-                            .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    if !viewModel.isComplete {
-                        tryAgainButton
-                    } else if viewModel.reflection == nil {
-                        reflectionRequestControls
-                    }
-                }
-
-                if let reflection = viewModel.reflection {
-                    NavigationLink {
-                        ReflectionScrollPage(reflection: reflection)
-                    } label: {
-                        ReflectionScrollGlyph()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Open reflection")
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(ReflectionDockBackground())
-    }
-
-    private var reflectionRequestControls: some View {
-        HStack(spacing: 8) {
-            Button {
-                Task {
-                    await viewModel.askAnky()
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    if viewModel.isAskingAnky {
-                        ProgressView()
-                            .tint(RevealPalette.ink)
-                    }
-                    Text(viewModel.isAskingAnky ? "getting reflection" : "get reflection")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                }
-                .foregroundStyle(RevealPalette.ink)
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(Color.white.opacity(0.48), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(!viewModel.canSubmitReflectionRequest)
-            .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.48)
-
-            Button(action: openPrivacy) {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(RevealPalette.goldSoft)
-                    .frame(width: 34, height: 34)
-                    .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Reflection privacy information")
-
-            if viewModel.shouldShowCreditsLink {
-                NavigationLink {
-                    CreditsPage(viewModel: YouViewModel())
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(RevealPalette.goldSoft)
-                        .frame(width: 34, height: 34)
-                        .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open credits")
-            }
-        }
-    }
-
-    private var tryAgainButton: some View {
-        Button(action: tryAgain) {
-            Text("try again")
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(RevealPalette.ink)
-                .padding(.horizontal, 14)
-                .frame(height: 34)
-                .background(RevealPalette.gold, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(Color.white.opacity(0.48), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var title: String {
-        if !viewModel.isComplete {
-            return "you have to write \(AnkyDuration.completeRitualMinutes) minutes"
-        }
-        if viewModel.isAskingAnky {
-            return "processing"
-        }
-        if viewModel.reflection != nil {
-            return "reflection returned"
-        }
-        return "get a reflection"
-    }
-
-    private var subtitle: String {
-        if viewModel.reflection != nil {
-            return "tap the scroll to read what came back."
-        }
-        if !viewModel.isComplete {
-            return viewModel.shortSessionMessage
-        }
-        return creditLine
-    }
-
-    private var subtitleColor: Color {
-        switch viewModel.creditPromptState {
-        case .unavailable:
-            return Color.red.opacity(0.82)
-        default:
-            return RevealPalette.paper.opacity(0.82)
-        }
-    }
-
-    private var creditLine: String {
-        if viewModel.creditsLoading {
-            return "checking reflection access..."
-        }
-        switch viewModel.creditPromptState {
-        case .available, .freeGift:
-            return "ready to mirror this artifact."
-        case .unavailable:
-            return "reflection access is empty."
-        case .unknown:
-            return "ready to mirror when the signal is open."
-        }
-    }
-
-}
-
-private struct MirrorProgressLine: View {
-    let stage: String?
-
-    var body: some View {
-        Text(RevealViewModel.progressMessage(for: stage))
-            .font(.system(size: 13, weight: .medium, design: .monospaced))
-            .lineSpacing(3)
-            .foregroundStyle(RevealPalette.paper.opacity(0.82))
-            .fixedSize(horizontal: false, vertical: true)
-            .contentTransition(.opacity)
-    }
-}
-
-private struct ReflectionScrollGlyph: View {
-    var body: some View {
-        TimelineView(.animation) { timeline in
-            let pulse = (sin(timeline.date.timeIntervalSinceReferenceDate * 3.0) + 1) / 2
-            ZStack {
-                Circle()
-                    .fill(RevealPalette.gold.opacity(0.22 + pulse * 0.18))
-                    .frame(width: 42, height: 42)
-                    .blur(radius: 5)
-
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [RevealPalette.copiedPaper, RevealPalette.gold, RevealPalette.copiedPaper],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 24, height: 32)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .stroke(Color.white.opacity(0.64), lineWidth: 1)
-                    )
-                    .rotationEffect(.degrees(-8 + pulse * 3))
-
-                Image(systemName: "sparkle")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(RevealPalette.ink.opacity(0.78))
-                    .offset(x: 1, y: -1)
-            }
-            .frame(width: 48, height: 48)
-        }
-    }
-}
-
-private struct ReflectionDockBackground: View {
-    var body: some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color(red: 0.035, green: 0.049, blue: 0.082).opacity(0.96))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.white.opacity(0.64), lineWidth: 1)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .stroke(RevealPalette.gold.opacity(0.30), lineWidth: 1)
-                    .padding(3)
-            )
-            .shadow(color: Color.black.opacity(0.44), radius: 20, y: 10)
-    }
-}
-
-private struct ReflectionPrivacySheet: View {
-    var body: some View {
-        ZStack {
-            RevealPalette.ink.ignoresSafeArea()
-
-            VStack(alignment: .leading, spacing: 18) {
-                Text("reflection privacy")
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
-                    .foregroundStyle(RevealPalette.gold)
-
-                Text("your writing stays on this device unless you tap get reflection. then anky sends this .anky to the mirror service, verifies the hash, reconstructs the writing for processing, and returns a markdown reflection. anky does not need to store a writing archive for this interaction.")
-                    .font(.system(size: 15, weight: .medium, design: .monospaced))
-                    .lineSpacing(6)
-                    .foregroundStyle(RevealPalette.paper.opacity(0.86))
-
-                Text("use it only when you want this piece of writing to leave the device for processing.")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
-                    .lineSpacing(5)
-                    .foregroundStyle(RevealPalette.paper.opacity(0.62))
-
-                Spacer()
-            }
-            .padding(24)
-        }
-    }
-}
-
-private struct ReflectionScrollPage: View {
-    let reflection: LocalReflection
-
-    var body: some View {
-        ZStack {
-            RevealPalette.ink.ignoresSafeArea()
-            RevealBackgroundTexture()
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    HStack(alignment: .center, spacing: 12) {
-                        ReflectionScrollGlyph()
-                            .frame(width: 54, height: 54)
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.top, 8)
-
-                    ReflectionTagPills(tags: reflection.tags)
-
-                    SelectableReflectionText(text: reflection.displayBody, isHighlighted: false, style: .readingPage)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.horizontal, 22)
-                .padding(.top, 10)
-                .padding(.bottom, 56)
-            }
-        }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-    }
-}
-
-private struct ReflectionTagPills: View {
-    let tags: [String]
-
-    var body: some View {
-        if !tags.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(tags, id: \.self) { tag in
-                        NavigationLink {
-                            TagSessionsListView(tag: tag)
-                        } label: {
-                            Text(tag)
-                                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                .foregroundStyle(RevealPalette.gold)
-                                .lineLimit(1)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.black.opacity(0.2), in: Capsule())
-                                .overlay(Capsule().stroke(RevealPalette.gold.opacity(0.3), lineWidth: 1))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(.top, 2)
-        }
     }
 }
 
@@ -1024,149 +645,6 @@ private struct SelectableWritingText: UIViewRepresentable {
     }
 }
 
-private struct RevealActions: View {
-    @ObservedObject var viewModel: RevealViewModel
-
-    var body: some View {
-        VStack(spacing: 14) {
-            Rectangle()
-                .fill(RevealPalette.gold.opacity(0.13))
-                .frame(height: 1)
-
-            if !viewModel.reflectionActionStatus.isEmpty {
-                Text(viewModel.reflectionActionStatus)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(RevealPalette.paper.opacity(0.52))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
-            }
-
-            if viewModel.canAskAnky {
-                Text(viewModel.creditPromptMessage)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(creditTextColor)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
-
-                ThreadedActionButton(
-                    title: viewModel.isAskingAnky ? "anky is listening" : "mirror this",
-                    badge: nil,
-                    isLoading: viewModel.isAskingAnky,
-                    action: {
-                        Task {
-                            await viewModel.askAnky()
-                        }
-                    }
-                )
-                .disabled(!viewModel.canSubmitReflectionRequest)
-                .opacity(viewModel.canSubmitReflectionRequest ? 1 : 0.52)
-
-                if viewModel.shouldShowCreditsLink {
-                    NavigationLink {
-                        CreditsPage(viewModel: YouViewModel())
-                    } label: {
-                        Text("open credits")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(RevealPalette.goldSoft)
-                            .padding(.top, 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private var creditTextColor: Color {
-        switch viewModel.creditPromptState {
-        case .unavailable:
-            return Color.red.opacity(0.82)
-        default:
-            return RevealPalette.goldSoft.opacity(0.82)
-        }
-    }
-}
-
-private struct ThreadedActionButton: View {
-    let title: String
-    let badge: String?
-    let isLoading: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                ThreadOverlay()
-
-                HStack(spacing: 12) {
-                    if isLoading {
-                        ProgressView()
-                            .tint(RevealPalette.paper)
-                    }
-
-                    Text(title)
-                        .font(.system(size: 16, weight: .semibold))
-
-                    Spacer(minLength: 8)
-
-                    if let badge {
-                        Text(badge)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(RevealPalette.goldSoft)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Color.black.opacity(0.2), in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(RevealPalette.gold.opacity(0.22), lineWidth: 1)
-                            )
-                    }
-                }
-                .foregroundStyle(RevealPalette.paper)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 14)
-                .frame(minHeight: 70)
-            }
-            .background(RevealPalette.buttonFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(RevealPalette.gold.opacity(0.5), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct ThreadOverlay: View {
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    RevealPalette.violet.opacity(0.1),
-                    Color.clear
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-
-            VStack {
-                Rectangle()
-                    .fill(RevealPalette.gold.opacity(0.22))
-                    .frame(height: 1)
-                    .padding(.top, 10)
-                Spacer()
-                Rectangle()
-                    .fill(RevealPalette.gold.opacity(0.16))
-                    .frame(height: 1)
-                    .padding(.bottom, 10)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
 private struct SavedReflectionPanel: View {
     let reflection: LocalReflection
     let isHighlighted: Bool
@@ -1192,21 +670,33 @@ private struct SavedReflectionPanel: View {
 
 private struct StreamingReflectionPanel: View {
     let markdown: String
-    let generatedCharacters: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("writing reflection · \(generatedCharacters) characters")
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(RevealPalette.gold.opacity(0.72))
-                .textCase(.lowercase)
+        SelectableReflectionText(
+            text: markdown,
+            isHighlighted: false
+        )
+        .opacity(0.92)
+    }
+}
 
-            SelectableReflectionText(
-                text: markdown,
-                isHighlighted: false
-            )
-            .opacity(0.92)
+private struct ReflectionErrorPanel: View {
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("the mirror did not open")
+                .font(.custom("Georgia", size: 28).weight(.bold))
+                .foregroundStyle(RevealPalette.markdownHeading)
+                .tracking(0)
+
+            Text(message.lowercased())
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundStyle(Color.red.opacity(0.82))
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.vertical, 8)
     }
 }
 

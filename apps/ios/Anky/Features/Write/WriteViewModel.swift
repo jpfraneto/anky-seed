@@ -25,29 +25,41 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var nudgeMessage: String?
     @Published private(set) var isNudgeMessageVisible = false
     @Published private(set) var isRequestingNudge = false
+    @Published private(set) var completedArtifact: SavedAnky?
 
     var hasStarted: Bool {
         writer.isStarted
     }
 
     var hasActiveDotAnky: Bool {
-        !protocolText.isEmpty || writer.isStarted
+        completedArtifact != nil || !protocolText.isEmpty || writer.isStarted
     }
 
     var hasReachedRitualMark: Bool {
-        writer.writingElapsedMs >= AnkyDuration.completeRitualMs || elapsedMs >= AnkyDuration.completeRitualMs
+        if completedArtifact != nil {
+            return true
+        }
+        return writer.writingElapsedMs >= AnkyDuration.completeRitualMs || elapsedMs >= AnkyDuration.completeRitualMs
     }
 
     var isPausedOnDraft: Bool {
-        isFrozen && writer.isStarted && !writer.isClosed
+        isFrozen && writer.isStarted && !writer.isClosed && !hasReachedRitualMark
     }
 
     var canBeginNewPage: Bool {
-        false
+        isPausedOnDraft || completedArtifact != nil
     }
 
     var shouldShowTopActions: Bool {
-        true
+        !hasActiveDotAnky || isPausedOnDraft || completedArtifact != nil
+    }
+
+    var shouldShowRitualRing: Bool {
+        !(isPausedOnDraft || completedArtifact != nil)
+    }
+
+    var canAcceptInput: Bool {
+        !isPausedOnDraft && completedArtifact == nil
     }
 
     private var writer = AnkyWriter()
@@ -75,6 +87,8 @@ final class WriteViewModel: ObservableObject {
     private let minuteHaptic = UIImpactFeedbackGenerator(style: .medium)
     private let alarmHaptic = UINotificationFeedbackGenerator()
     private let invalidInputHaptic = UINotificationFeedbackGenerator()
+    private let nudgeStartHaptic = UIImpactFeedbackGenerator(style: .soft)
+    private let nudgeResultHaptic = UINotificationFeedbackGenerator()
 
     init(
         draftStore: ActiveDraftStore = ActiveDraftStore(),
@@ -137,7 +151,7 @@ final class WriteViewModel: ObservableObject {
 
     var nudgeDialogueMessage: String {
         if isRequestingNudge {
-            return "anky is listening to this .anky for one line."
+            return "anky is finding the live thread."
         }
         return nudgeMessage ?? ""
     }
@@ -189,8 +203,14 @@ final class WriteViewModel: ObservableObject {
         silenceTask?.cancel()
         tickerTask?.cancel()
         draftStore.clear()
-        try? archive.clear()
-        _ = try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
+        resetForNextSession()
+        clearErrorMessage()
+    }
+
+    func clearCompletedSession() {
+        guard completedArtifact != nil || isPausedOnDraft else {
+            return
+        }
         resetForNextSession()
         clearErrorMessage()
     }
@@ -262,10 +282,12 @@ final class WriteViewModel: ObservableObject {
         minuteHaptic.prepare()
         alarmHaptic.prepare()
         invalidInputHaptic.prepare()
+        nudgeStartHaptic.prepare()
+        nudgeResultHaptic.prepare()
     }
 
     func closeIfSilenceElapsed() {
-        guard writer.isStarted, !writer.isClosed, let lastAcceptedMs = writer.lastAcceptedMs else {
+        guard writer.isStarted, !writer.isClosed, !isFrozen, let lastAcceptedMs = writer.lastAcceptedMs else {
             return
         }
 
@@ -314,20 +336,22 @@ final class WriteViewModel: ObservableObject {
         scheduleSilenceClose(afterMs: AnkyDuration.terminalSilenceMs)
     }
 
-    private func requestAnkyNudge() async {
+    private func requestAnkyNudge(persistent: Bool = false) async {
         let text = protocolText
         guard writer.isStarted, !text.isEmpty else {
             return
         }
 
         guard let baseURL = URL(string: MirrorConfiguration.currentBaseURL(defaults: userDefaults)) else {
-            showTransientNudge("i can't reach the mirror url yet.")
+            showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: persistent)
             return
         }
 
         isRequestingNudge = true
         isNudgeMessageVisible = true
         nudgeMessage = nil
+        nudgeStartHaptic.impactOccurred(intensity: 0.48)
+        nudgeStartHaptic.prepare()
         defer { isRequestingNudge = false }
 
         do {
@@ -349,13 +373,21 @@ final class WriteViewModel: ObservableObject {
             guard !Task.isCancelled else {
                 return
             }
-            showTransientNudge(Self.oneLineNudge(from: response.reflection))
+            nudgeResultHaptic.notificationOccurred(.success)
+            nudgeResultHaptic.prepare()
+            showNudge(Self.oneLineNudge(from: response.reflection), persistent: persistent)
         } catch {
             guard !Task.isCancelled else {
                 return
             }
-            let message = (error as? LocalizedError)?.errorDescription ?? "anky could not return a nudge right now."
-            showTransientNudge(Self.nudgeErrorMessage(from: message))
+            nudgeResultHaptic.notificationOccurred(.warning)
+            nudgeResultHaptic.prepare()
+            if persistent {
+                showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: true)
+            } else {
+                let message = (error as? LocalizedError)?.errorDescription ?? "anky could not return a nudge right now."
+                showTransientNudge(Self.nudgeErrorMessage(from: message))
+            }
         }
     }
 
@@ -407,8 +439,14 @@ final class WriteViewModel: ObservableObject {
                     reflection: reflectionStore.load(hash: saved.hash)
                 )
             )
+            draftStore.clear()
+            completedArtifact = saved
+            isFrozen = true
+            elapsedMs = saved.durationMs
+            silenceElapsedMs = AnkyDuration.terminalSilenceMs
+            silenceRemainingMs = 0
+            isClosing = false
             completion?(saved)
-            resetForNextSession()
             refreshTodayCount()
         } catch {
             showPersistentError("Could not save this .anky.")
@@ -425,6 +463,7 @@ final class WriteViewModel: ObservableObject {
         silenceTask?.cancel()
         tickerTask?.cancel()
         writer = AnkyWriter()
+        completedArtifact = nil
         displayedText = ""
         displayedGlyphs = []
         protocolText = ""
@@ -482,9 +521,16 @@ final class WriteViewModel: ObservableObject {
     }
 
     private func showTransientNudge(_ message: String) {
+        showNudge(message, persistent: false)
+    }
+
+    private func showNudge(_ message: String, persistent: Bool) {
         nudgeTask?.cancel()
         nudgeMessage = message
         isNudgeMessageVisible = true
+        guard !persistent else {
+            return
+        }
         nudgeTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 6_000_000_000)
             guard !Task.isCancelled else { return }
@@ -502,9 +548,6 @@ final class WriteViewModel: ObservableObject {
 
     private func showContextualNudge() {
         let writing = displayedText.isEmpty ? protocolText : displayedText
-        let wordCount = writing
-            .split { $0.isWhitespace || $0.isNewline }
-            .count
         let message = AnkyNudgeGenerator.generateNudge(
             from: writing,
             timeWritten: TimeInterval(elapsedMs) / 1000,
@@ -538,6 +581,25 @@ final class WriteViewModel: ObservableObject {
             return "the mirror is not ready to nudge unfinished ankys yet."
         }
         return "anky could not return a nudge right now."
+    }
+
+    private var wordCount: Int {
+        let writing = displayedText.isEmpty ? protocolText : displayedText
+        return writing
+            .split { $0.isWhitespace || $0.isNewline }
+            .count
+    }
+
+    private static func postSilenceFallbackNudge(from writing: String) -> String {
+        let lower = " \(writing.lowercased()) "
+        let looksSpanish = lower.range(of: #"[áéíóúñ¿¡]"#, options: .regularExpression) != nil
+            || [" que ", " de ", " en ", " para ", " pero ", " estoy ", " siento ", " quiero "].contains { lower.contains($0) }
+
+        if looksSpanish {
+            return "que detalle de esto todavia quiere otra frase?"
+        }
+
+        return "what detail here still wants one more sentence?"
     }
 
     private func startTicker() {

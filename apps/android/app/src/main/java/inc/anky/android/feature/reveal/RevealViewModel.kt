@@ -3,6 +3,7 @@ package inc.anky.android.feature.reveal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import inc.anky.android.BuildConfig
+import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
@@ -13,12 +14,15 @@ import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.privacy.PrivacyMessages
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
+import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.core.storage.SessionIndexStore
 import java.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -38,8 +42,13 @@ data class RevealState(
     val hasClaimedFreeCredits: Boolean = false,
     val creditsDenied: Boolean = false,
     val reflectionStatusMessage: String = "",
+    val streamingReflectionMarkdown: String = "",
+    val progressStage: String? = null,
     val error: String? = null,
 ) {
+    val streamingReflectionCharacterCount: Int
+        get() = streamingReflectionMarkdown.length
+
     val creditPromptState: ReflectionCreditPromptState
         get() = ReflectionCreditPresentation.state(
             creditsRemaining = creditBalance,
@@ -61,9 +70,11 @@ class RevealViewModel(
     private val hash: String,
     private val archive: LocalAnkyArchive,
     private val reflectionStore: ReflectionStore,
+    private val requestStore: ReflectionRequestStore? = null,
     private val indexStore: SessionIndexStore,
     private val identityProvider: () -> WriterIdentity,
     private val mirrorClientProvider: () -> MirrorClient,
+    private val creditsClient: CreditsClient? = null,
     private val hasClaimedFreeCreditsProvider: () -> Boolean = { false },
     private val markFreeCreditsClaimed: () -> Unit = {},
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -72,24 +83,32 @@ class RevealViewModel(
         hash: String,
         archive: LocalAnkyArchive,
         reflectionStore: ReflectionStore,
+        requestStore: ReflectionRequestStore? = null,
         indexStore: SessionIndexStore,
         identityStore: WriterIdentityStore,
         mirrorClientProvider: () -> MirrorClient,
+        creditsClient: CreditsClient? = null,
         hasClaimedFreeCreditsProvider: () -> Boolean = { false },
         markFreeCreditsClaimed: () -> Unit = {},
     ) : this(
         hash = hash,
         archive = archive,
         reflectionStore = reflectionStore,
+        requestStore = requestStore,
         indexStore = indexStore,
         identityProvider = { identityStore.loadOrCreate() },
         mirrorClientProvider = mirrorClientProvider,
+        creditsClient = creditsClient,
         hasClaimedFreeCreditsProvider = hasClaimedFreeCreditsProvider,
         markFreeCreditsClaimed = markFreeCreditsClaimed,
     )
 
     private val _state = MutableStateFlow(RevealState())
     val state: StateFlow<RevealState> = _state
+    private var reflectionWatcherJob: Job? = null
+    private var reflectionRetryJob: Job? = null
+    private var reflectionRetryStartedAtMs: Long? = null
+    private val reflectionRetryLimitMs = 120_000L
 
     init {
         load()
@@ -102,20 +121,44 @@ class RevealViewModel(
             isComplete = artifact.isComplete,
             hasReflection = reflection != null,
         )
+        val isPending = artifact != null && reflection == null && requestStore?.isPending(artifact.hash) == true
         _state.value = RevealState(
             artifact = artifact,
             reflection = reflection,
             privacyReminder = if (artifact?.isComplete == false) PrivacyMessages.FragmentReminder else PrivacyMessages.RevealReminder,
             canAskAnky = canAskAnky,
+            isAsking = isPending,
+            reflectionStatusMessage = if (isPending) "i am waiting with the mirror." else "",
             hasClaimedFreeCredits = hasClaimedFreeCreditsProvider() || reflectionStore.list().isNotEmpty(),
         )
+        if (isPending) {
+            if (reflectionRetryStartedAtMs == null) reflectionRetryStartedAtMs = System.currentTimeMillis()
+            startPendingReflectionWatcher()
+            schedulePendingReflectionRetry()
+        }
     }
 
     fun askAnky() {
+        submitReflectionRequest(allowWhileAsking = false)
+    }
+
+    private fun submitReflectionRequest(allowWhileAsking: Boolean) {
         val current = _state.value
         val artifact = current.artifact ?: return
-        if (!current.canSubmitReflectionRequest) return
-        _state.update { it.copy(isAsking = true, error = null, reflectionStatusMessage = "i am opening a quiet channel.") }
+        if (!allowWhileAsking && !current.canSubmitReflectionRequest) return
+        if (allowWhileAsking && current.creditPromptState == ReflectionCreditPromptState.Unavailable) return
+        _state.update {
+            it.copy(
+                isAsking = true,
+                error = null,
+                reflectionStatusMessage = "i am opening a quiet channel.",
+                streamingReflectionMarkdown = "",
+                progressStage = "stream_open",
+            )
+        }
+        if (reflectionRetryStartedAtMs == null) reflectionRetryStartedAtMs = System.currentTimeMillis()
+        requestStore?.markPending(artifact.hash)
+        startPendingReflectionWatcher()
         viewModelScope.launch(dispatcher) {
             runCatching {
                 _state.update { it.copy(reflectionStatusMessage = "i found your writer key. staying close.") }
@@ -125,6 +168,22 @@ class RevealViewModel(
                     artifact.text.toByteArray(Charsets.UTF_8),
                     identity,
                     appVersion = "${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})",
+                    progress = { event ->
+                        _state.update {
+                            it.copy(
+                                progressStage = event.stage,
+                                reflectionStatusMessage = progressMessage(event.stage, event.message),
+                            )
+                        }
+                    },
+                    reflectionChunk = { event ->
+                        _state.update {
+                            it.copy(
+                                streamingReflectionMarkdown = it.streamingReflectionMarkdown + event.chunk,
+                                reflectionStatusMessage = "writing the reflection... ${event.generatedCharacters} characters",
+                            )
+                        }
+                    },
                 )
                 _state.update { it.copy(reflectionStatusMessage = "something answered. i am threading it back.") }
                 if (payload.hash != artifact.hash) throw MirrorClientError.HashMismatch
@@ -134,18 +193,25 @@ class RevealViewModel(
                     reflection = payload.reflection,
                     createdAt = Instant.now(),
                     creditsRemaining = payload.creditsRemaining,
+                    tags = payload.tags,
                 )
                 reflectionStore.save(reflection)
-                indexStore.updateReflection(payload.hash, payload.title)
+                indexStore.updateReflection(payload.hash, payload.title, payload.tags)
+                requestStore?.clear(payload.hash)
                 markFreeCreditsClaimed()
                 reflection
             }.onSuccess { reflection ->
+                reflectionWatcherJob?.cancel()
+                reflectionRetryJob?.cancel()
+                reflectionRetryStartedAtMs = null
                 _state.update {
                     it.copy(
                         reflection = reflection,
                         canAskAnky = false,
                         isAsking = false,
                         reflectionStatusMessage = "",
+                        streamingReflectionMarkdown = "",
+                        progressStage = null,
                         creditBalance = reflection.creditsRemaining ?: it.creditBalance,
                         hasClaimedFreeCredits = true,
                         creditsDenied = false,
@@ -153,10 +219,31 @@ class RevealViewModel(
                 }
             }.onFailure { error ->
                 val message = mirrorFailureMessage(error)
+                if (message.contains("already being reflected", ignoreCase = true)) {
+                    requestStore?.markPending(artifact.hash)
+                    _state.update {
+                        it.copy(
+                            isAsking = true,
+                            reflectionStatusMessage = "the mirror is already holding this thread.",
+                            streamingReflectionMarkdown = "",
+                            progressStage = null,
+                            error = null,
+                        )
+                    }
+                    startPendingReflectionWatcher()
+                    schedulePendingReflectionRetry()
+                    return@onFailure
+                }
+                requestStore?.clear(artifact.hash)
+                reflectionWatcherJob?.cancel()
+                reflectionRetryJob?.cancel()
+                reflectionRetryStartedAtMs = null
                 _state.update {
                     it.copy(
                         isAsking = false,
                         reflectionStatusMessage = "",
+                        streamingReflectionMarkdown = "",
+                        progressStage = null,
                         creditBalance = if (message.contains("credit", ignoreCase = true)) 0 else it.creditBalance,
                         creditsDenied = it.creditsDenied || message.contains("credit", ignoreCase = true),
                         error = message,
@@ -170,6 +257,37 @@ class RevealViewModel(
         _state.update { it.copy(didCopyText = true) }
     }
 
+    fun refreshCredits(showError: Boolean = true) {
+        refreshLocalReflection()
+        val current = _state.value
+        if (!current.canAskAnky || creditsClient == null) return
+
+        _state.update { it.copy(creditsLoading = true) }
+        viewModelScope.launch(dispatcher) {
+            runCatching {
+                val identity = identityProvider()
+                creditsClient.configure(identity.accountId)
+                creditsClient.refresh()
+            }.onSuccess { creditState ->
+                _state.update {
+                    it.copy(
+                        creditBalance = creditState.balance,
+                        creditsDenied = false,
+                        creditsLoading = false,
+                        error = if (showError) null else it.error,
+                    )
+                }
+            }.onFailure {
+                _state.update {
+                    it.copy(
+                        creditsLoading = false,
+                        error = if (showError) "Could not load reflections." else it.error,
+                    )
+                }
+            }
+        }
+    }
+
     fun deleteSession() {
         val current = _state.value
         val artifact = current.artifact ?: return
@@ -179,8 +297,12 @@ class RevealViewModel(
             runCatching {
                 archive.delete(artifact.hash)
                 runCatching { reflectionStore.delete(artifact.hash) }
+                runCatching { requestStore?.clear(artifact.hash) }
                 indexStore.delete(artifact.hash)
             }.onSuccess {
+                reflectionWatcherJob?.cancel()
+                reflectionRetryJob?.cancel()
+                reflectionRetryStartedAtMs = null
                 _state.update {
                     it.copy(
                         artifact = null,
@@ -200,7 +322,117 @@ class RevealViewModel(
             }
         }
     }
+
+    private fun refreshLocalReflection() {
+        val current = _state.value
+        val artifact = current.artifact ?: return
+        if (current.reflection != null) return
+
+        val savedReflection = reflectionStore.load(artifact.hash)
+        if (savedReflection != null) {
+            requestStore?.clear(artifact.hash)
+            reflectionWatcherJob?.cancel()
+            reflectionRetryJob?.cancel()
+            reflectionRetryStartedAtMs = null
+            _state.update {
+                it.copy(
+                    reflection = savedReflection,
+                    canAskAnky = false,
+                    isAsking = false,
+                    reflectionStatusMessage = "",
+                    streamingReflectionMarkdown = "",
+                    progressStage = null,
+                    creditBalance = savedReflection.creditsRemaining ?: it.creditBalance,
+                    hasClaimedFreeCredits = true,
+                    creditsDenied = false,
+                    error = null,
+                )
+            }
+        } else if (requestStore?.isPending(artifact.hash) == true) {
+            _state.update {
+                it.copy(
+                    isAsking = true,
+                    reflectionStatusMessage = it.reflectionStatusMessage.ifBlank { "i am waiting with the mirror." },
+                )
+            }
+        } else if (current.isAsking) {
+            _state.update {
+                it.copy(
+                    isAsking = false,
+                    reflectionStatusMessage = "",
+                    streamingReflectionMarkdown = "",
+                    progressStage = null,
+                )
+            }
+        }
+    }
+
+    private fun startPendingReflectionWatcher() {
+        if (reflectionWatcherJob?.isActive == true) return
+        reflectionWatcherJob = viewModelScope.launch(dispatcher) {
+            while (true) {
+                delay(1_000)
+                refreshLocalReflection()
+            }
+        }
+    }
+
+    private fun schedulePendingReflectionRetry() {
+        val artifact = _state.value.artifact ?: return
+        if (_state.value.reflection != null) return
+        if (reflectionRetryJob?.isActive == true) return
+        val startedAt = reflectionRetryStartedAtMs ?: System.currentTimeMillis().also { reflectionRetryStartedAtMs = it }
+        if (System.currentTimeMillis() - startedAt >= reflectionRetryLimitMs) {
+            requestStore?.clear(artifact.hash)
+            reflectionRetryStartedAtMs = null
+            _state.update {
+                it.copy(
+                    isAsking = false,
+                    reflectionStatusMessage = "",
+                    error = GenericMirrorFailureMessage,
+                )
+            }
+            return
+        }
+
+        reflectionRetryJob = viewModelScope.launch(dispatcher) {
+            delay(3_000)
+            reflectionRetryJob = null
+            retryPendingReflectionIfNeeded()
+        }
+    }
+
+    private fun retryPendingReflectionIfNeeded() {
+        refreshLocalReflection()
+        val current = _state.value
+        val artifact = current.artifact ?: return
+        if (current.reflection != null) return
+        if (requestStore?.isPending(artifact.hash) != true) return
+        if (!MirrorEligibility.canAsk(isComplete = artifact.isComplete, hasReflection = false)) return
+        submitReflectionRequest(allowWhileAsking = true)
+    }
 }
+
+internal fun progressMessage(stage: String?, fallback: String? = null): String =
+    when (stage) {
+        "stream_open" -> "opening the mirror..."
+        "request_received" -> "received your writing..."
+        "dot_anky_read" -> "reading your .anky..."
+        "hash_computed" -> "verifying the seal..."
+        "identity_verified" -> "confirming your identity..."
+        "protocol_validated" -> "validating the ritual..."
+        "credit_checked" -> "checking reflection access..."
+        "reflection_prepared" -> "preparing the reflection..."
+        "provider_started" -> "anky is writing..."
+        "provider_finished" -> "bringing it back..."
+        "credit_spent" -> "settling..."
+        "x402_quote_created" -> "checking payment options..."
+        "x402_verified" -> "payment verified..."
+        "x402_settled" -> "settling..."
+        "credit_not_spent" -> "no credit spent..."
+        "complete" -> "opening the scroll..."
+        else -> fallback ?: "anky is working..."
+    }
 
 private fun mirrorFailureMessage(error: Throwable): String =
     when (error) {

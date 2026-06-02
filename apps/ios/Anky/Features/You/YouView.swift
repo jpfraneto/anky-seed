@@ -16,9 +16,9 @@ struct YouView: View {
     @State private var confirmClearWritingData = false
     @State private var confirmResetIdentity = false
     @State private var isImportingBackup = false
+    @State private var showsPrivacyPolicy = false
     @State private var activePrompt: YouPrompt?
     @State private var isShowingSystemPrompt = false
-    @State private var isShowingAnkyExperience = false
 
     init(viewModel: YouViewModel) {
         self.viewModel = viewModel
@@ -31,10 +31,6 @@ struct YouView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     YouTitle(title: "you", subtitle: "")
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isShowingAnkyExperience = true
-                        }
                         .padding(.top, 18)
 
                     YouStatsPanel(
@@ -44,23 +40,23 @@ struct YouView: View {
                     )
 
                     YouPanel(spacing: 0) {
-                        promptButton(.identity, icon: "you-icon-account", title: "identity", subtitle: "save it to icloud keychain")
+                        promptButton(.identity, icon: "you-icon-account", title: "Identity", subtitle: identityMenuSubtitle)
 
                         YouDivider()
 
-                        promptButton(.privacy, icon: "you-icon-privacy", title: "privacy", subtitle: "what leaves this phone")
+                        promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy", subtitle: "What leaves this phone")
 
                         YouDivider()
 
-                        promptButton(.export, icon: "you-icon-export", title: "data", subtitle: "export or restore writing")
+                        promptButton(.export, icon: "you-icon-export", title: "data", subtitle: "Export or restore writing")
 
                         YouDivider()
 
-                        promptButton(.credits, icon: "you-icon-credits", title: "credits", subtitle: creditsMenuSubtitle)
+                        promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)
 
                         YouDivider()
 
-                        promptButton(.support, icon: "you-icon-credits", title: "support / feedback", subtitle: "email support@anky.app")
+                        promptButton(.support, icon: "you-icon-credits", title: "Support / Feedback", subtitle: "Email support@anky.app")
                     }
                 }
                 .padding(.horizontal, 20)
@@ -70,8 +66,11 @@ struct YouView: View {
 
         }
         .toolbar(.hidden, for: .navigationBar)
-        .fullScreenCover(isPresented: $isShowingAnkyExperience) {
-            AnkyExperienceView()
+        .sheet(isPresented: $showsPrivacyPolicy) {
+            PrivacyPolicyReflectionSheet()
+                .presentationDetents([.fraction(0.8)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(PrivacySheetPalette.ink)
         }
         .confirmationDialog("delete local writing data?", isPresented: $confirmClearWritingData, titleVisibility: .visible) {
             Button("delete local writing data", role: .destructive) {
@@ -134,6 +133,11 @@ struct YouView: View {
         }
         .onChange(of: viewModel.creditPackages.count) { _, _ in
             refreshCreditsBubbleIfNeeded()
+        }
+        .onChange(of: viewModel.isIdentityBackedUpToICloud) { _, _ in
+            if activePrompt == .identity, !isShowingSystemPrompt {
+                presentCurrentPromptIfNeeded()
+            }
         }
     }
 
@@ -200,6 +204,10 @@ struct YouView: View {
             return creditsPromptMessage
         }
 
+        if activePrompt == .identity, viewModel.isIdentityBackedUpToICloud {
+            return "your identity backup is saved in iCloud Keychain."
+        }
+
         return activePrompt?.message ?? ""
     }
 
@@ -227,21 +235,25 @@ struct YouView: View {
 
         switch activePrompt {
         case .identity:
-            return [
-                AnkyChatAction("back up identity", isPrimary: true) {
-                    Task { await viewModel.backUpIdentityToICloudKeychain() }
-                },
+            var actions = [
                 AnkyChatAction("copy account") {
                     ClipboardClient().copy(viewModel.accountId)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
             ]
+            if !viewModel.isIdentityBackedUpToICloud {
+                actions.insert(
+                    AnkyChatAction("back up identity", isPrimary: true) {
+                        Task { await viewModel.backUpIdentityToICloudKeychain() }
+                    },
+                    at: 0
+                )
+            }
+            return actions
         case .privacy:
             return [
                 AnkyChatAction("read privacy policy", isPrimary: true) {
-                    if let url = URL(string: "https://anky.app/privacy") {
-                        openURL(url)
-                    }
+                    showsPrivacyPolicy = true
                 }
             ]
         case .export:
@@ -311,6 +323,12 @@ struct YouView: View {
         }
 
         return "reflection balance"
+    }
+
+    private var identityMenuSubtitle: String {
+        viewModel.isIdentityBackedUpToICloud
+            ? "saved in icloud keychain"
+            : "save it to icloud keychain"
     }
 
     private var creditsPromptMessage: String {
@@ -460,8 +478,12 @@ private struct AccountPage: View {
                     isImportingRecoveryPhrase = true
                 }
 
-                YouActionButton("Back up Anky identity") {
-                    Task { await viewModel.backUpIdentityToICloudKeychain() }
+                if viewModel.isIdentityBackedUpToICloud {
+                    YouDisabledRow("identity backup saved in iCloud Keychain")
+                } else {
+                    YouActionButton("Back up Anky identity") {
+                        Task { await viewModel.backUpIdentityToICloudKeychain() }
+                    }
                 }
 
                 Text("This stores your recovery phrase in your device/cloud keychain. Anky cannot read it.")
@@ -487,7 +509,7 @@ private struct AccountPage: View {
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16, design: .serif))
-                    .onChange(of: dailyReminderEnabled) { isEnabled in
+                    .onChange(of: dailyReminderEnabled) { _, isEnabled in
                         Task {
                             await viewModel.setDailyReminder(enabled: isEnabled, date: reminderDate)
                         }
@@ -541,7 +563,7 @@ private struct PrivacyPolicyPage: View {
         }
     }
 
-    private static let policyCopy: [PrivacyCopyItem] = [
+    fileprivate static let policyCopy: [PrivacyCopyItem] = [
         .caption("last updated: 2026-05-14"),
         .paragraph("anky is a local-first writing app. the core artifact is the `.anky` file on your device. the app should let you write, save, revisit, export, import, and delete your writing without making a server the owner of your interior life."),
         .heading("the private artifact"),
@@ -568,10 +590,137 @@ private struct PrivacyPolicyPage: View {
     ]
 }
 
-private enum PrivacyCopyItem {
+fileprivate enum PrivacyCopyItem {
     case caption(String)
     case heading(String)
     case paragraph(String)
+}
+
+private struct PrivacyPolicyReflectionSheet: View {
+    var body: some View {
+        ZStack {
+            PrivacySheetPalette.ink.ignoresSafeArea()
+            PrivacySheetBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("privacy")
+                            .font(.custom("Georgia", size: 30).weight(.bold))
+                            .foregroundStyle(PrivacySheetPalette.heading)
+                            .tracking(0)
+
+                        Text("local-first. private. sovereign.")
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(PrivacySheetPalette.paper.opacity(0.54))
+                            .textCase(.lowercase)
+                    }
+                    .padding(.bottom, 8)
+
+                    Text("privacy is the shape of anky, not a feature added later.")
+                        .font(.custom("Georgia", size: 20).weight(.semibold))
+                        .foregroundStyle(PrivacySheetPalette.paper)
+                        .lineSpacing(6)
+
+                    ForEach(Array(PrivacyPolicyPage.policyCopy.enumerated()), id: \.offset) { _, item in
+                        PrivacyPolicyReflectionLine(item: item)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("questions, deletion requests, and privacy reports")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .tracking(1.0)
+                            .foregroundStyle(PrivacySheetPalette.paper.opacity(0.46))
+
+                        Text("jp@anky.app")
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundStyle(PrivacySheetPalette.gold)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 24)
+                .padding(.bottom, 52)
+            }
+        }
+    }
+}
+
+private struct PrivacyPolicyReflectionLine: View {
+    let item: PrivacyCopyItem
+
+    var body: some View {
+        switch item {
+        case .caption(let text):
+            Text(text.lowercased())
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .tracking(1.0)
+                .foregroundStyle(PrivacySheetPalette.paper.opacity(0.46))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .heading(let text):
+            Text(text.lowercased())
+                .font(.custom("Georgia", size: 25).weight(.bold))
+                .foregroundStyle(PrivacySheetPalette.heading)
+                .tracking(0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+        case .paragraph(let text):
+            Text(attributedText(from: text))
+                .font(.custom("Georgia", size: 18))
+                .lineSpacing(7)
+                .foregroundStyle(PrivacySheetPalette.paper)
+                .tint(PrivacySheetPalette.gold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+        }
+    }
+
+    private func attributedText(from text: String) -> AttributedString {
+        (try? AttributedString(markdown: text)) ?? AttributedString(text)
+    }
+}
+
+private struct PrivacySheetBackground: View {
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                ForEach([0.19, 0.47, 0.78], id: \.self) { position in
+                    Rectangle()
+                        .fill(PrivacySheetPalette.gold.opacity(0.075))
+                        .frame(height: 1)
+                        .offset(y: proxy.size.height * position)
+                }
+
+                Ellipse()
+                    .fill(PrivacySheetPalette.violet.opacity(0.055))
+                    .frame(width: proxy.size.width * 1.2, height: 280)
+                    .blur(radius: 42)
+                    .offset(y: proxy.size.height * 0.4)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+    }
+}
+
+private enum PrivacySheetPalette {
+    static let ink = Color(hex: 0x080713)
+    static let paper = Color(hex: 0xFFF0C9)
+    static let gold = Color(hex: 0xE8C879)
+    static let heading = Color(hex: 0xF6D978)
+    static let violet = Color(hex: 0x6F5DFF)
+}
+
+private extension Color {
+    init(hex: UInt32) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255
+        )
+    }
 }
 
 private struct PrivacyCopyLine: View {
@@ -1564,11 +1713,11 @@ private struct YouStatsPanel: View {
     var body: some View {
         YouPanel(spacing: 0) {
             HStack(spacing: 0) {
-                YouStatCell(icon: "you-icon-feather-stat", value: "\(ankys)", label: "ankys")
+                YouStatCell(icon: "you-icon-feather-stat", value: "\(ankys)", label: "Ankys")
                 YouVerticalDivider()
-                YouStatCell(icon: "you-icon-clock-stat", value: "\(minutes)", label: "minutes")
+                YouStatCell(icon: "you-icon-clock-stat", value: "\(minutes)", label: "Minutes")
                 YouVerticalDivider()
-                YouStatCell(icon: "you-icon-flame-stat", value: "\(streak)", label: "streak")
+                YouStatCell(icon: "you-icon-flame-stat", value: "\(streak)", label: "Streak")
             }
         }
         .frame(height: 68)

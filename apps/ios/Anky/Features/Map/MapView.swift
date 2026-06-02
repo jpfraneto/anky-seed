@@ -6,17 +6,14 @@ struct MapView: View {
     @Binding private var revealAfterWriting: SavedAnky?
     @State private var path: [MapRoute] = []
     private let onTryAgain: () -> Void
-    private let onOpenCredits: () -> Void
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     init(
         revealAfterWriting: Binding<SavedAnky?> = .constant(nil),
-        onTryAgain: @escaping () -> Void = {},
-        onOpenCredits: @escaping () -> Void = {}
+        onTryAgain: @escaping () -> Void = {}
     ) {
         _revealAfterWriting = revealAfterWriting
         self.onTryAgain = onTryAgain
-        self.onOpenCredits = onOpenCredits
     }
 
     var body: some View {
@@ -36,8 +33,7 @@ struct MapView: View {
                         RevealView(
                             viewModel: RevealViewModel(artifact: artifact),
                             onDeleted: viewModel.refresh,
-                            onTryAgain: tryAgain,
-                            onOpenCredits: onOpenCredits
+                            onTryAgain: tryAgain
                         )
                     } else {
                         ContentUnavailableView("Anky not found", systemImage: "doc.badge.questionmark")
@@ -46,8 +42,7 @@ struct MapView: View {
                     RevealView(
                         viewModel: RevealViewModel(artifact: artifact),
                         onDeleted: viewModel.refresh,
-                        onTryAgain: tryAgain,
-                        onOpenCredits: onOpenCredits
+                        onTryAgain: tryAgain
                     )
                 }
             }

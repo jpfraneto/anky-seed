@@ -46,6 +46,8 @@ import inc.anky.android.ui.theme.AnkyType
 data class AnkyChatAction(
     val title: String,
     val isPrimary: Boolean = false,
+    val subtitle: String? = null,
+    val badge: String? = null,
     val action: () -> Unit,
 )
 
@@ -157,26 +159,32 @@ fun AnkyCompanionPrompt(
 fun AnkyConversationPrompt(
     message: String,
     actions: List<AnkyChatAction> = emptyList(),
-    onClose: () -> Unit,
+    steps: List<String> = emptyList(),
     modifier: Modifier = Modifier,
+    isThinking: Boolean = false,
+    onClose: (() -> Unit)? = null,
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         DialoguePanel(
             message = message,
-            actions = actions.take(2),
+            actions = actions.take(4),
+            steps = steps.take(4),
+            isThinking = isThinking,
             modifier = Modifier.padding(top = 14.dp),
         )
-        TextButton(
-            onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.34f))
-                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.26f), CircleShape),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-        ) {
-            Text("x", style = AnkyType.Caption.copy(fontSize = 13.sp, color = AnkyColors.GoldSoft))
+        if (onClose != null) {
+            TextButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.34f))
+                    .border(1.dp, AnkyColors.Gold.copy(alpha = 0.26f), CircleShape),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            ) {
+                Text("x", style = AnkyType.Caption.copy(fontSize = 13.sp, color = AnkyColors.GoldSoft))
+            }
         }
     }
 }
@@ -185,6 +193,8 @@ fun AnkyConversationPrompt(
 private fun DialoguePanel(
     message: String,
     actions: List<AnkyChatAction>,
+    steps: List<String>,
+    isThinking: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -196,17 +206,49 @@ private fun DialoguePanel(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "anky",
+                style = AnkyType.Caption.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AnkyColors.Gold.copy(alpha = 0.82f),
+                ),
+            )
+            if (isThinking) {
+                CircularProgressIndicator(
+                    color = AnkyColors.GoldSoft,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
         Text(
             message.lowercase(),
-            style = AnkyType.Body.copy(fontSize = 13.sp, lineHeight = 19.sp, color = AnkyColors.Paper.copy(alpha = 0.92f)),
+            style = AnkyType.Mono.copy(fontSize = 15.sp, lineHeight = 20.sp, color = AnkyColors.Paper.copy(alpha = 0.92f)),
         )
+        if (steps.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                steps.forEachIndexed { index, step ->
+                    Text(
+                        "${index + 1}. ${step.lowercase()}",
+                        style = AnkyType.Caption.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AnkyColors.GoldSoft.copy(alpha = 0.86f),
+                        ),
+                    )
+                }
+            }
+        }
         if (actions.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 actions.forEach { chatAction ->
                     TextButton(
                         onClick = chatAction.action,
                         modifier = Modifier
-                            .heightIn(min = 32.dp)
+                            .weight(1f)
+                            .heightIn(min = if (chatAction.subtitle != null || chatAction.badge != null) 58.dp else 32.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (chatAction.isPrimary) AnkyColors.GoldSoft else Color.Black.copy(alpha = 0.22f))
                             .border(
@@ -216,16 +258,42 @@ private fun DialoguePanel(
                             ),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
                     ) {
-                        Text(
-                            chatAction.title.lowercase(),
-                            style = AnkyType.Caption.copy(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (chatAction.isPrimary) AnkyColors.Ink.copy(alpha = 0.88f) else AnkyColors.GoldSoft,
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            chatAction.badge?.let { badge ->
+                                Text(
+                                    badge.lowercase(),
+                                    style = AnkyType.Caption.copy(
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (chatAction.isPrimary) AnkyColors.Ink.copy(alpha = 0.88f) else AnkyColors.GoldSoft,
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Text(
+                                chatAction.title.lowercase(),
+                                style = AnkyType.Caption.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (chatAction.isPrimary) AnkyColors.Ink.copy(alpha = 0.88f) else AnkyColors.GoldSoft,
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            chatAction.subtitle?.let { subtitle ->
+                                Text(
+                                    subtitle.lowercase(),
+                                    style = AnkyType.Caption.copy(
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (chatAction.isPrimary) AnkyColors.Ink.copy(alpha = 0.78f) else AnkyColors.GoldSoft,
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
                     }
                 }
             }

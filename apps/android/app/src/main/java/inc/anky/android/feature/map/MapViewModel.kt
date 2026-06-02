@@ -25,11 +25,16 @@ class MapViewModel(
 
     fun refresh() {
         runCatching {
-            val sessions = indexStore.rebuild(archive, reflectionStore)
+            val storedFirstOpen = appOpenStore.loadOrCreate()
+            val sessions = runCatching {
+                indexStore.rebuild(archive, reflectionStore)
+            }.getOrElse {
+                indexStore.load()
+            }
             val firstOpen = sessions
                 .minByOrNull { it.createdAt }
                 ?.let { appOpenStore.recordEarlierFirstOpenDate(it.createdAt) }
-                ?: appOpenStore.loadOrCreate()
+                ?: storedFirstOpen
             SessionIndexStore.groupByContinuousDays(sessions, firstOpen)
         }.onSuccess { days ->
             _state.value = MapState(days = days, errorMessage = null)
