@@ -39,7 +39,9 @@ enum AnkySequenceName: String, CaseIterable {
 
     var fps: Double {
         switch self {
-        case .findingThread, .celebrate, .waveFront:
+        case .findingThread:
+            return 2.4
+        case .celebrate, .waveFront:
             return 5
         case .walkRight:
             return 8
@@ -93,7 +95,7 @@ struct AnkySpriteView: View {
             .frame(width: size, height: size)
             .opacity(opacity)
             .scaleEffect(breathes ? 1.018 : 1)
-            .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: breathes)
+            .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true), value: breathes)
             .onAppear {
                 breathes = true
                 cursor = 0

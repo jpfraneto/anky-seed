@@ -76,7 +76,7 @@ Identity material is encrypted with an Android Keystore AES-GCM key. Android aut
 
 ## Known Gaps
 
-- RevenueCat Android products require `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY` plus the `credits DEV` offering and CRD virtual currency. RevenueCat App User ID is the Anky accountId.
+- RevenueCat Android products require `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY` plus the `Credits` offering and CRD virtual currency. RevenueCat App User ID is the Anky accountId.
 - Android automatic trial credits remain disabled until Play Integrity/device recall is implemented. They must not be implemented as public-key-only grants.
 - Daily reminders use inexact local alarms and require Android notification permission on Android 13+.
 - Instrumentation tests compile/package but require a connected device or emulator to execute.

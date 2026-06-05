@@ -36,9 +36,9 @@ struct MirrorClient {
         if !(200..<300).contains(http.statusCode) {
             let data = try await Self.collect(stream)
             if let envelope = try? JSONDecoder().decode(MirrorErrorEnvelope.self, from: data) {
-                throw MirrorClientError.server(envelope.error.message)
+                throw MirrorClientError.server(envelope.error.payload)
             }
-            throw MirrorClientError.server("Anky could not return a reflection right now.")
+            throw MirrorClientError.server(.fallback)
         }
 
         var currentEvent: String?
@@ -89,7 +89,7 @@ struct MirrorClient {
                     creditsRemaining: creditsRemaining
                 )
             case "error":
-                throw MirrorClientError.server(Self.errorMessage(fromSSEPayload: payload))
+                throw MirrorClientError.server(Self.errorPayload(fromSSEPayload: payload))
             default:
                 return nil
             }
@@ -171,20 +171,20 @@ struct MirrorClient {
         return tags
     }
 
-    private static func errorMessage(fromSSEPayload payload: String) -> String {
+    private static func errorPayload(fromSSEPayload payload: String) -> MirrorServerErrorPayload {
         guard let data = payload.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return "Anky could not return a reflection right now."
+            return .fallback
         }
         if let body = object["body"] as? [String: Any],
            let error = body["error"] as? [String: Any],
            let message = error["message"] as? String {
-            return message
+            return MirrorServerErrorPayload(code: error["code"] as? String, message: message)
         }
         if let message = object["message"] as? String {
-            return message
+            return MirrorServerErrorPayload(code: object["code"] as? String, message: message)
         }
-        return "Anky could not return a reflection right now."
+        return .fallback
     }
 
     private static func title(fromMarkdown markdown: String) -> String {
@@ -216,11 +216,29 @@ struct MirrorResponsePayload: Codable, Equatable {
     let creditsRemaining: Int?
 }
 
+struct MirrorServerErrorPayload: Equatable {
+    let code: String?
+    let message: String
+
+    static let fallback = MirrorServerErrorPayload(
+        code: nil,
+        message: "Anky could not return a reflection right now."
+    )
+
+    var isTrialAlreadyClaimed: Bool {
+        code == "TRIAL_ALREADY_CLAIMED"
+    }
+
+    var isCreditDenied: Bool {
+        code == "INSUFFICIENT_CREDITS" || isTrialAlreadyClaimed
+    }
+}
+
 enum MirrorClientError: Error, LocalizedError, Equatable {
     case invalidURL
     case invalidResponse
     case hashMismatch
-    case server(String)
+    case server(MirrorServerErrorPayload)
 
     var errorDescription: String? {
         switch self {
@@ -230,9 +248,14 @@ enum MirrorClientError: Error, LocalizedError, Equatable {
             return "The mirror returned an invalid response."
         case .hashMismatch:
             return "The mirror response did not match this .anky."
-        case .server(let message):
-            return message
+        case .server(let payload):
+            return payload.message
         }
+    }
+
+    var serverPayload: MirrorServerErrorPayload? {
+        guard case .server(let payload) = self else { return nil }
+        return payload
     }
 }
 
@@ -241,7 +264,12 @@ private struct MirrorErrorEnvelope: Decodable {
 }
 
 private struct MirrorError: Decodable {
+    let code: String?
     let message: String
+
+    var payload: MirrorServerErrorPayload {
+        MirrorServerErrorPayload(code: code, message: message)
+    }
 }
 
 private struct MirrorReflectionEvent: Decodable {

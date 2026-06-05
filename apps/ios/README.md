@@ -83,7 +83,7 @@ REVENUECAT_SECRET_KEY=...
 REVENUECAT_PROJECT_ID=...
 REVENUECAT_CREDIT_CODE=CRD
 ANKY_AUTO_TRIAL_ENABLED=false
-ANKY_TRIAL_CREDITS=8
+ANKY_TRIAL_CREDITS=1
 ANKY_IOS_TRIAL_ENABLED=false
 ANKY_IOS_DEVICECHECK_REQUIRED=true
 APPLE_DEVICECHECK_TEAM_ID=
@@ -94,6 +94,16 @@ ANKY_MIRROR_DISABLED=false
 ANKY_DEV_BYPASS_CREDITS=false
 ANKY_DEV_MOCK_MIRROR=false
 ```
+
+Credit product setup:
+
+Use the production App Store bundle ID `com.jpfraneto.Anky` and RevenueCat offering identifier `Credits`.
+
+| Product ID | Title | Subtitle | USD price |
+| --- | --- | --- | --- |
+| `inc.anky.credits.3` | 3 reflections |  | $0.99 |
+| `inc.anky.credits.11` | 11 reflections | Stay with it | $2.99 |
+| `inc.anky.credits.33` | 33 reflections | Daily practice | $7.99 |
 
 Verify a deployed mirror:
 

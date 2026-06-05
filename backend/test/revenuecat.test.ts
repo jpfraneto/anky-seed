@@ -35,18 +35,18 @@ describe("RevenueCat credits", () => {
       secretKey: "secret",
       projectId: "project",
       creditCode: "CRD",
-      amount: 8,
+      amount: 1,
       reference: "anky-trial-v1:ios:publicHash:proofHash",
       fetchImpl: async (url, init) => {
         calls.push({ url: String(url), init });
-        return jsonResponse({ items: [{ balance: 8, currency_code: "CRD" }] });
+        return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
       },
     });
 
-    expect(result).toEqual({ ok: true, creditsRemaining: 8, result: "trial_granted_spent" });
+    expect(result).toEqual({ ok: true, creditsRemaining: 1, result: "trial_granted_spent" });
     expect(calls[0]?.init?.headers).toMatchObject({ "Idempotency-Key": "trial-once" });
     expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
-      adjustments: { CRD: 8 },
+      adjustments: { CRD: 1 },
       reference: "anky-trial-v1:ios:publicHash:proofHash",
     });
     expect(String(calls[0]?.init?.body)).not.toContain("private writing");

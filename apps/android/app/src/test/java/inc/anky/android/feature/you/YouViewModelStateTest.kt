@@ -15,7 +15,7 @@ class YouViewModelStateTest {
         val previous = YouState(
             accountId = "old-key",
             recoveryPhrase = "able about above absent",
-            purchasingCreditPackageId = "inc.dev.anky.credits.22",
+            purchasingCreditPackageId = "inc.anky.credits.3",
             isRestoringPurchases = true,
             exportedFile = exportedFile,
             statusMessage = "exported backup.",

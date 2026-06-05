@@ -20,8 +20,8 @@ final class RevealRulesTests: XCTestCase {
             hasClaimedFreeCredits: false
         )
 
-        XCTAssertEqual(state, .freeGift(8))
-        XCTAssertEqual(ReflectionCreditPresentation.message(for: state), "Anky gives you 8 free reflections")
+        XCTAssertEqual(state, .freeGift(1))
+        XCTAssertEqual(ReflectionCreditPresentation.message(for: state), "1 reflection available on this device")
     }
 
     func testCreditPromptShowsBalanceAndUnavailableState() {
@@ -40,13 +40,31 @@ final class RevealRulesTests: XCTestCase {
         XCTAssertEqual(ReflectionCreditPresentation.message(for: unavailable), "No reflections left")
     }
 
-    func testUnknownCreditStateDoesNotImplyANetworkCheck() {
-        let unknown = ReflectionCreditPresentation.state(
+    func testClaimedFreeCreditWithoutLoadedBalanceStartsUnavailable() {
+        let unavailable = ReflectionCreditPresentation.state(
             creditsRemaining: nil,
             hasClaimedFreeCredits: true
         )
 
-        XCTAssertEqual(unknown, .unknown)
-        XCTAssertEqual(ReflectionCreditPresentation.message(for: unknown), "Reflection balance updates after mirroring")
+        XCTAssertEqual(unavailable, .unavailable)
+        XCTAssertEqual(ReflectionCreditPresentation.message(for: unavailable), "No reflections left")
+    }
+
+    func testReflectionCreditCacheStoresAccountScopedBalanceAndClaimedState() {
+        let defaults = UserDefaults(suiteName: "RevealRulesTests.creditCache.\(UUID().uuidString)")!
+        defer {
+            ReflectionCreditCache.clear(defaults: defaults)
+        }
+
+        XCTAssertNil(ReflectionCreditCache.balance(accountId: "account-a", defaults: defaults))
+        XCTAssertFalse(ReflectionCreditCache.hasClaimedFreeCredits(accountId: "account-a", defaults: defaults))
+
+        ReflectionCreditCache.storeBalance(0, accountId: "account-a", defaults: defaults)
+        ReflectionCreditCache.markFreeCreditsClaimed(accountId: "account-a", defaults: defaults)
+
+        XCTAssertEqual(ReflectionCreditCache.balance(accountId: "account-a", defaults: defaults), 0)
+        XCTAssertTrue(ReflectionCreditCache.hasClaimedFreeCredits(accountId: "account-a", defaults: defaults))
+        XCTAssertNil(ReflectionCreditCache.balance(accountId: "account-b", defaults: defaults))
+        XCTAssertTrue(ReflectionCreditCache.hasClaimedFreeCredits(accountId: "account-b", defaults: defaults))
     }
 }

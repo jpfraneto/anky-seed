@@ -33,4 +33,8 @@ struct AppOpenStore {
         defaults.set(candidate, forKey: key)
         return candidate
     }
+
+    func clear() {
+        defaults.removeObject(forKey: key)
+    }
 }

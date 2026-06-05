@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Anky TikTok Warmup Repository Row",
+  "type": "object",
+  "required": [
+    "entry_type",
+    "status",
+    "ring",
+    "pillar",
+    "priority",
+    "source_url",
+    "why_it_fits",
+    "watch_action",
+    "added_on"
+  ],
+  "properties": {
+    "entry_type": {
+      "type": "string",
+      "enum": ["search", "creator", "video"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "needs_review", "accepted", "watched", "saved", "commented", "followed", "rejected"]
+    },
+    "ring": {
+      "type": "string",
+      "enum": ["ring_1", "ring_2", "ring_3", "avoid"]
+    },
+    "pillar": {
+      "type": "string",
+      "enum": [
+        "seeker_trap",
+        "mirror_mechanism",
+        "anti_performance",
+        "child_story_bridge",
+        "founder_confession",
+        "practice_fatigue",
+        "creative_excavation",
+        "parenting_mirror",
+        "marketplace_critique"
+      ]
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1 is highest priority; 5 is lowest or mostly avoid/critique review."
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "search_query": {
+      "type": "string"
+    },
+    "creator_handle": {
+      "type": "string"
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "visible_hook": {
+      "type": "string"
+    },
+    "why_it_fits": {
+      "type": "string"
+    },
+    "watch_action": {
+      "type": "string",
+      "enum": ["watch_full", "rewatch", "save", "comment", "follow_creator", "skip"]
+    },
+    "comment_direction": {
+      "type": "string"
+    },
+    "risk_notes": {
+      "type": "string"
+    },
+    "added_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

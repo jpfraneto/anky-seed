@@ -43,8 +43,8 @@ struct KeychainClient {
         }
     }
 
-    func delete(account: String) throws {
-        let status = SecItemDelete(baseQuery(account: account) as CFDictionary)
+    func delete(account: String, synchronizable: Bool = false) throws {
+        let status = SecItemDelete(baseQuery(account: account, synchronizable: synchronizable) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unhandled(status)
         }

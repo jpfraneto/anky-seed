@@ -1,8 +1,10 @@
 package inc.anky.android.feature.reveal
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -42,6 +44,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +82,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.protocol.AnkyDuration
+import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.theme.AnkyColors
@@ -87,6 +94,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,11 +112,32 @@ fun RevealScreen(
     val view = LocalView.current
     val artifact = state.artifact
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
-    var showCopyBurst by remember { mutableStateOf(false) }
-    var showReflectionSheet by remember { mutableStateOf(false) }
+    var copiedBurst by remember { mutableStateOf<RevealCopySection?>(null) }
+    var inlineReflectionActive by remember { mutableStateOf(false) }
     var didAutoStartReflection by remember { mutableStateOf(false) }
-    val reflectionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    var showCreditPurchaseSheet by remember { mutableStateOf(false) }
+    val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
+    fun scrollToReflection() {
+        scope.launch {
+            delay(80)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
+    fun copySection(section: RevealCopySection) {
+        val text = viewModel.textForCopy(section) ?: return
+        val label = when (section) {
+            RevealCopySection.Writing -> "Anky writing"
+            RevealCopySection.Reflection -> "Anky reflection"
+        }
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        context.copyText(label, text)
+        viewModel.markCopied(section)
+        copiedBurst = section
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refreshCredits(showError = false)
@@ -121,15 +150,33 @@ fun RevealScreen(
             state.reflection == null
         ) {
             didAutoStartReflection = true
-            showReflectionSheet = true
+            inlineReflectionActive = true
             viewModel.askAnky()
+            scrollToReflection()
         }
     }
 
-    LaunchedEffect(showCopyBurst) {
-        if (!showCopyBurst) return@LaunchedEffect
+    LaunchedEffect(copiedBurst) {
+        val section = copiedBurst ?: return@LaunchedEffect
         delay(740)
-        showCopyBurst = false
+        copiedBurst = null
+        viewModel.clearCopied(section)
+    }
+
+    LaunchedEffect(state.reflection?.hash, state.streamingReflectionMarkdown, state.error) {
+        if (
+            state.reflection != null ||
+            state.streamingReflectionMarkdown.isNotBlank() ||
+            (inlineReflectionActive && state.error != null)
+        ) {
+            scrollToReflection()
+        }
+    }
+
+    LaunchedEffect(state.isAsking, state.streamingReflectionMarkdown) {
+        if (state.isAsking || state.streamingReflectionMarkdown.isNotBlank()) {
+            inlineReflectionActive = true
+        }
     }
 
     LaunchedEffect(state.isDeleted) {
@@ -170,80 +217,110 @@ fun RevealScreen(
                 )
                 return@Column
             }
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 28.dp)
-                        .padding(top = 20.dp, bottom = 238.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 28.dp)
+                    .padding(top = 20.dp, bottom = 138.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                Text(
-                    text = artifact.reconstructedText,
-                    style = AnkyType.Body.copy(fontSize = 19.sp, lineHeight = 28.sp),
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .testTag("reconstructed-text")
-                        .pointerInput(artifact.reconstructedText) {
-                            detectTapGestures {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                context.copyText("Anky writing", artifact.reconstructedText)
-                                showCopyBurst = true
-                            }
-                        },
+                SelectionContainer {
+                    Text(
+                        text = artifact.reconstructedText,
+                        style = AnkyType.Body.copy(fontSize = 19.sp, lineHeight = 28.sp),
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .testTag("reconstructed-text"),
+                    )
+                }
+                RevealCopyButton(
+                    label = "copy writing",
+                    copied = state.copiedSection == RevealCopySection.Writing,
+                    onClick = { copySection(RevealCopySection.Writing) },
+                    modifier = Modifier.padding(top = 16.dp),
                 )
-                PrivacyDivider(Modifier.padding(top = 28.dp))
+                PrivacyDivider(Modifier.padding(top = 34.dp))
+
+                when {
+                    state.reflection != null -> {
+                        SavedReflectionPanel(
+                            reflection = state.reflection,
+                            copied = state.copiedSection == RevealCopySection.Reflection,
+                            onCopy = { copySection(RevealCopySection.Reflection) },
+                            modifier = Modifier.padding(top = 36.dp),
+                        )
+                    }
+                    state.streamingReflectionMarkdown.isNotBlank() || state.isAsking -> {
+                        StreamingReflectionPanel(
+                            markdown = state.streamingReflectionMarkdown,
+                            status = state.reflectionStatusMessage,
+                            generatedCharacters = state.streamingReflectionCharacterCount,
+                            modifier = Modifier.padding(top = 36.dp),
+                        )
+                    }
+                    inlineReflectionActive && state.error != null -> {
+                        ReflectionErrorPanel(
+                            message = state.error,
+                            modifier = Modifier.padding(top = 36.dp),
+                        )
+                    }
+                }
             }
         }
-        if (showCopyBurst) {
+        if (copiedBurst != null) {
             Text(
-                "📋",
-                fontSize = 26.sp,
+                when (copiedBurst) {
+                    RevealCopySection.Reflection -> "copied reflection"
+                    else -> "copied writing"
+                },
+                style = AnkyType.Mono.copy(color = AnkyColors.Paper, fontWeight = FontWeight.Bold),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 120.dp, end = 28.dp)
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF120F0B).copy(alpha = 0.92f))
-                    .border(1.dp, CopyMagenta.copy(alpha = 0.72f), CircleShape)
-                    .padding(8.dp),
+                    .border(1.dp, AnkyColors.Gold.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
         RevealEdgeBackSwipe(onBack = onBack, modifier = Modifier.align(Alignment.CenterStart))
         if (artifact != null) {
-            RevealAnkyReflectionChat(
-                state = state,
-                onAsk = {
-                    showReflectionSheet = true
-                    viewModel.askAnky()
+            RevealBottomActionButton(
+                title = bottomActionTitle(state),
+                isLoading = state.isAsking,
+                isEnabled = bottomActionIsEnabled(state),
+                onClick = {
+                    when {
+                        state.reflection != null -> {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            scrollToReflection()
+                        }
+                        state.needsCreditsToReflect -> {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            showCreditPurchaseSheet = true
+                            viewModel.refreshCredits(showError = false)
+                        }
+                        artifact.isComplete -> {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            inlineReflectionActive = true
+                            viewModel.askAnky()
+                            scrollToReflection()
+                        }
+                        else -> onTryAgain()
+                    }
                 },
-                onRead = { showReflectionSheet = true },
-                onOpenCredits = onOpenCredits,
-                onTryAgain = onTryAgain,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 22.dp),
             )
-        }
-        if (showReflectionSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showReflectionSheet = false },
-                sheetState = reflectionSheetState,
-                containerColor = AnkyColors.Ink,
-                contentColor = AnkyColors.Paper,
-            ) {
-                ReflectionBottomSheetContent(
-                    state = state,
-                    onOpenTag = onOpenTag,
-                    onAsk = { viewModel.askAnky() },
-                )
-            }
         }
         if (confirmDelete) {
             AlertDialog(
                 onDismissRequest = { confirmDelete = false },
-                title = { Text("delete forever?") },
+                title = { Text("Delete forever?") },
                 text = {
-                    Text("This permanently deletes this writing session and its saved reflection from this device. This cannot be undone.")
+                    Text("This permanently deletes this writing session. This cannot be undone.")
                 },
                 confirmButton = {
                     TextButton(
@@ -253,18 +330,36 @@ fun RevealScreen(
                             viewModel.deleteSession()
                         },
                     ) {
-                        Text("delete forever")
+                        Text("Delete")
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { confirmDelete = false }) {
-                        Text("cancel")
+                        Text("Cancel")
                     }
                 },
                 containerColor = AnkyColors.Ink,
                 titleContentColor = AnkyColors.Paper,
                 textContentColor = AnkyColors.PaperMuted,
             )
+        }
+        if (showCreditPurchaseSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showCreditPurchaseSheet = false },
+                sheetState = creditPurchaseSheetState,
+                containerColor = AnkyColors.Ink,
+                contentColor = AnkyColors.Paper,
+            ) {
+                RevealCreditPurchaseSheet(
+                    state = state,
+                    onRefresh = { viewModel.refreshCredits() },
+                    onPurchase = { packageId ->
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        viewModel.purchaseCredits(packageId, context.findActivity())
+                    },
+                    modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 34.dp),
+                )
+            }
         }
     }
 }
@@ -350,6 +445,329 @@ private fun RevealHeader(
         Box(Modifier.fillMaxWidth().height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.13f)))
     }
 }
+
+@Composable
+private fun RevealCopyButton(
+    label: String,
+    copied: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier
+            .clip(RoundedCornerShape(5.dp))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = if (copied) 0.62f else 0.26f), RoundedCornerShape(5.dp)),
+    ) {
+        Text(
+            if (copied) "copied" else label,
+            style = AnkyType.Mono.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = AnkyColors.GoldSoft,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SavedReflectionPanel(
+    reflection: LocalReflection,
+    copied: Boolean,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            reflection.title.lowercase(),
+            style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
+            modifier = Modifier.testTag("saved-reflection-title"),
+        )
+        MarkdownishText(reflection.displayBody)
+        reflection.creditsRemaining?.let { remaining ->
+            Text(
+                "$remaining ${if (remaining == 1) "reflection" else "reflections"} left",
+                style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        RevealCopyButton(
+            label = "copy reflection",
+            copied = copied,
+            onClick = onCopy,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun StreamingReflectionPanel(
+    markdown: String,
+    status: String,
+    generatedCharacters: Int,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(
+            "the mirror is forming",
+            style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
+        )
+        MirrorProgress(status = status, generatedCharacters = generatedCharacters)
+        if (markdown.isNotBlank()) {
+            Text(
+                "writing reflection · $generatedCharacters characters",
+                style = AnkyType.Caption.copy(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AnkyColors.Gold.copy(alpha = 0.72f),
+                ),
+            )
+            MarkdownishText(markdown)
+        }
+    }
+}
+
+@Composable
+private fun ReflectionErrorPanel(
+    message: String?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "the mirror did not open",
+            style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
+        )
+        Text(
+            message.orEmpty().lowercase(),
+            style = AnkyType.Mono.copy(fontSize = 13.sp, lineHeight = 18.sp, color = Color.Red.copy(alpha = 0.82f)),
+        )
+    }
+}
+
+@Composable
+private fun RevealBottomActionButton(
+    title: String,
+    isLoading: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(62.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(AnkyColors.Gold)
+            .border(1.dp, Color.White.copy(alpha = 0.48f), RoundedCornerShape(7.dp))
+            .clickable(enabled = isEnabled, onClick = onClick)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = AnkyColors.Ink,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Text(
+                title,
+                style = AnkyType.Mono.copy(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AnkyColors.Ink.copy(alpha = if (isEnabled || isLoading) 1f else 0.52f),
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+private fun bottomActionTitle(state: RevealState): String =
+    when {
+        state.isAsking -> "LOADING"
+        state.reflection != null -> "READ REFLECTION"
+        state.needsCreditsToReflect -> "GET MORE CREDITS"
+        state.artifact?.isComplete == true -> "REFLECT THIS ANKY"
+        else -> "WRITE ${AnkyDuration.CompleteRitualMinutes} MINUTES"
+    }
+
+private fun bottomActionIsEnabled(state: RevealState): Boolean =
+    when {
+        state.isAsking -> false
+        state.reflection != null -> true
+        state.needsCreditsToReflect -> true
+        state.artifact?.isComplete == true -> state.canSubmitReflectionRequest
+        else -> true
+    }
+
+@Composable
+private fun RevealCreditPurchaseSheet(
+    state: RevealState,
+    onRefresh: () -> Unit,
+    onPurchase: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                "reflection credits",
+                style = AnkyType.Heading.copy(fontSize = 27.sp, fontWeight = FontWeight.SemiBold),
+            )
+            Text(
+                "writing stays free. each reflection spends one credit.",
+                style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Paper.copy(alpha = 0.72f)),
+            )
+        }
+
+        RevealCreditBalancePanel(state.creditBalance)
+
+        when {
+            state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow("loading credit packs")
+            state.creditPackages.isEmpty() -> RevealCreditDisabledRow("no credit packs available")
+            else -> {
+                state.creditPackages.take(3).forEach { creditPackage ->
+                    RevealCreditPackageRow(
+                        creditPackage = creditPackage,
+                        isRecommended = creditPackage.title == "11 reflections" ||
+                            creditPackage.packageId.endsWith(".credits.11"),
+                        isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
+                        onPurchase = onPurchase,
+                    )
+                }
+            }
+        }
+
+        TextButton(
+            onClick = onRefresh,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(7.dp))
+                .background(Color.Black.copy(alpha = 0.18f))
+                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.28f), RoundedCornerShape(7.dp)),
+        ) {
+            Text(
+                if (state.creditsLoading) "loading packs" else "refresh credits",
+                style = AnkyType.Mono.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
+            )
+        }
+
+        state.error?.let { error ->
+            Text(
+                error.lowercase(),
+                style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RevealCreditBalancePanel(balance: Int?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.Black.copy(alpha = 0.18f))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(7.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            balance?.toString() ?: "...",
+            style = AnkyType.Title.copy(
+                fontSize = 54.sp,
+                fontWeight = FontWeight.Bold,
+                shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.28f), blurRadius = 14f),
+            ),
+        )
+        Text(
+            if (balance == 1) "credit" else "credits",
+            style = AnkyType.Mono.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Paper.copy(alpha = 0.62f)),
+            modifier = Modifier.padding(bottom = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun RevealCreditPackageRow(
+    creditPackage: CreditPackage,
+    isRecommended: Boolean,
+    isPurchasing: Boolean,
+    onPurchase: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.Black.copy(alpha = 0.18f))
+            .border(
+                1.dp,
+                AnkyColors.Gold.copy(alpha = if (isRecommended) 0.52f else 0.28f),
+                RoundedCornerShape(7.dp),
+            )
+            .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    creditPackage.title,
+                    style = AnkyType.Body.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
+                )
+                if (isRecommended) {
+                    Text(
+                        "recommended",
+                        style = AnkyType.Mono.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(AnkyColors.Gold)
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    )
+                }
+            }
+            if (creditPackage.subtitle.isNotBlank() && creditPackage.subtitle != creditPackage.title) {
+                Text(
+                    creditPackage.subtitle,
+                    style = AnkyType.Caption.copy(color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                )
+            }
+        }
+        Text(
+            if (isPurchasing) "..." else creditPackage.price,
+            style = AnkyType.Caption.copy(fontSize = 15.sp, color = AnkyColors.Gold),
+        )
+    }
+}
+
+@Composable
+private fun RevealCreditDisabledRow(text: String) {
+    Text(
+        text,
+        style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.Black.copy(alpha = 0.14f))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.16f), RoundedCornerShape(7.dp))
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+    )
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 @Composable
 private fun RevealTexture(modifier: Modifier = Modifier.fillMaxSize()) {

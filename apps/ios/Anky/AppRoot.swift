@@ -4,15 +4,21 @@ import UIKit
 struct AppRoot: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("anky.biometricIdentityConfirmation") private var faceIDLockEnabled = false
+    @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
+    @AppStorage("anky.biometricPrivacyPromptPendingAfterFirstAnky") private var faceIDPrivacyPromptPendingAfterFirstAnky = false
     @State private var selectedTab = 0
     @State private var revealAfterWriting: SavedAnky?
     @State private var isUnlocked = false
     @State private var failedAuthAttempts = 0
     @State private var isAuthenticating = false
+    @State private var skipsNextFaceIDEnableAuthentication = false
+    @State private var suppressFaceIDPrivacyPromptUntilNextActivation = false
     @State private var recoveryPhraseInput = ""
     @State private var showsLaunchDialogue = true
     @State private var keyboardHeight: CGFloat = 0
-    @State private var companionMessageIndexByTab: [Int: Int] = [:]
+    @State private var showsICloudRestorePrompt = false
+    @State private var isRestoringICloudBackup = false
+    @State private var iCloudRestoreErrorMessage: String?
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
     @StateObject private var ankyCompanion = AnkyCompanionStore()
@@ -21,16 +27,25 @@ struct AppRoot: View {
         selectedTab = 1
     }
 
+    private func showWriteInterface() {
+        revealAfterWriting = nil
+        showsLaunchDialogue = false
+        selectedTab = 0
+        syncWriteBubble()
+    }
+
     private func revealOnMap(_ artifact: SavedAnky) {
         revealAfterWriting = artifact
         selectedTab = 1
         showsLaunchDialogue = false
+        armFaceIDPrivacyPromptAfterFirstAnky()
+        backUpToICloudIfEnabled()
         syncWriteBubble()
     }
 
     var body: some View {
         ZStack {
-            TabView(selection: $selectedTab) {
+            TabView(selection: selectedTabBinding) {
                 NavigationStack {
                     WriteView(
                         viewModel: writeViewModel,
@@ -42,22 +57,27 @@ struct AppRoot: View {
                     )
                 }
                 .tabItem {
-                    Label("Write", systemImage: "square.and.pencil")
+                    Label(AnkyLocalization.text(.tabWrite), systemImage: "square.and.pencil")
                 }
                 .tag(0)
 
                 MapView(
                     revealAfterWriting: $revealAfterWriting,
-                    onTryAgain: beginRetryWriting
+                    onTryAgain: beginRetryWriting,
+                    onBackupRequested: backUpToICloudIfEnabled
                 )
                     .tabItem {
-                        Label("Map", systemImage: "map")
+                        Label(AnkyLocalization.text(.tabMap), systemImage: "map")
                     }
                     .tag(1)
 
-                YouView(viewModel: youViewModel)
+                YouView(
+                    viewModel: youViewModel,
+                    onWriteRequested: showWriteInterface,
+                    onDevelopmentWipe: resetForFreshDevelopmentLaunch
+                )
                     .tabItem {
-                        Label("You", systemImage: "person.crop.circle")
+                        Label(AnkyLocalization.text(.tabYou), systemImage: "person.crop.circle")
                     }
                     .tag(2)
             }
@@ -77,14 +97,23 @@ struct AppRoot: View {
                 .zIndex(100)
             }
 
+            if showsICloudRestorePrompt {
+                ICloudRestorePromptView(
+                    isRestoring: isRestoringICloudBackup,
+                    errorMessage: iCloudRestoreErrorMessage,
+                    restore: restoreFromICloud,
+                    createNew: createNewLocalAccount
+                )
+                .zIndex(120)
+            }
+
             AnkyPresenceOverlay(
                 companion: ankyCompanion,
                 defaultSequence: presenceSequence,
                 goldenGlow: selectedTab == 0 && writeViewModel.hasReachedRitualMark,
                 transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark,
                 placement: selectedTab == 0 ? .writeRightLane : .trailingCenter,
-                bubblePlacement: selectedTab == 0 ? .top : .bottom,
-                onTap: presenceTapHandler
+                bubblePlacement: selectedTab == 0 ? .top : .bottom
             )
                 .zIndex(40)
         }
@@ -100,21 +129,33 @@ struct AppRoot: View {
         .onAppear {
             selectedTab = 0
             revealAfterWriting = nil
+            suppressFaceIDPrivacyPromptUntilNextActivation = false
             AppOpenStore().loadOrCreate()
             let identityStore = WriterIdentityStore()
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
             _ = try? identityStore.loadOrCreate()
+            armFaceIDPrivacyPromptIfWritingAlreadyExists()
             Task {
                 await youViewModel.preloadCredits()
             }
             Task {
                 await authenticateIfNeeded()
             }
+            Task {
+                await checkForICloudRestore()
+            }
             syncWriteBubble()
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                Task {
+                    await youViewModel.preloadCredits()
+                }
+                if suppressFaceIDPrivacyPromptUntilNextActivation {
+                    suppressFaceIDPrivacyPromptUntilNextActivation = false
+                    syncWriteBubble()
+                }
                 if faceIDLockEnabled && !isUnlocked && !isAuthenticating {
                     Task {
                         await authenticateIfNeeded()
@@ -134,11 +175,16 @@ struct AppRoot: View {
         }
         .onChange(of: faceIDLockEnabled) { _, enabled in
             if enabled {
-                isUnlocked = false
                 failedAuthAttempts = 0
                 recoveryPhraseInput = ""
-                Task {
-                    await authenticateIfNeeded()
+                if skipsNextFaceIDEnableAuthentication {
+                    skipsNextFaceIDEnableAuthentication = false
+                    isUnlocked = true
+                } else {
+                    isUnlocked = false
+                    Task {
+                        await authenticateIfNeeded()
+                    }
                 }
             } else {
                 isUnlocked = true
@@ -181,6 +227,9 @@ struct AppRoot: View {
         .onChange(of: writeViewModel.isRequestingNudge) { _, _ in
             syncWriteBubble()
         }
+        .onChange(of: faceIDPrivacyOnboardingCompleted) { _, _ in
+            syncWriteBubble()
+        }
     }
 
     private func authenticateIfNeeded() async {
@@ -196,7 +245,7 @@ struct AppRoot: View {
 
         isAuthenticating = true
         isUnlocked = false
-        let ok = await BiometricAuthClient().confirm(reason: "Unlock ANKY.")
+        let ok = await BiometricAuthClient().confirm(reason: AnkyLocalization.text(.unlockFaceIDReason))
         isUnlocked = ok
         if ok {
             failedAuthAttempts = 0
@@ -240,19 +289,127 @@ struct AppRoot: View {
         writeViewModel.openWritingPortal()
     }
 
+    private func resetForFreshDevelopmentLaunch() {
+        selectedTab = 0
+        revealAfterWriting = nil
+        faceIDLockEnabled = false
+        faceIDPrivacyOnboardingCompleted = false
+        faceIDPrivacyPromptPendingAfterFirstAnky = false
+        suppressFaceIDPrivacyPromptUntilNextActivation = false
+        isUnlocked = true
+        failedAuthAttempts = 0
+        isAuthenticating = false
+        skipsNextFaceIDEnableAuthentication = false
+        recoveryPhraseInput = ""
+        showsLaunchDialogue = true
+        showsICloudRestorePrompt = false
+        isRestoringICloudBackup = false
+        iCloudRestoreErrorMessage = nil
+        keyboardHeight = 0
+        writeViewModel.clearCurrentSession()
+        youViewModel.refresh()
+        ankyCompanion.hideBubble()
+        AppOpenStore().loadOrCreate()
+        let identityStore = WriterIdentityStore()
+        _ = try? identityStore.loadOrCreateRecoveryPhrase()
+        _ = try? identityStore.loadOrCreate()
+        Task {
+            await youViewModel.preloadCredits()
+        }
+        DispatchQueue.main.async {
+            syncWriteBubble()
+        }
+    }
+
+    private func backUpToICloudIfEnabled() {
+        Task.detached {
+            ICloudBackupStore().backUpIfEnabled()
+        }
+    }
+
+    private func checkForICloudRestore() async {
+        guard LocalAnkyArchive().list().isEmpty,
+              ReflectionStore().list().isEmpty,
+              ICloudBackupStore().hasRestorableBackup() else {
+            return
+        }
+
+        await MainActor.run {
+            showsICloudRestorePrompt = true
+            showsLaunchDialogue = false
+            ankyCompanion.hideBubble()
+        }
+    }
+
+    private func restoreFromICloud() {
+        guard !isRestoringICloudBackup else {
+            return
+        }
+
+        isRestoringICloudBackup = true
+        iCloudRestoreErrorMessage = nil
+        Task {
+            do {
+                _ = try ICloudBackupStore().restoreFromICloud()
+                youViewModel.refresh()
+                await youViewModel.preloadCredits()
+                selectedTab = 1
+                showsICloudRestorePrompt = false
+                isRestoringICloudBackup = false
+                ankyCompanion.hideBubble()
+            } catch {
+                iCloudRestoreErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Anky could not restore from iCloud."
+                isRestoringICloudBackup = false
+            }
+        }
+    }
+
+    private func createNewLocalAccount() {
+        showsICloudRestorePrompt = false
+        iCloudRestoreErrorMessage = nil
+        showsLaunchDialogue = true
+        syncWriteBubble()
+    }
+
     private var shouldFocusWrite: Bool {
         selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
+    }
+
+    private var selectedTabBinding: Binding<Int> {
+        Binding {
+            selectedTab
+        } set: { tab in
+            if tab == 0, selectedTab != tab {
+                AnkyHaptics.light()
+            }
+            selectedTab = tab
+        }
     }
 
     private var shouldShowLaunchDialogue: Bool {
         showsLaunchDialogue
             && selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
+            && !shouldShowBiometricOnboarding
             && !writeViewModel.hasActiveDotAnky
             && !writeViewModel.hasReachedRitualMark
             && keyboardHeight == 0
             && !shouldShowWriteErrorDialogue
+    }
+
+    private var shouldShowBiometricOnboarding: Bool {
+        !faceIDPrivacyOnboardingCompleted
+            && faceIDPrivacyPromptPendingAfterFirstAnky
+            && !suppressFaceIDPrivacyPromptUntilNextActivation
+            && !faceIDLockEnabled
+            && selectedTab == 0
+            && isUnlocked
+            && keyboardHeight == 0
+            && !writeViewModel.hasActiveDotAnky
+            && !writeViewModel.hasReachedRitualMark
+            && !shouldShowWriteErrorDialogue
+            && BiometricAuthClient().canAuthenticate()
     }
 
     private var shouldShowWriteErrorDialogue: Bool {
@@ -271,10 +428,10 @@ struct AppRoot: View {
 
     private var launchDialogueMessage: String {
         guard writeViewModel.todayAnkyCount > 0 else {
-            return "the living .anky string is the state of this session."
+            return AnkyLocalization.text(.launchEmpty)
         }
 
-        return "ankys today: \(writeViewModel.todayAnkyCount)"
+        return AnkyLocalization.text(.launchCountFormat, writeViewModel.todayAnkyCount)
     }
 
     private func keyboardOverlap(from notification: Notification) -> CGFloat {
@@ -295,19 +452,6 @@ struct AppRoot: View {
             return .waveFront
         default:
             return .idleFront
-        }
-    }
-
-    private var presenceTapHandler: (() -> Bool)? {
-        return {
-            if writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark {
-                return writeViewModel.startAnkyNudgeIfPossible()
-            }
-            if selectedTab == 0 && writeViewModel.replayRecentPromptIfAvailable() {
-                return true
-            }
-            showCompanionNote()
-            return true
         }
     }
 
@@ -355,6 +499,34 @@ struct AppRoot: View {
             return
         }
 
+        if shouldShowBiometricOnboarding {
+            ankyCompanion.witness(
+                mood: .guiding,
+                sequence: .waveFront,
+                bubble: AnkyBubble(
+                    text: AnkyLocalization.text(.faceIDPrompt),
+                    actions: [
+                        AnkyChatAction(AnkyLocalization.text(.activateFaceID), isPrimary: true) {
+                            Task {
+                                await enableFaceIDLockFromOnboarding()
+                            }
+                        },
+                        AnkyChatAction(AnkyLocalization.text(.notNow)) {
+                            faceIDPrivacyOnboardingCompleted = true
+                            faceIDPrivacyPromptPendingAfterFirstAnky = false
+                            ankyCompanion.hideBubble()
+                        }
+                    ],
+                    close: {
+                        faceIDPrivacyOnboardingCompleted = true
+                        faceIDPrivacyPromptPendingAfterFirstAnky = false
+                        ankyCompanion.hideBubble()
+                    }
+                )
+            )
+            return
+        }
+
         if shouldShowLaunchDialogue {
             ankyCompanion.witness(
                 mood: .guiding,
@@ -362,14 +534,14 @@ struct AppRoot: View {
                 bubble: AnkyBubble(
                     text: launchDialogueMessage,
                     actions: [
-                        AnkyChatAction(writeViewModel.todayAnkyCount > 0 ? "write again" : "write \(AnkyDuration.completeRitualMinutes) minutes", isPrimary: true) {
+                        AnkyChatAction(writeViewModel.todayAnkyCount > 0 ? AnkyLocalization.text(.writeAgain) : AnkyLocalization.text(.writeMinutesFormat, AnkyDuration.completeRitualMinutes), isPrimary: true) {
                             beginLaunchWriting()
                         }
                     ],
                     steps: [
-                        AnkyBubbleStep("write one character"),
-                        AnkyBubbleStep("keep the thread alive"),
-                        AnkyBubbleStep("let silence close it")
+                        AnkyBubbleStep(AnkyLocalization.text(.stepWriteOneCharacter)),
+                        AnkyBubbleStep(AnkyLocalization.text(.stepKeepThreadAlive)),
+                        AnkyBubbleStep(AnkyLocalization.text(.stepLetSilenceCloseIt))
                     ],
                     close: closeLaunchDialogue
                 )
@@ -384,55 +556,50 @@ struct AppRoot: View {
         }
     }
 
-    private func showCompanionNote() {
-        showsLaunchDialogue = false
-        let messages = companionMessages(for: selectedTab)
-        let index = companionMessageIndexByTab[selectedTab, default: 0]
-        companionMessageIndexByTab[selectedTab] = index + 1
-        let message = messages[index % messages.count]
-        ankyCompanion.witness(
-            mood: .guiding,
-            sequence: presenceSequence,
-            bubble: AnkyBubble(text: message)
-        )
-    }
+    private func enableFaceIDLockFromOnboarding() async {
+        guard BiometricAuthClient().canAuthenticate() else {
+            faceIDPrivacyOnboardingCompleted = true
+            faceIDPrivacyPromptPendingAfterFirstAnky = false
+            syncWriteBubble()
+            return
+        }
 
-    private func dismissCompanionNote() {
+        let confirmed = await BiometricAuthClient().confirm(reason: AnkyLocalization.text(.protectFaceIDReason))
+        faceIDPrivacyOnboardingCompleted = true
+        faceIDPrivacyPromptPendingAfterFirstAnky = false
+        guard confirmed else {
+            syncWriteBubble()
+            return
+        }
+
+        isUnlocked = true
+        failedAuthAttempts = 0
+        recoveryPhraseInput = ""
+        skipsNextFaceIDEnableAuthentication = true
+        faceIDLockEnabled = true
         ankyCompanion.hideBubble()
     }
 
-    private func companionMessages(for tab: Int) -> [String] {
-        switch tab {
-        case 0:
-            if writeViewModel.hasReachedRitualMark {
-                return [
-                    "you are here. the ritual is complete; let the final silence close it.",
-                    "you are here. this .anky is ready to become an artifact.",
-                    "you are here. the thread crossed \(AnkyDuration.completeRitualMinutes) minutes. stay quiet and let it seal."
-                ]
-            }
-            return [
-                "you are here. this is the writing surface: one living thread, one character at a time.",
-                "you are here. deletion is blocked on purpose; keep moving forward without editing.",
-                "you are here. writing stays local unless you export it or ask for a reflection.",
-                "you are here. \(AnkyDuration.completeRitualMinutes) minutes turns a fragment into a complete .anky."
-            ]
-        case 1:
-            return [
-                "you are here. the map is your local trail; every day exists even when it is quiet.",
-                "you are here. tap a day to reopen its .ankys and saved reflections.",
-                "you are here. the trail begins on the first day this app opened on this device.",
-                "you are here. fragments and complete ankys both stay in your local archive."
-            ]
-        case 2:
-            return [
-                "you are here. this page is for identity, privacy, exports, and reflection credits.",
-                "you are here. your identity unlocks reflections, backups, and credit balance.",
-                "you are here. data leaves this phone only when you choose export or reflection.",
-                "you are here. credits buy reflections; writing itself stays free."
-            ]
-        default:
-            return ["you are here."]
+    private func armFaceIDPrivacyPromptAfterFirstAnky() {
+        guard !faceIDPrivacyOnboardingCompleted,
+              !faceIDLockEnabled,
+              BiometricAuthClient().canAuthenticate() else {
+            return
+        }
+        faceIDPrivacyPromptPendingAfterFirstAnky = true
+        suppressFaceIDPrivacyPromptUntilNextActivation = true
+    }
+
+    private func armFaceIDPrivacyPromptIfWritingAlreadyExists() {
+        guard !faceIDPrivacyOnboardingCompleted,
+              !faceIDLockEnabled,
+              !faceIDPrivacyPromptPendingAfterFirstAnky,
+              BiometricAuthClient().canAuthenticate() else {
+            return
+        }
+        let hasCompletedAnky = SessionIndexStore().load().contains { $0.isComplete }
+        if hasCompletedAnky {
+            faceIDPrivacyPromptPendingAfterFirstAnky = true
         }
     }
 }
@@ -484,6 +651,85 @@ private struct LockFailureView: View {
                 return
             }
             recover(normalized)
+        }
+    }
+}
+
+private struct ICloudRestorePromptView: View {
+    let isRestoring: Bool
+    let errorMessage: String?
+    let restore: () -> Void
+    let createNew: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            Image("you-bg-cosmos")
+                .resizable()
+                .scaledToFill()
+                .opacity(0.34)
+                .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                Spacer()
+
+                Image("AnkySigil")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 88, height: 88)
+                    .shadow(color: AnkyTheme.gold.opacity(0.28), radius: 18)
+
+                VStack(spacing: 10) {
+                    Text("I remember you.")
+                        .font(.system(size: 34, weight: .semibold))
+                        .foregroundStyle(AnkyTheme.goldBright)
+                        .multilineTextAlignment(.center)
+
+                    Text("An encrypted Anky backup is waiting in iCloud.")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(AnkyTheme.text.opacity(0.68))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AnkyTheme.danger.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 10)
+                }
+
+                Button(action: restore) {
+                    HStack(spacing: 10) {
+                        if isRestoring {
+                            ProgressView()
+                                .tint(Color.black.opacity(0.82))
+                        }
+                        Text(isRestoring ? "Restoring" : "Restore From iCloud")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.black.opacity(0.84))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 58)
+                    .background(AnkyTheme.goldBright, in: Capsule())
+                    .shadow(color: AnkyTheme.gold.opacity(0.24), radius: 18, y: 8)
+                }
+                .buttonStyle(.plain)
+                .disabled(isRestoring)
+                .padding(.top, 8)
+
+                Button("Create new account", action: createNew)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AnkyTheme.text.opacity(0.62))
+                    .disabled(isRestoring)
+
+                Spacer()
+            }
+            .padding(.horizontal, 34)
         }
     }
 }

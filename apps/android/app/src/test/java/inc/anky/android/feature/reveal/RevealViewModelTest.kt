@@ -1,6 +1,7 @@
 package inc.anky.android.feature.reveal
 
 import android.app.Activity
+import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.credits.CreditState
 import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.identity.WriterIdentity
@@ -186,9 +187,10 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun askAnkyStoresCreditsRemainingWithoutInvalidatingCreditCache() = runTest {
+    fun askAnkyStoresCreditsRemainingAndInvalidatesCreditCache() = runTest {
         val server = MockWebServer()
         val stores = stores()
+        val credits = FakeCreditsClient(balance = 9)
         val artifact = stores.archive.save(completeAnky())
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = 7))
@@ -201,6 +203,7 @@ class RevealViewModelTest {
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                creditsClient = credits,
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
 
@@ -212,6 +215,7 @@ class RevealViewModelTest {
             assertFalse(stores.requests.isPending(artifact.hash))
             assertEquals(7, viewModel.state.value.creditBalance)
             assertTrue(viewModel.state.value.hasClaimedFreeCredits)
+            assertEquals(1, credits.invalidateCount)
         } finally {
             server.shutdown()
         }
@@ -296,8 +300,68 @@ class RevealViewModelTest {
 
         assertEquals(identity().accountId, credits.configuredAppUserId)
         assertEquals(2, viewModel.state.value.creditBalance)
+        assertEquals(credits.packages, viewModel.state.value.creditPackages)
         assertFalse(viewModel.state.value.creditsDenied)
         assertFalse(viewModel.state.value.creditsLoading)
+    }
+
+    @Test
+    fun unavailableCreditStateOpensPurchasePathInsteadOfReflectionSubmit() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Get more credits should not ask the mirror.") },
+            hasClaimedFreeCreditsProvider = { true },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.refreshCredits()
+        advanceUntilIdle()
+        viewModel.askAnky()
+        advanceUntilIdle()
+
+        assertEquals(ReflectionCreditPromptState.Unknown, viewModel.state.value.creditPromptState)
+
+        val denied = viewModel.state.value.copy(creditBalance = 0, creditsDenied = true)
+        assertFalse(denied.canSubmitReflectionRequest)
+        assertTrue(denied.needsCreditsToReflect)
+    }
+
+    @Test
+    fun purchaseCreditsRefreshesRevealBalanceAndPackages() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val credits = FakeCreditsClient(
+            balance = 0,
+            purchaseBalance = 3,
+            packages = listOf(CreditPackage("inc.anky.credits.3", "inc.anky.credits.3", "3 reflections", "starter", "$2.99")),
+        )
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Purchasing credits should not ask the mirror.") },
+            creditsClient = credits,
+            hasClaimedFreeCreditsProvider = { true },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.purchaseCredits("inc.anky.credits.3", null)
+        advanceUntilIdle()
+
+        assertEquals(identity().accountId, credits.configuredAppUserId)
+        assertEquals("inc.anky.credits.3", credits.purchasedPackageId)
+        assertEquals(3, viewModel.state.value.creditBalance)
+        assertEquals(credits.packages, viewModel.state.value.creditPackages)
+        assertFalse(viewModel.state.value.creditsDenied)
+        assertEquals(null, viewModel.state.value.purchasingCreditPackageId)
     }
 
     @Test
@@ -338,6 +402,7 @@ class RevealViewModelTest {
     fun askAnkyDoesNotInvalidateCreditCacheWhenCreditsRemainingIsNull() = runTest {
         val server = MockWebServer()
         val stores = stores()
+        val credits = FakeCreditsClient(balance = 9)
         val artifact = stores.archive.save(completeAnky())
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = null))
@@ -350,6 +415,7 @@ class RevealViewModelTest {
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                creditsClient = credits,
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
 
@@ -357,9 +423,44 @@ class RevealViewModelTest {
             advanceUntilIdle()
 
             assertEquals(null, stores.reflections.load(artifact.hash)?.creditsRemaining)
+            assertEquals(0, credits.invalidateCount)
         } finally {
             server.shutdown()
         }
+    }
+
+    @Test
+    fun copyTextIsSectionAwareAndReflectionIncludesTitleAndBody() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        stores.reflections.save(
+            LocalReflection(
+                hash = artifact.hash,
+                title = "Small Thread",
+                reflection = "Here is what I saw.",
+                createdAt = Instant.EPOCH,
+                creditsRemaining = 3,
+            ),
+        )
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Copy should not ask the mirror.") },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertEquals("hello!", viewModel.textForCopy(RevealCopySection.Writing))
+        assertEquals("Small Thread\n\nHere is what I saw.", viewModel.textForCopy(RevealCopySection.Reflection))
+
+        viewModel.markCopied(RevealCopySection.Writing)
+        assertEquals(RevealCopySection.Writing, viewModel.state.value.copiedSection)
+        viewModel.clearCopied(RevealCopySection.Reflection)
+        assertEquals(RevealCopySection.Writing, viewModel.state.value.copiedSection)
+        viewModel.clearCopied(RevealCopySection.Writing)
+        assertEquals(null, viewModel.state.value.copiedSection)
     }
 
     @Test
@@ -454,22 +555,30 @@ class RevealViewModelTest {
 
     private class FakeCreditsClient(
         private val balance: Int?,
+        private val purchaseBalance: Int? = balance,
+        val packages: List<CreditPackage> = emptyList(),
     ) : CreditsClient {
         var configuredAppUserId: String? = null
+        var invalidateCount = 0
+        var purchasedPackageId: String? = null
 
         override suspend fun configure(appUserId: String) {
             configuredAppUserId = appUserId
         }
 
         override suspend fun refresh(): CreditState =
-            CreditState(isConfigured = true, balance = balance, message = "credits refreshed.")
+            CreditState(isConfigured = true, balance = balance, message = "credits refreshed.", packages = packages)
 
-        override suspend fun purchase(packageId: String, activity: Activity?): CreditState =
-            refresh()
+        override suspend fun purchase(packageId: String, activity: Activity?): CreditState {
+            purchasedPackageId = packageId
+            return CreditState(isConfigured = true, balance = purchaseBalance, message = "Credits updated.", packages = packages)
+        }
 
         override suspend fun restorePurchases(): CreditState =
             refresh()
 
-        override suspend fun invalidateCreditBalanceCache() = Unit
+        override suspend fun invalidateCreditBalanceCache() {
+            invalidateCount += 1
+        }
     }
 }

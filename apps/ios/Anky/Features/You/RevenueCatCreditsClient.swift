@@ -20,13 +20,13 @@ enum RevenueCatCreditPurchaseResult {
 }
 
 enum RevenueCatCreditsConfiguration {
-    static let apiKey = "appl_zLWgfNRstPVwqJkIDmhJNReuJtc"
+    static let apiKey = "appl_mvCsxolPWZmQjtULGLQhmOUhGMY"
     static let currencyCode = "CRD"
-    static let offeringIdentifier = "credits DEV"
+    static let offeringIdentifier = "Credits"
     static let productOrder = [
-        "inc.dev.anky.credits.22",
-        "inc.dev.anky.credits.88_bonus_11",
-        "inc.dev.anky.credits.333_bonus_88"
+        "inc.anky.credits.3",
+        "inc.anky.credits.11",
+        "inc.anky.credits.33"
     ]
 }
 
@@ -151,7 +151,7 @@ final class RevenueCatCreditsClient {
         return RevenueCatCreditPackage(
             id: product.productIdentifier,
             title: title(for: product.productIdentifier),
-            subtitle: product.localizedTitle,
+            subtitle: subtitle(for: product.productIdentifier, fallback: product.localizedTitle),
             price: product.localizedPriceString,
             purchaseTarget: .package(package)
         )
@@ -161,7 +161,7 @@ final class RevenueCatCreditsClient {
         RevenueCatCreditPackage(
             id: product.productIdentifier,
             title: title(for: product.productIdentifier),
-            subtitle: product.localizedTitle,
+            subtitle: subtitle(for: product.productIdentifier, fallback: product.localizedTitle),
             price: product.localizedPriceString,
             purchaseTarget: .product(product)
         )
@@ -169,14 +169,25 @@ final class RevenueCatCreditsClient {
 
     private static func title(for productIdentifier: String) -> String {
         switch productIdentifier {
-        case "inc.dev.anky.credits.22":
-            return "22 credits"
-        case "inc.dev.anky.credits.88_bonus_11":
-            return "99 credits"
-        case "inc.dev.anky.credits.333_bonus_88":
-            return "421 credits"
+        case "inc.anky.credits.3":
+            return "3 reflections"
+        case "inc.anky.credits.11":
+            return "11 reflections"
+        case "inc.anky.credits.33":
+            return "33 reflections"
         default:
             return "credits"
+        }
+    }
+
+    private static func subtitle(for productIdentifier: String, fallback: String) -> String {
+        switch productIdentifier {
+        case "inc.anky.credits.11":
+            return "Stay with it"
+        case "inc.anky.credits.33":
+            return "Daily practice"
+        default:
+            return fallback
         }
     }
 }

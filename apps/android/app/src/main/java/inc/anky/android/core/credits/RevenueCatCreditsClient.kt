@@ -176,7 +176,7 @@ class RevenueCatCreditsClient(
             packageId = productId,
             productId = productId,
             title = CreditCatalog.titleForProduct(productId) ?: product.title.ifBlank { product.name.ifBlank { identifier } },
-            subtitle = product.title,
+            subtitle = CreditCatalog.subtitleForProduct(productId) ?: product.title,
             price = product.price.formatted,
         )
     }
@@ -206,19 +206,23 @@ class RevenueCatCreditsClient(
 
 internal object CreditCatalog {
     const val CurrencyCode = "CRD"
-    const val OfferingIdentifier = "credits DEV"
+    const val OfferingIdentifier = "Credits"
     const val RestoreSuccessMessage = "Purchases restored for this Anky identity."
     const val RestoreFailureMessage = "Could not restore purchases for this Anky identity."
     const val RestoreIdentityNote = "Restores purchases linked to this Anky address. Spent credits may not reappear if this is not the same Anky identity used to buy them."
     val ProductOrder = listOf(
-        "inc.dev.anky.credits.22",
-        "inc.dev.anky.credits.88_bonus_11",
-        "inc.dev.anky.credits.333_bonus_88",
+        "inc.anky.credits.3",
+        "inc.anky.credits.11",
+        "inc.anky.credits.33",
     )
     private val productTitles = mapOf(
-        "inc.dev.anky.credits.22" to "22 credits",
-        "inc.dev.anky.credits.88_bonus_11" to "99 credits",
-        "inc.dev.anky.credits.333_bonus_88" to "421 credits",
+        "inc.anky.credits.3" to "3 reflections",
+        "inc.anky.credits.11" to "11 reflections",
+        "inc.anky.credits.33" to "33 reflections",
+    )
+    private val productSubtitles = mapOf(
+        "inc.anky.credits.11" to "Stay with it",
+        "inc.anky.credits.33" to "Daily practice",
     )
 
     fun productRank(productId: String): Int {
@@ -227,6 +231,8 @@ internal object CreditCatalog {
     }
 
     fun titleForProduct(productId: String): String? = productTitles[productId]
+
+    fun subtitleForProduct(productId: String): String? = productSubtitles[productId]
 
     fun selectOffering(offerings: Offerings): Offering? =
         offerings[OfferingIdentifier] ?: offerings.current

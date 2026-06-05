@@ -505,7 +505,7 @@ private struct AnkyDialoguePanel: View {
             }
 
             if hasMessage {
-                Text(message.lowercased())
+                Text(message)
                     .font(.system(size: 15, weight: .medium, design: .monospaced))
                     .lineSpacing(5)
                     .foregroundStyle(AnkyTheme.text.opacity(0.92))
@@ -515,7 +515,7 @@ private struct AnkyDialoguePanel: View {
             if !steps.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                        Text("\(index + 1). \(step.text.lowercased())")
+                        Text("\(index + 1). \(step.text)")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .lineSpacing(3)
                             .foregroundStyle(AnkyTheme.goldBright.opacity(0.86))
@@ -579,7 +579,7 @@ private struct AnkyDialoguePanel: View {
     }
 
     private func displayText(_ text: String, preservesCase: Bool) -> String {
-        preservesCase ? text : text.lowercased()
+        text
     }
 
     private var dialogueBackground: some View {

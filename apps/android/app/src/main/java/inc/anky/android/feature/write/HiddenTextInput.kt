@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import inc.anky.android.core.protocol.isSingleProtocolGlyph
-import inc.anky.android.core.protocol.protocolGlyphsOrNull
 
 @Composable
 fun HiddenTextInput(
@@ -42,14 +41,7 @@ fun HiddenTextInput(
                 when {
                     next.isEmpty() -> onRejectedMutation()
                     next.isSingleProtocolGlyph() -> onGlyph(next)
-                    else -> {
-                        val glyphs = next.protocolGlyphsOrNull(maxGlyphs = 64)
-                        if (glyphs == null) {
-                            onRejectedMutation()
-                        } else {
-                            onGlyphs(glyphs)
-                        }
-                    }
+                    else -> onRejectedMutation()
                 }
                 value.value = ""
             },

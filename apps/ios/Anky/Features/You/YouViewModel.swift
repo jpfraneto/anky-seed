@@ -19,6 +19,10 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var creditPackages: [RevenueCatCreditPackage] = []
     @Published private(set) var creditsLoading = false
     @Published private(set) var purchasingCreditPackageID: String?
+    @Published private(set) var hasClaimedFreeCredits = false
+    @Published private(set) var isICloudBackupEnabled = false
+    @Published private(set) var iCloudBackupLastDate: Date?
+    @Published private(set) var isICloudBackupWorking = false
 
     private let identityStore: WriterIdentityStore
     private let archive: LocalAnkyArchive
@@ -26,37 +30,53 @@ final class YouViewModel: ObservableObject {
     private let sessionIndexStore: SessionIndexStore
     private let backupImporter: BackupImporter
     private let backupExporter: BackupExporter
+    private let appOpenStore: AppOpenStore
     private let biometricAuth: BiometricAuthClient
     private let notifications: LocalNotificationScheduler
     private let creditsClient: RevenueCatCreditsClient
+    private let iCloudBackupStore: ICloudBackupStore
+    private let defaults: UserDefaults
 
     init(
         identityStore: WriterIdentityStore = WriterIdentityStore(),
         archive: LocalAnkyArchive = LocalAnkyArchive(),
         reflectionStore: ReflectionStore = ReflectionStore(),
         sessionIndexStore: SessionIndexStore = SessionIndexStore(),
+        appOpenStore: AppOpenStore = AppOpenStore(),
         backupImporter: BackupImporter? = nil,
         backupExporter: BackupExporter? = nil,
         biometricAuth: BiometricAuthClient = BiometricAuthClient(),
         notifications: LocalNotificationScheduler = LocalNotificationScheduler(),
-        creditsClient: RevenueCatCreditsClient = RevenueCatCreditsClient()
+        creditsClient: RevenueCatCreditsClient = RevenueCatCreditsClient(),
+        iCloudBackupStore: ICloudBackupStore? = nil,
+        defaults: UserDefaults = .standard
     ) {
         self.identityStore = identityStore
         self.archive = archive
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
-        self.backupImporter = backupImporter ?? BackupImporter(
+        self.appOpenStore = appOpenStore
+        let resolvedBackupImporter = backupImporter ?? BackupImporter(
             archive: archive,
             reflectionStore: reflectionStore,
             sessionIndexStore: sessionIndexStore
         )
-        self.backupExporter = backupExporter ?? BackupExporter(
+        let resolvedBackupExporter = backupExporter ?? BackupExporter(
             archive: archive,
             reflectionStore: reflectionStore
         )
+        self.backupImporter = resolvedBackupImporter
+        self.backupExporter = resolvedBackupExporter
         self.biometricAuth = biometricAuth
         self.notifications = notifications
         self.creditsClient = creditsClient
+        self.iCloudBackupStore = iCloudBackupStore ?? ICloudBackupStore(
+            identityStore: identityStore,
+            backupExporter: resolvedBackupExporter,
+            backupImporter: resolvedBackupImporter,
+            defaults: defaults
+        )
+        self.defaults = defaults
         refresh()
     }
 
@@ -68,6 +88,11 @@ final class YouViewModel: ObservableObject {
             backupZipURL = try backupExporter.exportBackup()
             identityStatus = "Local identity"
             isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
+            let iCloudStatus = iCloudBackupStore.status
+            isICloudBackupEnabled = iCloudStatus.isEnabled
+            iCloudBackupLastDate = iCloudStatus.lastBackupDate
+            hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: accountId, defaults: defaults)
+            creditBalance = ReflectionCreditCache.balance(accountId: accountId, defaults: defaults)
             updateStats()
             errorMessage = nil
         } catch {
@@ -113,8 +138,11 @@ final class YouViewModel: ObservableObject {
         do {
             try identityStore.backUpRecoveryPhraseToICloudKeychain()
             isIdentityBackedUpToICloud = true
-            statusMessage = "Anky identity backup saved to iCloud Keychain. Anky cannot read or recover it."
+            statusMessage = "Recovery phrase saved to iCloud Keychain. Use Data export for writing and reflection backups."
             errorMessage = nil
+        } catch WriterIdentityStoreError.iCloudBackupVerificationFailed {
+            isIdentityBackedUpToICloud = false
+            errorMessage = "iCloud Keychain did not confirm the identity backup."
         } catch {
             errorMessage = "Could not back up Anky identity."
         }
@@ -148,9 +176,80 @@ final class YouViewModel: ObservableObject {
         }
     }
 
+    func recoverIdentityFromICloudKeychain() async {
+        guard await biometricAuth.confirm(reason: "Recover your ANKY identity from iCloud Keychain.") else {
+            errorMessage = "Could not confirm identity."
+            return
+        }
+
+        do {
+            let identity = try identityStore.recoverFromICloudKeychainBackup()
+            accountId = identity.accountId
+            recoveryPhraseText = ""
+            sensitiveIdentityConfirmed = false
+            refresh()
+            statusMessage = "Recovery phrase restored from iCloud Keychain. Use Data restore for writing and reflections."
+            errorMessage = nil
+        } catch WriterIdentityStoreError.missingICloudBackup {
+            errorMessage = "No Anky identity backup was found in iCloud Keychain."
+        } catch {
+            errorMessage = "Could not recover the Anky identity from iCloud Keychain."
+        }
+    }
+
+    func enableICloudBackup() async {
+        guard await biometricAuth.confirm(reason: "Enable encrypted Anky iCloud backup.") else {
+            errorMessage = "Could not confirm identity."
+            return
+        }
+
+        isICloudBackupWorking = true
+        defer { isICloudBackupWorking = false }
+
+        do {
+            try iCloudBackupStore.enableAndBackUpNow()
+            refresh()
+            statusMessage = "Encrypted iCloud backup is on."
+            errorMessage = nil
+        } catch ICloudBackupError.noLocalData {
+            iCloudBackupStore.setEnabled(true)
+            refresh()
+            statusMessage = "Encrypted iCloud backup is on. It will run after your next writing session."
+            errorMessage = nil
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not enable iCloud backup."
+        }
+    }
+
+    func disableICloudBackup() {
+        iCloudBackupStore.setEnabled(false)
+        refresh()
+        statusMessage = "Encrypted iCloud backup is off."
+        errorMessage = nil
+    }
+
+    func backUpToICloudNow() async {
+        isICloudBackupWorking = true
+        defer { isICloudBackupWorking = false }
+
+        do {
+            try iCloudBackupStore.backUpNow()
+            refresh()
+            statusMessage = "Encrypted iCloud backup updated."
+            errorMessage = nil
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not update iCloud backup."
+        }
+    }
+
     func hideRecoveryPhrase() {
         recoveryPhraseText = ""
         sensitiveIdentityConfirmed = false
+    }
+
+    func dismissMessages() {
+        statusMessage = nil
+        errorMessage = nil
     }
 
     func setDailyReminder(enabled: Bool, date: Date) async {
@@ -246,6 +345,31 @@ final class YouViewModel: ObservableObject {
         }
     }
 
+    func wipeEverythingForDevelopment() {
+        do {
+            try archive.clear()
+            try reflectionStore.clear()
+            try? sessionIndexStore.clear()
+            ActiveDraftStore().clear()
+            notifications.cancelDailyReminder()
+            appOpenStore.clear()
+            clearDevelopmentDefaults()
+            try identityStore.resetForDevelopment(includeICloudBackup: true)
+            accountId = ""
+            recoveryPhraseText = ""
+            sensitiveIdentityConfirmed = false
+            ReflectionCreditCache.clear(defaults: defaults)
+            creditBalance = nil
+            creditPackages = []
+            hasClaimedFreeCredits = false
+            refresh()
+            statusMessage = "Development wipe complete. A fresh local account was created."
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not wipe the app for development."
+        }
+    }
+
     func preloadCredits() async {
         await refreshCredits(showError: false)
     }
@@ -263,6 +387,7 @@ final class YouViewModel: ObservableObject {
             let balance = try await creditsClient.fetchCreditBalance()
             creditPackages = packages
             creditBalance = balance
+            ReflectionCreditCache.storeBalance(balance, accountId: accountId, defaults: defaults)
             errorMessage = nil
         } catch {
             if showError {
@@ -272,6 +397,14 @@ final class YouViewModel: ObservableObject {
     }
 
     func purchaseCredits(_ creditPackage: RevenueCatCreditPackage) async {
+        guard canPurchaseCredits else {
+            statusMessage = AnkyLocalization.text(.spendGiftBeforeBuying)
+            errorMessage = nil
+            return
+        }
+        guard purchasingCreditPackageID == nil else {
+            return
+        }
         purchasingCreditPackageID = creditPackage.id
         statusMessage = nil
         errorMessage = nil
@@ -285,6 +418,7 @@ final class YouViewModel: ObservableObject {
             }
             let balance = try await creditsClient.fetchCreditBalance()
             creditBalance = balance
+            ReflectionCreditCache.storeBalance(balance, accountId: accountId, defaults: defaults)
             if let balance {
                 statusMessage = "Credits updated. You have \(balance) \(balance == 1 ? "credit" : "credits")."
             } else {
@@ -292,8 +426,44 @@ final class YouViewModel: ObservableObject {
             }
             errorMessage = nil
         } catch {
-            errorMessage = "Could not complete that credit purchase."
+            errorMessage = "Payment did not finish. No credits were added."
         }
+    }
+
+    var presentedCreditBalance: Int? {
+        guard !hasClaimedFreeCredits else {
+            return creditBalance
+        }
+        return ReflectionCreditPresentation.firstGiftCount
+    }
+
+    var hasUnspentGiftCredit: Bool {
+        !hasClaimedFreeCredits
+    }
+
+    var canPurchaseCredits: Bool {
+        hasClaimedFreeCredits
+    }
+
+    var creditSummaryText: String {
+        if hasUnspentGiftCredit {
+            return AnkyLocalization.text(.creditGiftSummary)
+        }
+        guard let creditBalance else {
+            return "reflection balance"
+        }
+        return "\(creditBalance) \(creditBalance == 1 ? "credit" : "credits")"
+    }
+
+    var creditDetailTitle: String {
+        if hasUnspentGiftCredit {
+            return "\(ReflectionCreditPresentation.firstGiftCount)"
+        }
+        return creditBalance.map(String.init) ?? "..."
+    }
+
+    var creditDetailCaption: String {
+        hasUnspentGiftCredit ? AnkyLocalization.text(.creditGiftCaption) : "credits"
     }
 
     var freeCreditMessage: String {
@@ -324,6 +494,14 @@ final class YouViewModel: ObservableObject {
 
     private static func pluralize(_ count: Int, singular: String, plural: String) -> String {
         "\(count) \(count == 1 ? singular : plural)"
+    }
+
+    private func clearDevelopmentDefaults() {
+        for key in defaults.dictionaryRepresentation().keys {
+            if key.hasPrefix("anky.") || key == MirrorConfiguration.userDefaultsKey {
+                defaults.removeObject(forKey: key)
+            }
+        }
     }
 
     private func updateStats() {

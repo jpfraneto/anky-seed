@@ -146,6 +146,43 @@ final class MirrorClientTests: XCTestCase {
         XCTAssertEqual(response.creditsRemaining, 7)
     }
 
+    func testMirrorClientPreservesServerErrorCode() async throws {
+        let body = Data("1770000000000 h\n472000 i\n8000".utf8)
+        let identity = WriterIdentity.generate()
+        let message = "This device already used its free Anky reflection. Buy credits to reflect more writing."
+
+        MockURLProtocol.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 402,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": "application/json; charset=utf-8"
+                ]
+            )!
+            let payload = Data("""
+            {"error":{"code":"TRIAL_ALREADY_CLAIMED","message":"\(message)"}}
+            """.utf8)
+            return (response, payload)
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
+
+        do {
+            _ = try await client.askAnky(bytes: body, identity: identity)
+            XCTFail("Expected the mirror client to throw the server error.")
+        } catch let error as MirrorClientError {
+            XCTAssertEqual(error.serverPayload?.code, "TRIAL_ALREADY_CLAIMED")
+            XCTAssertEqual(error.serverPayload?.message, message)
+            XCTAssertTrue(error.serverPayload?.isTrialAlreadyClaimed == true)
+            XCTAssertTrue(error.serverPayload?.isCreditDenied == true)
+            XCTAssertEqual(error.errorDescription, message)
+        }
+    }
+
     func testDeviceCheckProofProviderDoesNotCrashWhenUnavailable() async {
         let token = await DeviceCheckTrialProofProvider.makeToken()
         if token != nil {

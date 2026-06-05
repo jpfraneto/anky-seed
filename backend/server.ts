@@ -188,7 +188,7 @@ export const anky = {
   openrouterTimeoutMs: 45_000,
   privacyRequiresZdr: true,
   revenueCatCreditCode: "CRD",
-  trialCredits: 8,
+  trialCredits: 1,
   automaticTrials: {
     ios: true,
     android: true,
@@ -651,6 +651,7 @@ export type ErrorCode =
   | "INVALID_SIGNATURE"
   | "BODY_TOO_LARGE"
   | "INSUFFICIENT_CREDITS"
+  | "TRIAL_ALREADY_CLAIMED"
   | "DUPLICATE_IN_PROGRESS"
   | "DUPLICATE_SUCCEEDED"
   | "RATE_LIMITED"
@@ -673,6 +674,8 @@ const errorMessages: Record<ErrorCode, string> = {
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
   INSUFFICIENT_CREDITS:
     "You need one credit to ask Anky for a reflection. Writing is still free.",
+  TRIAL_ALREADY_CLAIMED:
+    "This device already used its free Anky reflection. Buy credits to reflect more writing.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
   DUPLICATE_SUCCEEDED:
     "This anky has already been reflected for this Anky address.",
@@ -696,6 +699,7 @@ const errorStatuses: Record<
   INVALID_SIGNATURE: 401,
   BODY_TOO_LARGE: 413,
   INSUFFICIENT_CREDITS: 402,
+  TRIAL_ALREADY_CLAIMED: 402,
   DUPLICATE_IN_PROGRESS: 409,
   DUPLICATE_SUCCEEDED: 409,
   RATE_LIMITED: 429,
@@ -1185,6 +1189,7 @@ export type CreditOperationResult =
         | "not_configured"
         | "unavailable"
         | "trial_disabled"
+        | "trial_already_claimed"
         | "trial_ineligible"
         | "trial_proof_missing"
         | "trial_proof_invalid";
@@ -1199,6 +1204,7 @@ export type ReflectionCreditResult = {
     | "bypassed"
     | "insufficient"
     | "trial_disabled"
+    | "trial_already_claimed"
     | "trial_ineligible"
     | "trial_proof_missing"
     | "trial_proof_invalid"
@@ -2003,7 +2009,7 @@ function trialFailureResult(
       case "invalid_trial_proof":
         return "trial_proof_invalid";
       case "already_claimed":
-        return "trial_ineligible";
+        return "trial_already_claimed";
       case "trial_check_unavailable":
         return "unavailable";
     }
@@ -3140,6 +3146,11 @@ export async function handleAnkyReflection(
       }
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
+        if (preparedCredit.result === "trial_already_claimed") {
+          statusCode = 402;
+          errorCode = "TRIAL_ALREADY_CLAIMED";
+          return errorJson(c, "TRIAL_ALREADY_CLAIMED");
+        }
         if (
           preparedCredit.result === "trial_disabled" ||
           preparedCredit.result === "trial_ineligible" ||
@@ -3198,6 +3209,11 @@ export async function handleAnkyReflection(
       }
 
       if (!preparedCredit.ok && !x402Payment && !freeFallbackWithoutCredit) {
+        if (preparedCredit.result === "trial_already_claimed") {
+          statusCode = 402;
+          errorCode = "TRIAL_ALREADY_CLAIMED";
+          return errorJson(c, "TRIAL_ALREADY_CLAIMED");
+        }
         if (
           preparedCredit.result === "insufficient" ||
           preparedCredit.result === "trial_disabled" ||

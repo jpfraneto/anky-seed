@@ -1,5 +1,43 @@
 # iOS Delta Parity Log
 
+## 2026-06-03 Inline Reveal / Write Input Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky`.
+- Android target: remove the Android-only Reveal bottom conversation/sheet as the primary reflection flow, tighten Write input mutation handling, preserve mirror/storage/identity contracts, and keep Android trial proof disabled.
+
+Migrated Android changes:
+
+- Reveal now renders saved reflections, streaming reflection text, and mirror errors inline below the reconstructed writing and privacy divider.
+- Reveal now uses an iOS-style bottom gold action with `LOADING`, `READ REFLECTION`, `REFLECT THIS ANKY`, and `WRITE 8 MINUTES` states.
+- Reveal copy is section-aware: `copy writing` copies reconstructed writing, `copy reflection` copies reflection title plus body, and copied feedback is tracked separately.
+- Reveal delete confirmation now matches the iOS tone exactly: `Delete forever?`, `Delete`, `Cancel`, and `This permanently deletes this writing session. This cannot be undone.`
+- Saved reflections render returned `creditsRemaining` as a truthful local remaining-reflections line when present.
+- `RevealViewModel` invalidates the narrow Android `CreditsClient` credit cache only when a mirror response includes non-null `creditsRemaining`.
+- Hidden Write input now rejects multi-glyph mutations at the input layer. Explicit `.anky` import remains available through the paste/import affordance, but pasted/autocorrected writing text is not accepted into the live ritual.
+
+Preserved Android behavior:
+
+- `.anky` remains the canonical local artifact and mirror request body.
+- Ask Anky still sends exact UTF-8 `.anky` bytes as `text/plain; charset=utf-8`.
+- Base EOA / EIP-712 identity signing and `X-Anky-App-Version` behavior are unchanged.
+- Android still does not send `X-Anky-Trial-Proof`.
+- Local archive, reflection sidecar, pending request, session index, Map refresh, You identity, RevenueCat public-key-only client setup, reminders, and export/import systems remain native Android.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- Focused `./gradlew :app:testDebugUnitTest --tests inc.anky.android.feature.reveal.RevealViewModelTest --tests inc.anky.android.mirror.MirrorClientTest --tests inc.anky.android.write.WriteViewModelTest --tests inc.anky.android.privacy.SourceInvariantTest` passed.
+- Full `./gradlew testDebugUnitTest` passed.
+- `./gradlew assembleDebug` passed.
+- `adb devices` could not be run because `adb` is not available on this PATH, so `connectedDebugAndroidTest` was not run.
+- Safety search confirmed Android source still does not send `X-Anky-Trial-Proof`; direct logging remains isolated to `SafeLog`; no server secrets or fake trial-credit grants were added.
+
+Intentional divergence:
+
+- Android device-bound trial proof remains out of scope until Play Integrity/device recall is designed and verified server-side.
+
 ## 2026-06-01 Reflection Flow Parity Pass
 
 Baseline:
@@ -233,7 +271,7 @@ Baseline:
 Migrated Android changes:
 
 - Reveal now uses the iOS-style bottom floating `ask anky` prompt that scrolls the user to the inline Ask Anky action.
-- Reveal Ask Anky inline action uses `8 free reflections included`.
+- Reveal Ask Anky inline action uses `1 free reflection included`.
 - Reveal copy is section-aware with `copy writing` / `copy reflection` and short copied-state feedback.
 - Saved reflections preserve local `creditsRemaining` for state/export parity, while the current saved-reflection sheet keeps that balance out of the rendered body like Swift.
 - Reveal has a local delete affordance and Android-native confirmation using `delete forever?`.

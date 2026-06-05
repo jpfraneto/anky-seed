@@ -1,4 +1,5 @@
 import XCTest
+import Security
 @testable import AnkyCore
 
 final class IdentityTests: XCTestCase {
@@ -44,6 +45,26 @@ final class IdentityTests: XCTestCase {
         XCTAssertEqual(imported.accountId, fixture.accountId)
         XCTAssertEqual(loaded.accountId, fixture.accountId)
         XCTAssertEqual(loadedPhrase.text, fixture.mnemonic)
+    }
+
+    func testICloudKeychainBackupRestoresSameBaseIdentity() throws {
+        let fixture = try AnkyIdentityFixtureLoader.mainnet()
+        let store = WriterIdentityStore(keychain: KeychainClient(service: "lat.memetics.anky.tests.\(UUID().uuidString)"))
+
+        let imported: WriterIdentity
+        let recovered: WriterIdentity
+        do {
+            imported = try store.importRecoveryPhrase(fixture.mnemonic)
+            try store.backUpRecoveryPhraseToICloudKeychain()
+            try store.resetForDevelopment()
+            recovered = try store.recoverFromICloudKeychainBackup()
+        } catch KeychainError.unhandled(errSecMissingEntitlement) {
+            throw XCTSkip("Synchronizable Keychain requires an entitled app host.")
+        }
+
+        XCTAssertEqual(imported.accountId, fixture.accountId)
+        XCTAssertEqual(recovered.accountId, fixture.accountId)
+        XCTAssertEqual(try store.loadOrCreateRecoveryPhrase().text, fixture.mnemonic)
     }
 
     func testLegacyRawIdentityMaterialIsNotUsedForNewMirrorIdentity() throws {

@@ -18,6 +18,7 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.terminalSilenceMs
     @Published private(set) var lastCharacter: Character?
     @Published private(set) var lastCharacterPulseID = UUID()
+    @Published private(set) var rejectedInputPulseID = UUID()
     @Published private(set) var keyboardFocusID = UUID()
     @Published private(set) var todayAnkyCount = 0
     @Published private(set) var errorMessage: String?
@@ -78,6 +79,7 @@ final class WriteViewModel: ObservableObject {
     private var isFrozen = false
     private var errorMessageTask: Task<Void, Never>?
     private var errorRecallExpirationDate: Date?
+    private let rejectedInputOnboardingKey = "anky.didShowRejectedInputOnboarding"
     private var lastLocalNudgeDate: Date?
     private var localNudgeOffset = 0
     private var lastMinuteHaptic = 0
@@ -142,7 +144,12 @@ final class WriteViewModel: ObservableObject {
     func nudgeInvalidInput() {
         invalidInputHaptic.notificationOccurred(.warning)
         invalidInputHaptic.prepare()
-        showTransientError("that doesn't work here. just keep writing without agenda.")
+        rejectedInputPulseID = UUID()
+        guard !userDefaults.bool(forKey: rejectedInputOnboardingKey) else {
+            return
+        }
+        userDefaults.set(true, forKey: rejectedInputOnboardingKey)
+        showTransientError("Backspace and enter stay outside this chamber. Just keep writing.")
     }
 
     var shouldShowNudgeDialogue: Bool {
@@ -472,6 +479,7 @@ final class WriteViewModel: ObservableObject {
         silenceRemainingMs = AnkyDuration.terminalSilenceMs
         lastCharacter = nil
         lastCharacterPulseID = UUID()
+        rejectedInputPulseID = UUID()
         needsImmediateClose = false
         isClosing = false
         isFrozen = false

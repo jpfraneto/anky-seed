@@ -1,0 +1,21 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="supportGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 26) rotate(49) scale(64)">
+      <stop stop-color="#FFF7D8" stop-opacity="0.92"/>
+      <stop offset="0.45" stop-color="#E8C879" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#7D63FF" stop-opacity="0.26"/>
+    </radialGradient>
+    <linearGradient id="supportStroke" x1="21" y1="17" x2="76" y2="79" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4C4"/>
+      <stop offset="0.52" stop-color="#E8C879"/>
+      <stop offset="1" stop-color="#9D85FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="37" fill="#120E22" fill-opacity="0.78"/>
+  <path d="M24 35.5C24 28.5964 29.5964 23 36.5 23H59.5C66.4036 23 72 28.5964 72 35.5V47.5C72 54.4036 66.4036 60 59.5 60H49.2L35.5 70V60H36.5C29.5964 60 24 54.4036 24 47.5V35.5Z" fill="url(#supportGlow)" fill-opacity="0.22"/>
+  <path d="M24 35.5C24 28.5964 29.5964 23 36.5 23H59.5C66.4036 23 72 28.5964 72 35.5V47.5C72 54.4036 66.4036 60 59.5 60H49.2L35.5 70V60H36.5C29.5964 60 24 54.4036 24 47.5V35.5Z" stroke="url(#supportStroke)" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="37" cy="42" r="3.5" fill="#FFF5CB"/>
+  <circle cx="48" cy="42" r="3.5" fill="#E8C879"/>
+  <circle cx="59" cy="42" r="3.5" fill="#FFF5CB"/>
+  <path d="M34 54C38.8 57.7 57.2 57.7 62 54" stroke="#FFF5CB" stroke-width="3" stroke-linecap="round" opacity="0.62"/>
+</svg>

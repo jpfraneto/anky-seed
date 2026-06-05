@@ -84,10 +84,11 @@ describe("dotAnky reflection helpers", () => {
     try {
       await reflectDotAnkyToMarkdown("0000 h\n0044 o\n0044 l\n0044 a\n8000\n");
 
-      expect(capturedPrompt).toContain("Write the entire reflection in that same language, from where it comes from.");
+      expect(capturedPrompt).toContain("Write the entire reflection in that same language. Do not translate the user's writing into another language.");
+      expect(capturedPrompt).toContain("If the writing is English, the reflection must be English. If the writing is Spanish, the reflection must be Spanish. Same for every language.");
       expect(capturedPrompt).toContain("The title, tags, section headings, body, experiment, and final line must all use that language.");
       expect(capturedPrompt).toContain("Localize every visible heading label");
-      expect(capturedPrompt).toContain("Un pequeño experimento");
+      expect(capturedPrompt).toContain("Do not leave any heading in English if the reflection language is not English.");
     } finally {
       restore();
     }

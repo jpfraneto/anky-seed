@@ -2,6 +2,12 @@ import Foundation
 import LocalAuthentication
 
 struct BiometricAuthClient {
+    func canAuthenticate() -> Bool {
+        let context = LAContext()
+        var error: NSError?
+        return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
     func confirm(reason: String) async -> Bool {
         let context = LAContext()
         var error: NSError?

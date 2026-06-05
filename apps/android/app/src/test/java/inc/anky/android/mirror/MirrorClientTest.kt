@@ -42,8 +42,8 @@ class MirrorClientTest {
             hasClaimedFreeCredits = false,
         )
 
-        assertEquals(ReflectionCreditPromptState.FreeGift(8), state)
-        assertEquals("Anky gives you 8 free reflections", ReflectionCreditPresentation.messageFor(state))
+        assertEquals(ReflectionCreditPromptState.FreeGift(1), state)
+        assertEquals("Anky gives you 1 free reflection", ReflectionCreditPresentation.messageFor(state))
     }
 
     @Test

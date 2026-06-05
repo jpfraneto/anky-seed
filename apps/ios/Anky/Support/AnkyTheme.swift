@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AnkyTheme {
     static let background = Color(red: 0.031, green: 0.035, blue: 0.043)
@@ -11,4 +12,22 @@ enum AnkyTheme {
     static let textMuted = Color(red: 0.612, green: 0.639, blue: 0.686)
     static let success = Color(red: 0.525, green: 0.937, blue: 0.675)
     static let danger = Color(red: 0.973, green: 0.443, blue: 0.443)
+}
+
+enum AnkyHaptics {
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    static func light() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    static func medium() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    static func warning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
 }

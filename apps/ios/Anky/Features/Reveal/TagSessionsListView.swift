@@ -24,7 +24,7 @@ struct TagSessionsListView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(tag)
-                        .font(.custom("Georgia", size: 30).weight(.bold))
+                        .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(RevealPalette.markdownHeading)
                         .tracking(0)
                         .padding(.top, 18)
@@ -70,7 +70,7 @@ private struct TagSessionRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(summary.title.lowercased())
+                Text(summary.title)
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(RevealPalette.gold.opacity(0.9))
                     .lineLimit(2)

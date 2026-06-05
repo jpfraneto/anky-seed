@@ -53,8 +53,8 @@ android {
         applicationId = "app.anky.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 2026052002
-        versionName = releaseProperty("ANKY_ANDROID_VERSION_NAME") ?: "0.1.0"
+        versionCode = releaseProperty("ANKY_ANDROID_VERSION_CODE")?.toIntOrNull() ?: 4
+        versionName = releaseProperty("ANKY_ANDROID_VERSION_NAME") ?: "1.0.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "DEFAULT_MIRROR_BASE_URL", "\"https://mirror-production-a23c.up.railway.app\"")

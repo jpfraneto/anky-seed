@@ -57,6 +57,15 @@ struct WriterIdentityStore {
         (try? keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true)) != nil
     }
 
+    @discardableResult
+    func recoverFromICloudKeychainBackup() throws -> WriterIdentity {
+        guard let data = try keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true),
+              let phraseText = String(data: data, encoding: .utf8) else {
+            throw WriterIdentityStoreError.missingICloudBackup
+        }
+        return try importRecoveryPhrase(phraseText)
+    }
+
     func backUpRecoveryPhraseToICloudKeychain() throws {
         let phrase = try loadOrCreateRecoveryPhrase()
         try keychain.save(
@@ -64,6 +73,10 @@ struct WriterIdentityStore {
             account: iCloudRecoveryPhraseBackupAccount,
             synchronizable: true
         )
+        guard let backedUpData = try keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true),
+              String(data: backedUpData, encoding: .utf8) == phrase.text else {
+            throw WriterIdentityStoreError.iCloudBackupVerificationFailed
+        }
     }
 
     func migrateLegacyIdentityIfNeeded() throws {
@@ -86,8 +99,16 @@ struct WriterIdentityStore {
         return generated.identity
     }
 
-    func resetForDevelopment() throws {
+    func resetForDevelopment(includeICloudBackup: Bool = false) throws {
         try keychain.delete(account: legacyRawKeyAccount)
         try keychain.delete(account: recoveryPhraseAccount)
+        if includeICloudBackup {
+            try keychain.delete(account: iCloudRecoveryPhraseBackupAccount, synchronizable: true)
+        }
     }
+}
+
+enum WriterIdentityStoreError: Error, Equatable {
+    case missingICloudBackup
+    case iCloudBackupVerificationFailed
 }

@@ -469,6 +469,17 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(destinationIndex.load().first?.reflectionTitle, "Exported Thread")
     }
 
+    func testICloudBackupEnvelopeEncryptsAndDecryptsWithRecoveryPhrase() throws {
+        let phrase = try RecoveryPhrase.generate()
+        let otherPhrase = try RecoveryPhrase.generate()
+        let plaintext = Data("private writing and reflections".utf8)
+
+        let envelope = try ICloudBackupStore.encrypt(plaintext, recoveryPhrase: phrase)
+        XCTAssertNotEqual(envelope.payload, plaintext)
+        XCTAssertEqual(try ICloudBackupStore.decrypt(envelope, recoveryPhrase: phrase), plaintext)
+        XCTAssertThrowsError(try ICloudBackupStore.decrypt(envelope, recoveryPhrase: otherPhrase))
+    }
+
     func testAppOpenStorePersistsFirstOpenDate() throws {
         let suiteName = "anky.tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -16,12 +16,12 @@ class CreditCatalogTest {
     @Test
     fun matchesIosCreditCurrencyOfferingAndProductOrder() {
         assertEquals("CRD", CreditCatalog.CurrencyCode)
-        assertEquals("credits DEV", CreditCatalog.OfferingIdentifier)
+        assertEquals("Credits", CreditCatalog.OfferingIdentifier)
         assertEquals(
             listOf(
-                "inc.dev.anky.credits.22",
-                "inc.dev.anky.credits.88_bonus_11",
-                "inc.dev.anky.credits.333_bonus_88",
+                "inc.anky.credits.3",
+                "inc.anky.credits.11",
+                "inc.anky.credits.33",
             ),
             CreditCatalog.ProductOrder,
         )
@@ -29,14 +29,17 @@ class CreditCatalogTest {
 
     @Test
     fun mapsIosCreditProductTitlesAndUnknownProductsAfterKnownOnes() {
-        assertEquals("22 credits", CreditCatalog.titleForProduct("inc.dev.anky.credits.22"))
-        assertEquals("99 credits", CreditCatalog.titleForProduct("inc.dev.anky.credits.88_bonus_11"))
-        assertEquals("421 credits", CreditCatalog.titleForProduct("inc.dev.anky.credits.333_bonus_88"))
+        assertEquals("3 reflections", CreditCatalog.titleForProduct("inc.anky.credits.3"))
+        assertEquals("11 reflections", CreditCatalog.titleForProduct("inc.anky.credits.11"))
+        assertEquals("33 reflections", CreditCatalog.titleForProduct("inc.anky.credits.33"))
+        assertNull(CreditCatalog.subtitleForProduct("inc.anky.credits.3"))
+        assertEquals("Stay with it", CreditCatalog.subtitleForProduct("inc.anky.credits.11"))
+        assertEquals("Daily practice", CreditCatalog.subtitleForProduct("inc.anky.credits.33"))
 
-        assertEquals(0, CreditCatalog.productRank("inc.dev.anky.credits.22"))
-        assertEquals(1, CreditCatalog.productRank("inc.dev.anky.credits.88_bonus_11"))
-        assertEquals(2, CreditCatalog.productRank("inc.dev.anky.credits.333_bonus_88"))
-        assertTrue(CreditCatalog.productRank("unknown.android.product") > CreditCatalog.productRank("inc.dev.anky.credits.333_bonus_88"))
+        assertEquals(0, CreditCatalog.productRank("inc.anky.credits.3"))
+        assertEquals(1, CreditCatalog.productRank("inc.anky.credits.11"))
+        assertEquals(2, CreditCatalog.productRank("inc.anky.credits.33"))
+        assertTrue(CreditCatalog.productRank("unknown.android.product") > CreditCatalog.productRank("inc.anky.credits.33"))
     }
 
     @Test

@@ -35,19 +35,30 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun revealCopySurfaceMatchesCurrentIosWritingTapOnly() {
+    fun revealCopySurfaceUsesExplicitSectionAwareCopy() {
         val androidReveal = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
             .readText()
-        val iosReveal = repoRoot()
-            .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
+        val androidRevealViewModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealViewModel.kt")
             .readText()
 
-        assertTrue(iosReveal.contains("private func copyWriting(at location: CGPoint)"))
-        assertTrue(iosReveal.contains("private func copyReflection(at location: CGPoint)"))
-        assertTrue(!iosReveal.substringBefore("private func copyReflection(at location: CGPoint)").contains("copyReflection(at:"))
-        assertTrue(androidReveal.contains("""copyText("Anky writing", artifact.reconstructedText)"""))
+        assertTrue(androidReveal.contains("copy writing"))
+        assertTrue(androidReveal.contains("copy reflection"))
+        assertTrue(androidRevealViewModel.contains("enum class RevealCopySection"))
+        assertTrue(androidRevealViewModel.contains("fun textForCopy(section: RevealCopySection)"))
         assertTrue(!androidReveal.contains("""copyText("Anky mirror""""))
+    }
+
+    @Test
+    fun hiddenWritingInputRejectsMultiGlyphMutations() {
+        val hiddenInput = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/HiddenTextInput.kt")
+            .readText()
+
+        assertTrue(hiddenInput.contains("next.isSingleProtocolGlyph() -> onGlyph(next)"))
+        assertTrue(hiddenInput.contains("else -> onRejectedMutation()"))
+        assertTrue(!hiddenInput.contains("protocolGlyphsOrNull"))
     }
 
     @Test
@@ -363,9 +374,6 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(iosApp.contains("youViewModel.preloadCredits()"))
-        assertTrue(iosApp.contains("let creditBadge = youViewModel.creditBalance.map"))
-        assertTrue(iosApp.contains("""AnkyChatAction("reflect (1 credit)""""))
-        assertTrue(iosApp.contains("""AnkyChatAction("not now")"""))
         assertTrue(iosWriteModel.contains("func importAnkyArtifact(_ text: String) -> Bool"))
         assertTrue(iosWriteModel.contains("completion?(saved)"))
         assertTrue(androidApp.contains("suspend fun refreshRootCreditBalance()"))
@@ -445,7 +453,7 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/Write/WriteViewModel.swift")
             .readText()
 
-        assertTrue(iosWrite.contains("DevPasteChromeIcon("))
+        assertTrue(iosWrite.contains("WriteToolbarPasteButton("))
         assertTrue(iosWrite.contains("LongPressGesture(minimumDuration: 5)"))
         assertTrue(iosWrite.contains("Hold for five seconds to paste the built-in dev .anky"))
         assertTrue(iosWriteModel.contains("var devSampleAnkyArtifact: String"))
@@ -477,14 +485,14 @@ class SourceInvariantTest {
         assertTrue(iosApp.contains("private func beginRetryWriting()"))
         assertTrue(iosApp.contains("writeViewModel.clearCompletedSession()"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
-        assertTrue(iosReveal.contains("AnkyChatAction(\"write again\", isPrimary: true)"))
+        assertTrue(iosReveal.contains("WRITE \\(AnkyDuration.completeRitualMinutes) MINUTES"))
         assertTrue(iosReveal.contains("onTryAgain()"))
 
         assertTrue(androidApp.contains("fun beginRetryWriting()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.consumeCompletedHash()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
         assertTrue(androidApp.contains("onTryAgain = { beginRetryWriting() }"))
-        assertTrue(androidReveal.contains("AnkyChatAction(\"write again\", isPrimary = true, action = onTryAgain)"))
+        assertTrue(androidReveal.contains("WRITE ${'$'}{AnkyDuration.CompleteRitualMinutes} MINUTES"))
         assertTrue(!androidReveal.contains("onTryAgain = onBack"))
     }
 
@@ -509,8 +517,6 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
             .readText()
 
-        assertTrue(iosApp.contains("onDeleted: {"))
-        assertTrue(iosApp.contains("writeViewModel.clearCompletedSession()"))
         assertTrue(iosMap.contains("onDeleted: viewModel.refresh"))
         assertTrue(iosReveal.contains("onDeleted()"))
         assertTrue(iosReveal.contains("dismiss()"))
@@ -543,6 +549,8 @@ class SourceInvariantTest {
         assertTrue(androidReveal.contains("contentDescription = \"Delete writing session\""))
         assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.88f)"))
         assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.22f)"))
+        assertTrue(androidReveal.contains("Delete forever?"))
+        assertTrue(androidReveal.contains("This permanently deletes this writing session. This cannot be undone."))
         assertTrue(!androidReveal.contains("contentDescription = \"delete forever\""))
     }
 
@@ -559,7 +567,7 @@ class SourceInvariantTest {
         assertTrue(iosReveal.contains("if startsReflectionOnAppear, !didAutoStartReflection, viewModel.reflection == nil"))
         assertTrue(iosReveal.contains("didAutoStartReflection = true"))
 
-        assertTrue(androidReveal.contains("var showReflectionSheet by remember { mutableStateOf(false) }"))
+        assertTrue(androidReveal.contains("var inlineReflectionActive by remember { mutableStateOf(false) }"))
         assertTrue(androidReveal.contains("var didAutoStartReflection by remember { mutableStateOf(false) }"))
         assertTrue(androidReveal.contains("LaunchedEffect(startsReflectionOnAppear, state.reflection)"))
         assertTrue(androidReveal.contains("!didAutoStartReflection"))
@@ -776,8 +784,6 @@ class SourceInvariantTest {
         assertTrue(iosTags.contains("sessions = sessionIndexStore.sessionsWithTag(tag)"))
         assertTrue(iosTags.contains("RevealBackgroundTexture()"))
         assertTrue(iosTags.contains("Text(tag)"))
-        assertTrue(iosReveal.contains("Text(tag)"))
-        assertTrue(iosReveal.contains("ScrollView(.horizontal, showsIndicators: false)"))
         assertTrue(androidTags.contains("fun refreshSessions()"))
         assertTrue(androidTags.contains("sessionIndexStore.sessionsWithTag(tag)"))
         assertTrue(androidTags.contains("RevealTagTexture()"))
@@ -861,99 +867,45 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/Reveal/RevealViewModel.swift")
             .readText()
 
-        listOf(
-            "this anky has a reflection.",
-            "i am staying with this .anky.",
-            "i am reading slowly. not looking for a summary.",
-            "open mirror",
-            "read reflection",
-        ).forEach { copy ->
-            assertTrue(iosReveal.contains(copy))
+        listOf("copy writing", "copy reflection", "READ REFLECTION", "REFLECT THIS ANKY").forEach { copy ->
             assertTrue(androidReveal.contains(copy))
         }
         assertTrue(!androidReveal.contains("i have reflected this anky."))
         assertTrue(!androidReveal.contains("i am holding the mirror open."))
-        assertTrue(iosReveal.contains("reveal live"))
-        assertTrue(androidReveal.contains("reveal live"))
-        assertTrue(iosReveal.contains("Image(systemName: hasFinalReflection ? \"eye\" : \"eye.leadinghalf.filled\")"))
-        assertTrue(androidReveal.contains("Icons.Filled.Visibility"))
-        assertTrue(iosReveal.contains("Image(systemName: \"sparkles\")"))
-        assertTrue(androidReveal.contains("Icons.Filled.AutoAwesome"))
+        assertTrue(androidReveal.contains("StreamingReflectionPanel("))
+        assertTrue(androidReveal.contains("SavedReflectionPanel("))
         assertTrue(!androidReveal.contains("hide live text"))
-        assertTrue(iosReveal.contains("viewModel.creditPromptMessage.lowercased()"))
-        assertTrue(androidReveal.contains("state.creditPromptMessage.lowercase()"))
-        assertTrue(iosReveal.contains(".disabled(!viewModel.canSubmitReflectionRequest)"))
-        assertTrue(androidReveal.contains("enabled = state.canSubmitReflectionRequest"))
-        assertTrue(androidReveal.contains("onAsk = { viewModel.askAnky() }"))
+        assertTrue(androidReveal.contains("state.canSubmitReflectionRequest"))
+        assertTrue(androidReveal.contains("viewModel.askAnky()"))
         assertTrue(!androidReveal.contains("the reflection is not here yet."))
-        assertTrue(iosReveal.contains("Text(\"writing reflection · \\(generatedCharacters) characters\")"))
-        assertTrue(androidReveal.contains("\"writing reflection · ${'$'}{state.streamingReflectionCharacterCount} characters\""))
-        assertTrue(iosReveal.contains("SelectableReflectionText(text: reflection.displayBody"))
+        assertTrue(androidReveal.contains("\"writing reflection · ${'$'}generatedCharacters characters\""))
         assertTrue(androidReveal.contains("MarkdownishText(reflection.displayBody)"))
-        assertTrue(iosReveal.contains("ForEach(tags, id: \\.self)"))
         assertTrue(androidReveal.contains("tags.forEach { tag ->"))
         assertTrue(!androidReveal.contains("tags.take(8).forEach"))
-        assertTrue(iosReveal.contains(".font(.system(size: 11, weight: .bold, design: .monospaced))"))
         assertTrue(androidReveal.contains("AnkyType.Mono.copy("))
-        assertTrue(iosReveal.contains(".tracking(1.0)"))
         assertTrue(androidReveal.contains("letterSpacing = 1.sp"))
-        assertTrue(iosReveal.contains("RevealPalette.paper.opacity(0.46)"))
         assertTrue(androidReveal.contains("AnkyColors.Paper.copy(alpha = 0.46f)"))
-        assertTrue(iosReveal.contains(".font(.system(size: 12, weight: .medium, design: .monospaced))"))
         assertTrue(androidReveal.contains("fontSize = 12.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Gold"))
-        assertTrue(iosReveal.contains(".padding(.top, 2)"))
         assertTrue(androidReveal.contains("Column(modifier = Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp))"))
         assertTrue(!androidReveal.contains("displayBodyWithTitle"))
-        assertTrue(!iosReveal.contains("reflections left"))
-        assertTrue(!androidReveal.contains("reflections left"))
-        assertTrue(!androidReveal.contains("\"reflection\" else \"reflections\""))
-        assertTrue(iosReveal.contains("ReflectionScrollGlyph()"))
-        assertTrue(androidReveal.contains("ReflectionScrollGlyph(modifier = Modifier.padding(top = 8.dp))"))
         assertTrue(androidReveal.contains("private fun ReflectionScrollGlyph(modifier: Modifier = Modifier)"))
-        assertTrue(iosReveal.contains("the mirror is forming"))
         assertTrue(androidReveal.contains("the mirror is forming"))
-        assertTrue(iosReveal.contains(".presentationDetents([.medium, .large])"))
-        assertTrue(androidReveal.contains("rememberModalBottomSheetState(skipPartiallyExpanded = false)"))
-        assertTrue(iosReveal.contains("private struct ReflectionBottomSheet"))
-        assertTrue(iosReveal.contains("RevealPalette.ink.ignoresSafeArea()"))
-        assertTrue(iosReveal.contains("RevealBackgroundTexture()"))
-        assertTrue(androidReveal.contains("private fun ReflectionBottomSheetContent("))
-        assertTrue(androidReveal.contains("RevealTexture(Modifier.matchParentSize())"))
-        assertTrue(iosReveal.contains("} else if viewModel.isAskingAnky || !viewModel.streamingReflectionMarkdown.isEmpty {"))
-        assertTrue(androidReveal.contains("val isStreamingSheet = state.isAsking || state.streamingReflectionMarkdown.isNotBlank()"))
-        assertTrue(iosReveal.contains(".padding(.horizontal, 22)"))
-        assertTrue(androidReveal.contains(".padding(horizontal = 22.dp)"))
-        assertTrue(iosReveal.contains(".padding(.top, 10)"))
-        assertTrue(androidReveal.contains("reflection != null -> 10.dp"))
-        assertTrue(iosReveal.contains(".padding(.top, 24)"))
-        assertTrue(androidReveal.contains("isStreamingSheet -> 24.dp"))
-        assertTrue(iosReveal.contains(".padding(.top, 28)"))
-        assertTrue(androidReveal.contains("else -> 28.dp"))
-        assertTrue(iosReveal.contains(".padding(.bottom, 56)"))
-        assertTrue(androidReveal.contains("val sheetBottomPadding = if (reflection != null) 56.dp else 48.dp"))
-        assertTrue(iosReveal.contains("VStack(alignment: .leading, spacing: 22)"))
-        assertTrue(androidReveal.contains("val sheetSpacing = if (isStreamingSheet) 22.dp else 18.dp"))
-        assertTrue(iosReveal.contains("DragGesture(minimumDistance: 30)"))
-        assertTrue(iosReveal.contains("value.translation.width > 80"))
-        assertTrue(iosReveal.contains("value.startLocation.x < 32"))
+        assertTrue(androidReveal.contains("inlineReflectionActive"))
+        assertTrue(androidReveal.contains("ModalBottomSheet("))
+        assertTrue(androidReveal.contains("RevealCreditPurchaseSheet("))
+        assertTrue(androidReveal.contains("\"GET MORE CREDITS\""))
         assertTrue(androidReveal.contains("private fun RevealEdgeBackSwipe("))
         assertTrue(androidReveal.contains(".width(32.dp)"))
         assertTrue(androidReveal.contains("detectDragGestures("))
         assertTrue(androidReveal.contains("totalDrag.x > 80.dp.toPx()"))
         assertTrue(androidReveal.contains("abs(totalDrag.y) < 60.dp.toPx()"))
-        assertTrue(iosReveal.contains("ScrollView(showsIndicators: false)"))
-        assertTrue(androidReveal.contains(".verticalScroll(sheetScrollState)"))
         assertTrue(iosReveal.contains("private func isHorizontalRule"))
         assertTrue(androidReveal.contains("internal fun isMarkdownHorizontalRule"))
         assertTrue(androidReveal.contains("isMarkdownHorizontalRule(trimmed)"))
-        assertTrue(iosReveal.contains("0.12 + Double(generatedCharacters) / 3200"))
         assertTrue(androidReveal.contains("0.12f + generatedCharacters.toFloat() / 3200f"))
         assertTrue(!androidReveal.contains("% 1400"))
-        assertTrue(iosReveal.contains("private struct MirrorThreadProgress"))
         assertTrue(androidReveal.contains("private fun MirrorThreadProgress("))
-        assertTrue(iosReveal.contains("Color.black.opacity(0.28)"))
         assertTrue(androidReveal.contains("Color.Black.copy(alpha = 0.28f)"))
-        assertTrue(iosReveal.contains("RevealPalette.gold.opacity(0.22)"))
         assertTrue(androidReveal.contains("AnkyColors.Gold.copy(alpha = 0.22f)"))
         assertTrue(!androidReveal.contains("LinearProgressIndicator"))
         assertTrue(iosRevealModel.contains("""case "provider_started":"""))
@@ -983,12 +935,9 @@ class SourceInvariantTest {
             "you are here. this page is for identity, privacy, exports, and reflection credits.",
             "you are here. credits buy reflections; writing itself stays free.",
         ).forEach { message ->
-            assertTrue(iosApp.contains(message))
             assertTrue(androidApp.contains(message))
         }
-        assertTrue(iosApp.contains("showCompanionNote()"))
         assertTrue(androidApp.contains("fun showCompanionNote(): Boolean"))
-        assertTrue(iosApp.contains("writeViewModel.replayRecentPromptIfAvailable()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.replayRecentPromptIfAvailable()"))
         assertTrue(iosPresence.contains("DragGesture(minimumDistance: 3)"))
         assertTrue(androidPresence.contains("detectDragGestures("))
@@ -996,10 +945,8 @@ class SourceInvariantTest {
         assertTrue(androidPresence.contains("followsHomePosition = false"))
         assertTrue(androidPresence.contains("""testTag("anky-presence")"""))
         listOf("Keep Anky here", "Hide Anky", "Show Anky", "Change motion", "Cancel").forEach { menuCopy ->
-            assertTrue(iosPresence.contains(menuCopy))
             assertTrue(androidPresence.contains(menuCopy))
         }
-        assertTrue(iosPresence.contains("anky stays beside the writing"))
         assertTrue(androidPresence.contains("anky stays beside the writing"))
         assertTrue(!androidPresence.contains("drag anky anywhere"))
         assertTrue(!androidPresence.contains("Move Anky home"))
@@ -1191,18 +1138,6 @@ class SourceInvariantTest {
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
-
-        assertTrue(iosYou.contains("@State private var isShowingAnkyExperience = false"))
-        assertTrue(iosYou.contains("isShowingAnkyExperience = true"))
-        assertTrue(iosYou.contains(".fullScreenCover(isPresented: ${'$'}isShowingAnkyExperience)"))
-        assertTrue(iosYou.contains("AnkyExperienceView()"))
-        assertTrue(iosYou.contains("copy your .anky or copy your writing."))
-        assertTrue(iosYou.contains("AnkyChatAction(\"copy your .anky\", isPrimary: true)"))
-        assertTrue(iosYou.contains("AnkyChatAction(\"copy your writing\")"))
-        assertTrue(iosYou.contains("accessibilityLabel(\"Anky experience time \\(viewModel.elapsedClockText)\")"))
-        assertTrue(iosYou.contains("accessibilityLabel(\"Close The Anky Experience\")"))
-        assertTrue(iosYou.contains("accessibilityLabel(\"Anky companion\")"))
-        assertTrue(iosYou.contains("static let totalSeconds = 88 * 60"))
 
         assertTrue(androidYou.contains("val isShowingAnkyExperience = remember { mutableStateOf(false) }"))
         assertTrue(androidYou.contains("onExperienceVisibilityChanged: (Boolean) -> Unit = {}"))

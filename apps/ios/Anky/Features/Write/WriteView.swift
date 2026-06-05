@@ -32,9 +32,10 @@ struct WriteView: View {
                 let textViewHeight = max(1, visibleHeight - textViewBottomGap)
                 let ringSize = RitualRingsView.size
                 let ringRadius = ringSize / 2
+                let ringBottomLift: CGFloat = 8
                 let ringCenter = CGPoint(
                     x: max(ringRadius + 8, geometry.size.width - ringRadius - 8),
-                    y: max(ringRadius + 8, visibleHeight - textViewBottomGap - ringRadius)
+                    y: max(ringRadius + 8, visibleHeight - textViewBottomGap - ringRadius - ringBottomLift)
                 )
                 let textViewWidth = max(1, ringCenter.x - ringRadius - 8)
                 let acceptsWritingInput = shouldFocus && viewModel.canAcceptInput
@@ -60,6 +61,7 @@ struct WriteView: View {
                         lastCharacter: viewModel.lastCharacter,
                         lastCharacterColor: activeRhythmColor,
                         pulseID: viewModel.lastCharacterPulseID,
+                        rejectedInputPulseID: viewModel.rejectedInputPulseID,
                         isRitualComplete: viewModel.hasReachedRitualMark
                     )
                     .position(ringCenter)
@@ -114,11 +116,6 @@ struct WriteView: View {
                         Image(systemName: "doc")
                     }
                     .accessibilityLabel("Begin a new page")
-                } else if !viewModel.hasActiveDotAnky {
-                    WriteToolbarPasteButton(
-                        paste: pasteArtifact,
-                        devPaste: devPasteArtifact
-                    )
                 }
             }
         }
@@ -158,17 +155,9 @@ struct WriteView: View {
         }
     }
 
-    private func pasteArtifact() {
-        _ = viewModel.importAnkyArtifact(viewModel.clipboardText() ?? "")
-    }
-
-    private func devPasteArtifact() {
-        _ = viewModel.importAnkyArtifact(viewModel.devSampleAnkyArtifact)
-    }
-
     private var pageTextOpacity: Double {
         let resolveProgress = min(1, max(0, Double(viewModel.silenceElapsedMs - 3000) / 5000))
-        return 0.22 + resolveProgress * 0.78
+        return 0.32 + resolveProgress * 0.68
     }
 
     private var activeRhythmColor: Color {
@@ -187,24 +176,6 @@ struct WriteView: View {
         keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
     }
 
-}
-
-private struct WriteToolbarPasteButton: View {
-    let paste: () -> Void
-    let devPaste: () -> Void
-
-    var body: some View {
-        Button(action: paste) {
-            Image(systemName: "doc.on.clipboard")
-                .font(.system(size: 15, weight: .regular))
-        }
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 5)
-                .onEnded { _ in devPaste() }
-        )
-        .accessibilityLabel("Paste .anky artifact")
-        .accessibilityHint("Hold for five seconds to paste the built-in dev .anky")
-    }
 }
 
 private enum WritingRhythmColor {
@@ -231,7 +202,10 @@ private struct RitualRingsView: View {
     let lastCharacter: Character?
     let lastCharacterColor: Color
     let pulseID: UUID
+    let rejectedInputPulseID: UUID
     let isRitualComplete: Bool
+
+    @State private var rejectedInputFlash = 0.0
 
     private let colors: [Color] = [
         Color(red: 0.91, green: 0.20, blue: 0.14),
@@ -295,6 +269,32 @@ private struct RitualRingsView: View {
                 Circle()
                     .fill(Color(red: 0.06, green: 0.047, blue: 0.037).opacity(0.98))
                     .frame(width: Self.ringDiameter - 22, height: Self.ringDiameter - 22)
+
+                if rejectedInputFlash > 0 {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    AnkyTheme.goldBright.opacity(0.22 * rejectedInputFlash),
+                                    Color(red: 0.35, green: 0.22, blue: 0.82).opacity(0.16 * rejectedInputFlash),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 4,
+                                endRadius: 52
+                            )
+                        )
+                        .frame(width: Self.ringDiameter + 20, height: Self.ringDiameter + 20)
+
+                    Circle()
+                        .stroke(
+                            AnkyTheme.goldBright.opacity(0.42 * rejectedInputFlash),
+                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                        )
+                        .frame(width: Self.silenceDiameter + 18, height: Self.silenceDiameter + 18)
+                        .scaleEffect(1 + rejectedInputFlash * 0.08)
+                        .shadow(color: AnkyTheme.goldBright.opacity(0.28 * rejectedInputFlash), radius: 10)
+                }
 
                 ZStack {
                     ForEach(colors.indices, id: \.self) { index in
@@ -389,6 +389,17 @@ private struct RitualRingsView: View {
         }
         .frame(width: Self.size, height: Self.size)
         .animation(.easeInOut(duration: 0.4), value: isRitualComplete)
+        .onChange(of: rejectedInputPulseID) { _, _ in
+            withAnimation(.easeOut(duration: 0.08)) {
+                rejectedInputFlash = 1
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 520_000_000)
+                withAnimation(.easeOut(duration: 0.42)) {
+                    rejectedInputFlash = 0
+                }
+            }
+        }
         .allowsHitTesting(false)
     }
 }

@@ -22,7 +22,7 @@ By default, the server must never persist:
 
 The server may temporarily hold writing in memory during one reflection request. That temporary handling is not storage and must not become a journal, archive, analytics corpus, or hidden memory.
 
-A new writer may receive 8 automatic trial reflection credits.
+A new writer may receive 1 automatic trial reflection credit.
 
 The automatic trial grant is device-bound, app-bound, platform-bound, and backed by RevenueCat.
 

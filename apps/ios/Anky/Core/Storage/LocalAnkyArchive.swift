@@ -42,9 +42,9 @@ struct LocalAnkyArchive {
         let bytes = Data(ankyText.utf8)
         let hash = AnkyHasher.sha256Hex(bytes)
         let url = hashURL(for: hash)
+        let artifact = try artifact(from: ankyText, url: url)
         try bytes.write(to: url, options: [.atomic])
-
-        return try artifact(from: ankyText, url: url)
+        return artifact
     }
 
     func importArtifact(_ ankyText: String) throws -> SavedAnky {

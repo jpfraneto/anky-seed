@@ -1,8 +1,10 @@
 package inc.anky.android.feature.reveal
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import inc.anky.android.BuildConfig
+import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.identity.WriterIdentity
@@ -36,9 +38,11 @@ data class RevealState(
     val isAsking: Boolean = false,
     val isDeleting: Boolean = false,
     val isDeleted: Boolean = false,
-    val didCopyText: Boolean = false,
+    val copiedSection: RevealCopySection? = null,
     val creditBalance: Int? = null,
+    val creditPackages: List<CreditPackage> = emptyList(),
     val creditsLoading: Boolean = false,
+    val purchasingCreditPackageId: String? = null,
     val hasClaimedFreeCredits: Boolean = false,
     val creditsDenied: Boolean = false,
     val reflectionStatusMessage: String = "",
@@ -62,8 +66,16 @@ data class RevealState(
     val canSubmitReflectionRequest: Boolean
         get() = canAskAnky && !isAsking && creditPromptState != ReflectionCreditPromptState.Unavailable
 
+    val needsCreditsToReflect: Boolean
+        get() = canAskAnky && !isAsking && creditPromptState == ReflectionCreditPromptState.Unavailable
+
     val shouldShowCreditsLink: Boolean
         get() = creditPromptState == ReflectionCreditPromptState.Unavailable
+}
+
+enum class RevealCopySection {
+    Writing,
+    Reflection,
 }
 
 class RevealViewModel(
@@ -198,6 +210,9 @@ class RevealViewModel(
                 reflectionStore.save(reflection)
                 indexStore.updateReflection(payload.hash, payload.title, payload.tags)
                 requestStore?.clear(payload.hash)
+                if (payload.creditsRemaining != null) {
+                    creditsClient?.invalidateCreditBalanceCache()
+                }
                 markFreeCreditsClaimed()
                 reflection
             }.onSuccess { reflection ->
@@ -253,8 +268,24 @@ class RevealViewModel(
         }
     }
 
-    fun markTextCopied() {
-        _state.update { it.copy(didCopyText = true) }
+    fun textForCopy(section: RevealCopySection): String? {
+        val current = _state.value
+        return when (section) {
+            RevealCopySection.Writing -> current.artifact?.reconstructedText
+            RevealCopySection.Reflection -> current.reflection?.let { reflection ->
+                "${reflection.title}\n\n${reflection.reflection}"
+            }
+        }?.takeIf { it.isNotBlank() }
+    }
+
+    fun markCopied(section: RevealCopySection) {
+        _state.update { it.copy(copiedSection = section) }
+    }
+
+    fun clearCopied(section: RevealCopySection) {
+        _state.update { current ->
+            if (current.copiedSection == section) current.copy(copiedSection = null) else current
+        }
     }
 
     fun refreshCredits(showError: Boolean = true) {
@@ -272,6 +303,7 @@ class RevealViewModel(
                 _state.update {
                     it.copy(
                         creditBalance = creditState.balance,
+                        creditPackages = creditState.packages,
                         creditsDenied = false,
                         creditsLoading = false,
                         error = if (showError) null else it.error,
@@ -282,6 +314,43 @@ class RevealViewModel(
                     it.copy(
                         creditsLoading = false,
                         error = if (showError) "Could not load reflections." else it.error,
+                    )
+                }
+            }
+        }
+    }
+
+    fun purchaseCredits(packageId: String, activity: Activity?) {
+        val current = _state.value
+        if (current.purchasingCreditPackageId != null || creditsClient == null) return
+        _state.update {
+            it.copy(
+                purchasingCreditPackageId = packageId,
+                creditsLoading = true,
+                error = null,
+            )
+        }
+        viewModelScope.launch(dispatcher) {
+            try {
+                val identity = identityProvider()
+                creditsClient.configure(identity.accountId)
+                val refreshed = creditsClient.purchase(packageId, activity)
+                _state.update {
+                    it.copy(
+                        creditBalance = refreshed.balance,
+                        creditPackages = refreshed.packages,
+                        creditsDenied = false,
+                        creditsLoading = false,
+                        purchasingCreditPackageId = null,
+                        error = if (refreshed.message == "Could not complete that credit purchase.") refreshed.message else null,
+                    )
+                }
+            } catch (_: Throwable) {
+                _state.update {
+                    it.copy(
+                        creditsLoading = false,
+                        purchasingCreditPackageId = null,
+                        error = "Could not complete that credit purchase.",
                     )
                 }
             }

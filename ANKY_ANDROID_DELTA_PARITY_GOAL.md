@@ -248,6 +248,12 @@ This goal is complete when:
 8. Android tests/builds are run or blockers are explicitly documented.
 9. `IOS_PARITY_MAP.md` / `IOS_PARITY_LOG.md` accurately reflect the current state.
 
+## Current Status Note
+
+The 2026-06-03 Android pass moved Reveal back to the current iOS inline reflection rhythm, added section-aware copy state, exact local delete confirmation copy, truthful saved `creditsRemaining` display, credit-cache invalidation after non-null returned balances, and stricter live Write input mutation rejection.
+
+Android device-bound trial proof remains intentionally unimplemented. Android must still not send `X-Anky-Trial-Proof` until Play Integrity/device recall support exists with server-side verification.
+
 ## Completion Report Format
 
 Finish with a concise report:

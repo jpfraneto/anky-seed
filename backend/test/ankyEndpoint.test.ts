@@ -597,7 +597,7 @@ describe("POST /anky", () => {
     expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("4");
   });
 
-  test("eligible iOS trial grant spends and returns seven remaining credits", async () => {
+  test("eligible iOS trial grant spends and returns zero remaining credits", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
       env: ankyWorld(),
@@ -609,7 +609,7 @@ describe("POST /anky", () => {
           expect(trialProof).toBe("proof-token");
           return {
             ok: true,
-            creditsRemaining: 7,
+            creditsRemaining: 0,
             result: "trial_granted_spent",
             spentCredit: true,
             spendIdempotencyKey: "spend-once",
@@ -630,10 +630,10 @@ describe("POST /anky", () => {
     await response.text();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("7");
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("0");
   });
 
-  test("ineligible trial returns insufficient credits and does not call model", async () => {
+  test("claimed device trial returns precise error and does not call model", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let modelCalls = 0;
     const app = createApp({
@@ -643,7 +643,7 @@ describe("POST /anky", () => {
         prepareReflectionCredit: async () => ({
           ok: false,
           creditsRemaining: null,
-          result: "trial_ineligible",
+          result: "trial_already_claimed",
           spentCredit: false,
         }),
         callMirror: async () => {
@@ -661,7 +661,8 @@ describe("POST /anky", () => {
     const json = await response.json();
 
     expect(response.status).toBe(402);
-    expect(json.error.code).toBe("INSUFFICIENT_CREDITS");
+    expect(json.error.code).toBe("TRIAL_ALREADY_CLAIMED");
+    expect(json.error.message).toContain("already used");
     expect(modelCalls).toBe(0);
   });
 
@@ -924,7 +925,7 @@ describe("POST /anky", () => {
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
           ok: true,
-          creditsRemaining: 7,
+          creditsRemaining: 0,
           result: "trial_granted_spent",
           spentCredit: true,
         }),
@@ -953,7 +954,7 @@ describe("POST /anky", () => {
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({
           ok: true,
-          creditsRemaining: 7,
+          creditsRemaining: 0,
           result: "trial_granted_spent",
           spentCredit: true,
         }),
@@ -989,7 +990,7 @@ describe("POST /anky", () => {
         },
       },
       ankyRouteDeps: {
-        prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 7, result: "trial_granted_spent", spentCredit: true }),
+        prepareReflectionCredit: async () => ({ ok: true, creditsRemaining: 0, result: "trial_granted_spent", spentCredit: true }),
       },
     });
 

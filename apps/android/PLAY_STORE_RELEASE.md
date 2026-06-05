@@ -167,13 +167,13 @@ Setup checklist:
 - Verify package display, purchase flow, and CRD balance refresh on an internal testing track before shipping a build with `ANKY_REVENUECAT_ANDROID_PUBLIC_KEY`.
 - Backend remains responsible for spending credits when `POST /anky` succeeds.
 
-Known iOS product IDs are references only:
+Credit product IDs and intended launch prices:
 
-```text
-inc.dev.anky.credits.22
-inc.dev.anky.credits.88_bonus_11
-inc.dev.anky.credits.333_bonus_88
-```
+| Product ID | Title | Subtitle | USD price |
+| --- | --- | --- | --- |
+| `inc.anky.credits.3` | 3 reflections |  | $0.99 |
+| `inc.anky.credits.11` | 11 reflections | Stay with it | $2.99 |
+| `inc.anky.credits.33` | 33 reflections | Daily practice | $7.99 |
 
 ## Privacy And Protocol Release Gate
 

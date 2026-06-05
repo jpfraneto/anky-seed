@@ -1434,8 +1434,8 @@ private fun youPromptActions(
                 )
             } else {
                 packages.map { creditPackage ->
-                    val isRecommended = creditPackage.title == "99 credits" ||
-                        creditPackage.packageId.contains("88_bonus_11")
+                    val isRecommended = creditPackage.title == "11 reflections" ||
+                        creditPackage.packageId.endsWith(".credits.11")
                     AnkyChatAction(
                         title = creditPackage.title,
                         isPrimary = isRecommended,

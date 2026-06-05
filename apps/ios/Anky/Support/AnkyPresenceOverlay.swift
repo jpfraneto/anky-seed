@@ -18,11 +18,10 @@ struct AnkyPresenceOverlay: View {
     let transformToSigil: Bool
     let placement: AnkyPresencePlacement
     let bubblePlacement: AnkyBubblePlacement
-    let onTap: (() -> Bool)?
 
     @State private var isVisible = true
+    @State private var revealsThreadingCompanion = false
     @State private var breathing = false
-    @State private var showMenu = false
     @State private var sequence: AnkySequenceName
     @State private var keyboardHeight: CGFloat = 0
     @State private var storedPoint: CGPoint?
@@ -34,8 +33,7 @@ struct AnkyPresenceOverlay: View {
         goldenGlow: Bool = false,
         transformToSigil: Bool = false,
         placement: AnkyPresencePlacement = .trailingCenter,
-        bubblePlacement: AnkyBubblePlacement = .bottom,
-        onTap: (() -> Bool)? = nil
+        bubblePlacement: AnkyBubblePlacement = .bottom
     ) {
         self.companion = companion
         self.defaultSequence = defaultSequence
@@ -43,7 +41,6 @@ struct AnkyPresenceOverlay: View {
         self.transformToSigil = transformToSigil
         self.placement = placement
         self.bubblePlacement = bubblePlacement
-        self.onTap = onTap
         _sequence = State(initialValue: defaultSequence)
     }
 
@@ -60,8 +57,15 @@ struct AnkyPresenceOverlay: View {
 
             ZStack {
                 if let bubble = companion.bubble {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            dismissBubble(bubble)
+                        }
+                        .zIndex(1)
+
                     bubbleView(bubble)
-                    .zIndex(2)
+                        .zIndex(2)
                 }
 
                 ZStack {
@@ -78,25 +82,30 @@ struct AnkyPresenceOverlay: View {
 
                     AnkyWitnessView(mood: companion.mood.witnessMood, size: .companion, sequence: effectiveSequence)
                         .frame(width: size, height: size)
-                        .scaleEffect(showsCompanion ? (breathing ? 1.025 : 0.985) : 0.86)
+                        .scaleEffect(showsCompanion ? (breathing ? 1.018 : 0.992) : 0.82)
                         .opacity(showsCompanion ? 1 : 0)
 
                     Image("AnkySigil")
                         .resizable()
                         .scaledToFit()
                         .frame(width: size, height: size)
-                        .scaleEffect(showsCompanion ? 0.72 : 1)
+                        .scaleEffect(showsCompanion ? 0.78 : 1)
                         .opacity(showsCompanion ? 0 : 1)
                 }
                     .frame(width: size, height: size)
-                    .animation(.easeInOut(duration: 0.4), value: goldenGlow)
-                    .animation(.spring(response: 0.34, dampingFraction: 0.84), value: transformToSigil)
+                    .animation(.easeInOut(duration: 0.8), value: goldenGlow)
+                    .animation(.easeInOut(duration: 1.15), value: transformToSigil)
+                    .animation(.easeInOut(duration: 0.85), value: revealsThreadingCompanion)
                     .contentShape(Circle())
                     .position(draggedPoint)
                     .onTapGesture {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        if onTap?() == true {
-                            return
+                        AnkyHaptics.light()
+                        withAnimation(.easeInOut(duration: transformToSigil ? 0.85 : 0.34)) {
+                            if transformToSigil {
+                                revealsThreadingCompanion.toggle()
+                            } else {
+                                isVisible.toggle()
+                            }
                         }
                     }
                     .gesture(
@@ -112,36 +121,6 @@ struct AnkyPresenceOverlay: View {
                                 )
                             }
                     )
-                    .onLongPressGesture(minimumDuration: 3) {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        showMenu = true
-                    }
-                    .confirmationDialog("Anky", isPresented: $showMenu, titleVisibility: .visible) {
-                        if isVisible {
-                            Button("Keep Anky here") {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            }
-                            Button("Hide Anky") {
-                                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                                    isVisible = false
-                                }
-                            }
-                        } else {
-                            Button("Show Anky") {
-                                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                                    isVisible = true
-                                }
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            }
-                        }
-                        Button("Change motion") {
-                            sequence = sequence.next
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text(isVisible ? "anky stays beside the writing" : "tap the sigil to bring anky back")
-                    }
                     .zIndex(3)
             }
             .onAppear {
@@ -153,6 +132,12 @@ struct AnkyPresenceOverlay: View {
             }
             .onChange(of: placement) { _, _ in
                 storedPoint = nil
+            }
+            .onChange(of: transformToSigil) { _, shouldTransform in
+                if shouldTransform {
+                    revealsThreadingCompanion = false
+                    isVisible = true
+                }
             }
             .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: breathing)
             .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isVisible)
@@ -167,7 +152,7 @@ struct AnkyPresenceOverlay: View {
     }
 
     private var showsCompanion: Bool {
-        isVisible && !transformToSigil
+        isVisible && (!transformToSigil || revealsThreadingCompanion)
     }
 
     private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
@@ -200,7 +185,7 @@ struct AnkyPresenceOverlay: View {
                 AnkyBubbleView(
                     bubble: bubble,
                     close: {
-                        companion.hideBubble()
+                        dismissBubble(bubble)
                     }
                 )
                 .frame(maxWidth: .infinity)
@@ -217,7 +202,7 @@ struct AnkyPresenceOverlay: View {
                 AnkyBubbleView(
                     bubble: bubble,
                     close: {
-                        companion.hideBubble()
+                        dismissBubble(bubble)
                     }
                 )
                 .frame(maxWidth: .infinity)
@@ -225,6 +210,14 @@ struct AnkyPresenceOverlay: View {
                 .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 18)
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
+    }
+
+    private func dismissBubble(_ bubble: AnkyBubble) {
+        if let close = bubble.close {
+            close()
+        } else {
+            companion.hideBubble()
         }
     }
 

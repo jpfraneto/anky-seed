@@ -4,16 +4,21 @@ import UIKit
 struct MapView: View {
     @StateObject private var viewModel = MapViewModel()
     @Binding private var revealAfterWriting: SavedAnky?
+    @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
     @State private var path: [MapRoute] = []
+    @State private var pendingReflectionReadyArtifact: SavedAnky?
     private let onTryAgain: () -> Void
+    private let onBackupRequested: () -> Void
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     init(
         revealAfterWriting: Binding<SavedAnky?> = .constant(nil),
-        onTryAgain: @escaping () -> Void = {}
+        onTryAgain: @escaping () -> Void = {},
+        onBackupRequested: @escaping () -> Void = {}
     ) {
         _revealAfterWriting = revealAfterWriting
         self.onTryAgain = onTryAgain
+        self.onBackupRequested = onBackupRequested
     }
 
     var body: some View {
@@ -27,13 +32,22 @@ struct MapView: View {
             .navigationDestination(for: MapRoute.self) { route in
                 switch route {
                 case .day(let day):
-                    DayDetailView(day: viewModel.day(for: day.date) ?? day)
+                    DayDetailView(
+                        day: viewModel.day(for: day.date) ?? day,
+                        createTestAnky: {
+                            try viewModel.createTestAnky(on: day.date)
+                        }
+                    )
                 case .session(let summary):
                     if let artifact = viewModel.artifact(for: summary) {
                         RevealView(
                             viewModel: RevealViewModel(artifact: artifact),
                             onDeleted: viewModel.refresh,
-                            onTryAgain: tryAgain
+                            onTryAgain: tryAgain,
+                            onReflectionReady: {
+                                onBackupRequested()
+                                showReflectionReadyBubble(for: artifact)
+                            }
                         )
                     } else {
                         ContentUnavailableView("Anky not found", systemImage: "doc.badge.questionmark")
@@ -42,7 +56,11 @@ struct MapView: View {
                     RevealView(
                         viewModel: RevealViewModel(artifact: artifact),
                         onDeleted: viewModel.refresh,
-                        onTryAgain: tryAgain
+                        onTryAgain: tryAgain,
+                        onReflectionReady: {
+                            onBackupRequested()
+                            showReflectionReadyBubble(for: artifact)
+                        }
                     )
                 }
             }
@@ -52,6 +70,13 @@ struct MapView: View {
             }
             .onChange(of: revealAfterWriting) { _, _ in
                 openPendingRevealIfNeeded()
+            }
+            .onChange(of: path) { _, newPath in
+                guard newPath.isEmpty, let artifact = pendingReflectionReadyArtifact else {
+                    return
+                }
+                pendingReflectionReadyArtifact = nil
+                presentReflectionReadyBubble(for: artifact)
             }
             .onReceive(refreshTimer) { _ in
                 viewModel.refresh()
@@ -73,6 +98,31 @@ struct MapView: View {
         path.removeAll()
         onTryAgain()
     }
+
+    private func showReflectionReadyBubble(for artifact: SavedAnky) {
+        viewModel.refresh()
+        guard path.isEmpty else {
+            pendingReflectionReadyArtifact = artifact
+            return
+        }
+        presentReflectionReadyBubble(for: artifact)
+    }
+
+    private func presentReflectionReadyBubble(for artifact: SavedAnky) {
+        ankyCompanion.witness(
+            mood: .guiding,
+            sequence: .waveFront,
+            bubble: AnkyBubble(
+                text: "your reflection is ready.",
+                actions: [
+                    AnkyChatAction("open reflection", isPrimary: true) {
+                        path = [.reveal(artifact)]
+                        ankyCompanion.hideBubble()
+                    }
+                ]
+            )
+        )
+    }
 }
 
 private enum MapRoute: Hashable {
@@ -88,6 +138,7 @@ private struct TrailMapView: View {
 
     @State private var centeredDayID: Date?
     @State private var todayY: CGFloat?
+    @State private var didInitialFocusToday = false
 
     private let rowHeight: CGFloat = 104
     private var displayDays: [SessionDay] {
@@ -132,13 +183,13 @@ private struct TrailMapView: View {
                         updateCenteredDay(centers: centers, viewportHeight: geometry.size.height)
                     }
                     .onAppear {
-                        focusToday(with: proxy)
+                        focusTodayIfNeeded(with: proxy)
                     }
                     .onChange(of: todayDate) { _, _ in
-                        focusToday(with: proxy)
+                        focusTodayIfNeeded(with: proxy)
                     }
                     .onChange(of: days.count) { _, _ in
-                        focusToday(with: proxy)
+                        focusTodayIfNeeded(with: proxy)
                     }
 
                     if shouldShowCurrentDayButton(viewportHeight: geometry.size.height) {
@@ -195,6 +246,14 @@ private struct TrailMapView: View {
             }
             centeredDayID = todayDate
         }
+    }
+
+    private func focusTodayIfNeeded(with proxy: ScrollViewProxy) {
+        guard !didInitialFocusToday else {
+            return
+        }
+        didInitialFocusToday = true
+        focusToday(with: proxy)
     }
 
     private func shouldShowCurrentDayButton(viewportHeight: CGFloat) -> Bool {
@@ -255,6 +314,7 @@ private struct TrailDayNode: View {
     var body: some View {
         GeometryReader { geometry in
             Button {
+                AnkyHaptics.light()
                 openDay(day)
             } label: {
                 ZStack {
@@ -471,9 +531,13 @@ private enum AnkyverseDayPalette {
 
 private struct DayDetailView: View {
     let day: SessionDay
+    let createTestAnky: () throws -> SavedAnky
+    @State private var isCreatingTestAnky = false
+    @State private var testAnkyErrorMessage: String?
+    private let bottomNavigationReserve: CGFloat = 152
 
     private var title: String {
-        formattedUTCDate(day.date, dateFormat: "MMMM d, yyyy").lowercased()
+        formattedUTCDate(day.date, dateFormat: "MMMM d, yyyy")
     }
 
     var body: some View {
@@ -497,22 +561,71 @@ private struct DayDetailView: View {
                 }
                 .padding(.horizontal, 26)
                 .padding(.top, 24)
-                .padding(.bottom, 72)
+                .padding(.bottom, bottomNavigationReserve)
             }
         }
+        .ignoresSafeArea(.container, edges: .bottom)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(MapDayPalette.ink.opacity(0.96), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    createTestAnkyFromToolbar()
+                } label: {
+                    if isCreatingTestAnky {
+                        ProgressView()
+                            .tint(MapDayPalette.gold)
+                    } else {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(MapDayPalette.gold)
+                    }
+                }
+                .disabled(isCreatingTestAnky)
+                .accessibilityLabel("Create test .anky")
+            }
+        }
+        .alert("Could not create test .anky", isPresented: testAnkyErrorBinding) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(testAnkyErrorMessage ?? "The test fixture could not be imported.")
+        }
     }
 
     private var emptyState: some View {
-        Text("no writing saved")
-            .font(.custom("Georgia", size: 20))
-            .foregroundStyle(MapDayPalette.paperMuted)
+        Color.clear
             .frame(maxWidth: .infinity)
-            .padding(.top, 96)
+            .frame(height: 180)
+    }
+
+    private func createTestAnkyFromToolbar() {
+        guard !isCreatingTestAnky else {
+            return
+        }
+
+        isCreatingTestAnky = true
+        do {
+            _ = try createTestAnky()
+            testAnkyErrorMessage = nil
+            AnkyHaptics.medium()
+        } catch {
+            testAnkyErrorMessage = "The test fixture could not be imported."
+            AnkyHaptics.warning()
+        }
+        isCreatingTestAnky = false
+    }
+
+    private var testAnkyErrorBinding: Binding<Bool> {
+        Binding {
+            testAnkyErrorMessage != nil
+        } set: { isPresented in
+            if !isPresented {
+                testAnkyErrorMessage = nil
+            }
+        }
     }
 }
 
@@ -530,11 +643,11 @@ private struct SessionRow: View {
         else {
             return nil
         }
-        return title.lowercased()
+        return title
     }
 
     private var timeText: String {
-        session.createdAt.formatted(date: .omitted, time: .shortened).lowercased()
+        session.createdAt.formatted(date: .omitted, time: .shortened)
     }
 
     private var wordText: String {
@@ -560,19 +673,20 @@ private struct SessionRow: View {
         VStack(alignment: .leading, spacing: 10) {
             if let reflectedTitle {
                 Text(reflectedTitle)
-                    .font(.custom("Georgia", size: 19).weight(.semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(MapDayPalette.gold)
                     .lineLimit(2)
             }
 
             Text(session.preview)
-                .font(.custom("Georgia", size: isAnky ? 17 : 16).weight(reflectedTitle == nil && isAnky ? .semibold : .regular))
+                .font(.system(size: isAnky ? 17 : 16, weight: reflectedTitle == nil && isAnky ? .semibold : .regular))
                 .lineSpacing(4)
                 .foregroundStyle(isAnky ? MapDayPalette.paper : MapDayPalette.paperMuted)
                 .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, 2)
         .padding(.vertical, 18)
         .overlay(alignment: .bottom) {
             Rectangle()

@@ -41,6 +41,30 @@ Version code/name:
 Mirror base URL used:
 ```
 
+## JP iOS-Parity Smoke Path
+
+Use this path after installing the latest debug or internal build:
+
+1. Fresh install or `adb shell pm clear app.anky.mobile.debug`.
+2. Open the app and confirm the first surface is `Write`.
+3. Write a short fragment, wait 8 seconds, and open Reveal.
+4. Confirm the fragment cannot Ask Anky and the bottom action guides back to `WRITE 8 MINUTES`.
+5. Tap `copy writing` and confirm copied feedback without logcat content leakage.
+6. Delete the fragment from Reveal; confirm the copy is `Delete forever?` / `Delete` / `Cancel` and Map refreshes.
+7. Write a full 8-minute anky or use the debug `.anky` fixture import.
+8. Reveal the complete anky and tap `REFLECT THIS ANKY`.
+9. Observe inline loading/streaming reflection under the privacy divider.
+10. Receive the reflection and confirm it remains inline on reopen.
+11. Tap `copy writing`.
+12. Tap `copy reflection` and confirm it includes title plus body.
+13. Return to Map, reopen the reflected anky, then delete it and confirm Map updates.
+14. Open You and copy the account.
+15. Test recovery phrase reveal/copy/import gates with local auth.
+16. Test credits refresh/purchase surface if RevenueCat is configured for the build.
+17. Test export/backup/import if available.
+
+Current automation note: the 2026-06-03 local parity pass could not run `connectedDebugAndroidTest` because `adb` was not available on PATH in the execution environment. Unit tests and debug assembly passed.
+
 ## Build And Install
 
 From `apps/android`:
@@ -323,7 +347,7 @@ Use one fragment and one complete session.
 5. Confirm copied-state feedback appears briefly as `copied writing` or `copied reflection`.
 6. Verify duration/hash/status are visible.
 7. For the fragment, confirm the privacy reminder says fragments are local and cannot Ask Anky.
-8. For the complete session before reflection, confirm the bottom floating `ask anky` prompt appears, tapping it scrolls to the inline Ask Anky action, and the inline badge says `8 free reflections included`.
+8. For the complete session before reflection, confirm the bottom floating `ask anky` prompt appears, tapping it scrolls to the inline Ask Anky action, and the inline badge says `1 free reflection included`.
 9. For a saved reflection with local `creditsRemaining`, confirm `N reflection(s) left` appears under the reflection.
 10. Tap the Reveal delete control, confirm the dialog says `delete forever?`, cancel once, then repeat and confirm deletion removes the local session from Reveal/Map.
 
