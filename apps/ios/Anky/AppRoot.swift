@@ -6,6 +6,7 @@ struct AppRoot: View {
     @AppStorage("anky.biometricIdentityConfirmation") private var faceIDLockEnabled = false
     @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
     @AppStorage("anky.biometricPrivacyPromptPendingAfterFirstAnky") private var faceIDPrivacyPromptPendingAfterFirstAnky = false
+    @AppStorage("anky.biometricPrivacyPromptReadyAfterFirstAnkyOpen") private var faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
     @State private var selectedTab = 0
     @State private var revealAfterWriting: SavedAnky?
     @State private var isUnlocked = false
@@ -135,6 +136,7 @@ struct AppRoot: View {
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
             _ = try? identityStore.loadOrCreate()
             armFaceIDPrivacyPromptIfWritingAlreadyExists()
+            prepareFaceIDPrivacyPromptForCurrentOpen()
             Task {
                 await youViewModel.preloadCredits()
             }
@@ -162,6 +164,7 @@ struct AppRoot: View {
                     }
                 }
             case .background:
+                prepareFaceIDPrivacyPromptForNextOpen()
                 if faceIDLockEnabled {
                     isUnlocked = false
                     failedAuthAttempts = 0
@@ -175,6 +178,9 @@ struct AppRoot: View {
         }
         .onChange(of: faceIDLockEnabled) { _, enabled in
             if enabled {
+                faceIDPrivacyOnboardingCompleted = true
+                faceIDPrivacyPromptPendingAfterFirstAnky = false
+                faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
                 failedAuthAttempts = 0
                 recoveryPhraseInput = ""
                 if skipsNextFaceIDEnableAuthentication {
@@ -295,6 +301,7 @@ struct AppRoot: View {
         faceIDLockEnabled = false
         faceIDPrivacyOnboardingCompleted = false
         faceIDPrivacyPromptPendingAfterFirstAnky = false
+        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
         suppressFaceIDPrivacyPromptUntilNextActivation = false
         isUnlocked = true
         failedAuthAttempts = 0
@@ -401,6 +408,7 @@ struct AppRoot: View {
     private var shouldShowBiometricOnboarding: Bool {
         !faceIDPrivacyOnboardingCompleted
             && faceIDPrivacyPromptPendingAfterFirstAnky
+            && faceIDPrivacyPromptReadyAfterFirstAnkyOpen
             && !suppressFaceIDPrivacyPromptUntilNextActivation
             && !faceIDLockEnabled
             && selectedTab == 0
@@ -514,12 +522,14 @@ struct AppRoot: View {
                         AnkyChatAction(AnkyLocalization.text(.notNow)) {
                             faceIDPrivacyOnboardingCompleted = true
                             faceIDPrivacyPromptPendingAfterFirstAnky = false
+                            faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
                             ankyCompanion.hideBubble()
                         }
                     ],
                     close: {
                         faceIDPrivacyOnboardingCompleted = true
                         faceIDPrivacyPromptPendingAfterFirstAnky = false
+                        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
                         ankyCompanion.hideBubble()
                     }
                 )
@@ -560,6 +570,7 @@ struct AppRoot: View {
         guard BiometricAuthClient().canAuthenticate() else {
             faceIDPrivacyOnboardingCompleted = true
             faceIDPrivacyPromptPendingAfterFirstAnky = false
+            faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
             syncWriteBubble()
             return
         }
@@ -567,6 +578,7 @@ struct AppRoot: View {
         let confirmed = await BiometricAuthClient().confirm(reason: AnkyLocalization.text(.protectFaceIDReason))
         faceIDPrivacyOnboardingCompleted = true
         faceIDPrivacyPromptPendingAfterFirstAnky = false
+        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
         guard confirmed else {
             syncWriteBubble()
             return
@@ -587,6 +599,7 @@ struct AppRoot: View {
             return
         }
         faceIDPrivacyPromptPendingAfterFirstAnky = true
+        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
         suppressFaceIDPrivacyPromptUntilNextActivation = true
     }
 
@@ -601,6 +614,27 @@ struct AppRoot: View {
         if hasCompletedAnky {
             faceIDPrivacyPromptPendingAfterFirstAnky = true
         }
+    }
+
+    private func prepareFaceIDPrivacyPromptForCurrentOpen() {
+        guard shouldPrepareFaceIDPrivacyPrompt else {
+            return
+        }
+        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = true
+    }
+
+    private func prepareFaceIDPrivacyPromptForNextOpen() {
+        guard shouldPrepareFaceIDPrivacyPrompt else {
+            return
+        }
+        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = true
+    }
+
+    private var shouldPrepareFaceIDPrivacyPrompt: Bool {
+        faceIDPrivacyPromptPendingAfterFirstAnky
+            && !faceIDPrivacyOnboardingCompleted
+            && !faceIDLockEnabled
+            && BiometricAuthClient().canAuthenticate()
     }
 }
 

@@ -24,15 +24,18 @@
     },
     "ring": {
       "type": "string",
-      "enum": ["ring_1", "ring_2", "ring_3", "avoid"]
+      "enum": ["ring_1", "ring_2", "ring_3", "ring_4", "avoid"]
     },
     "pillar": {
       "type": "string",
       "enum": [
         "seeker_trap",
+        "constraint_mechanism",
         "mirror_mechanism",
+        "transient_mirror",
         "anti_performance",
         "child_story_bridge",
+        "story_symbol_bridge",
         "founder_confession",
         "practice_fatigue",
         "creative_excavation",

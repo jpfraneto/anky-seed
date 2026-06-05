@@ -1,4 +1,12 @@
 pillar,ring,context,comment,notes
+constraint_mechanism,ring_2,no_backspace,The backspace key is where the performance hides.,Use when the video touches editing yourself or polishing raw writing.
+constraint_mechanism,ring_2,no_editing,You cannot polish your way into honesty.,Use under perfectionism or over-editing content.
+constraint_mechanism,ring_2,blank_page,Eight minutes is long enough for the mask to get tired.,Use when the content is about sitting with the blank page or discomfort.
+constraint_mechanism,ring_3,journaling_prompt,You do not need another prompt. You need to see who keeps asking for one.,Use under journaling prompt fatigue.
+transient_mirror,ring_4,ai_privacy,A mirror should not keep a diary of your face.,Use under AI memory or private writing concerns.
+transient_mirror,ring_4,local_first,Some tools should witness and forget.,Use under local-first/privacy-preserving software content.
+transient_mirror,ring_4,cloud_journal,Your private writing should not become a product surface.,Use under cloud journal or data ownership concerns.
+transient_mirror,ring_4,ai_memory,The server is not memory. That is the point.,Use only when privacy/local-first context is explicit.
 seeker_trap,ring_1,non_duality_clip,"Sometimes ""I understand"" is the final hiding place.",Use when the video is about recognizing awareness but the comments are intellectualizing.
 seeker_trap,ring_1,non_duality_clip,The one looking for the end of seeking is made of seeking.,Use under direct self-inquiry clips.
 seeker_trap,ring_1,non_duality_clip,A pointer becomes entertainment when nothing is risked.,Use when a teaching clip is being consumed passively.
@@ -6,7 +14,7 @@ seeker_trap,ring_1,pathless_path,The path becomes real when it stops giving you 
 seeker_trap,ring_1,self_inquiry,Look at the one who wants the answer.,Use under Who am I or direct inquiry posts.
 seeker_trap,ring_1,spiritual_exhaustion,Seeking becomes safe when seeing would change your life.,Core Anky line.
 seeker_trap,ring_1,spiritual_exhaustion,You can use wisdom to avoid truth.,Use when the post names knowledge as avoidance.
-mirror_mechanism,ring_3,journaling_prompt,You do not need another prompt. You need to see who keeps asking for one.,Use under journaling prompt fatigue.
+mirror_mechanism,ring_3,journaling_prompt,You do not need another prompt. You need to see who keeps asking for one.,Legacy alias for constraint_mechanism.
 mirror_mechanism,ring_2,writing,The first honest sentence usually appears after the beautiful ones fail.,Use under writing/creativity process.
 mirror_mechanism,ring_2,writing,Writing is dangerous when you cannot edit the self that appears.,Use when the content names raw writing.
 mirror_mechanism,ring_2,writing,What you write before you can polish it is closer to prayer.,Use sparingly; can sound mystical if context is weak.
