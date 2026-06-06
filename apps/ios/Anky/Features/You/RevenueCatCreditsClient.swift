@@ -132,6 +132,25 @@ final class RevenueCatCreditsClient {
     }
 
     @MainActor
+    func logOutIfConfigured() async {
+        guard Self.configuredAccountId != nil else {
+            return
+        }
+        _ = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CustomerInfo, Error>) in
+            Purchases.shared.logOut { customerInfo, error in
+                if let customerInfo {
+                    continuation.resume(returning: customerInfo)
+                } else if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(throwing: RevenueCatCreditsError.missingOfferings)
+                }
+            }
+        }
+        Self.configuredAccountId = nil
+    }
+
+    @MainActor
     private func fetchOfferings() async throws -> Offerings {
         try await withCheckedThrowingContinuation { continuation in
             Purchases.shared.getOfferings { offerings, error in
@@ -182,6 +201,8 @@ final class RevenueCatCreditsClient {
 
     private static func subtitle(for productIdentifier: String, fallback: String) -> String {
         switch productIdentifier {
+        case "inc.anky.credits.3":
+            return "A small start"
         case "inc.anky.credits.11":
             return "Stay with it"
         case "inc.anky.credits.33":

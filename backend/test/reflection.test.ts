@@ -84,11 +84,16 @@ describe("dotAnky reflection helpers", () => {
     try {
       await reflectDotAnkyToMarkdown("0000 h\n0044 o\n0044 l\n0044 a\n8000\n");
 
-      expect(capturedPrompt).toContain("Write the entire reflection in that same language. Do not translate the user's writing into another language.");
+      expect(capturedPrompt).toContain("Write the entire reflection in that same language. Do not translate the user's writing into another language and do not answer in the app locale, device locale, developer locale, or prompt language unless that is also the dominant language of the reconstructed text.");
       expect(capturedPrompt).toContain("If the writing is English, the reflection must be English. If the writing is Spanish, the reflection must be Spanish. Same for every language.");
+      expect(capturedPrompt).toContain("do not answer in the app locale, device locale, developer locale, or prompt language unless that is also the dominant language of the reconstructed text");
+      expect(capturedPrompt).toContain("Treat the English structure labels and examples in this prompt as instructions to localize, not as language evidence.");
+      expect(capturedPrompt).toContain("If the reconstructed text is primarily English, every visible word you generate must be English.");
       expect(capturedPrompt).toContain("The title, tags, section headings, body, experiment, and final line must all use that language.");
+      expect(capturedPrompt).toContain("If any title, tag, heading, paragraph, experiment, or final line drifted into a different language, rewrite that part into the dominant language before returning.");
       expect(capturedPrompt).toContain("Localize every visible heading label");
       expect(capturedPrompt).toContain("Do not leave any heading in English if the reflection language is not English.");
+      expect(capturedPrompt).toContain("Never end with a sentence in a different language than the rest of the reflection.");
     } finally {
       restore();
     }

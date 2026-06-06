@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Anky TikTok Warmup Repository</title>
+    <meta
+      name="description"
+      content="A curated TikTok warmup queue for finding people who resonate with Anky: eight minutes, no backspace, then the mirror."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Anky distribution</p>
+        <h1>TikTok Warmup Repository</h1>
+      </div>
+      <a class="primary-link" href="https://github.com/jpfraneto/anky-seed" rel="noreferrer" target="_blank">
+        Anky seed
+      </a>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="intro-copy">
+          <p>
+            A working queue of public TikTok videos for warming an Anky account toward people done seeking,
+            constraint-ready writers, anti-performance critique, and privacy-aware AI skeptics.
+          </p>
+          <p class="thesis">Write for 8 minutes. No backspace. No editing. Then meet the mirror.</p>
+        </div>
+        <div class="stats" aria-label="Repository stats">
+          <div>
+            <strong id="stat-videos">888</strong>
+            <span>videos</span>
+          </div>
+          <div>
+            <strong id="stat-rings">4</strong>
+            <span>rings</span>
+          </div>
+          <div>
+            <strong id="stat-pillars">8</strong>
+            <span>pillars</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="Repository filters">
+        <label class="search">
+          <span>Search</span>
+          <input id="search" type="search" placeholder="creator, hook, comment, pillar..." autocomplete="off" />
+        </label>
+
+        <div class="filter-grid">
+          <label>
+            <span>Ring</span>
+            <select id="ring-filter"></select>
+          </label>
+          <label>
+            <span>Pillar</span>
+            <select id="pillar-filter"></select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select id="status-filter"></select>
+          </label>
+          <label>
+            <span>Priority</span>
+            <select id="priority-filter"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="summary-bar">
+        <p id="result-count">Showing all videos</p>
+        <button id="copy-visible" type="button">Copy visible links</button>
+      </section>
+
+      <section id="video-list" class="video-list" aria-live="polite"></section>
+    </main>
+
+    <template id="video-template">
+      <article class="video-card">
+        <div class="card-head">
+          <div>
+            <p class="creator"></p>
+            <h2></h2>
+          </div>
+          <span class="priority"></span>
+        </div>
+        <p class="why"></p>
+        <div class="meta"></div>
+        <p class="comment"></p>
+        <div class="actions">
+          <a class="watch" target="_blank" rel="noreferrer">Open TikTok</a>
+          <button class="copy-one" type="button">Copy link</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

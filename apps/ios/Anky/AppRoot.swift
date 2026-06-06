@@ -7,15 +7,17 @@ struct AppRoot: View {
     @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
     @AppStorage("anky.biometricPrivacyPromptPendingAfterFirstAnky") private var faceIDPrivacyPromptPendingAfterFirstAnky = false
     @AppStorage("anky.biometricPrivacyPromptReadyAfterFirstAnkyOpen") private var faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
+    @AppStorage("anky.skipNextFaceIDEnableAuthentication") private var skipsNextFaceIDEnableAuthentication = false
     @State private var selectedTab = 0
     @State private var revealAfterWriting: SavedAnky?
     @State private var isUnlocked = false
     @State private var failedAuthAttempts = 0
     @State private var isAuthenticating = false
-    @State private var skipsNextFaceIDEnableAuthentication = false
     @State private var suppressFaceIDPrivacyPromptUntilNextActivation = false
     @State private var recoveryPhraseInput = ""
     @State private var showsLaunchDialogue = true
+    @State private var showsOnboarding = true
+    @State private var showsFaceIDActivationPrompt = false
     @State private var keyboardHeight: CGFloat = 0
     @State private var showsICloudRestorePrompt = false
     @State private var isRestoringICloudBackup = false
@@ -23,6 +25,7 @@ struct AppRoot: View {
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
     @StateObject private var ankyCompanion = AnkyCompanionStore()
+    @StateObject private var tabBarCTAController = AnkyTabBarCTAController()
 
     private func showMap() {
         selectedTab = 1
@@ -39,7 +42,6 @@ struct AppRoot: View {
         revealAfterWriting = artifact
         selectedTab = 1
         showsLaunchDialogue = false
-        armFaceIDPrivacyPromptAfterFirstAnky()
         backUpToICloudIfEnabled()
         syncWriteBubble()
     }
@@ -83,6 +85,15 @@ struct AppRoot: View {
                     .tag(2)
             }
             .environmentObject(ankyCompanion)
+            .environmentObject(tabBarCTAController)
+            .toolbar(selectedTab == 0 ? .hidden : .visible, for: .tabBar)
+
+            AnkyTabBarFrameReader(controller: tabBarCTAController)
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+
+            AnkyTabBarCTAOverlay(controller: tabBarCTAController)
+                .zIndex(75)
 
             if faceIDLockEnabled && !isUnlocked {
                 LockFailureView(
@@ -106,6 +117,14 @@ struct AppRoot: View {
                     createNew: createNewLocalAccount
                 )
                 .zIndex(120)
+            }
+
+            if shouldShowOnboarding {
+                AnkyOnboardingView {
+                    completeOnboarding()
+                }
+                .transition(.opacity)
+                .zIndex(110)
             }
 
             AnkyPresenceOverlay(
@@ -135,8 +154,6 @@ struct AppRoot: View {
             let identityStore = WriterIdentityStore()
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
             _ = try? identityStore.loadOrCreate()
-            armFaceIDPrivacyPromptIfWritingAlreadyExists()
-            prepareFaceIDPrivacyPromptForCurrentOpen()
             Task {
                 await youViewModel.preloadCredits()
             }
@@ -146,6 +163,7 @@ struct AppRoot: View {
             Task {
                 await checkForICloudRestore()
             }
+            presentFaceIDActivationPromptIfNeeded()
             syncWriteBubble()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -154,17 +172,14 @@ struct AppRoot: View {
                 Task {
                     await youViewModel.preloadCredits()
                 }
-                if suppressFaceIDPrivacyPromptUntilNextActivation {
-                    suppressFaceIDPrivacyPromptUntilNextActivation = false
-                    syncWriteBubble()
-                }
                 if faceIDLockEnabled && !isUnlocked && !isAuthenticating {
                     Task {
                         await authenticateIfNeeded()
                     }
+                } else {
+                    presentFaceIDActivationPromptIfNeeded()
                 }
             case .background:
-                prepareFaceIDPrivacyPromptForNextOpen()
                 if faceIDLockEnabled {
                     isUnlocked = false
                     failedAuthAttempts = 0
@@ -235,6 +250,20 @@ struct AppRoot: View {
         }
         .onChange(of: faceIDPrivacyOnboardingCompleted) { _, _ in
             syncWriteBubble()
+        }
+        .alert(AnkyLocalization.text(.activateFaceID), isPresented: $showsFaceIDActivationPrompt) {
+            Button(AnkyLocalization.text(.activateFaceID)) {
+                Task {
+                    await enableFaceIDLockFromOnboarding()
+                }
+            }
+            Button(AnkyLocalization.text(.notNow), role: .cancel) {
+                faceIDPrivacyOnboardingCompleted = true
+                faceIDPrivacyPromptPendingAfterFirstAnky = false
+                faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
+            }
+        } message: {
+            Text(AnkyLocalization.text(.faceIDPrompt))
         }
     }
 
@@ -309,6 +338,7 @@ struct AppRoot: View {
         skipsNextFaceIDEnableAuthentication = false
         recoveryPhraseInput = ""
         showsLaunchDialogue = true
+        showsOnboarding = true
         showsICloudRestorePrompt = false
         isRestoringICloudBackup = false
         iCloudRestoreErrorMessage = nil
@@ -374,13 +404,27 @@ struct AppRoot: View {
     private func createNewLocalAccount() {
         showsICloudRestorePrompt = false
         iCloudRestoreErrorMessage = nil
-        showsLaunchDialogue = true
+        showsLaunchDialogue = false
+        showsOnboarding = true
+        syncWriteBubble()
+    }
+
+    private func completeOnboarding() {
+        withAnimation(.easeOut(duration: 0.18)) {
+            showsOnboarding = false
+        }
+        showsLaunchDialogue = false
+        selectedTab = 0
+        ankyCompanion.hideBubble(returningTo: .listening)
+        writeViewModel.openWritingPortal()
         syncWriteBubble()
     }
 
     private var shouldFocusWrite: Bool {
         selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
+            && !shouldShowOnboarding
+            && !showsICloudRestorePrompt
     }
 
     private var selectedTabBinding: Binding<Int> {
@@ -398,26 +442,18 @@ struct AppRoot: View {
         showsLaunchDialogue
             && selectedTab == 0
             && (!faceIDLockEnabled || isUnlocked)
-            && !shouldShowBiometricOnboarding
+            && !shouldShowOnboarding
             && !writeViewModel.hasActiveDotAnky
             && !writeViewModel.hasReachedRitualMark
             && keyboardHeight == 0
             && !shouldShowWriteErrorDialogue
     }
 
-    private var shouldShowBiometricOnboarding: Bool {
-        !faceIDPrivacyOnboardingCompleted
-            && faceIDPrivacyPromptPendingAfterFirstAnky
-            && faceIDPrivacyPromptReadyAfterFirstAnkyOpen
-            && !suppressFaceIDPrivacyPromptUntilNextActivation
-            && !faceIDLockEnabled
+    private var shouldShowOnboarding: Bool {
+        showsOnboarding
             && selectedTab == 0
-            && isUnlocked
-            && keyboardHeight == 0
-            && !writeViewModel.hasActiveDotAnky
-            && !writeViewModel.hasReachedRitualMark
-            && !shouldShowWriteErrorDialogue
-            && BiometricAuthClient().canAuthenticate()
+            && (!faceIDLockEnabled || isUnlocked)
+            && !showsICloudRestorePrompt
     }
 
     private var shouldShowWriteErrorDialogue: Bool {
@@ -468,6 +504,11 @@ struct AppRoot: View {
             return
         }
 
+        guard !shouldShowOnboarding else {
+            ankyCompanion.hideBubble()
+            return
+        }
+
         if shouldShowWriteErrorDialogue, let errorMessage = writeViewModel.errorMessage {
             ankyCompanion.witness(
                 mood: .concerned,
@@ -501,36 +542,6 @@ struct AppRoot: View {
                     close: {
                         writeViewModel.dismissCurrentPrompt()
                         ankyCompanion.hideBubble(returningTo: .listening)
-                    }
-                )
-            )
-            return
-        }
-
-        if shouldShowBiometricOnboarding {
-            ankyCompanion.witness(
-                mood: .guiding,
-                sequence: .waveFront,
-                bubble: AnkyBubble(
-                    text: AnkyLocalization.text(.faceIDPrompt),
-                    actions: [
-                        AnkyChatAction(AnkyLocalization.text(.activateFaceID), isPrimary: true) {
-                            Task {
-                                await enableFaceIDLockFromOnboarding()
-                            }
-                        },
-                        AnkyChatAction(AnkyLocalization.text(.notNow)) {
-                            faceIDPrivacyOnboardingCompleted = true
-                            faceIDPrivacyPromptPendingAfterFirstAnky = false
-                            faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
-                            ankyCompanion.hideBubble()
-                        }
-                    ],
-                    close: {
-                        faceIDPrivacyOnboardingCompleted = true
-                        faceIDPrivacyPromptPendingAfterFirstAnky = false
-                        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
-                        ankyCompanion.hideBubble()
                     }
                 )
             )
@@ -592,49 +603,23 @@ struct AppRoot: View {
         ankyCompanion.hideBubble()
     }
 
-    private func armFaceIDPrivacyPromptAfterFirstAnky() {
+    private func presentFaceIDActivationPromptIfNeeded() {
         guard !faceIDPrivacyOnboardingCompleted,
               !faceIDLockEnabled,
+              !showsFaceIDActivationPrompt,
               BiometricAuthClient().canAuthenticate() else {
             return
         }
-        faceIDPrivacyPromptPendingAfterFirstAnky = true
-        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = false
-        suppressFaceIDPrivacyPromptUntilNextActivation = true
-    }
-
-    private func armFaceIDPrivacyPromptIfWritingAlreadyExists() {
-        guard !faceIDPrivacyOnboardingCompleted,
-              !faceIDLockEnabled,
-              !faceIDPrivacyPromptPendingAfterFirstAnky,
-              BiometricAuthClient().canAuthenticate() else {
+        guard SessionIndexStore().load().contains(where: { $0.isComplete }) else {
             return
         }
-        let hasCompletedAnky = SessionIndexStore().load().contains { $0.isComplete }
-        if hasCompletedAnky {
-            faceIDPrivacyPromptPendingAfterFirstAnky = true
-        }
-    }
 
-    private func prepareFaceIDPrivacyPromptForCurrentOpen() {
-        guard shouldPrepareFaceIDPrivacyPrompt else {
-            return
+        DispatchQueue.main.async {
+            guard !faceIDLockEnabled, !faceIDPrivacyOnboardingCompleted else {
+                return
+            }
+            showsFaceIDActivationPrompt = true
         }
-        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = true
-    }
-
-    private func prepareFaceIDPrivacyPromptForNextOpen() {
-        guard shouldPrepareFaceIDPrivacyPrompt else {
-            return
-        }
-        faceIDPrivacyPromptReadyAfterFirstAnkyOpen = true
-    }
-
-    private var shouldPrepareFaceIDPrivacyPrompt: Bool {
-        faceIDPrivacyPromptPendingAfterFirstAnky
-            && !faceIDPrivacyOnboardingCompleted
-            && !faceIDLockEnabled
-            && BiometricAuthClient().canAuthenticate()
     }
 }
 
@@ -788,9 +773,6 @@ private struct SeedPhraseEntry: UIViewRepresentable {
         textView.layer.cornerRadius = 6
         textView.layer.borderWidth = 1
         textView.layer.borderColor = UIColor.white.withAlphaComponent(0.16).cgColor
-        DispatchQueue.main.async {
-            textView.becomeFirstResponder()
-        }
         return textView
     }
 

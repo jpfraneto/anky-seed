@@ -6,6 +6,7 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var ankyFileURLs: [URL] = []
     @Published private(set) var reflectionFileURLs: [URL] = []
     @Published private(set) var backupZipURL: URL?
+    @Published private(set) var formattedWritingExportURL: URL?
     @Published private(set) var errorMessage: String?
     @Published private(set) var statusMessage: String?
     @Published private(set) var identityStatus = "Local identity"
@@ -13,6 +14,7 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var sensitiveIdentityConfirmed = false
     @Published private(set) var recoveryPhraseText = ""
     @Published private(set) var completeAnkyCount = 0
+    @Published private(set) var completeAnkySessions: [SessionSummary] = []
     @Published private(set) var totalWritingMinutes = 0
     @Published private(set) var currentStreak = 0
     @Published private(set) var creditBalance: Int?
@@ -86,6 +88,7 @@ final class YouViewModel: ObservableObject {
             ankyFileURLs = archive.fileURLs()
             reflectionFileURLs = reflectionStore.fileURLs()
             backupZipURL = try backupExporter.exportBackup()
+            formattedWritingExportURL = try backupExporter.exportFormattedWritings()
             identityStatus = "Local identity"
             isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             let iCloudStatus = iCloudBackupStore.status
@@ -100,13 +103,35 @@ final class YouViewModel: ObservableObject {
         }
     }
 
+    func artifact(for summary: SessionSummary) -> SavedAnky? {
+        if let artifact = try? archive.load(url: summary.localFileURL) {
+            return artifact
+        }
+        return try? archive.load(hash: summary.hash)
+    }
+
     func prepareBackupExport() {
         do {
             backupZipURL = try backupExporter.exportBackup()
+            formattedWritingExportURL = try backupExporter.exportFormattedWritings()
             errorMessage = nil
         } catch {
             backupZipURL = nil
+            formattedWritingExportURL = nil
             errorMessage = "Could not create a backup zip."
+        }
+    }
+
+    func prepareFormattedWritingExport() {
+        do {
+            formattedWritingExportURL = try backupExporter.exportFormattedWritings()
+            errorMessage = nil
+            if formattedWritingExportURL == nil {
+                statusMessage = "There is no writing to export yet."
+            }
+        } catch {
+            formattedWritingExportURL = nil
+            errorMessage = "Could not create a writing export."
         }
     }
 
@@ -370,6 +395,39 @@ final class YouViewModel: ObservableObject {
         }
     }
 
+    func deleteAccountAndDataEverywhere() async {
+        do {
+            try archive.clear()
+            try reflectionStore.clear()
+            try? sessionIndexStore.clear()
+            ActiveDraftStore().clear()
+            notifications.cancelDailyReminder()
+            appOpenStore.clear()
+            try? iCloudBackupStore.deleteRemoteBackupAndDisable()
+            try identityStore.resetForDevelopment(includeICloudBackup: true)
+            await creditsClient.logOutIfConfigured()
+            clearDevelopmentDefaults()
+            accountId = ""
+            ankyFileURLs = []
+            reflectionFileURLs = []
+            backupZipURL = nil
+            formattedWritingExportURL = nil
+            recoveryPhraseText = ""
+            sensitiveIdentityConfirmed = false
+            isIdentityBackedUpToICloud = false
+            isICloudBackupEnabled = false
+            iCloudBackupLastDate = nil
+            ReflectionCreditCache.clear(defaults: defaults)
+            creditBalance = nil
+            creditPackages = []
+            hasClaimedFreeCredits = false
+            statusMessage = "Account and data deleted from this device and Anky iCloud backup."
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not delete all account data."
+        }
+    }
+
     func preloadCredits() async {
         await refreshCredits(showError: false)
     }
@@ -506,7 +564,10 @@ final class YouViewModel: ObservableObject {
 
     private func updateStats() {
         let sessions = sessionIndexStore.load()
-        let completeSessions = sessions.filter(\.isComplete)
+        let completeSessions = sessions
+            .filter(\.isComplete)
+            .sorted { $0.createdAt > $1.createdAt }
+        completeAnkySessions = completeSessions
         completeAnkyCount = completeSessions.count
         let totalDurationMs = sessions.reduce(Int64(0)) { $0 + $1.durationMs }
         totalWritingMinutes = sessions.isEmpty ? 0 : max(1, Int((totalDurationMs + 59_999) / 60_000))

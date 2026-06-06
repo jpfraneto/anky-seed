@@ -9,15 +9,18 @@ struct YouView: View {
     let onDevelopmentWipe: () -> Void
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
+    @EnvironmentObject private var tabBarCTAController: AnkyTabBarCTAController
     @AppStorage(MirrorConfiguration.userDefaultsKey) private var mirrorBaseURL = MirrorConfiguration.defaultBaseURL
     @AppStorage("anky.dailyReminderEnabled") private var dailyReminderEnabled = false
     @AppStorage("anky.dailyReminderTime") private var dailyReminderTime = 9.0 * 60.0 * 60.0
     @AppStorage("anky.biometricIdentityConfirmation") private var biometricIdentityConfirmation = false
+    @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
+    @AppStorage("anky.skipNextFaceIDEnableAuthentication") private var skipsNextFaceIDEnableAuthentication = false
     @State private var confirmClearArchive = false
     @State private var confirmClearReflections = false
     @State private var confirmClearWritingData = false
     @State private var confirmResetIdentity = false
-    @State private var confirmDevelopmentWipe = false
+    @State private var confirmDeleteAccountAndData = false
     @State private var isImportingBackup = false
     @State private var isImportingRecoveryPhrase = false
     @State private var recoveryPhraseInput = ""
@@ -25,6 +28,10 @@ struct YouView: View {
     @State private var showsTermsAndConditions = false
     @State private var activePrompt: YouPrompt?
     @State private var isShowingSystemPrompt = false
+    @State private var path: [YouRoute] = []
+    @State private var didCopyAnkyContract = false
+    @State private var showsAccountDeletion = false
+    @State private var showsReflectionCreditsSheet = false
 
     init(
         viewModel: YouViewModel,
@@ -37,22 +44,22 @@ struct YouView: View {
     }
 
     var body: some View {
-        ZStack {
-            YouCosmicBackground()
+        NavigationStack(path: $path) {
+            GeometryReader { geometry in
+            ZStack {
+                YouCosmicBackground()
 
-            ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    YouTitle(title: "Your Anky", subtitle: "Private on this phone")
-                        .padding(.top, 18)
+                        YouPanel(spacing: 0) {
+                        dataRow
 
-                    YouStatsPanel(
-                        ankys: viewModel.completeAnkyCount,
-                        minutes: viewModel.totalWritingMinutes,
-                        streak: viewModel.currentStreak
-                    )
+                        YouDivider()
 
-                    YouPanel(spacing: 0) {
-                        promptButton(.identity, icon: "you-icon-account", title: "Identity", subtitle: identityMenuSubtitle)
+                        promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)
+
+                        YouDivider()
+
+                        promptButton(.support, icon: "you-icon-support", title: "Support / Feedback", subtitle: "Email support@anky.app")
 
                         YouDivider()
 
@@ -64,41 +71,92 @@ struct YouView: View {
                             showsTermsAndConditions = true
                         }
 
-                        YouDivider()
+                        if shouldShowFaceIDControl {
+                            YouDivider()
 
-                        promptButton(.export, icon: "you-icon-export", title: "Data", subtitle: dataMenuSubtitle)
-
-                        YouDivider()
-
-                        promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)
-
-                        YouDivider()
-
-                        promptButton(.support, icon: "you-icon-support", title: "Support / Feedback", subtitle: "Email support@anky.app")
-                    }
-
-                    #if DEBUG
-                    YouDangerPanel {
-                        Text("development")
-                            .youCaption()
-                        Text("wipe this install")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(YouPalette.paper)
-                        Text("deletes local writing, reflections, session state, app settings, local identity, and the icloud keychain identity backup for this app.")
-                            .youBody()
-                        YouActionButton("wipe everything", role: .destructive) {
-                            confirmDevelopmentWipe = true
+                            YouToggleRow(
+                                isOn: faceIDBinding,
+                                iconName: deviceAuthenticationIconName,
+                                title: deviceAuthenticationName,
+                                subtitle: biometricIdentityConfirmation ? "On" : "Off"
+                            )
                         }
+
+                        YouDivider()
+
+                        ankyContractRow
                     }
-                    #endif
+
+                    if showsAccountDeletion {
+                        YouPanel(spacing: 0) {
+                            Button(role: .destructive) {
+                                confirmDeleteAccountAndData = true
+                            } label: {
+                                YouDestructiveMenuRow(title: "DELETE ACCOUNT AND DATA")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 220)
-            }
-            .safeAreaPadding(.top, 44)
+                .padding(.top, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
+            }
+            .navigationTitle("You")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        AnkyHaptics.warning()
+                        AnkyHaptics.medium()
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            showsAccountDeletion.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "exclamationmark")
+                            .font(.system(size: 17, weight: .heavy))
+                            .foregroundStyle(Color.red.opacity(0.88))
+                            .frame(width: 34, height: 38)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(showsAccountDeletion ? "Hide delete account action" : "Show delete account action")
+                }
+            }
+            .navigationDestination(for: YouRoute.self) { route in
+                switch route {
+                case .allAnkys:
+                    YouAllAnkysHistoryView(
+                        viewModel: viewModel,
+                        onWriteRequested: {
+                            path.removeAll()
+                            onWriteRequested()
+                        }
+                    )
+                }
+            }
+            .navigationDestination(for: SessionSummary.self) { session in
+                if let artifact = viewModel.artifact(for: session) {
+                    RevealView(
+                        viewModel: RevealViewModel(artifact: artifact),
+                        onDeleted: {
+                            viewModel.refresh()
+                        },
+                        onTryAgain: {
+                            path.removeAll()
+                            onWriteRequested()
+                        }
+                    )
+                } else {
+                    ContentUnavailableView("Anky not found", systemImage: "doc.badge.questionmark")
+                }
+            }
+            }
         }
-        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
                 .presentationDetents([.fraction(0.8)])
@@ -111,6 +169,25 @@ struct YouView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(PrivacySheetPalette.ink)
         }
+        .ankyReflectionCreditsSheet(
+            isPresented: $showsReflectionCreditsSheet,
+            availableCredits: viewModel.presentedCreditBalance,
+            packs: viewModel.creditPackages,
+            isRefreshing: viewModel.creditsLoading,
+            purchasingPackId: viewModel.purchasingCreditPackageID,
+            onRefresh: {
+                AnkyHaptics.light()
+                Task {
+                    await viewModel.refreshCredits()
+                }
+            },
+            onSelectPack: { creditPackage in
+                AnkyHaptics.light()
+                Task {
+                    await viewModel.purchaseCredits(creditPackage)
+                }
+            }
+        )
         .sheet(isPresented: $isImportingRecoveryPhrase) {
             ImportRecoveryPhraseSheet(
                 viewModel: viewModel,
@@ -140,24 +217,16 @@ struct YouView: View {
         } message: {
             Text("Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.")
         }
-        #if DEBUG
-        .confirmationDialog("wipe this install?", isPresented: $confirmDevelopmentWipe, titleVisibility: .visible) {
-            Button("wipe everything", role: .destructive) {
-                viewModel.wipeEverythingForDevelopment()
-                mirrorBaseURL = MirrorConfiguration.defaultBaseURL
-                dailyReminderEnabled = false
-                dailyReminderTime = 9.0 * 60.0 * 60.0
-                biometricIdentityConfirmation = false
-                recoveryPhraseInput = ""
-                activePrompt = nil
-                isShowingSystemPrompt = false
-                ankyCompanion.hideBubble()
-                onDevelopmentWipe()
+        .alert("Delete Account and Data?", isPresented: $confirmDeleteAccountAndData) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteAccountAndData()
+                }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This deletes local writing, reflections, drafts, app settings, local identity, and the iCloud Keychain identity backup for this app. This cannot reset server-side credits on old accounts, but it creates a new local account.")
+            Text("This deletes your Anky data from this device and iCloud. This cannot be undone.")
         }
-        #endif
         .fileImporter(
             isPresented: $isImportingBackup,
             allowedContentTypes: Self.importableContentTypes,
@@ -199,11 +268,6 @@ struct YouView: View {
         .onChange(of: viewModel.creditPackages.count) { _, _ in
             refreshCreditsBubbleIfNeeded()
         }
-        .onChange(of: viewModel.isIdentityBackedUpToICloud) { _, _ in
-            if activePrompt == .identity, !isShowingSystemPrompt {
-                presentCurrentPromptIfNeeded()
-            }
-        }
         .onChange(of: viewModel.isICloudBackupEnabled) { _, _ in
             if activePrompt == .export, !isShowingSystemPrompt {
                 presentCurrentPromptIfNeeded()
@@ -223,25 +287,55 @@ struct YouView: View {
 
     private func promptButton(_ prompt: YouPrompt, icon: String, title: String, subtitle: String) -> some View {
         Button {
-            if prompt == .privacy {
-                showsPrivacyPolicy = true
-                activePrompt = nil
-                isShowingSystemPrompt = false
-                ankyCompanion.hideBubble()
-                return
-            }
-            activePrompt = prompt
-            isShowingSystemPrompt = false
-            presentCurrentPromptIfNeeded()
             if prompt == .credits {
-                Task {
-                    await viewModel.refreshCredits(showError: false)
-                }
+                openCreditsSheet()
+            } else {
+                openPrompt(prompt)
             }
         } label: {
             YouMenuRow(icon: icon, title: title, subtitle: subtitle, showsDisclosure: false)
         }
         .buttonStyle(.plain)
+    }
+
+    private var dataRow: some View {
+        YouDataToggleRow(
+            isOn: iCloudBackupBinding,
+            icon: "you-icon-export",
+            title: "Data",
+            subtitle: dataMenuSubtitle,
+            action: {
+                openPrompt(.export)
+            }
+        )
+    }
+
+    private func openPrompt(_ prompt: YouPrompt) {
+        if prompt == .privacy {
+            showsPrivacyPolicy = true
+            activePrompt = nil
+            isShowingSystemPrompt = false
+            ankyCompanion.hideBubble()
+            return
+        }
+        activePrompt = prompt
+        isShowingSystemPrompt = false
+        presentCurrentPromptIfNeeded()
+        if prompt == .credits {
+            Task {
+                await viewModel.refreshCredits(showError: false)
+            }
+        }
+    }
+
+    private func openCreditsSheet() {
+        activePrompt = nil
+        isShowingSystemPrompt = false
+        ankyCompanion.hideBubble()
+        showsReflectionCreditsSheet = true
+        Task {
+            await viewModel.refreshCredits(showError: false)
+        }
     }
 
     private func legalButton(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
@@ -307,10 +401,6 @@ struct YouView: View {
             return creditsPromptMessage
         }
 
-        if activePrompt == .identity, viewModel.isIdentityBackedUpToICloud {
-            return "Your recovery phrase is saved in iCloud Keychain. Use Data when you want a writing and reflection backup."
-        }
-
         if activePrompt == .export {
             if viewModel.isICloudBackupWorking {
                 return "Anky is updating the encrypted iCloud backup."
@@ -321,7 +411,7 @@ struct YouView: View {
                 }
                 return "Encrypted iCloud backup is on. It will run after your next writing session."
             }
-            return "Turn on encrypted iCloud backup to restore writing and reflections after reinstalling."
+            return "Export readable writings or turn on encrypted iCloud backup for reinstall recovery."
         }
 
         return activePrompt?.message ?? ""
@@ -350,59 +440,20 @@ struct YouView: View {
         }
 
         switch activePrompt {
-        case .identity:
-            var actions = [
-                AnkyChatAction("Import account", isPrimary: viewModel.isIdentityBackedUpToICloud) {
-                    Task { await viewModel.recoverIdentityFromICloudKeychain() }
-                },
-              
-            ]
-            if !viewModel.isIdentityBackedUpToICloud {
-                actions.insert(
-                    AnkyChatAction("Back up recovery phrase", isPrimary: true) {
-                        Task { await viewModel.backUpIdentityToICloudKeychain() }
-                    },
-                    at: 0
-                )
-            }
-            return actions
         case .privacy:
             return []
         case .export:
-            var actions = [AnkyChatAction]()
-
-            if viewModel.isICloudBackupEnabled {
-                actions.append(
-                    AnkyChatAction(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now", isPrimary: true) {
-                        Task { await viewModel.backUpToICloudNow() }
+            return [
+                AnkyChatAction(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now", isPrimary: true) {
+                    Task { await viewModel.backUpToICloudNow() }
+                },
+                AnkyChatAction("Export writings") {
+                    viewModel.prepareFormattedWritingExport()
+                    if let exportURL = viewModel.formattedWritingExportURL {
+                        presentShareSheet(item: exportURL)
                     }
-                )
-                actions.append(
-                    AnkyChatAction("Turn off iCloud") {
-                        viewModel.disableICloudBackup()
-                    }
-                )
-            } else {
-                actions.append(
-                    AnkyChatAction("Enable iCloud backup", isPrimary: true) {
-                        Task { await viewModel.enableICloudBackup() }
-                    }
-                )
-            }
-
-            actions.append(
-                AnkyChatAction("Restore backup") {
-                    isImportingBackup = true
                 }
-            )
-            if let backupZipURL = viewModel.backupZipURL {
-                actions.append(
-                    AnkyChatAction("Export zip") {
-                        presentShareSheet(item: backupZipURL)
-                    }
-                )
-            }
-            return actions
+            ]
         case .credits:
             if viewModel.hasUnspentGiftCredit {
                 return [
@@ -464,17 +515,52 @@ struct YouView: View {
         return viewModel.creditSummaryText
     }
 
-    private var identityMenuSubtitle: String {
-        viewModel.isIdentityBackedUpToICloud
-            ? "Recovery phrase saved in iCloud"
-            : "Save recovery phrase to iCloud"
-    }
-
     private var dataMenuSubtitle: String {
         if viewModel.isICloudBackupEnabled {
             return "Encrypted iCloud backup on"
         }
-        return "Export, restore, or enable iCloud"
+        return "Export writings or enable iCloud"
+    }
+
+    private var iCloudBackupBinding: Binding<Bool> {
+        Binding {
+            viewModel.isICloudBackupEnabled
+        } set: { isEnabled in
+            if isEnabled {
+                Task { await viewModel.enableICloudBackup() }
+            } else {
+                viewModel.disableICloudBackup()
+            }
+        }
+    }
+
+    private var shouldShowFaceIDControl: Bool {
+        BiometricAuthClient().canAuthenticate()
+    }
+
+    private var deviceAuthenticationName: String {
+        BiometricAuthClient().deviceAuthenticationName()
+    }
+
+    private var deviceAuthenticationIconName: String {
+        switch deviceAuthenticationName {
+        case "Face ID":
+            return "faceid"
+        case "Touch ID":
+            return "touchid"
+        case "Optic ID":
+            return "eye"
+        default:
+            return "lock.fill"
+        }
+    }
+
+    private var faceIDBinding: Binding<Bool> {
+        Binding {
+            biometricIdentityConfirmation
+        } set: { isEnabled in
+            setFaceID(isEnabled)
+        }
     }
 
     private var creditsPromptMessage: String {
@@ -492,6 +578,40 @@ struct YouView: View {
         }
 
         return "You have \(balance) reflection \(balance == "1" ? "credit" : "credits"). Choose a pack to add more."
+    }
+
+    private var ankyContractAddress: String {
+        "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"
+    }
+
+    private var ankyContractDisplayAddress: String {
+        let prefix = ankyContractAddress.prefix(5)
+        let suffix = ankyContractAddress.suffix(5)
+        return "\(prefix)...\(suffix)"
+    }
+
+    private var ankyContractRow: some View {
+        Button {
+            ClipboardClient().copy(ankyContractAddress)
+            AnkyHaptics.light()
+            withAnimation(.easeInOut(duration: 0.18)) {
+                didCopyAnkyContract = true
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_600_000_000)
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    didCopyAnkyContract = false
+                }
+            }
+        } label: {
+            YouMenuRow(
+                icon: "you-icon-anky-token",
+                title: "$ANKY on Base",
+                subtitle: didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
+                showsDisclosure: false
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func dismissCreditUpdateMessageIfNeeded(_ statusMessage: String?) {
@@ -543,10 +663,46 @@ struct YouView: View {
         let activityViewController = UIActivityViewController(activityItems: [item], applicationActivities: nil)
         rootViewController.present(activityViewController, animated: true)
     }
+
+    private func setFaceID(_ isEnabled: Bool) {
+        guard isEnabled != biometricIdentityConfirmation else {
+            return
+        }
+
+        if !isEnabled {
+            biometricIdentityConfirmation = false
+            AnkyHaptics.light()
+            return
+        }
+
+        Task {
+            guard await BiometricAuthClient().confirm(reason: AnkyLocalization.text(.protectFaceIDReason)) else {
+                AnkyHaptics.warning()
+                return
+            }
+            skipsNextFaceIDEnableAuthentication = true
+            faceIDPrivacyOnboardingCompleted = true
+            biometricIdentityConfirmation = true
+            AnkyHaptics.success()
+        }
+    }
+
+    @MainActor
+    private func deleteAccountAndData() async {
+        await viewModel.deleteAccountAndDataEverywhere()
+        mirrorBaseURL = MirrorConfiguration.defaultBaseURL
+        dailyReminderEnabled = false
+        dailyReminderTime = 9.0 * 60.0 * 60.0
+        biometricIdentityConfirmation = false
+        recoveryPhraseInput = ""
+        activePrompt = nil
+        isShowingSystemPrompt = true
+        ankyCompanion.hideBubble()
+        onDevelopmentWipe()
+    }
 }
 
 private enum YouPrompt: Hashable {
-    case identity
     case privacy
     case export
     case credits
@@ -555,12 +711,10 @@ private enum YouPrompt: Hashable {
 
     var message: String {
         switch self {
-        case .identity:
-            return "iCloud Keychain can restore your recovery phrase. Data export backs up writing and reflections."
         case .privacy:
             return "Writing stays local unless you export or ask for a reflection."
         case .export:
-            return "Your archive is yours. Export it or restore one."
+            return "Your archive is yours. Export readable writings or keep an encrypted iCloud backup."
         case .credits:
             return "Credits are only for reflections. Writing is free."
         case .support:
@@ -568,6 +722,124 @@ private enum YouPrompt: Hashable {
         case .developer:
             return "Local tools. Repair first, delete only when you mean it."
         }
+    }
+}
+
+private enum YouRoute: Hashable {
+    case allAnkys
+}
+
+private struct YouAllAnkysHistoryView: View {
+    @ObservedObject var viewModel: YouViewModel
+    let onWriteRequested: () -> Void
+
+    private let bottomNavigationReserve: CGFloat = 152
+
+    private var sessions: [SessionSummary] {
+        viewModel.completeAnkySessions
+    }
+
+    private var title: String {
+        "\(sessions.count) \(sessions.count == 1 ? "anky" : "ankys")"
+    }
+
+    var body: some View {
+        ZStack {
+            MapDayBackground()
+
+            GeometryReader { geometry in
+                let viewportWidth = min(geometry.size.width, UIScreen.main.bounds.width)
+                let contentWidth = max(0, viewportWidth * 0.87)
+                let horizontalPadding = max(0, (viewportWidth - contentWidth) / 2)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 26) {
+                        if sessions.isEmpty {
+                            emptyState
+                                .frame(width: contentWidth, alignment: .center)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(sessions) { session in
+                                    NavigationLink(value: session) {
+                                        SessionRow(
+                                            session: session,
+                                            rowWidth: contentWidth,
+                                            showsDayInHeader: true
+                                        )
+                                        .frame(width: contentWidth, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .simultaneousGesture(TapGesture().onEnded {
+                                        AnkyHaptics.light()
+                                    })
+                                }
+                            }
+                            .frame(width: contentWidth, alignment: .leading)
+                        }
+                    }
+                    .frame(width: contentWidth, alignment: .leading)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, 24)
+                    .padding(.bottom, bottomNavigationReserve)
+                }
+                .frame(width: viewportWidth, alignment: .leading)
+            }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbarBackground(MapDayPalette.ink.opacity(0.96), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .onAppear {
+            viewModel.refresh()
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 24) {
+            Spacer(minLength: 96)
+
+            Text("0 ankys")
+                .font(.system(size: 36, weight: .bold))
+                .foregroundStyle(MapDayPalette.gold)
+
+            Button(action: onWriteRequested) {
+                HStack(spacing: 10) {
+                    Text("WRITE \(AnkyDuration.completeRitualMinutes) MINUTES")
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+                .foregroundStyle(MapDayPalette.paper)
+                .frame(maxWidth: .infinity)
+                .frame(height: 66)
+                .background(historyCTAFill, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(MapDayPalette.gold.opacity(0.42), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.42), radius: 18, y: 8)
+                .shadow(color: MapDayPalette.gold.opacity(0.18), radius: 18)
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 96)
+        }
+    }
+
+    private var historyCTAFill: LinearGradient {
+        let accent = AnkyverseDayPalette.color(for: AnkyverseCalendar(firstOpenDate: AppOpenStore().loadOrCreate(), calendar: .ankyUTC).position(for: Date()).dayInRegion)
+        return LinearGradient(
+            colors: [
+                accent.opacity(0.68),
+                Color(red: 0.11, green: 0.10, blue: 0.18).opacity(0.98),
+                accent.opacity(0.34)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 
@@ -601,15 +873,15 @@ private struct AccountPage: View {
 
                 YouDivider()
 
-                Toggle("face id app lock", isOn: $biometricIdentityConfirmation)
+                Toggle("device lock app protection", isOn: $biometricIdentityConfirmation)
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16))
 
-                Text("Your recovery phrase can only be shown after face id is enabled.")
+                Text("Your recovery phrase can only be shown after device lock protection is enabled.")
                     .youBody()
 
-                Text("Your password/biometrics protect local access. They are not an Anky login.")
+                Text("Your passcode or biometrics protect local access. They are not an Anky login.")
                     .youBody()
 
                 if viewModel.recoveryPhraseText.isEmpty {
@@ -970,35 +1242,33 @@ private struct ExportDataPage: View {
     var body: some View {
         YouDetailShell(title: "Export data", subtitle: "Your archive is yours") {
             YouPanel {
-                Text("\(viewModel.ankyFileURLs.count) local .anky files · \(viewModel.reflectionFileURLs.count) reflections")
+                Text("\(viewModel.ankyFileURLs.count) writings · \(viewModel.reflectionFileURLs.count) reflections")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(YouPalette.gold)
 
-                Text("Backups may include plaintext writing and reflections. Keep them somewhere private.")
+                Text("Readable exports include plaintext writing. Keep them somewhere private.")
                     .youBody()
             }
 
             YouPanel {
-                if let backupZipURL = viewModel.backupZipURL {
-                    ShareLink(item: backupZipURL) {
-                        YouActionLabel("Export backup zip")
+                if let formattedWritingExportURL = viewModel.formattedWritingExportURL {
+                    ShareLink(item: formattedWritingExportURL) {
+                        YouActionLabel("Export writings")
                     }
                 } else {
-                    YouDisabledRow("No local data to export yet")
-                }
-
-                YouActionButton("Restore backup") {
-                    isImportingBackup = true
+                    YouDisabledRow("No writing to export yet")
                 }
             }
 
             YouPanel {
-                Text("Encrypted iCloud backup")
-                    .youCaption()
-                Text(viewModel.isICloudBackupEnabled ? "On" : "Off")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(YouPalette.gold)
-                Text(viewModel.isICloudBackupEnabled ? "Anky backs up writing and reflections after each writing session." : "Turn this on to restore writing and reflections from iCloud after reinstalling.")
+                YouToggleRow(
+                    isOn: iCloudBackupBinding,
+                    iconName: "icloud",
+                    title: "Encrypted iCloud backup",
+                    subtitle: viewModel.isICloudBackupEnabled ? "On" : "Off"
+                )
+
+                Text(viewModel.isICloudBackupEnabled ? "Anky backs up writing and reflections after each writing session." : "Turn this on for iCloud recovery after reinstalling.")
                     .youBody()
 
                 if let lastDate = viewModel.iCloudBackupLastDate {
@@ -1009,13 +1279,6 @@ private struct ExportDataPage: View {
                 if viewModel.isICloudBackupEnabled {
                     YouActionButton(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now") {
                         Task { await viewModel.backUpToICloudNow() }
-                    }
-                    YouActionButton("Turn off iCloud backup") {
-                        viewModel.disableICloudBackup()
-                    }
-                } else {
-                    YouActionButton("Enable iCloud backup") {
-                        Task { await viewModel.enableICloudBackup() }
                     }
                 }
             }
@@ -1032,7 +1295,19 @@ private struct ExportDataPage: View {
             }
         }
         .onAppear {
-            viewModel.prepareBackupExport()
+            viewModel.prepareFormattedWritingExport()
+        }
+    }
+
+    private var iCloudBackupBinding: Binding<Bool> {
+        Binding {
+            viewModel.isICloudBackupEnabled
+        } set: { isEnabled in
+            if isEnabled {
+                Task { await viewModel.enableICloudBackup() }
+            } else {
+                viewModel.disableICloudBackup()
+            }
         }
     }
 }
@@ -1957,18 +2232,23 @@ private struct YouStatsPanel: View {
     let ankys: Int
     let minutes: Int
     let streak: Int
+    let action: () -> Void
 
     var body: some View {
-        YouPanel(spacing: 0) {
-            HStack(spacing: 0) {
-                YouStatCell(icon: "you-icon-feather-stat", value: "\(ankys)", label: "Ankys")
-                YouVerticalDivider()
-                YouStatCell(icon: "you-icon-clock-stat", value: "\(minutes)", label: "Minutes")
-                YouVerticalDivider()
-                YouStatCell(icon: "you-icon-flame-stat", value: "\(streak)", label: "Streak")
+        Button(action: action) {
+            YouPanel(spacing: 0) {
+                HStack(spacing: 0) {
+                    YouStatCell(icon: "you-icon-feather-stat", value: "\(ankys)", label: "Ankys")
+                    YouVerticalDivider()
+                    YouStatCell(icon: "you-icon-clock-stat", value: "\(minutes)", label: "Minutes")
+                    YouVerticalDivider()
+                    YouStatCell(icon: "you-icon-flame-stat", value: "\(streak)", label: "Streak")
+                }
             }
+            .frame(height: 68)
         }
-        .frame(height: 68)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open all ankys")
     }
 }
 
@@ -2004,10 +2284,7 @@ private struct YouMenuRow: View {
 
     var body: some View {
         HStack(spacing: 13) {
-            Image(icon)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 24, height: 24)
+            YouMenuIcon(icon: icon)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -2027,6 +2304,133 @@ private struct YouMenuRow: View {
                     .frame(width: 14, height: 14)
                     .opacity(0.82)
             }
+        }
+        .contentShape(Rectangle())
+        .padding(.vertical, 14)
+    }
+}
+
+private struct YouDataToggleRow: View {
+    @Binding var isOn: Bool
+    let icon: String
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Button(action: action) {
+                HStack(spacing: 13) {
+                    YouMenuIcon(icon: icon)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(YouPalette.paper)
+                        Text(subtitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(YouPalette.paperMuted)
+                    }
+
+                    Spacer(minLength: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
+                .tint(YouPalette.gold)
+                .accessibilityLabel("Encrypted iCloud backup")
+        }
+        .padding(.vertical, 14)
+    }
+}
+
+private struct YouToggleRow: View {
+    @Binding var isOn: Bool
+    let iconName: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(systemName: iconName)
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(YouPalette.gold)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(YouPalette.paper)
+                Text(subtitle)
+                    .font(.system(size: 12))
+                    .foregroundStyle(YouPalette.paperMuted)
+            }
+
+            Spacer()
+
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
+                .tint(YouPalette.gold)
+        }
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct YouMenuIcon: View {
+    let icon: String
+
+    private var systemName: String {
+        switch icon {
+        case "you-icon-account":
+            return "person"
+        case "you-icon-privacy":
+            return "shield"
+        case "you-icon-terms":
+            return "doc.text"
+        case "you-icon-export":
+            return "square.and.arrow.down"
+        case "you-icon-credits":
+            return "sparkles"
+        case "you-icon-support":
+            return "ellipsis.message"
+        case "you-icon-faceid":
+            return "faceid"
+        case "you-icon-anky-token":
+            return "dollarsign.circle"
+        default:
+            return "circle"
+        }
+    }
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 21, weight: .medium))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(YouPalette.gold)
+            .frame(width: 24, height: 24)
+    }
+}
+
+private struct YouDestructiveMenuRow: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(systemName: "trash")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(YouPalette.danger)
+                .frame(width: 24, height: 24)
+
+            Text(title)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(YouPalette.danger)
+                .lineLimit(1)
+
+            Spacer()
         }
         .contentShape(Rectangle())
         .padding(.vertical, 14)

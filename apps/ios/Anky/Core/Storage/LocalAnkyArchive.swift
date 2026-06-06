@@ -11,10 +11,18 @@ struct SavedAnky: Hashable {
     let durationMs: Int64
     let isComplete: Bool
     let createdAt: Date
+    let inputStats: WritingInputStats
 }
 
 extension SavedAnky: Identifiable {
     var id: String { hash }
+}
+
+struct WritingInputStats: Codable, Hashable {
+    var backspaceCount: Int
+    var enterCount: Int
+
+    static let empty = WritingInputStats(backspaceCount: 0, enterCount: 0)
 }
 
 enum AnkyImportError: Error, Equatable {
@@ -38,12 +46,13 @@ struct LocalAnkyArchive {
         try? fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
     }
 
-    func save(_ ankyText: String) throws -> SavedAnky {
+    func save(_ ankyText: String, inputStats: WritingInputStats = .empty) throws -> SavedAnky {
         let bytes = Data(ankyText.utf8)
         let hash = AnkyHasher.sha256Hex(bytes)
         let url = hashURL(for: hash)
-        let artifact = try artifact(from: ankyText, url: url)
+        let artifact = try artifact(from: ankyText, url: url, inputStats: inputStats)
         try bytes.write(to: url, options: [.atomic])
+        try saveInputStats(inputStats, hash: hash)
         return artifact
     }
 
@@ -107,6 +116,7 @@ struct LocalAnkyArchive {
     }
 
     func delete(_ artifact: SavedAnky) throws {
+        try? fileManager.removeItem(at: inputStatsURL(for: artifact.hash))
         if fileManager.fileExists(atPath: artifact.url.path) {
             try fileManager.removeItem(at: artifact.url)
             return
@@ -129,6 +139,16 @@ struct LocalAnkyArchive {
         for url in urls {
             try fileManager.removeItem(at: url)
         }
+
+        let statsURLs = ((try? fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )) ?? [])
+        .filter { $0.pathExtension == "json" && $0.lastPathComponent.hasSuffix(".input-stats.json") }
+        for url in statsURLs {
+            try fileManager.removeItem(at: url)
+        }
     }
 
     private var canonicalURL: URL {
@@ -137,6 +157,23 @@ struct LocalAnkyArchive {
 
     private func hashURL(for hash: String) -> URL {
         directoryURL.appendingPathComponent("\(hash).anky")
+    }
+
+    private func inputStatsURL(for hash: String) -> URL {
+        directoryURL.appendingPathComponent("\(hash).input-stats.json")
+    }
+
+    private func saveInputStats(_ stats: WritingInputStats, hash: String) throws {
+        let data = try JSONEncoder().encode(stats)
+        try data.write(to: inputStatsURL(for: hash), options: [.atomic])
+    }
+
+    private func loadInputStats(hash: String) -> WritingInputStats {
+        guard let data = try? Data(contentsOf: inputStatsURL(for: hash)),
+              let stats = try? JSONDecoder().decode(WritingInputStats.self, from: data) else {
+            return .empty
+        }
+        return stats
     }
 
     private static func importCandidates(from text: String) -> [String] {
@@ -278,12 +315,13 @@ struct LocalAnkyArchive {
         return nil
     }
 
-    private func artifact(from ankyText: String, url: URL) throws -> SavedAnky {
+    private func artifact(from ankyText: String, url: URL, inputStats explicitInputStats: WritingInputStats? = nil) throws -> SavedAnky {
         let bytes = Data(ankyText.utf8)
         let hash = AnkyHasher.sha256Hex(bytes)
         let parsed = try AnkyParser.parse(ankyText)
         let durationMs = AnkyDuration.durationMs(parsed)
         let createdAt = Date(timeIntervalSince1970: TimeInterval(parsed.startEpochMs) / 1000)
+        let inputStats = explicitInputStats ?? loadInputStats(hash: hash)
         return SavedAnky(
             url: url,
             hash: hash,
@@ -291,7 +329,8 @@ struct LocalAnkyArchive {
             reconstructedText: AnkyReconstructor.reconstructText(parsed),
             durationMs: durationMs,
             isComplete: AnkyDuration.isComplete(parsed),
-            createdAt: createdAt
+            createdAt: createdAt,
+            inputStats: inputStats
         )
     }
 }

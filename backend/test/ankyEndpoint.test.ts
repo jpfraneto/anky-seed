@@ -138,7 +138,7 @@ describe("POST /anky", () => {
 
     expect(response.status).toBe(200);
     expect(text).toContain("event: reflection_chunk");
-    expect(text).toContain('"chunk":"# Live "');
+    expect(text).toContain('"chunk":"# Live Mirror\\n\\nbody"');
     expect(text).toContain('"generatedCharacters":19');
     expect(text.indexOf("event: reflection_chunk")).toBeLessThan(text.lastIndexOf("event: reflection"));
     expect(text).toContain("event: reflection");

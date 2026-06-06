@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import UIKit
 
 enum RevealCopySection {
@@ -20,6 +21,7 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var creditsDenied = false
     @Published private(set) var reflectionStatusMessage: String = ""
     @Published private(set) var streamingReflectionMarkdown: String = ""
+    @Published private(set) var reflectionStreamTick = 0
     @Published private(set) var progressStage: String?
     @Published var errorMessage: String?
 
@@ -28,7 +30,10 @@ final class RevealViewModel: ObservableObject {
     let hash: String
     let isComplete: Bool
     let wordCount: Int
+    let backspaceCount: Int
+    let enterCount: Int
     let compactHeaderLine: String
+    let ctaAccentColor: Color
 
     private let clipboard: ClipboardClient
     private let artifact: SavedAnky
@@ -44,6 +49,8 @@ final class RevealViewModel: ObservableObject {
     private var reflectionRetryStartedAt: Date?
     private var reflectionRequestInFlight = false
     private var reflectionBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+    private var streamingReflectionBuffer = ""
+    private var streamingReflectionPublishTask: Task<Void, Never>?
     private let reflectionRetryLimit: TimeInterval = 120
     private let accountId: String
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
@@ -78,10 +85,17 @@ final class RevealViewModel: ObservableObject {
         self.hash = artifact.hash
         self.isComplete = artifact.isComplete
         self.wordCount = words
+        self.backspaceCount = artifact.inputStats.backspaceCount
+        self.enterCount = artifact.inputStats.enterCount
         self.compactHeaderLine = Self.compactHeaderLine(
             createdAt: artifact.createdAt,
             wordCount: words,
             duration: formattedDuration
+        )
+        self.ctaAccentColor = Self.ctaAccentColor(
+            createdAt: artifact.createdAt,
+            sessionIndexStore: sessionIndexStore,
+            appOpenStore: AppOpenStore(defaults: userDefaults)
         )
         self.clipboard = clipboard
         self.archive = archive
@@ -95,6 +109,11 @@ final class RevealViewModel: ObservableObject {
         self.accountId = (try? identityStore.loadOrCreate().accountId) ?? ""
         self.hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: accountId, defaults: userDefaults)
         self.creditBalance = ReflectionCreditCache.balance(accountId: accountId, defaults: userDefaults)
+        if let cached = ReflectionInFlightCache.state(hash: artifact.hash) {
+            self.streamingReflectionMarkdown = cached.markdown
+            self.reflectionStatusMessage = cached.statusMessage
+            self.progressStage = cached.progressStage
+        }
         if reflection == nil, self.requestStore.isPending(hash: artifact.hash) {
             self.isAskingAnky = true
             self.reflectionRetryStartedAt = Date()
@@ -192,6 +211,25 @@ final class RevealViewModel: ObservableObject {
         await submitReflectionRequest(allowWhileAsking: false)
     }
 
+    private static func ctaAccentColor(
+        createdAt: Date,
+        sessionIndexStore: SessionIndexStore,
+        appOpenStore: AppOpenStore
+    ) -> Color {
+        let calendar = Calendar.ankyUTC
+        let sessions = sessionIndexStore.load()
+        let earliestSessionDate = sessions
+            .map { calendar.startOfDay(for: $0.createdAt) }
+            .min()
+        let firstOpenDate = appOpenStore.loadOrCreate()
+        let mapStartDate = [calendar.startOfDay(for: firstOpenDate), earliestSessionDate]
+            .compactMap { $0 }
+            .min() ?? calendar.startOfDay(for: firstOpenDate)
+        let position = AnkyverseCalendar(firstOpenDate: mapStartDate, calendar: calendar)
+            .position(for: createdAt)
+        return AnkyverseDayPalette.color(for: position.dayInRegion)
+    }
+
     private func submitReflectionRequest(allowWhileAsking: Bool) async {
         guard !reflectionRequestInFlight else {
             return
@@ -215,9 +253,17 @@ final class RevealViewModel: ObservableObject {
         isAskingAnky = true
         reflectionRequestInFlight = true
         errorMessage = nil
+        resetStreamingReflectionBuffer()
         streamingReflectionMarkdown = ""
+        reflectionStreamTick = 0
         progressStage = "stream_open"
         reflectionStatusMessage = "i am opening a quiet channel."
+        ReflectionInFlightCache.update(
+            hash: artifact.hash,
+            markdown: "",
+            statusMessage: reflectionStatusMessage,
+            progressStage: progressStage
+        )
         if reflectionRetryStartedAt == nil {
             reflectionRetryStartedAt = Date()
         }
@@ -243,15 +289,25 @@ final class RevealViewModel: ObservableObject {
                     await MainActor.run {
                         self?.progressStage = event.stage
                         self?.reflectionStatusMessage = Self.progressMessage(for: event.stage, fallback: event.message)
+                        if let self {
+                            ReflectionInFlightCache.update(
+                                hash: self.artifact.hash,
+                                markdown: self.streamingReflectionMarkdown,
+                                statusMessage: self.reflectionStatusMessage,
+                                progressStage: self.progressStage
+                            )
+                        }
                     }
                 },
                 reflectionChunk: { [weak self] event in
                     await MainActor.run {
-                        self?.streamingReflectionMarkdown += event.chunk
-                        self?.reflectionStatusMessage = "writing the reflection... \(event.generatedCharacters) characters"
+                        if let self {
+                            self.appendStreamingReflectionChunk(event)
+                        }
                     }
                 }
             )
+            flushStreamingReflectionBuffer()
             reflectionStatusMessage = "something answered. i am threading it back."
 
             guard response.hash == artifact.hash else {
@@ -277,9 +333,11 @@ final class RevealViewModel: ObservableObject {
             }
             await refreshCreditsAfterReflectionSuccess()
             reflection = saved
+            resetStreamingReflectionBuffer()
             streamingReflectionMarkdown = response.reflection
             reflectionStatusMessage = ""
             progressStage = nil
+            ReflectionInFlightCache.clear(hash: response.hash)
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
@@ -293,8 +351,15 @@ final class RevealViewModel: ObservableObject {
                 requestStore.markPending(hash: artifact.hash)
                 isAskingAnky = true
                 reflectionRequestInFlight = false
+                resetStreamingReflectionBuffer()
                 streamingReflectionMarkdown = ""
                 reflectionStatusMessage = "the mirror is already holding this thread."
+                ReflectionInFlightCache.update(
+                    hash: artifact.hash,
+                    markdown: streamingReflectionMarkdown,
+                    statusMessage: reflectionStatusMessage,
+                    progressStage: progressStage
+                )
                 errorMessage = nil
                 startPendingReflectionWatcher()
                 schedulePendingReflectionRetry()
@@ -305,6 +370,12 @@ final class RevealViewModel: ObservableObject {
                 isAskingAnky = true
                 reflectionRequestInFlight = false
                 reflectionStatusMessage = "i am still waiting with the mirror."
+                ReflectionInFlightCache.update(
+                    hash: artifact.hash,
+                    markdown: streamingReflectionMarkdown,
+                    statusMessage: reflectionStatusMessage,
+                    progressStage: progressStage
+                )
                 errorMessage = nil
                 startPendingReflectionWatcher()
                 schedulePendingReflectionRetry()
@@ -317,14 +388,53 @@ final class RevealViewModel: ObservableObject {
             }
             requestStore.clear(hash: artifact.hash)
             errorMessage = Self.reflectionErrorMessage(message: message, serverPayload: serverPayload)
+            resetStreamingReflectionBuffer()
             streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
             progressStage = nil
+            ReflectionInFlightCache.clear(hash: artifact.hash)
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
             reflectionRequestInFlight = false
             isAskingAnky = false
         }
+    }
+
+    private func appendStreamingReflectionChunk(_ event: MirrorReflectionChunkEvent) {
+        streamingReflectionBuffer += event.chunk
+        reflectionStreamTick += 1
+        reflectionStatusMessage = "writing the reflection... \(event.generatedCharacters) characters"
+
+        if streamingReflectionPublishTask == nil {
+            streamingReflectionPublishTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 80_000_000)
+                await MainActor.run {
+                    self?.flushStreamingReflectionBuffer()
+                }
+            }
+        }
+    }
+
+    private func flushStreamingReflectionBuffer() {
+        streamingReflectionPublishTask?.cancel()
+        streamingReflectionPublishTask = nil
+        guard !streamingReflectionBuffer.isEmpty else {
+            return
+        }
+        streamingReflectionMarkdown += streamingReflectionBuffer
+        streamingReflectionBuffer = ""
+        ReflectionInFlightCache.update(
+            hash: artifact.hash,
+            markdown: streamingReflectionMarkdown,
+            statusMessage: reflectionStatusMessage,
+            progressStage: progressStage
+        )
+    }
+
+    private func resetStreamingReflectionBuffer() {
+        streamingReflectionPublishTask?.cancel()
+        streamingReflectionPublishTask = nil
+        streamingReflectionBuffer = ""
     }
 
     static func progressMessage(for stage: String?, fallback: String? = nil) -> String {
@@ -484,6 +594,7 @@ final class RevealViewModel: ObservableObject {
         if let savedReflection = reflectionStore.load(hash: artifact.hash) {
             reflection = savedReflection
             streamingReflectionMarkdown = ""
+            ReflectionInFlightCache.clear(hash: artifact.hash)
             requestStore.clear(hash: artifact.hash)
             reflectionWatcherTask?.cancel()
             reflectionRetryTask?.cancel()
@@ -492,6 +603,11 @@ final class RevealViewModel: ObservableObject {
             reflectionStatusMessage = ""
             isAskingAnky = false
         } else if requestStore.isPending(hash: artifact.hash) {
+            if let cached = ReflectionInFlightCache.state(hash: artifact.hash) {
+                streamingReflectionMarkdown = cached.markdown
+                reflectionStatusMessage = cached.statusMessage
+                progressStage = cached.progressStage
+            }
             isAskingAnky = true
             if reflectionStatusMessage.isEmpty {
                 reflectionStatusMessage = "i am waiting with the mirror."
@@ -501,6 +617,7 @@ final class RevealViewModel: ObservableObject {
         } else if isAskingAnky {
             streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
+            ReflectionInFlightCache.clear(hash: artifact.hash)
             reflectionRetryTask?.cancel()
             reflectionRetryStartedAt = nil
             reflectionRequestInFlight = false
@@ -567,5 +684,37 @@ final class RevealViewModel: ObservableObject {
         }
 
         await submitReflectionRequest(allowWhileAsking: true)
+    }
+}
+
+@MainActor
+private enum ReflectionInFlightCache {
+    struct CachedState {
+        let markdown: String
+        let statusMessage: String
+        let progressStage: String?
+    }
+
+    private static var states: [String: CachedState] = [:]
+
+    static func state(hash: String) -> CachedState? {
+        states[hash]
+    }
+
+    static func update(
+        hash: String,
+        markdown: String,
+        statusMessage: String,
+        progressStage: String?
+    ) {
+        states[hash] = CachedState(
+            markdown: markdown,
+            statusMessage: statusMessage,
+            progressStage: progressStage
+        )
+    }
+
+    static func clear(hash: String) {
+        states[hash] = nil
     }
 }

@@ -19,6 +19,8 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var lastCharacter: Character?
     @Published private(set) var lastCharacterPulseID = UUID()
     @Published private(set) var rejectedInputPulseID = UUID()
+    @Published private(set) var rejectedBackspaceCount = 0
+    @Published private(set) var rejectedEnterCount = 0
     @Published private(set) var keyboardFocusID = UUID()
     @Published private(set) var todayAnkyCount = 0
     @Published private(set) var errorMessage: String?
@@ -87,6 +89,8 @@ final class WriteViewModel: ObservableObject {
     private let keySelectionHaptic = UISelectionFeedbackGenerator()
     private let keyHaptic = UIImpactFeedbackGenerator(style: .light)
     private let minuteHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let ritualCompleteHaptic = UINotificationFeedbackGenerator()
+    private let ritualCompleteImpactHaptic = UIImpactFeedbackGenerator(style: .heavy)
     private let alarmHaptic = UINotificationFeedbackGenerator()
     private let invalidInputHaptic = UINotificationFeedbackGenerator()
     private let nudgeStartHaptic = UIImpactFeedbackGenerator(style: .soft)
@@ -141,7 +145,13 @@ final class WriteViewModel: ObservableObject {
         persistDraftAndScheduleSilence()
     }
 
-    func nudgeInvalidInput() {
+    func nudgeInvalidInput(_ input: RejectedWritingInput) {
+        switch input {
+        case .backspace:
+            rejectedBackspaceCount += 1
+        case .enter:
+            rejectedEnterCount += 1
+        }
         invalidInputHaptic.notificationOccurred(.warning)
         invalidInputHaptic.prepare()
         rejectedInputPulseID = UUID()
@@ -287,6 +297,8 @@ final class WriteViewModel: ObservableObject {
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         minuteHaptic.prepare()
+        ritualCompleteHaptic.prepare()
+        ritualCompleteImpactHaptic.prepare()
         alarmHaptic.prepare()
         invalidInputHaptic.prepare()
         nudgeStartHaptic.prepare()
@@ -439,7 +451,13 @@ final class WriteViewModel: ObservableObject {
         }
 
         do {
-            let saved = try archive.save(protocolText)
+            let saved = try archive.save(
+                protocolText,
+                inputStats: WritingInputStats(
+                    backspaceCount: rejectedBackspaceCount,
+                    enterCount: rejectedEnterCount
+                )
+            )
             try? sessionIndexStore.upsert(
                 SessionSummary.make(
                     artifact: saved,
@@ -480,6 +498,8 @@ final class WriteViewModel: ObservableObject {
         lastCharacter = nil
         lastCharacterPulseID = UUID()
         rejectedInputPulseID = UUID()
+        rejectedBackspaceCount = 0
+        rejectedEnterCount = 0
         needsImmediateClose = false
         isClosing = false
         isFrozen = false
@@ -646,8 +666,15 @@ final class WriteViewModel: ObservableObject {
 
         let minute = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
         if minute > lastMinuteHaptic {
-            minuteHaptic.impactOccurred(intensity: 0.8)
-            minuteHaptic.prepare()
+            if minute >= AnkyDuration.completeRitualMinutes {
+                ritualCompleteHaptic.notificationOccurred(.success)
+                ritualCompleteImpactHaptic.impactOccurred(intensity: 1.0)
+                ritualCompleteHaptic.prepare()
+                ritualCompleteImpactHaptic.prepare()
+            } else {
+                minuteHaptic.impactOccurred(intensity: 0.8)
+                minuteHaptic.prepare()
+            }
             lastMinuteHaptic = minute
         }
     }

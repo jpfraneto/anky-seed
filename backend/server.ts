@@ -2611,6 +2611,7 @@ export function buildStorytellerPrompt(writing: string): string {
     `LANGUAGE: The user wrote primarily in ${langName} (${detectedLang}).`,
     `You MUST respond in ${langName}. Do not switch languages.`,
     `The greeting after the H1 must be in ${langName}.`,
+    `Before returning, silently verify that every visible title, heading, paragraph, tag, experiment, and final line is in ${langName}. Rewrite any drifting line before returning.`,
     "",
     "Before the markdown document, output exactly one line of JSON:",
     '{"tags": ["theme1", "theme2", "theme3"]}',
@@ -2818,6 +2819,9 @@ export function handleAnkyReflectionStream(
       const send = (event: string, data: unknown) => {
         enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       };
+      const reflectionChunks = createReflectionChunkCoalescer((event) => {
+        send("reflection_chunk", event);
+      });
       heartbeat = setInterval(() => {
         enqueue(": keep-alive\n\n");
       }, 15_000);
@@ -2830,10 +2834,11 @@ export function handleAnkyReflectionStream(
         const response = await handleAnkyReflection(c, env, logger, {
           ...deps,
           progress: (event) => send("update", event),
-          reflectionChunk: (event) => send("reflection_chunk", event),
+          reflectionChunk: (event) => reflectionChunks.push(event),
         });
         const body = await response.text();
         const headers = responseHeadersObject(response.headers);
+        reflectionChunks.flush();
 
         if (response.ok) {
           send("reflection", {
@@ -2849,6 +2854,7 @@ export function handleAnkyReflectionStream(
           });
         }
       } catch {
+        reflectionChunks.flush();
         send("error", {
           status: 500,
           body: {
@@ -2859,6 +2865,7 @@ export function handleAnkyReflectionStream(
           },
         });
       } finally {
+        reflectionChunks.flush();
         clearInterval(heartbeat);
         closed = true;
         try {
@@ -2878,6 +2885,45 @@ export function handleAnkyReflectionStream(
       Connection: "keep-alive",
     },
   });
+}
+
+function createReflectionChunkCoalescer(
+  send: (event: AnkyReflectionChunkEvent) => void,
+): {
+  push(event: AnkyReflectionChunkEvent): void;
+  flush(): void;
+} {
+  let chunk = "";
+  let generatedCharacters = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    if (!chunk) return;
+    send({ chunk, generatedCharacters });
+    chunk = "";
+  };
+
+  const schedule = () => {
+    if (timer) return;
+    timer = setTimeout(flush, 80);
+  };
+
+  return {
+    push(event) {
+      chunk += event.chunk;
+      generatedCharacters = event.generatedCharacters;
+      if (chunk.length >= 96 || /\n\n$/.test(chunk)) {
+        flush();
+      } else {
+        schedule();
+      }
+    },
+    flush,
+  };
 }
 
 export async function handleAnkyReflection(

@@ -7,6 +7,7 @@ struct RevealView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.requestReview) private var requestReview
     @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
+    @EnvironmentObject private var tabBarCTAController: AnkyTabBarCTAController
     @State private var confirmDelete = false
     @State private var didAutoStartReflection = false
     @State private var didRequestFirstReflectionReview = false
@@ -14,8 +15,12 @@ struct RevealView: View {
     @State private var inlineReflectionActive = false
     @State private var didScrollToStreamingStart = false
     @State private var isReflectionVisible = false
+    @State private var didSeeReflection = false
     @State private var isShowingCreditPurchaseSheet = false
     @State private var privacyDisclosure = PrivacyLockDisclosure()
+    @State private var isNavigationBarHidden = false
+    @State private var lastScrollOffsetY: CGFloat = 0
+    @State private var didCopyWriting = false
     private let onDeleted: () -> Void
     private let onTryAgain: () -> Void
     private let onReflectionReady: () -> Void
@@ -46,6 +51,18 @@ struct RevealView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
+                            Color.clear
+                                .frame(height: 0)
+                                .trackRevealScrollOffset()
+
+                            WritingSessionStatsHeader(
+                                wordCount: viewModel.wordCount,
+                                duration: viewModel.duration,
+                                backspaceCount: viewModel.backspaceCount,
+                                enterCount: viewModel.enterCount
+                            )
+                            .padding(.bottom, 14)
+
                             SelectableWritingText(
                                 text: viewModel.reconstructedText
                             )
@@ -85,7 +102,8 @@ struct RevealView: View {
                             } else if !viewModel.streamingReflectionMarkdown.isEmpty {
                                 ReflectionMarkdownPanel(
                                     title: nil,
-                                    markdown: viewModel.streamingReflectionMarkdown
+                                    markdown: viewModel.streamingReflectionMarkdown,
+                                    separatesLeadingTitle: false
                                 )
                                 .opacity(0.92)
                                 .padding(.top, 36)
@@ -104,7 +122,7 @@ struct RevealView: View {
                         }
                         .padding(.horizontal, 28)
                         .padding(.top, 20)
-                        .padding(.bottom, shouldShowBottomAction ? 138 : 72)
+                        .padding(.bottom, 138)
                     }
                     .onChange(of: reflectionScrollRequest) { _, _ in
                         scrollToReflection(with: scrollProxy, anchor: .top)
@@ -127,28 +145,23 @@ struct RevealView: View {
                         withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
                             isReflectionVisible = isVisible
                         }
+                        if isVisible {
+                            didSeeReflection = true
+                        }
                     }
                     .onPreferenceChange(ReflectionEndVisibilityPreferenceKey.self) { isVisible in
                         guard isVisible else { return }
                         requestFirstReflectionReviewIfNeeded()
                     }
+                    .onPreferenceChange(RevealScrollOffsetPreferenceKey.self) { offsetY in
+                        updateNavigationVisibility(offsetY: offsetY)
+                    }
+                    .coordinateSpace(name: RevealCoordinateSpace.scroll)
                 }
             }
 
-            if shouldShowBottomAction {
-                RevealBottomActionButton(
-                    title: bottomActionTitle,
-                    isLoading: viewModel.isAskingAnky,
-                    isEnabled: bottomActionIsEnabled,
-                    action: bottomAction
-                )
-                .padding(.horizontal, 28)
-                .padding(.bottom, 24)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .zIndex(60)
-            }
         }
-        .toolbar(.hidden, for: .tabBar)
+        .toolbar(isNavigationBarHidden ? .hidden : .visible, for: .navigationBar)
         .navigationTitle(viewModel.compactHeaderLine)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
@@ -156,21 +169,37 @@ struct RevealView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    AnkyHaptics.warning()
-                    confirmDelete = true
-                } label: {
-                    if viewModel.isDeleting {
-                        ProgressView()
-                            .tint(RevealPalette.paper)
-                    } else {
-                        Image(systemName: "trash")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.red.opacity(0.88))
+                HStack(spacing: 18) {
+                    Button {
+                        copyWriting()
+                    } label: {
+                        Image(systemName: didCopyWriting ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(didCopyWriting ? AnkyTheme.success : RevealPalette.paper)
+                            .frame(width: 34, height: 38)
+                            .contentShape(Rectangle())
                     }
+                    .accessibilityLabel(didCopyWriting ? "Writing copied" : "Copy writing")
+
+                    Button {
+                        AnkyHaptics.warning()
+                        confirmDelete = true
+                    } label: {
+                        if viewModel.isDeleting {
+                            ProgressView()
+                                .tint(RevealPalette.paper)
+                        } else {
+                            Image(systemName: "trash")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color.red.opacity(0.88))
+                                .frame(width: 34, height: 38)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                    .disabled(viewModel.isDeleting)
+                    .accessibilityLabel("Delete writing session")
                 }
-                .disabled(viewModel.isDeleting)
-                .accessibilityLabel("Delete writing session")
+                .padding(.horizontal, 2)
             }
         }
         .alert("Delete writing session?", isPresented: $confirmDelete) {
@@ -182,26 +211,44 @@ struct RevealView: View {
         } message: {
             Text("This permanently deletes this writing session. This cannot be undone.")
         }
-        .sheet(isPresented: $isShowingCreditPurchaseSheet) {
-            RevealCreditPurchaseSheet(
-                viewModel: viewModel
-            )
-            .presentationDetents([.height(520)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(RevealPalette.ink)
-        }
+        .ankyReflectionCreditsSheet(
+            isPresented: $isShowingCreditPurchaseSheet,
+            availableCredits: viewModel.creditBalance,
+            packs: viewModel.creditPackages,
+            isRefreshing: viewModel.creditsLoading,
+            purchasingPackId: viewModel.purchasingCreditPackageID,
+            onRefresh: {
+                AnkyHaptics.light()
+                Task {
+                    await viewModel.refreshCredits()
+                }
+            },
+            onSelectPack: { creditPackage in
+                AnkyHaptics.light()
+                Task {
+                    await viewModel.purchaseCredits(creditPackage)
+                }
+            }
+        )
         .onAppear {
             Task {
                 await viewModel.refreshCredits(showError: false)
             }
             ankyCompanion.hideBubble()
+            isNavigationBarHidden = false
+            tabBarCTAController.setScrollHidden(false)
             if startsReflectionOnAppear, !didAutoStartReflection, viewModel.reflection == nil {
                 didAutoStartReflection = true
                 beginInlineReflection()
             }
+            syncRevealBottomBar()
         }
         .onDisappear {
             ankyCompanion.hideBubble()
+            tabBarCTAController.hide()
+        }
+        .onChange(of: revealBottomBarSnapshot) { _, _ in
+            syncRevealBottomBar()
         }
         .onChange(of: viewModel.isDeleted) { _, isDeleted in
             guard isDeleted else {
@@ -232,10 +279,13 @@ struct RevealView: View {
         Task {
             await viewModel.askAnky()
             if viewModel.reflection != nil {
-                onReflectionReady()
-            }
-            if viewModel.reflection != nil, !didScrollToStreamingStart {
-                requestReflectionScroll()
+                if !didScrollToStreamingStart {
+                    requestReflectionScroll()
+                }
+                try? await Task.sleep(nanoseconds: 850_000_000)
+                if !didSeeReflection && !isReflectionVisible {
+                    onReflectionReady()
+                }
             }
         }
     }
@@ -254,9 +304,46 @@ struct RevealView: View {
         }
     }
 
+    private func updateNavigationVisibility(offsetY: CGFloat) {
+        let delta = offsetY - lastScrollOffsetY
+        lastScrollOffsetY = offsetY
+
+        guard abs(delta) > 4 else {
+            return
+        }
+
+        if delta < 0, offsetY < -36, !isNavigationBarHidden {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isNavigationBarHidden = true
+            }
+            tabBarCTAController.setScrollHidden(true)
+        } else if delta > 0, isNavigationBarHidden {
+            withAnimation(.easeInOut(duration: 0.24)) {
+                isNavigationBarHidden = false
+            }
+            tabBarCTAController.setScrollHidden(false)
+        } else if delta > 0 {
+            tabBarCTAController.setScrollHidden(false)
+        }
+    }
+
+    private func copyWriting() {
+        viewModel.copy(.writing)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            didCopyWriting = true
+        }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            withAnimation(.easeInOut(duration: 0.18)) {
+                didCopyWriting = false
+            }
+        }
+    }
+
     private var bottomActionTitle: String {
         if viewModel.isAskingAnky {
-            return "LOADING"
+            return "Receiving reflection…"
         }
         if viewModel.reflection != nil {
             return "READ REFLECTION"
@@ -283,6 +370,16 @@ struct RevealView: View {
         }
     }
 
+    private var revealBottomBarSnapshot: RevealBottomBarSnapshot {
+        RevealBottomBarSnapshot(
+            title: bottomActionTitle,
+            isLoading: viewModel.isAskingAnky,
+            isEnabled: bottomActionIsEnabled,
+            shouldShow: shouldShowBottomAction,
+            streamTick: viewModel.reflectionStreamTick
+        )
+    }
+
     private var shouldShowBottomAction: Bool {
         if viewModel.reflection != nil {
             return !isReflectionVisible
@@ -301,6 +398,22 @@ struct RevealView: View {
             return true
         }
         return viewModel.isComplete ? viewModel.canSubmitReflectionRequest : true
+    }
+
+    private func syncRevealBottomBar() {
+        guard shouldShowBottomAction else {
+            tabBarCTAController.hide()
+            return
+        }
+
+        tabBarCTAController.show(
+            title: bottomActionTitle,
+            isLoading: viewModel.isAskingAnky,
+            isEnabled: bottomActionIsEnabled,
+            accentColor: viewModel.ctaAccentColor,
+            streamTick: viewModel.reflectionStreamTick,
+            action: bottomAction
+        )
     }
 
     private func bottomAction() {
@@ -334,47 +447,12 @@ struct RevealView: View {
 
 }
 
-private struct RevealBottomActionButton: View {
+private struct RevealBottomBarSnapshot: Equatable {
     let title: String
     let isLoading: Bool
     let isEnabled: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Spacer(minLength: 0)
-
-                if isLoading {
-                    ProgressView()
-                        .tint(RevealPalette.gold)
-                }
-
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(RevealPalette.paper)
-            .padding(.horizontal, 22)
-            .frame(maxWidth: .infinity)
-            .frame(height: 66)
-            .background(.ultraThinMaterial, in: Capsule())
-            .background(Color(red: 0.11, green: 0.10, blue: 0.18).opacity(0.76), in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(RevealPalette.gold.opacity(0.36), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.42), radius: 18, y: 8)
-            .shadow(color: RevealPalette.gold.opacity(0.12), radius: 18)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled || isLoading ? 1 : 0.48)
-        .accessibilityLabel(title)
-    }
+    let shouldShow: Bool
+    let streamTick: Int
 }
 
 private struct RevealCreditPurchaseSheet: View {
@@ -388,9 +466,6 @@ private struct RevealCreditPurchaseSheet: View {
                         Text("Reflection credits")
                             .font(.system(size: 25, weight: .semibold))
                             .foregroundStyle(RevealPalette.gold)
-                        Text("Writing is free. One credit = One reflection.")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(RevealPalette.paper.opacity(0.72))
                     }
 
                     Spacer()
@@ -447,6 +522,11 @@ private struct RevealCreditPurchaseSheet: View {
 
                 }
 
+                Text("Writing is free. One credit = one reflection.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(RevealPalette.paper.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
@@ -455,7 +535,7 @@ private struct RevealCreditPurchaseSheet: View {
             }
             .padding(.horizontal, 22)
             .padding(.top, 18)
-            .padding(.bottom, 24)
+            .padding(.bottom, 42)
         }
         .background(RevealPalette.ink)
     }
@@ -515,9 +595,15 @@ private struct RevealCreditPackageRow: View {
 
                 Spacer()
 
-                Text(isPurchasing ? "..." : creditPackage.price)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(RevealPalette.gold)
+                if isPurchasing {
+                    ProgressView()
+                        .tint(RevealPalette.gold)
+                        .frame(width: 22, height: 22)
+                } else {
+                    Text(creditPackage.price)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(RevealPalette.gold)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -673,6 +759,18 @@ private enum RevealScrollTarget {
     case reflection
 }
 
+private enum RevealCoordinateSpace {
+    static let scroll = "revealScroll"
+}
+
+private struct RevealScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 private struct ReflectionVisibilityPreferenceKey: PreferenceKey {
     static var defaultValue = false
 
@@ -690,6 +788,17 @@ private struct ReflectionEndVisibilityPreferenceKey: PreferenceKey {
 }
 
 private extension View {
+    func trackRevealScrollOffset() -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: RevealScrollOffsetPreferenceKey.self,
+                    value: proxy.frame(in: .named(RevealCoordinateSpace.scroll)).minY
+                )
+            }
+        )
+    }
+
     func trackReflectionVisibility() -> some View {
         background(
             GeometryReader { proxy in
@@ -719,13 +828,6 @@ struct RevealBackgroundTexture: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                ForEach([0.19, 0.47, 0.78], id: \.self) { position in
-                    Rectangle()
-                        .fill(RevealPalette.gold.opacity(0.075))
-                        .frame(height: 1)
-                        .offset(y: proxy.size.height * position)
-                }
-
                 Ellipse()
                     .fill(RevealPalette.violet.opacity(0.055))
                     .frame(width: proxy.size.width * 1.2, height: 280)
@@ -765,6 +867,45 @@ private struct PrivacyDivider: View {
     }
 }
 
+private struct WritingSessionStatsHeader: View {
+    let wordCount: Int
+    let duration: String
+    let backspaceCount: Int
+    let enterCount: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            WritingSessionStat(symbolName: "text.word.spacing", value: "\(wordCount)")
+            WritingSessionStat(symbolName: "timer", value: duration)
+            WritingSessionStat(symbolName: "delete.backward", value: "\(backspaceCount)")
+            WritingSessionStat(symbolName: "return", value: "\(enterCount)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(wordCount) words, \(duration), \(backspaceCount) backspaces, \(enterCount) enters")
+    }
+}
+
+private struct WritingSessionStat: View {
+    let symbolName: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbolName)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 13, height: 13)
+                .symbolRenderingMode(.hierarchical)
+
+            Text(value)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .foregroundStyle(RevealPalette.paper.opacity(0.44))
+    }
+}
+
 private struct SelectableWritingText: UIViewRepresentable {
     let text: String
 
@@ -779,9 +920,11 @@ private struct SelectableWritingText: UIViewRepresentable {
         textView.showsHorizontalScrollIndicator = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.widthTracksTextView = true
         textView.tintColor = UIColor(RevealPalette.gold)
         textView.adjustsFontForContentSizeCategory = true
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         return textView
     }
 
@@ -789,6 +932,9 @@ private struct SelectableWritingText: UIViewRepresentable {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 7
         textView.backgroundColor = .clear
+        if textView.bounds.width > 0 {
+            textView.textContainer.size = CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude)
+        }
         textView.attributedText = NSAttributedString(
             string: text,
             attributes: [
@@ -802,6 +948,8 @@ private struct SelectableWritingText: UIViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? UIScreen.main.bounds.width - 56
+        uiView.bounds.size.width = width
+        uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
         let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: size.height)
     }
@@ -810,8 +958,12 @@ private struct SelectableWritingText: UIViewRepresentable {
 private struct ReflectionMarkdownPanel: View {
     let title: String?
     let markdown: String
+    var separatesLeadingTitle = true
 
     private var displayTitle: String {
+        guard separatesLeadingTitle else {
+            return ""
+        }
         let resolved = title ?? markdown.firstMarkdownHeadingText
         return resolved?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
@@ -963,20 +1115,27 @@ private struct SelectableReflectionText: UIViewRepresentable {
         textView.showsHorizontalScrollIndicator = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.widthTracksTextView = true
         textView.tintColor = UIColor(RevealPalette.gold)
         textView.adjustsFontForContentSizeCategory = true
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
         textView.backgroundColor = .clear
+        if textView.bounds.width > 0 {
+            textView.textContainer.size = CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude)
+        }
         textView.attributedText = attributedReflection()
         textView.layer.cornerRadius = 0
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? UIScreen.main.bounds.width - 56
+        uiView.bounds.size.width = width
+        uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
         let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: size.height)
     }

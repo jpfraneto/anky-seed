@@ -38,6 +38,8 @@
 		8A000002000000000000000C /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100C /* MapViewModel.swift */; };
 		8A000002000000000000000D /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100D /* YouView.swift */; };
 		8A000002000000000000000E /* YouViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100E /* YouViewModel.swift */; };
+		8A00000D0000000000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000D0000000000001001 /* OnboardingView.swift */; };
+		8A00000E0000000000000001 /* AnkyReflectionCreditsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */; };
 		8A0000030000000000000001 /* SessionIndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001001 /* SessionIndexStore.swift */; };
 		8A0000030000000000000002 /* AppOpenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001002 /* AppOpenStore.swift */; };
 		8A0000030000000000000003 /* AnkyverseCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001003 /* AnkyverseCalendar.swift */; };
@@ -52,6 +54,8 @@
 		8A0000050000000000000002 /* AnkyWitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001002 /* AnkyWitnessView.swift */; };
 		8A0000050000000000000003 /* AnkySpriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001003 /* AnkySpriteView.swift */; };
 		8A0000050000000000000004 /* AnkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001004 /* AnkyTheme.swift */; };
+		8A0000050000000000000005 /* AnkyTabBarCTAOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001005 /* AnkyTabBarCTAOverlay.swift */; };
+		8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001006 /* AnkyverseDayPalette.swift */; };
 		8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000B0000000000001001 /* AnkyLocalization.swift */; };
 		8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000060000000000001001 /* RevenueCatCreditsClient.swift */; };
 		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
@@ -95,6 +99,8 @@
 		8A000002000000000000100C /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 		8A000002000000000000100D /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
 		8A000002000000000000100E /* YouViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouViewModel.swift; sourceTree = "<group>"; };
+		8A00000D0000000000001001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyReflectionCreditsSheet.swift; sourceTree = "<group>"; };
 		8A0000030000000000001001 /* SessionIndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionIndexStore.swift; sourceTree = "<group>"; };
 		8A0000030000000000001002 /* AppOpenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOpenStore.swift; sourceTree = "<group>"; };
 		8A0000030000000000001003 /* AnkyverseCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyverseCalendar.swift; sourceTree = "<group>"; };
@@ -109,6 +115,8 @@
 		8A0000050000000000001002 /* AnkyWitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyWitnessView.swift; sourceTree = "<group>"; };
 		8A0000050000000000001003 /* AnkySpriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySpriteView.swift; sourceTree = "<group>"; };
 		8A0000050000000000001004 /* AnkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTheme.swift; sourceTree = "<group>"; };
+		8A0000050000000000001005 /* AnkyTabBarCTAOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTabBarCTAOverlay.swift; sourceTree = "<group>"; };
+		8A0000050000000000001006 /* AnkyverseDayPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyverseDayPalette.swift; sourceTree = "<group>"; };
 		8A00000B0000000000001001 /* AnkyLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLocalization.swift; sourceTree = "<group>"; };
 		8A0000060000000000001001 /* RevenueCatCreditsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatCreditsClient.swift; sourceTree = "<group>"; };
 		8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCheckTrialProofProvider.swift; sourceTree = "<group>"; };
@@ -166,6 +174,8 @@
 				8A0000010000000000003006 /* Reveal */,
 				8A0000020000000000003001 /* Map */,
 				8A0000020000000000003002 /* You */,
+				8A00000D0000000000003001 /* Onboarding */,
+				8A00000E0000000000003001 /* Credits */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -261,6 +271,22 @@
 			path = You;
 			sourceTree = "<group>";
 		};
+		8A00000D0000000000003001 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				8A00000D0000000000001001 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		8A00000E0000000000003001 /* Credits */ = {
+			isa = PBXGroup;
+			children = (
+				8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */,
+			);
+			path = Credits;
+			sourceTree = "<group>";
+		};
 		8A0000020000000000003003 /* Identity */ = {
 			isa = PBXGroup;
 			children = (
@@ -310,8 +336,10 @@
 				8A0000050000000000001001 /* AnkyPresenceOverlay.swift */,
 				8A0000050000000000001002 /* AnkyWitnessView.swift */,
 				8A0000050000000000001003 /* AnkySpriteView.swift */,
-				8A0000050000000000001004 /* AnkyTheme.swift */,
-				8A00000B0000000000001001 /* AnkyLocalization.swift */,
+					8A0000050000000000001004 /* AnkyTheme.swift */,
+					8A0000050000000000001005 /* AnkyTabBarCTAOverlay.swift */,
+					8A0000050000000000001006 /* AnkyverseDayPalette.swift */,
+					8A00000B0000000000001001 /* AnkyLocalization.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -429,6 +457,8 @@
 				8A000002000000000000000C /* MapViewModel.swift in Sources */,
 				8A000002000000000000000D /* YouView.swift in Sources */,
 				8A000002000000000000000E /* YouViewModel.swift in Sources */,
+				8A00000D0000000000000001 /* OnboardingView.swift in Sources */,
+				8A00000E0000000000000001 /* AnkyReflectionCreditsSheet.swift in Sources */,
 				8A0000030000000000000001 /* SessionIndexStore.swift in Sources */,
 				8A0000030000000000000002 /* AppOpenStore.swift in Sources */,
 				8A0000030000000000000003 /* AnkyverseCalendar.swift in Sources */,
@@ -441,8 +471,10 @@
 				8A0000050000000000000001 /* AnkyPresenceOverlay.swift in Sources */,
 				8A0000050000000000000002 /* AnkyWitnessView.swift in Sources */,
 				8A0000050000000000000003 /* AnkySpriteView.swift in Sources */,
-				8A0000050000000000000004 /* AnkyTheme.swift in Sources */,
-				8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */,
+					8A0000050000000000000004 /* AnkyTheme.swift in Sources */,
+					8A0000050000000000000005 /* AnkyTabBarCTAOverlay.swift in Sources */,
+					8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */,
+					8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */,
 				8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */,
 					8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */,
 					8A0000080000000000000002 /* CreditIdentity.swift in Sources */,

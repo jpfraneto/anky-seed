@@ -21,6 +21,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
     let isComplete: Bool
     let preview: String
     let wordCount: Int
+    let backspaceCount: Int
+    let enterCount: Int
     let hasReflection: Bool
     let reflectionTitle: String?
     let tags: [String]
@@ -37,6 +39,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         isComplete: Bool,
         preview: String,
         wordCount: Int = 0,
+        backspaceCount: Int = 0,
+        enterCount: Int = 0,
         hasReflection: Bool,
         reflectionTitle: String?,
         tags: [String] = []
@@ -48,6 +52,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         self.isComplete = isComplete
         self.preview = preview
         self.wordCount = wordCount
+        self.backspaceCount = backspaceCount
+        self.enterCount = enterCount
         self.hasReflection = hasReflection
         self.reflectionTitle = reflectionTitle
         self.tags = tags
@@ -61,6 +67,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         case isComplete
         case preview
         case wordCount
+        case backspaceCount
+        case enterCount
         case hasReflection
         case reflectionTitle
         case tags
@@ -75,6 +83,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
         isComplete = try container.decode(Bool.self, forKey: .isComplete)
         preview = try container.decode(String.self, forKey: .preview)
         wordCount = try container.decodeIfPresent(Int.self, forKey: .wordCount) ?? Self.wordCount(from: preview)
+        backspaceCount = try container.decodeIfPresent(Int.self, forKey: .backspaceCount) ?? 0
+        enterCount = try container.decodeIfPresent(Int.self, forKey: .enterCount) ?? 0
         hasReflection = try container.decode(Bool.self, forKey: .hasReflection)
         reflectionTitle = try container.decodeIfPresent(String.self, forKey: .reflectionTitle)
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
@@ -89,6 +99,8 @@ struct SessionSummary: Codable, Hashable, Identifiable {
             isComplete: artifact.isComplete,
             preview: Self.preview(from: artifact.reconstructedText),
             wordCount: Self.wordCount(from: artifact.reconstructedText),
+            backspaceCount: artifact.inputStats.backspaceCount,
+            enterCount: artifact.inputStats.enterCount,
             hasReflection: reflection != nil,
             reflectionTitle: reflection?.title,
             tags: reflection?.tags ?? []
@@ -235,6 +247,8 @@ struct SessionIndexStore {
                 isComplete: summary.isComplete,
                 preview: summary.preview,
                 wordCount: summary.wordCount,
+                backspaceCount: summary.backspaceCount,
+                enterCount: summary.enterCount,
                 hasReflection: true,
                 reflectionTitle: title,
                 tags: tags

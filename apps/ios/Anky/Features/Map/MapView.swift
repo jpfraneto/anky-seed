@@ -25,7 +25,14 @@ struct MapView: View {
         NavigationStack(path: $path) {
             TrailMapView(
                 days: viewModel.spatialDays,
-                todayDate: viewModel.todayDate
+                todayDate: viewModel.todayDate,
+                ankys: viewModel.completeAnkyCount,
+                minutes: viewModel.totalWritingMinutes,
+                streak: viewModel.currentStreak,
+                openAllAnkys: {
+                    AnkyHaptics.light()
+                    path.append(.allAnkys)
+                }
             ) { day in
                 path.append(.day(day))
             }
@@ -37,6 +44,11 @@ struct MapView: View {
                         createTestAnky: {
                             try viewModel.createTestAnky(on: day.date)
                         }
+                    )
+                case .allAnkys:
+                    MapAllAnkysHistoryView(
+                        sessions: viewModel.completeAnkySessions,
+                        refresh: viewModel.refresh
                     )
                 case .session(let summary):
                     if let artifact = viewModel.artifact(for: summary) {
@@ -127,6 +139,7 @@ struct MapView: View {
 
 private enum MapRoute: Hashable {
     case day(SessionDay)
+    case allAnkys
     case session(SessionSummary)
     case reveal(SavedAnky)
 }
@@ -134,6 +147,10 @@ private enum MapRoute: Hashable {
 private struct TrailMapView: View {
     let days: [SessionDay]
     let todayDate: Date
+    let ankys: Int
+    let minutes: Int
+    let streak: Int
+    let openAllAnkys: () -> Void
     let openDay: (SessionDay) -> Void
 
     @State private var centeredDayID: Date?
@@ -141,41 +158,51 @@ private struct TrailMapView: View {
     @State private var didInitialFocusToday = false
 
     private let rowHeight: CGFloat = 104
+    private let statsPanelHeight: CGFloat = 68
+    private let topChromeSpacing: CGFloat = 14
+    private let horizontalInset: CGFloat = 20
+
     private var displayDays: [SessionDay] {
         days.reversed()
     }
 
     var body: some View {
         GeometryReader { geometry in
+            let reservedTopSpace = geometry.safeAreaInsets.top + topChromeSpacing + statsPanelHeight + 26
             ScrollViewReader { proxy in
-                ZStack(alignment: .bottomTrailing) {
+                ZStack(alignment: .top) {
                     ScrollView(.vertical, showsIndicators: false) {
-                        ZStack(alignment: .topLeading) {
-                            StraightTimeline(dayCount: displayDays.count, rowHeight: rowHeight)
-                                .allowsHitTesting(false)
+                        VStack(spacing: 0) {
+                            Color.clear
+                                .frame(height: reservedTopSpace)
 
-                            VStack(spacing: 0) {
-                                ForEach(Array(displayDays.enumerated()), id: \.element.id) { index, day in
-                                    TrailDayNode(
-                                        day: day,
-                                        index: index,
-                                        rowHeight: rowHeight,
-                                        openDay: openDay
-                                    )
-                                    .id(day.id)
-                                    .background(
-                                        GeometryReader { nodeGeometry in
-                                            Color.clear.preference(
-                                                key: DayCenterPreferenceKey.self,
-                                                value: [day.id: nodeGeometry.frame(in: .named("trailViewport")).midY]
-                                            )
-                                        }
-                                    )
+                            ZStack(alignment: .topLeading) {
+                                StraightTimeline(dayCount: displayDays.count, rowHeight: rowHeight)
+                                    .allowsHitTesting(false)
+
+                                VStack(spacing: 0) {
+                                    ForEach(Array(displayDays.enumerated()), id: \.element.id) { index, day in
+                                        TrailDayNode(
+                                            day: day,
+                                            index: index,
+                                            rowHeight: rowHeight,
+                                            openDay: openDay
+                                        )
+                                        .id(day.id)
+                                        .background(
+                                            GeometryReader { nodeGeometry in
+                                                Color.clear.preference(
+                                                    key: DayCenterPreferenceKey.self,
+                                                    value: [day.id: nodeGeometry.frame(in: .named("trailViewport")).midY]
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                             }
+                            .frame(minHeight: max(0, geometry.size.height - reservedTopSpace))
+                            .padding(.vertical, 48)
                         }
-                        .frame(minHeight: geometry.size.height)
-                        .padding(.vertical, 48)
                     }
                     .background(trailBackground)
                     .coordinateSpace(name: "trailViewport")
@@ -192,21 +219,41 @@ private struct TrailMapView: View {
                         focusTodayIfNeeded(with: proxy)
                     }
 
-                    if shouldShowCurrentDayButton(viewportHeight: geometry.size.height) {
-                        Button {
-                            focusToday(with: proxy)
-                        } label: {
-                            Image(systemName: currentDayButtonIcon(viewportHeight: geometry.size.height))
-                                .font(.title2.weight(.semibold))
-                                .symbolRenderingMode(.hierarchical)
-                                .frame(width: 48, height: 48)
-                                .background(.thinMaterial, in: Circle())
+                    VStack(spacing: 0) {
+                        MapStatsPanel(
+                            ankys: ankys,
+                            minutes: minutes,
+                            streak: streak,
+                            action: openAllAnkys
+                        )
+                        .frame(height: statsPanelHeight)
+                        .padding(.horizontal, horizontalInset)
+                        .padding(.top, geometry.safeAreaInsets.top + topChromeSpacing)
+
+                        Spacer()
+
+                        HStack {
+                            Spacer()
+
+                            if shouldShowCurrentDayButton(viewportHeight: geometry.size.height) {
+                                Button {
+                                    focusToday(with: proxy)
+                                } label: {
+                                    Image(systemName: currentDayButtonIcon(viewportHeight: geometry.size.height))
+                                        .font(.title2.weight(.semibold))
+                                        .symbolRenderingMode(.hierarchical)
+                                        .frame(width: 48, height: 48)
+                                        .background(.thinMaterial, in: Circle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Go to current day")
+                                .padding(.trailing, 18)
+                                .padding(.bottom, 18)
+                                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Go to current day")
-                        .padding(.trailing, 18)
-                        .padding(.bottom, 18)
                     }
+                    .ignoresSafeArea(edges: .top)
                 }
             }
         }
@@ -503,29 +550,130 @@ private struct CircleTextureLines: Shape {
     }
 }
 
-private enum AnkyverseDayPalette {
-    static func color(for dayInRegion: Int) -> Color {
-        switch normalized(dayInRegion) {
-        case 1: Color(hex: 0xE5484D)
-        case 2: Color(hex: 0xF97316)
-        case 3: Color(hex: 0xFACC15)
-        case 4: Color(hex: 0x22C55E)
-        case 5: Color(hex: 0x2563EB)
-        case 6: Color(hex: 0x4F46E5)
-        case 7: Color(hex: 0xA855F7)
-        default: Color(hex: 0xFFF7E0)
+private struct MapStatsPanel: View {
+    let ankys: Int
+    let minutes: Int
+    let streak: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 0) {
+                MapStatCell(icon: "you-icon-feather-stat", value: "\(ankys)", label: "Ankys")
+                MapStatsDivider()
+                MapStatCell(icon: "you-icon-clock-stat", value: "\(minutes)", label: "Minutes")
+                MapStatsDivider()
+                MapStatCell(icon: "you-icon-flame-stat", value: "\(streak)", label: "Streak")
+            }
+            .frame(height: 68)
+            .frame(maxWidth: .infinity)
+            .background(MapDayPalette.ink.opacity(0.78), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(MapDayPalette.gold.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open all ankys")
+    }
+}
+
+private struct MapStatCell: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(icon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(MapDayPalette.paper)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(MapDayPalette.paper.opacity(0.58))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 6)
+    }
+}
+
+private struct MapStatsDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(MapDayPalette.gold.opacity(0.18))
+            .frame(width: 1, height: 34)
+    }
+}
+
+private struct MapAllAnkysHistoryView: View {
+    let sessions: [SessionSummary]
+    let refresh: () -> Void
+
+    private let bottomNavigationReserve: CGFloat = 152
+
+    private var title: String {
+        "\(sessions.count) \(sessions.count == 1 ? "anky" : "ankys")"
     }
 
-    static func symbolColor(for dayInRegion: Int) -> Color {
-        switch normalized(dayInRegion) {
-        case 3, 8: Color.black.opacity(0.76)
-        default: .white
-        }
-    }
+    var body: some View {
+        ZStack {
+            MapDayBackground()
 
-    private static func normalized(_ dayInRegion: Int) -> Int {
-        ((max(dayInRegion, 1) - 1) % 8) + 1
+            GeometryReader { geometry in
+                let viewportWidth = min(geometry.size.width, UIScreen.main.bounds.width)
+                let contentWidth = max(0, viewportWidth * 0.87)
+                let horizontalPadding = max(0, (viewportWidth - contentWidth) / 2)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 26) {
+                        if sessions.isEmpty {
+                            Color.clear
+                                .frame(width: contentWidth, height: 180)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(sessions) { session in
+                                    NavigationLink(value: MapRoute.session(session)) {
+                                        SessionRow(
+                                            session: session,
+                                            rowWidth: contentWidth,
+                                            showsDayInHeader: true
+                                        )
+                                        .frame(width: contentWidth, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .simultaneousGesture(TapGesture().onEnded {
+                                        AnkyHaptics.light()
+                                    })
+                                }
+                            }
+                            .frame(width: contentWidth, alignment: .leading)
+                        }
+                    }
+                    .frame(width: contentWidth, alignment: .leading)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, 24)
+                    .padding(.bottom, bottomNavigationReserve)
+                }
+                .frame(width: viewportWidth, alignment: .leading)
+            }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(MapDayPalette.ink.opacity(0.96), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .onAppear(perform: refresh)
     }
 }
 
@@ -540,28 +688,45 @@ private struct DayDetailView: View {
         formattedUTCDate(day.date, dateFormat: "MMMM d, yyyy")
     }
 
+    private var displaySessions: [SessionSummary] {
+        day.sessions.sorted { $0.createdAt > $1.createdAt }
+    }
+
     var body: some View {
         ZStack {
             MapDayBackground()
 
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 26) {
-                    if day.sessions.isEmpty {
-                        emptyState
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(day.sessions) { session in
-                                NavigationLink(value: MapRoute.session(session)) {
-                                    SessionRow(session: session)
+            GeometryReader { geometry in
+                let viewportWidth = min(geometry.size.width, UIScreen.main.bounds.width)
+                let contentWidth = max(0, viewportWidth * 0.87)
+                let horizontalPadding = max(0, (viewportWidth - contentWidth) / 2)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 26) {
+                        if day.sessions.isEmpty {
+                            emptyState
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(displaySessions) { session in
+                                    NavigationLink(value: MapRoute.session(session)) {
+                                        SessionRow(session: session, rowWidth: contentWidth)
+                                            .frame(width: contentWidth, alignment: .leading)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .simultaneousGesture(TapGesture().onEnded {
+                                        AnkyHaptics.light()
+                                    })
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .frame(width: contentWidth, alignment: .leading)
                         }
                     }
+                    .frame(width: contentWidth, alignment: .leading)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, 24)
+                    .padding(.bottom, bottomNavigationReserve)
                 }
-                .padding(.horizontal, 26)
-                .padding(.top, 24)
-                .padding(.bottom, bottomNavigationReserve)
+                .frame(width: viewportWidth, alignment: .leading)
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)
@@ -629,8 +794,10 @@ private struct DayDetailView: View {
     }
 }
 
-private struct SessionRow: View {
+struct SessionRow: View {
     let session: SessionSummary
+    let rowWidth: CGFloat
+    var showsDayInHeader = false
 
     private var isAnky: Bool {
         session.isComplete
@@ -647,7 +814,10 @@ private struct SessionRow: View {
     }
 
     private var timeText: String {
-        session.createdAt.formatted(date: .omitted, time: .shortened)
+        if showsDayInHeader {
+            return "\(session.createdAt.formatted(date: .omitted, time: .shortened)) · \(formattedUTCDate(session.createdAt, dateFormat: "MMMM d, yyyy"))"
+        }
+        return session.createdAt.formatted(date: .omitted, time: .shortened)
     }
 
     private var wordText: String {
@@ -655,27 +825,31 @@ private struct SessionRow: View {
     }
 
     private var metadataText: String {
-        var items = [
-            timeText,
+        let items = [
             AnkyDuration.formatted(session.durationMs),
             wordText
         ]
-        if isAnky {
-            items.append("anky")
-        }
-        if session.hasReflection {
-            items.append("reflected")
-        }
         return items.joined(separator: " · ")
+    }
+
+    private var displayTags: [String] {
+        session.tags
+            .map(Self.hashtag)
+            .filter { !$0.isEmpty }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            metadataHeader
+
             if let reflectedTitle {
                 Text(reflectedTitle)
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(MapDayPalette.gold)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: rowWidth, alignment: .leading)
+                    .clipped()
             }
 
             Text(session.preview)
@@ -684,10 +858,27 @@ private struct SessionRow: View {
                 .foregroundStyle(isAnky ? MapDayPalette.paper : MapDayPalette.paperMuted)
                 .lineLimit(4)
                 .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: rowWidth, alignment: .leading)
+                .clipped()
+
+            if !displayTags.isEmpty {
+                FlowLayout(spacing: 7, rowSpacing: 6) {
+                    ForEach(displayTags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(MapDayPalette.gold.opacity(0.92))
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.top, 2)
+                .frame(width: rowWidth, alignment: .leading)
+                .clipped()
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.trailing, 2)
+        .frame(width: rowWidth, alignment: .leading)
         .padding(.vertical, 18)
+        .clipped()
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(MapDayPalette.gold.opacity(0.34))
@@ -703,8 +894,111 @@ private struct SessionRow: View {
             session.preview,
             metadataText
         ]
-        .compactMap { $0 }
-        .joined(separator: ", ")
+            .compactMap { $0 }
+            .joined(separator: ", ")
+    }
+
+    private var metadataHeader: some View {
+        let spacing: CGFloat = 10
+        let timeWidth: CGFloat = showsDayInHeader ? min(max(190, rowWidth * 0.58), rowWidth * 0.68) : 112
+        let metadataWidth = max(0, rowWidth - timeWidth - spacing)
+
+        return HStack(alignment: .firstTextBaseline, spacing: spacing) {
+            Text(timeText)
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .foregroundStyle(MapDayPalette.gold.opacity(0.82))
+                .lineLimit(1)
+                .frame(width: timeWidth, alignment: .leading)
+
+            Text(metadataText)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(MapDayPalette.paperMuted)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.76)
+                .allowsTightening(true)
+                .frame(width: metadataWidth, alignment: .trailing)
+                .clipped()
+        }
+        .frame(width: rowWidth, alignment: .leading)
+    }
+
+    private static func hashtag(_ tag: String) -> String {
+        let cleaned = tag
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            .replacingOccurrences(of: #"[\s_]+"#, with: "-", options: .regularExpression)
+            .lowercased()
+        return cleaned.isEmpty ? "" : "#\(cleaned)"
+    }
+}
+
+private struct FlowLayout: Layout {
+    let spacing: CGFloat
+    let rowSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = rows(for: subviews, maxWidth: proposal.width ?? .greatestFiniteMagnitude)
+        return CGSize(
+            width: proposal.width ?? rows.map(\.width).max() ?? 0,
+            height: rows.last.map { $0.y + $0.height } ?? 0
+        )
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = rows(for: subviews, maxWidth: bounds.width)
+        for row in rows {
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: bounds.minX + item.x, y: bounds.minY + row.y),
+                    proposal: ProposedViewSize(item.size)
+                )
+            }
+        }
+    }
+
+    private func rows(for subviews: Subviews, maxWidth: CGFloat) -> [FlowRow] {
+        var rows = [FlowRow]()
+        var currentItems = [FlowItem]()
+        var currentWidth: CGFloat = 0
+        var currentHeight: CGFloat = 0
+        var y: CGFloat = 0
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let nextX = currentItems.isEmpty ? 0 : currentWidth + spacing
+            if !currentItems.isEmpty, nextX + size.width > maxWidth {
+                rows.append(FlowRow(items: currentItems, y: y, width: currentWidth, height: currentHeight))
+                y += currentHeight + rowSpacing
+                currentItems = []
+                currentWidth = 0
+                currentHeight = 0
+            }
+
+            let x = currentItems.isEmpty ? 0 : currentWidth + spacing
+            currentItems.append(FlowItem(index: index, x: x, size: size))
+            currentWidth = x + size.width
+            currentHeight = max(currentHeight, size.height)
+        }
+
+        if !currentItems.isEmpty {
+            rows.append(FlowRow(items: currentItems, y: y, width: currentWidth, height: currentHeight))
+        }
+
+        return rows
+    }
+
+    private struct FlowRow {
+        let items: [FlowItem]
+        let y: CGFloat
+        let width: CGFloat
+        let height: CGFloat
+    }
+
+    private struct FlowItem {
+        let index: Int
+        let x: CGFloat
+        let size: CGSize
     }
 }
 
@@ -716,7 +1010,7 @@ private struct MapDayMetadataDot: View {
     }
 }
 
-private struct MapDayBackground: View {
+struct MapDayBackground: View {
     var body: some View {
         ZStack {
             Image("map-background")
@@ -732,7 +1026,7 @@ private struct MapDayBackground: View {
     }
 }
 
-private enum MapDayPalette {
+enum MapDayPalette {
     static let ink = Color(hex: 0x080713)
     static let gold = Color(hex: 0xE8C879)
     static let paper = Color(hex: 0xFFF0C9)
@@ -747,7 +1041,7 @@ private struct DayCenterPreferenceKey: PreferenceKey {
     }
 }
 
-private func formattedUTCDate(_ date: Date, dateFormat: String?) -> String {
+func formattedUTCDate(_ date: Date, dateFormat: String?) -> String {
     let formatter = DateFormatter()
     formatter.calendar = .ankyUTC
     formatter.timeZone = TimeZone(secondsFromGMT: 0)

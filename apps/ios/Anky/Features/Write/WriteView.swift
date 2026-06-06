@@ -25,34 +25,44 @@ struct WriteView: View {
         ZStack {
             GeometryReader { geometry in
                 let globalFrame = geometry.frame(in: .global)
-                let keyboardTop = keyboardFrame?.minY ?? globalFrame.maxY
+                let shouldPreReserveKeyboard = shouldFocus && viewModel.canAcceptInput && keyboardFrame == nil
+                let keyboardTop = keyboardFrame?.minY ?? (
+                    shouldPreReserveKeyboard
+                    ? globalFrame.maxY - predictedKeyboardHeight(
+                        containerSize: geometry.size,
+                        safeAreaBottom: geometry.safeAreaInsets.bottom
+                    )
+                    : globalFrame.maxY
+                )
                 let visibleHeight = max(1, min(globalFrame.maxY, keyboardTop) - globalFrame.minY)
                 let keyboardIsVisible = keyboardTop < globalFrame.maxY
-                let textViewBottomGap: CGFloat = keyboardIsVisible ? 8 : 0
-                let textViewHeight = max(1, visibleHeight - textViewBottomGap)
                 let ringSize = RitualRingsView.size
                 let ringRadius = ringSize / 2
-                let ringBottomLift: CGFloat = 8
                 let ringCenter = CGPoint(
-                    x: max(ringRadius + 8, geometry.size.width - ringRadius - 8),
-                    y: max(ringRadius + 8, visibleHeight - textViewBottomGap - ringRadius - ringBottomLift)
+                    x: geometry.size.width / 2,
+                    y: min(
+                        max(ringRadius + 24, visibleHeight / 2),
+                        max(ringRadius + 24, visibleHeight - ringRadius - 24)
+                    )
                 )
-                let textViewWidth = max(1, ringCenter.x - ringRadius - 8)
+                let textViewHeight = max(1, visibleHeight)
+                let textBottomInset: CGFloat = keyboardIsVisible ? 24 : 36
+                let textSideInset: CGFloat = 24
                 let acceptsWritingInput = shouldFocus && viewModel.canAcceptInput
 
                 ForwardOnlyTextView(
                     glyphs: viewModel.displayedGlyphs,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: acceptsWritingInput,
-                    bottomInset: 8,
-                    rightInset: 14,
+                    bottomInset: textBottomInset,
+                    rightInset: textSideInset,
                     textOpacity: pageTextOpacity,
                     onCharacter: viewModel.accept,
                     onRejectedInput: viewModel.nudgeInvalidInput
                 )
-                .frame(width: textViewWidth, height: textViewHeight)
+                .frame(width: geometry.size.width, height: textViewHeight)
                 .clipped()
-                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
 
                 if viewModel.shouldShowRitualRing {
                     RitualRingsView(
@@ -65,6 +75,9 @@ struct WriteView: View {
                         isRitualComplete: viewModel.hasReachedRitualMark
                     )
                     .position(ringCenter)
+                    .transaction { transaction in
+                        transaction.animation = nil
+                    }
                     .transition(.scale(scale: 0.88).combined(with: .opacity))
                 }
 
@@ -84,6 +97,9 @@ struct WriteView: View {
                             y: max(16, ringCenter.y - ringRadius - 24)
                         )
                         .accessibilityLabel("Writing time \(AnkyDuration.clock(viewModel.elapsedMs))")
+                        .transaction { transaction in
+                            transaction.animation = nil
+                        }
                         .transition(.opacity)
                 }
             }
@@ -176,6 +192,14 @@ struct WriteView: View {
         keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
     }
 
+    private func predictedKeyboardHeight(containerSize: CGSize, safeAreaBottom: CGFloat) -> CGFloat {
+        let isPortrait = containerSize.height >= containerSize.width
+        let ratio = isPortrait ? 0.40 : 0.36
+        let lowerBound: CGFloat = isPortrait ? 300 : 210
+        let upperBound: CGFloat = isPortrait ? 380 : 300
+        return min(upperBound, max(lowerBound, containerSize.height * ratio)) + safeAreaBottom
+    }
+
 }
 
 private enum WritingRhythmColor {
@@ -192,10 +216,15 @@ private enum WritingRhythmColor {
     }
 }
 
+enum RejectedWritingInput {
+    case backspace
+    case enter
+}
+
 private struct RitualRingsView: View {
-    static let size: CGFloat = 106
-    private static let ringDiameter: CGFloat = 88
-    private static let silenceDiameter: CGFloat = 58
+    static let size: CGFloat = 190
+    private static let ringDiameter: CGFloat = 164
+    private static let silenceDiameter: CGFloat = 108
 
     let elapsedMs: Int64
     let silenceElapsedMs: Int64
@@ -242,6 +271,7 @@ private struct RitualRingsView: View {
         TimelineView(.animation) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             let breath = (sin(time * 2.2) + 1) / 2
+            let voidPulse = rejectedInputFlash
 
             ZStack {
                 if isRitualComplete {
@@ -252,63 +282,37 @@ private struct RitualRingsView: View {
                             style: StrokeStyle(lineWidth: 7, lineCap: .round)
                         )
                         .frame(width: Self.ringDiameter + 14, height: Self.ringDiameter + 14)
-                        .shadow(color: AnkyTheme.gold.opacity(0.36 + completePulse * 0.24), radius: 9 + completePulse * 5)
-                        .shadow(color: Color.white.opacity(0.14 + completePulse * 0.14), radius: 4 + completePulse * 3)
+                        .shadow(color: AnkyTheme.gold.opacity(0.36 + completePulse * 0.24), radius: 16 + completePulse * 8)
+                        .shadow(color: Color.white.opacity(0.14 + completePulse * 0.14), radius: 7 + completePulse * 5)
                         .transition(.opacity)
                 }
 
                 Circle()
-                    .fill(Color(red: 0.035, green: 0.024, blue: 0.016).opacity(0.94))
-                    .frame(width: Self.ringDiameter + 12, height: Self.ringDiameter + 12)
-                    .shadow(color: Color.black.opacity(0.72), radius: 8, y: 2)
+                    .fill(Color(red: 0.035, green: 0.024, blue: 0.016).opacity(0.88))
+                    .frame(width: Self.ringDiameter + 18, height: Self.ringDiameter + 18)
+                    .shadow(color: Color.black.opacity(0.52), radius: 20, y: 4)
 
                 Circle()
                     .stroke(AnkyTheme.gold.opacity(0.20), lineWidth: 1)
-                    .frame(width: Self.ringDiameter + 8, height: Self.ringDiameter + 8)
+                    .frame(width: Self.ringDiameter + 12, height: Self.ringDiameter + 12)
 
                 Circle()
-                    .fill(Color(red: 0.06, green: 0.047, blue: 0.037).opacity(0.98))
-                    .frame(width: Self.ringDiameter - 22, height: Self.ringDiameter - 22)
-
-                if rejectedInputFlash > 0 {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    AnkyTheme.goldBright.opacity(0.22 * rejectedInputFlash),
-                                    Color(red: 0.35, green: 0.22, blue: 0.82).opacity(0.16 * rejectedInputFlash),
-                                    Color.clear
-                                ],
-                                center: .center,
-                                startRadius: 4,
-                                endRadius: 52
-                            )
-                        )
-                        .frame(width: Self.ringDiameter + 20, height: Self.ringDiameter + 20)
-
-                    Circle()
-                        .stroke(
-                            AnkyTheme.goldBright.opacity(0.42 * rejectedInputFlash),
-                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                        )
-                        .frame(width: Self.silenceDiameter + 18, height: Self.silenceDiameter + 18)
-                        .scaleEffect(1 + rejectedInputFlash * 0.08)
-                        .shadow(color: AnkyTheme.goldBright.opacity(0.28 * rejectedInputFlash), radius: 10)
-                }
+                    .fill(Color(red: 0.06, green: 0.047, blue: 0.037).opacity(0.90))
+                    .frame(width: Self.ringDiameter - 34, height: Self.ringDiameter - 34)
 
                 ZStack {
                     ForEach(colors.indices, id: \.self) { index in
                         let progress = segmentProgress(index)
                         let isPassed = progress >= 1
                         let isActive = progress > 0 && progress < 1
-                        let activeWidth: CGFloat = isPassed ? 13 : (isActive ? 11 : 7)
+                        let activeWidth: CGFloat = isPassed ? 18 : (isActive ? 15 : 10)
 
                         GradientRingSegment(
                             index: index,
                             progress: 1,
                             startColor: colors[index].opacity(0.22),
                             endColor: colors[index].opacity(0.22),
-                            lineWidth: 6,
+                            lineWidth: 9,
                             diameter: Self.ringDiameter
                         )
 
@@ -318,10 +322,10 @@ private struct RitualRingsView: View {
                                 progress: progress,
                                 startColor: colors[index].opacity(isActive ? 0.76 : 0.92),
                                 endColor: colors[index].opacity(isActive ? 0.76 : 0.92),
-                                lineWidth: activeWidth + (isActive ? breath * 1.2 : 0),
+                                lineWidth: activeWidth + (isActive ? breath * 1.8 : 0),
                                 diameter: Self.ringDiameter
                             )
-                            .shadow(color: colors[index].opacity(isActive ? 0.34 : 0.20), radius: isActive ? 4 : 2)
+                            .shadow(color: colors[index].opacity(isActive ? 0.42 : 0.24), radius: isActive ? 9 : 4)
                         }
                     }
                 }
@@ -329,7 +333,7 @@ private struct RitualRingsView: View {
                 ForEach(0..<8, id: \.self) { index in
                     Capsule()
                         .fill(Color.black.opacity(0.56))
-                        .frame(width: 2, height: 15)
+                        .frame(width: 3, height: 27)
                         .offset(y: -Self.ringDiameter / 2)
                         .rotationEffect(.degrees(Double(index) * 45 + 22.5))
                         .shadow(color: Color.black.opacity(0.34), radius: 1)
@@ -337,46 +341,91 @@ private struct RitualRingsView: View {
 
                 Circle()
                     .stroke(AnkyTheme.gold.opacity(0.24), lineWidth: 1.5)
-                    .frame(width: Self.silenceDiameter + 7, height: Self.silenceDiameter + 7)
+                    .frame(width: Self.silenceDiameter + 10, height: Self.silenceDiameter + 10)
 
                 Circle()
                     .fill(
                         RadialGradient(
                             colors: [
-                                Color.white.opacity(0.10 + breath * 0.04),
-                                AnkyTheme.gold.opacity(0.08),
-                                Color.black.opacity(0.78),
-                                Color.black.opacity(0.96)
+                                Color.black.opacity(0.08),
+                                Color.black.opacity(0.20 + voidPulse * 0.08),
+                                Color.black.opacity(0.46 + voidPulse * 0.16),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: Self.silenceDiameter * 0.22,
+                            endRadius: Self.silenceDiameter * 0.72
+                        )
+                    )
+                    .frame(width: Self.silenceDiameter + 48, height: Self.silenceDiameter + 48)
+                    .blur(radius: 7)
+                    .blendMode(.multiply)
+                    .allowsHitTesting(false)
+
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity((0.10 + breath * 0.04) * (1 - voidPulse) + 0.035 * voidPulse),
+                                AnkyTheme.gold.opacity(0.08 * (1 - voidPulse)),
+                                Color(red: 0.010, green: 0.012, blue: 0.018).opacity(0.72 + voidPulse * 0.20),
+                                Color.black.opacity(0.94 + voidPulse * 0.05)
                             ],
                             center: UnitPoint(x: 0.32, y: 0.24),
                             startRadius: 2,
-                            endRadius: 34
+                            endRadius: 60
                         )
                     )
                     .frame(width: Self.silenceDiameter, height: Self.silenceDiameter)
+                    .shadow(color: Color.black.opacity(0.64 + voidPulse * 0.12), radius: 18, y: 6)
+                    .shadow(color: Color.black.opacity(0.36), radius: 5, y: -2)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.12 * (1 - voidPulse)),
+                                        AnkyTheme.gold.opacity(0.10 * (1 - voidPulse)),
+                                        Color.black.opacity(0.40 + voidPulse * 0.12)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: Color(red: 0.50, green: 0.02, blue: 0.02).opacity(0.16 * voidPulse), radius: 10)
+
+                Circle()
+                    .stroke(
+                        Color(red: 0.95, green: 0.04, blue: 0.03).opacity(0.06 + voidPulse * 0.22),
+                        style: StrokeStyle(lineWidth: 1.1 + voidPulse * 1.1, lineCap: .round)
+                    )
+                    .frame(width: Self.silenceDiameter + 10, height: Self.silenceDiameter + 10)
+                    .shadow(color: Color(red: 0.95, green: 0.04, blue: 0.03).opacity(0.14 * voidPulse), radius: 8)
 
                 if silenceElapsedMs >= 3000 {
                     Text("\(remainingSilenceSeconds)")
-                        .font(.system(size: 25, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 42, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AnkyTheme.gold.opacity(0.88))
                         .contentTransition(.numericText())
                 } else if let lastCharacter {
                     Text(String(lastCharacter))
-                        .font(.system(size: 26, weight: .medium, design: .rounded))
+                        .font(.system(size: 48, weight: .medium, design: .rounded))
                         .foregroundStyle(lastCharacterColor.opacity(0.88))
                         .id(pulseID)
                         .transition(.scale(scale: 0.82).combined(with: .opacity))
                 } else if elapsedMs == 0 {
                     RoundedRectangle(cornerRadius: 1.5)
                         .fill(Color.primary.opacity(sin(time * 3.4) > 0 ? 0.58 : 0.20))
-                        .frame(width: 2, height: 25)
+                        .frame(width: 3, height: 48)
                 }
 
                 Circle()
                     .trim(from: 0, to: silenceProgress)
                     .stroke(
                         Color.white.opacity(0.34 + breath * 0.16),
-                        style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
                     .scaleEffect(x: -1, y: 1)
@@ -487,7 +536,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     let rightInset: CGFloat
     let textOpacity: Double
     let onCharacter: (Character) -> Void
-    let onRejectedInput: () -> Void
+    let onRejectedInput: (RejectedWritingInput) -> Void
 
     func makeUIView(context: Context) -> UITextView {
         let textView = BottomRightAnchoredTextView()
@@ -606,12 +655,12 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         var focusID: UUID
         var renderedGlyphs: [WritingGlyph] = []
         private let onCharacter: (Character) -> Void
-        private let onRejectedInput: () -> Void
+        private let onRejectedInput: (RejectedWritingInput) -> Void
 
         init(
             focusID: UUID,
             onCharacter: @escaping (Character) -> Void,
-            onRejectedInput: @escaping () -> Void
+            onRejectedInput: @escaping (RejectedWritingInput) -> Void
         ) {
             self.focusID = focusID
             self.onCharacter = onCharacter
@@ -628,8 +677,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
                   let character = replacement.first,
                   character != "\n",
                   character != "\r" else {
-                if range.length > 0 || replacement == "\n" || replacement == "\r" {
-                    onRejectedInput()
+                if replacement == "\n" || replacement == "\r" {
+                    onRejectedInput(.enter)
+                } else if range.length > 0 || replacement.isEmpty {
+                    onRejectedInput(.backspace)
                 }
                 return false
             }

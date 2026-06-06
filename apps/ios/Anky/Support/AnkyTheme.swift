@@ -30,4 +30,8 @@ enum AnkyHaptics {
     static func warning() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
+
+    static func success() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
 }

@@ -7,6 +7,10 @@ final class MapViewModel: ObservableObject {
     @Published private(set) var firstOpenDate: Date = Date()
     @Published private(set) var mapStartDate: Date = Date()
     @Published private(set) var todayDate: Date = Calendar.ankyUTC.startOfDay(for: Date())
+    @Published private(set) var completeAnkyCount = 0
+    @Published private(set) var totalWritingMinutes = 0
+    @Published private(set) var currentStreak = 0
+    @Published private(set) var completeAnkySessions: [SessionSummary] = []
 
     private let archive: LocalAnkyArchive
     private let reflectionStore: ReflectionStore
@@ -48,6 +52,12 @@ final class MapViewModel: ObservableObject {
             ?? calendar.startOfDay(for: firstOpenDate)
         days = sessions.groupedByDay(calendar: calendar, firstOpenDate: mapStartDate, now: now)
         spatialDays = sessions.groupedByContinuousDays(calendar: calendar, firstOpenDate: mapStartDate, now: now)
+        let completeSessions = sessions.filter(\.isComplete)
+        completeAnkySessions = completeSessions.sorted { $0.createdAt > $1.createdAt }
+        completeAnkyCount = completeSessions.count
+        let totalDurationMs = sessions.reduce(Int64(0)) { $0 + $1.durationMs }
+        totalWritingMinutes = sessions.isEmpty ? 0 : max(1, Int((totalDurationMs + 59_999) / 60_000))
+        currentStreak = Self.currentStreak(from: completeSessions.map(\.createdAt), calendar: calendar, now: now)
     }
 
     var today: SessionDay? {
@@ -125,5 +135,27 @@ final class MapViewModel: ObservableObject {
         lines.insert("\(String(format: "%04d", randomDelta)) \(randomCharacter)", at: terminalIndex)
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func currentStreak(from dates: [Date], calendar: Calendar, now: Date) -> Int {
+        let activeDays = Set(dates.map { calendar.startOfDay(for: $0) })
+        guard !activeDays.isEmpty else {
+            return 0
+        }
+
+        var day = calendar.startOfDay(for: now)
+        guard activeDays.contains(day) else {
+            return 0
+        }
+
+        var streak = 0
+        while activeDays.contains(day) {
+            streak += 1
+            guard let previousDay = calendar.date(byAdding: .day, value: -1, to: day) else {
+                break
+            }
+            day = previousDay
+        }
+        return streak
     }
 }

@@ -8,6 +8,25 @@ struct BiometricAuthClient {
         return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
     }
 
+    func deviceAuthenticationName() -> String {
+        let context = LAContext()
+        var error: NSError?
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+
+        if #available(iOS 17.0, *), context.biometryType == .opticID {
+            return "Optic ID"
+        }
+
+        switch context.biometryType {
+        case .faceID:
+            return "Face ID"
+        case .touchID:
+            return "Touch ID"
+        default:
+            return "Device Lock"
+        }
+    }
+
     func confirm(reason: String) async -> Bool {
         let context = LAContext()
         var error: NSError?

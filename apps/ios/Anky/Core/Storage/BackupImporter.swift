@@ -272,6 +272,54 @@ struct BackupExporter {
         return backupURL
     }
 
+    func exportFormattedWritings() throws -> URL? {
+        let ankys = archive.list()
+        guard !ankys.isEmpty else {
+            return nil
+        }
+
+        let reflectionsByHash = Dictionary(uniqueKeysWithValues: reflectionStore.list().map { ($0.hash, $0) })
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeZone = .current
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        var lines = [
+            "# Anky writings",
+            "",
+            "Exported \(formatter.string(from: Date()))",
+            ""
+        ]
+
+        for anky in ankys {
+            lines.append("## \(formatter.string(from: anky.createdAt))")
+            lines.append("")
+            lines.append("- Duration: \(AnkyDuration.formatted(anky.durationMs))")
+            lines.append("- Words: \(anky.reconstructedText.split { $0.isWhitespace || $0.isNewline }.count)")
+            if let reflection = reflectionsByHash[anky.hash], !reflection.tags.isEmpty {
+                lines.append("- Tags: \(reflection.tags.map(Self.hashtag).joined(separator: " "))")
+            }
+            lines.append("")
+            lines.append(anky.reconstructedText.trimmingCharacters(in: .whitespacesAndNewlines))
+            lines.append("")
+
+            if let reflection = reflectionsByHash[anky.hash] {
+                lines.append("### Reflection")
+                lines.append("")
+                lines.append(reflection.reflection.trimmingCharacters(in: .whitespacesAndNewlines))
+                lines.append("")
+            }
+
+            lines.append("---")
+            lines.append("")
+        }
+
+        let exportURL = try formattedExportURL(for: Date())
+        try lines.joined(separator: "\n").write(to: exportURL, atomically: true, encoding: .utf8)
+        return exportURL
+    }
+
     private func backupURL(for date: Date) throws -> URL {
         let directory = fileManager.temporaryDirectory.appendingPathComponent("AnkyBackups", isDirectory: true)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -286,6 +334,31 @@ struct BackupExporter {
             try fileManager.removeItem(at: url)
         }
         return url
+    }
+
+    private func formattedExportURL(for date: Date) throws -> URL {
+        let directory = fileManager.temporaryDirectory.appendingPathComponent("AnkyExports", isDirectory: true)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let url = directory.appendingPathComponent("anky-writings-\(formatter.string(from: date)).md")
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+        }
+        return url
+    }
+
+    private static func hashtag(_ tag: String) -> String {
+        let cleaned = tag
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            .replacingOccurrences(of: #"[\s_]+"#, with: "-", options: .regularExpression)
+            .lowercased()
+        return cleaned.isEmpty ? "" : "#\(cleaned)"
     }
 }
 

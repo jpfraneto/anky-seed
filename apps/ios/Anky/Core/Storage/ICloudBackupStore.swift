@@ -109,6 +109,16 @@ struct ICloudBackupStore {
         defaults.set(Date(), forKey: Self.lastBackupDateKey)
     }
 
+    func deleteRemoteBackupAndDisable() throws {
+        setEnabled(false)
+        defaults.removeObject(forKey: Self.lastBackupDateKey)
+        guard let backupURL = try? remoteBackupURL(),
+              fileManager.fileExists(atPath: backupURL.path) else {
+            return
+        }
+        try fileManager.removeItem(at: backupURL)
+    }
+
     @discardableResult
     func restoreFromICloud() throws -> BackupImportResult {
         _ = try identityStore.recoverFromICloudKeychainBackup()
