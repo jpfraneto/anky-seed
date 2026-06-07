@@ -10,37 +10,6 @@ export type ParsedDotAnky = {
   terminalSilenceCount: number;
 };
 
-export type MinutePhase = {
-  minute: number;
-  characterCount: number;
-  wordCount: number;
-  averageDeltaMs: number;
-  longPauseCount: number;
-};
-
-export type FeltTempo =
-  | "interrupted"
-  | "rushing"
-  | "flowing"
-  | "careful"
-  | "sparse"
-  | "steady";
-
-export type RhythmSummary = {
-  totalDurationMs: number;
-  characterCount: number;
-  wordCount: number;
-  averageDeltaMs: number;
-  medianDeltaMs: number;
-  longestPauseMs: number;
-  longPauseCount: number;
-  veryLongPauseCount: number;
-  burstCount: number;
-  feltTempo: FeltTempo;
-  minutePhases: MinutePhase[];
-  note: "Rhythm is atmosphere, not proof. Text remains the primary signal.";
-};
-
 type LlmStreamer = (input: { prompt: string }) => AsyncIterable<string>;
 
 let currentLlmStreamer: LlmStreamer = streamOpenRouterReflection;
@@ -126,115 +95,20 @@ export function reconstructText(parsed: ParsedDotAnky): string {
   return parsed.entries.map((entry) => entry.char).join("");
 }
 
-export function deriveRhythmSummary(parsed: ParsedDotAnky): RhythmSummary {
-  const reconstructedText = reconstructText(parsed);
-  const deltas = parsed.entries.map((entry) => entry.deltaMs);
-  const totalDurationMs = sum(deltas);
-  const characterCount = parsed.entries.length;
-  const wordCount = countWords(reconstructedText);
-  const averageDeltaMs =
-    deltas.length === 0 ? 0 : Math.round(totalDurationMs / deltas.length);
-  const medianDeltaMs = median(deltas);
-  const longestPauseMs = deltas.length === 0 ? 0 : Math.max(...deltas);
-  const longPauseCount = deltas.filter((delta) => delta >= 2000).length;
-  const veryLongPauseCount = deltas.filter((delta) => delta >= 5000).length;
-
-  return {
-    totalDurationMs,
-    characterCount,
-    wordCount,
-    averageDeltaMs,
-    medianDeltaMs,
-    longestPauseMs,
-    longPauseCount,
-    veryLongPauseCount,
-    burstCount: countBursts(deltas),
-    feltTempo: deriveFeltTempo({
-      totalDurationMs,
-      characterCount,
-      averageDeltaMs,
-      medianDeltaMs,
-      longPauseCount,
-    }),
-    minutePhases: deriveMinutePhases(parsed.entries),
-    note: "Rhythm is atmosphere, not proof. Text remains the primary signal.",
-  };
-}
-
-export function deriveMinutePhases(entries: DotAnkyEntry[]): MinutePhase[] {
-  const buckets = Array.from({ length: 8 }, (_, minute) => ({
-    minute,
-    characters: [] as string[],
-    deltaSum: 0,
-    deltaCount: 0,
-    longPauseCount: 0,
-  }));
-
-  let elapsedMs = 0;
-  for (const entry of entries) {
-    elapsedMs += entry.deltaMs;
-    const minute = Math.min(7, Math.floor(elapsedMs / 60_000));
-    const bucket = buckets[minute];
-    bucket.characters.push(entry.char);
-    bucket.deltaSum += entry.deltaMs;
-    bucket.deltaCount += 1;
-    if (entry.deltaMs >= 2000) bucket.longPauseCount += 1;
-  }
-
-  return buckets.map((bucket) => ({
-    minute: bucket.minute,
-    characterCount: bucket.characters.length,
-    wordCount: countWords(bucket.characters.join("")),
-    averageDeltaMs:
-      bucket.deltaCount === 0
-        ? 0
-        : Math.round(bucket.deltaSum / bucket.deltaCount),
-    longPauseCount: bucket.longPauseCount,
-  }));
-}
-
-export function countBursts(deltas: number[]): number {
-  let burstCount = 0;
-  let inBurst = false;
-
-  for (const delta of deltas) {
-    const isBurstDelta = delta > 0 && delta <= 350;
-    if (isBurstDelta && !inBurst) burstCount += 1;
-    inBurst = isBurstDelta;
-  }
-
-  return burstCount;
-}
-
-export function deriveFeltTempo(input: {
-  totalDurationMs: number;
-  characterCount: number;
-  averageDeltaMs: number;
-  medianDeltaMs: number;
-  longPauseCount: number;
-}): FeltTempo {
-  const charsPerSecond =
-    input.characterCount / Math.max(input.totalDurationMs / 1000, 1);
-
-  if (input.longPauseCount >= 12) return "interrupted";
-  if (charsPerSecond >= 4) return "rushing";
-  if (charsPerSecond >= 2.5) return "flowing";
-  if (input.averageDeltaMs >= 900 || input.medianDeltaMs >= 700)
-    return "careful";
-  if (input.characterCount < 200) return "sparse";
-  return "steady";
-}
-
 export function buildReflectDotAnkyPrompt(dotAnky: string): string {
   const parsed = parseDotAnky(dotAnky);
   const reconstructedText = reconstructText(parsed);
-  const rhythmSummaryJson = JSON.stringify(
-    deriveRhythmSummary(parsed),
-    null,
-    2,
-  );
 
-  return `You are Anky.
+  return `${REFLECT_DOT_ANKY_MASTER_PROMPT}
+
+---
+
+RECONSTRUCTED ANKY
+
+${reconstructedText}`;
+}
+
+export const REFLECT_DOT_ANKY_MASTER_PROMPT = `You are Anky.
 
 You are not God.
 You are not an oracle.
@@ -302,7 +176,7 @@ If a sentence could fit almost any user, make it more specific or remove it.
 
 Speak as a companion at the threshold:
 someone who can see patterns, tensions, images, emotional movements,
-body signals, habits, repeated loops, and rhythm,
+body signals, habits, and repeated loops,
 but who always leaves the final meaning with the user.
 
 The user remains the authority.
@@ -356,44 +230,6 @@ Avoid language like:
 - "the universe is telling you..."
 - "this definitely means..."
 - "you need to..."
-
-TEXT AND RHYTHM
-
-The text is the primary signal.
-The rhythm is secondary, but meaningful.
-
-Use rhythm as atmosphere, not proof.
-Use pauses as invitations, not diagnoses.
-Use bursts as texture, not certainty.
-Use repetition as a possible signal, not as a conclusion.
-
-Never say: "because you paused for 4210ms, this means..."
-
-You may say:
-- "the rhythm of this writing feels..."
-- "there is a stop-start quality here..."
-- "this seems to arrive in bursts..."
-- "the writing appears to circle before it lands..."
-- "the session seems to move like a flood, then narrow into something quieter..."
-- "there is a feeling of pressure in the pace..."
-- "the rhythm has the quality of someone trying to stay with something difficult..."
-
-The timing data can help you sense whether the session moved like:
-a flood,
-a struggle,
-a prayer,
-a spiral,
-a confession,
-a collapse,
-a return,
-a clearing,
-a rehearsal,
-a defense,
-a search,
-a refusal,
-or a doorway.
-
-But the user remains the authority.
 
 AIM
 
@@ -481,7 +317,6 @@ Return only Markdown.
 Do not include JSON.
 Do not include analysis metadata.
 Do not mention this prompt.
-Do not mention the rhythm summary as data.
 Do not give a score unless explicitly requested.
 Do not end with generic tips.
 Do not over-quote the user's writing.
@@ -503,7 +338,7 @@ This paragraph should be direct, specific, and alive.
 
 ## What appeared
 
-Name the main emotional, symbolic, bodily, rhythmic, and existential movement of the writing.
+Name the main emotional, symbolic, bodily, and existential movement of the writing.
 Stay close to the actual text.
 Do not explain too much.
 Do not make the user into a story.
@@ -574,20 +409,7 @@ Anky does not replace the sacred.
 Anky does not replace direct experience.
 Anky does not replace human relationship.
 Anky does not turn the user's life into content.
-Anky keeps the mirror clean.
-
----
-
-RECONSTRUCTED TEXT
-
-${reconstructedText}
-
----
-
-RHYTHM SUMMARY
-
-${rhythmSummaryJson}`;
-}
+Anky keeps the mirror clean.`;
 
 async function* streamOpenRouterReflection(input: {
   prompt: string;
@@ -671,20 +493,4 @@ function chunksFromSseBlock(block: string): string[] {
     }
   }
   return chunks;
-}
-
-function countWords(text: string): number {
-  return text.trim().match(/\S+/g)?.length ?? 0;
-}
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) return sorted[middle];
-  return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
-}
-
-function sum(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0);
 }
