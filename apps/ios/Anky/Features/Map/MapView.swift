@@ -820,18 +820,6 @@ struct SessionRow: View {
         return session.createdAt.formatted(date: .omitted, time: .shortened)
     }
 
-    private var wordText: String {
-        "\(session.wordCount) \(session.wordCount == 1 ? "word" : "words")"
-    }
-
-    private var metadataText: String {
-        let items = [
-            AnkyDuration.formatted(session.durationMs),
-            wordText
-        ]
-        return items.joined(separator: " · ")
-    }
-
     private var displayTags: [String] {
         session.tags
             .map(Self.hashtag)
@@ -891,34 +879,20 @@ struct SessionRow: View {
     private var accessibilityLabel: String {
         [
             reflectedTitle,
-            session.preview,
-            metadataText
+            session.preview
         ]
             .compactMap { $0 }
             .joined(separator: ", ")
     }
 
     private var metadataHeader: some View {
-        let spacing: CGFloat = 10
-        let timeWidth: CGFloat = showsDayInHeader ? min(max(190, rowWidth * 0.58), rowWidth * 0.68) : 112
-        let metadataWidth = max(0, rowWidth - timeWidth - spacing)
-
-        return HStack(alignment: .firstTextBaseline, spacing: spacing) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(timeText)
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(MapDayPalette.gold.opacity(0.82))
                 .lineLimit(1)
-                .frame(width: timeWidth, alignment: .leading)
 
-            Text(metadataText)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(MapDayPalette.paperMuted)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .minimumScaleFactor(0.76)
-                .allowsTightening(true)
-                .frame(width: metadataWidth, alignment: .trailing)
-                .clipped()
+            Spacer(minLength: 0)
         }
         .frame(width: rowWidth, alignment: .leading)
     }

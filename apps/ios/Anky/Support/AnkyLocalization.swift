@@ -76,13 +76,13 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Write one character",
             .stepKeepThreadAlive: "Keep the thread alive",
             .stepLetSilenceCloseIt: "Let silence close it",
-            .creditGiftSummary: "First reflection - This device",
+            .creditGiftSummary: "2 reflections - This device",
             .creditGiftCaption: "device gift",
-            .creditGiftPrompt: "This device has one first reflection from Anky. Use it before buying more credits.",
+            .creditGiftPrompt: "This device has two free reflections from Anky. Use them before buying more credits.",
             .writeEightMinutes: "Write 8 minutes",
-            .creditPacksLocked: "Credit packs unlock after this device spends its first reflection",
-            .creditGiftDetail: "The first reflection is tied to this device. After it is used, this screen will let you buy more credits.",
-            .spendGiftBeforeBuying: "Use this device's first reflection before buying more credits."
+            .creditPacksLocked: "Credit packs unlock after this device spends its first two reflections",
+            .creditGiftDetail: "Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits.",
+            .spendGiftBeforeBuying: "Use this device's first two reflections before buying more credits."
         ],
         "es": [
             .tabWrite: "Escribir",
@@ -100,13 +100,13 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Escribe un caracter",
             .stepKeepThreadAlive: "Mantiene vivo el hilo",
             .stepLetSilenceCloseIt: "Deja que el silencio lo cierre",
-            .creditGiftSummary: "1 credito - Regalo de Anky",
-            .creditGiftCaption: "credito - Regalo de Anky",
-            .creditGiftPrompt: "Tienes 1 credito - Regalo de Anky. Usa esta primera reflexion antes de comprar mas creditos.",
+            .creditGiftSummary: "2 creditos - Regalo de Anky",
+            .creditGiftCaption: "creditos - Regalo de Anky",
+            .creditGiftPrompt: "Tienes 2 creditos - Regalo de Anky. Usa estas primeras reflexiones antes de comprar mas creditos.",
             .writeEightMinutes: "Escribir 8 minutos",
-            .creditPacksLocked: "Los paquetes de creditos se desbloquean despues de usar tu Regalo de Anky",
-            .creditGiftDetail: "Tu primera reflexion esta cubierta. Despues de usarla, esta pantalla te dejara comprar mas creditos.",
-            .spendGiftBeforeBuying: "Usa tu regalo de Anky antes de comprar mas creditos."
+            .creditPacksLocked: "Los paquetes de creditos se desbloquean despues de usar tus dos regalos de Anky",
+            .creditGiftDetail: "Tus primeras dos reflexiones estan cubiertas. Despues de usarlas, esta pantalla te dejara comprar mas creditos.",
+            .spendGiftBeforeBuying: "Usa tus dos regalos de Anky antes de comprar mas creditos."
         ],
         "pt": [
             .tabWrite: "Escrever",
@@ -124,13 +124,13 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Escreva um caractere",
             .stepKeepThreadAlive: "Mantenha o fio vivo",
             .stepLetSilenceCloseIt: "Deixe o silencio fechar",
-            .creditGiftSummary: "1 credito - Presente da Anky",
-            .creditGiftCaption: "credito - Presente da Anky",
-            .creditGiftPrompt: "Voce tem 1 credito - Presente da Anky. Use esta primeira reflexao antes de comprar mais creditos.",
+            .creditGiftSummary: "2 creditos - Presente da Anky",
+            .creditGiftCaption: "creditos - Presente da Anky",
+            .creditGiftPrompt: "Voce tem 2 creditos - Presente da Anky. Use estas primeiras reflexoes antes de comprar mais creditos.",
             .writeEightMinutes: "Escrever 8 minutos",
-            .creditPacksLocked: "Os pacotes de creditos desbloqueiam depois que voce usar seu Presente da Anky",
-            .creditGiftDetail: "Sua primeira reflexao esta coberta. Depois de usa-la, esta tela deixara voce comprar mais creditos.",
-            .spendGiftBeforeBuying: "Use seu presente da Anky antes de comprar mais creditos."
+            .creditPacksLocked: "Os pacotes de creditos desbloqueiam depois que voce usar seus dois presentes da Anky",
+            .creditGiftDetail: "Suas duas primeiras reflexoes estao cobertas. Depois de usa-las, esta tela deixara voce comprar mais creditos.",
+            .spendGiftBeforeBuying: "Use seus dois presentes da Anky antes de comprar mais creditos."
         ],
         "fr": [
             .tabWrite: "Ecrire",

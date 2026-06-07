@@ -40,10 +40,7 @@ struct WriteView: View {
                 let ringRadius = ringSize / 2
                 let ringCenter = CGPoint(
                     x: geometry.size.width / 2,
-                    y: min(
-                        max(ringRadius + 24, visibleHeight / 2),
-                        max(ringRadius + 24, visibleHeight - ringRadius - 24)
-                    )
+                    y: max(ringRadius + 24, geometry.size.height * 0.36)
                 )
                 let textViewHeight = max(1, visibleHeight)
                 let textBottomInset: CGFloat = keyboardIsVisible ? 24 : 36
@@ -432,7 +429,6 @@ private struct RitualRingsView: View {
                     .frame(width: Self.silenceDiameter, height: Self.silenceDiameter)
                     .opacity(silenceElapsedMs >= 3000 ? 1 : 0)
                     .animation(.easeInOut(duration: 0.22), value: silenceElapsedMs >= 3000)
-                    .animation(.linear(duration: 0.04), value: silenceProgress)
             }
             .frame(width: Self.size, height: Self.size)
         }
@@ -542,7 +538,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         let textView = BottomRightAnchoredTextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        textView.font = UIFont.monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .title3).pointSize, weight: .regular)
+        textView.font = UIFont.preferredFont(forTextStyle: .title3)
         textView.adjustsFontForContentSizeCategory = true
         textView.textColor = UIColor.label.withAlphaComponent(textOpacity)
         textView.tintColor = .clear

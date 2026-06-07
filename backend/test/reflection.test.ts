@@ -88,6 +88,8 @@ describe("dotAnky reflection helpers", () => {
       expect(capturedPrompt).toContain("If the writing is English, the reflection must be English. If the writing is Spanish, the reflection must be Spanish. Same for every language.");
       expect(capturedPrompt).toContain("do not answer in the app locale, device locale, developer locale, or prompt language unless that is also the dominant language of the reconstructed text");
       expect(capturedPrompt).toContain("Treat the English structure labels and examples in this prompt as instructions to localize, not as language evidence.");
+      expect(capturedPrompt).toContain("Mirror the user's dialect, regional register, intimacy level, and sentence texture as much as possible without parody.");
+      expect(capturedPrompt).toContain("If the writing sounds Chilean, do not answer with Argentine phrasing.");
       expect(capturedPrompt).toContain("If the reconstructed text is primarily English, every visible word you generate must be English.");
       expect(capturedPrompt).toContain("The title, tags, section headings, body, experiment, and final line must all use that language.");
       expect(capturedPrompt).toContain("If any title, tag, heading, paragraph, experiment, or final line drifted into a different language, rewrite that part into the dominant language before returning.");

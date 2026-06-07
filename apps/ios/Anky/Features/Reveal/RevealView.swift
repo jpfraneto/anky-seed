@@ -102,14 +102,13 @@ struct RevealView: View {
                             } else if !viewModel.streamingReflectionMarkdown.isEmpty {
                                 ReflectionMarkdownPanel(
                                     title: nil,
-                                    markdown: viewModel.streamingReflectionMarkdown,
-                                    separatesLeadingTitle: false
+                                    markdown: viewModel.streamingReflectionMarkdown
                                 )
                                 .opacity(0.92)
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
                                 .trackReflectionVisibility()
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                .transition(.opacity)
                             } else if inlineReflectionActive, let errorMessage = viewModel.errorMessage {
                                 ReflectionErrorPanel(
                                     message: errorMessage
@@ -117,7 +116,7 @@ struct RevealView: View {
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
                                 .trackReflectionVisibility()
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                .transition(.opacity)
                             }
                         }
                         .padding(.horizontal, 28)
@@ -162,6 +161,7 @@ struct RevealView: View {
 
         }
         .toolbar(isNavigationBarHidden ? .hidden : .visible, for: .navigationBar)
+        .toolbar(isNavigationBarHidden ? .hidden : .visible, for: .tabBar)
         .navigationTitle(viewModel.compactHeaderLine)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(RevealPalette.ink.opacity(0.96), for: .navigationBar)
@@ -402,7 +402,7 @@ struct RevealView: View {
 
     private func syncRevealBottomBar() {
         guard shouldShowBottomAction else {
-            tabBarCTAController.hide()
+            tabBarCTAController.hide(resetScrollHidden: false)
             return
         }
 

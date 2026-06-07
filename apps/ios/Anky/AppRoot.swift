@@ -86,7 +86,7 @@ struct AppRoot: View {
             }
             .environmentObject(ankyCompanion)
             .environmentObject(tabBarCTAController)
-            .toolbar(selectedTab == 0 ? .hidden : .visible, for: .tabBar)
+            .toolbar((selectedTab == 0 || tabBarCTAController.isScrollHidden) ? .hidden : .visible, for: .tabBar)
 
             AnkyTabBarFrameReader(controller: tabBarCTAController)
                 .frame(width: 0, height: 0)
@@ -431,7 +431,7 @@ struct AppRoot: View {
         Binding {
             selectedTab
         } set: { tab in
-            if tab == 0, selectedTab != tab {
+            if selectedTab != tab {
                 AnkyHaptics.light()
             }
             selectedTab = tab

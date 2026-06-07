@@ -278,45 +278,15 @@ struct BackupExporter {
             return nil
         }
 
-        let reflectionsByHash = Dictionary(uniqueKeysWithValues: reflectionStore.list().map { ($0.hash, $0) })
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.timeZone = .current
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        var lines = [
-            "# Anky writings",
-            "",
-            "Exported \(formatter.string(from: Date()))",
-            ""
-        ]
-
-        for anky in ankys {
-            lines.append("## \(formatter.string(from: anky.createdAt))")
-            lines.append("")
-            lines.append("- Duration: \(AnkyDuration.formatted(anky.durationMs))")
-            lines.append("- Words: \(anky.reconstructedText.split { $0.isWhitespace || $0.isNewline }.count)")
-            if let reflection = reflectionsByHash[anky.hash], !reflection.tags.isEmpty {
-                lines.append("- Tags: \(reflection.tags.map(Self.hashtag).joined(separator: " "))")
-            }
-            lines.append("")
-            lines.append(anky.reconstructedText.trimmingCharacters(in: .whitespacesAndNewlines))
-            lines.append("")
-
-            if let reflection = reflectionsByHash[anky.hash] {
-                lines.append("### Reflection")
-                lines.append("")
-                lines.append(reflection.reflection.trimmingCharacters(in: .whitespacesAndNewlines))
-                lines.append("")
-            }
-
-            lines.append("---")
-            lines.append("")
+        let lines = ankys.map { anky in
+            "\(formatter.string(from: anky.createdAt)):\(anky.reconstructedText)"
         }
 
         let exportURL = try formattedExportURL(for: Date())
-        try lines.joined(separator: "\n").write(to: exportURL, atomically: true, encoding: .utf8)
+        try lines.joined(separator: "\n\n").write(to: exportURL, atomically: true, encoding: .utf8)
         return exportURL
     }
 

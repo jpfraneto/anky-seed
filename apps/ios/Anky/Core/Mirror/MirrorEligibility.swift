@@ -14,7 +14,7 @@ enum ReflectionCreditPromptState: Equatable {
 }
 
 enum ReflectionCreditPresentation {
-    static let firstGiftCount = 1
+    static let firstGiftCount = 2
 
     static func state(
         creditsRemaining: Int?,

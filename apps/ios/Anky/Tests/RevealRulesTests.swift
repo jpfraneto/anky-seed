@@ -20,8 +20,8 @@ final class RevealRulesTests: XCTestCase {
             hasClaimedFreeCredits: false
         )
 
-        XCTAssertEqual(state, .freeGift(1))
-        XCTAssertEqual(ReflectionCreditPresentation.message(for: state), "1 reflection available on this device")
+        XCTAssertEqual(state, .freeGift(2))
+        XCTAssertEqual(ReflectionCreditPresentation.message(for: state), "2 reflections available on this device")
     }
 
     func testCreditPromptShowsBalanceAndUnavailableState() {

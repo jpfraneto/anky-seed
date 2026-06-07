@@ -30,9 +30,11 @@ final class AnkyTabBarCTAController: ObservableObject {
         isPresented = true
     }
 
-    func hide() {
+    func hide(resetScrollHidden: Bool = true) {
         isPresented = false
-        isScrollHidden = false
+        if resetScrollHidden {
+            isScrollHidden = false
+        }
         action = nil
     }
 
@@ -162,7 +164,6 @@ struct AnkyTabBarCTAOverlay: View {
                     .opacity(controller.isEnabled || controller.isLoading ? 1 : 0.52)
                 }
                 .buttonStyle(.plain)
-                .disabled(!controller.isEnabled)
                 .opacity(controller.isScrollHidden ? 0 : 1)
                 .position(
                     x: frame.midX,
@@ -195,7 +196,7 @@ struct AnkyTabBarCTAOverlay: View {
         .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true), value: isBreathing)
         .animation(.spring(response: 0.34, dampingFraction: 0.88), value: controller.isPresented)
         .animation(.easeInOut(duration: 0.28), value: controller.isScrollHidden)
-        .allowsHitTesting(controller.isPresented && !controller.isScrollHidden)
+        .allowsHitTesting(controller.isPresented && !controller.isScrollHidden && controller.isEnabled && !controller.isLoading)
         .ignoresSafeArea(.container, edges: .bottom)
     }
 

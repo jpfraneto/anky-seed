@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ankyWorld, resolveReflectionCredit } from "../server";
 
 describe("reflection credit spending", () => {
-  test("Android account trial grants once then spends one credit when explicitly enabled", async () => {
+  test("Android account trial grants two credits once then spends one credit when explicitly enabled", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const result = await resolveReflectionCredit({
       env: ankyWorld({
@@ -20,18 +20,18 @@ describe("reflection credit spending", () => {
       fetchImpl: async (url, init) => {
         calls.push({ url: String(url), init });
         if (calls.length === 1) return jsonResponse({ items: [{ balance: 0, currency_code: "CRD" }] });
-        if (calls.length === 2) return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
-        return jsonResponse({ items: [{ balance: 0, currency_code: "CRD" }] });
+        if (calls.length === 2) return jsonResponse({ items: [{ balance: 2, currency_code: "CRD" }] });
+        return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
       },
     });
 
     expect(result.ok).toBe(true);
-    expect(result.creditsRemaining).toBe(0);
+    expect(result.creditsRemaining).toBe(1);
     expect(result.result).toBe("trial_granted_spent");
     expect(result.spentCredit).toBe(true);
     expect(typeof result.spendIdempotencyKey).toBe("string");
     const grantBody = JSON.parse(String(calls[1]?.init.body));
-    expect(grantBody.adjustments).toEqual({ CRD: 1 });
+    expect(grantBody.adjustments).toEqual({ CRD: 2 });
     expect(String(grantBody.reference).startsWith("anky-trial-v1:android:publicHash:")).toBe(true);
     expect(String(calls[1]?.init.body)).not.toContain("AndroidWriterAccountId");
   });

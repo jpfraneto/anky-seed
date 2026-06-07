@@ -482,7 +482,7 @@ final class RevealViewModel: ObservableObject {
 
     private static func reflectionErrorMessage(message: String, serverPayload: MirrorServerErrorPayload?) -> String {
         if serverPayload?.isTrialAlreadyClaimed == true {
-            return "This device already used its first reflection. Add credits to ask Anky again. Writing is still free."
+            return "This device already used its first two reflections. Add credits to ask Anky again. Writing is still free."
         }
         if serverPayload?.isCreditDenied == true || message.localizedCaseInsensitiveContains("credit") {
             return "You need one reflection credit to ask Anky. Writing is still free."

@@ -32,6 +32,7 @@ struct YouView: View {
     @State private var didCopyAnkyContract = false
     @State private var showsAccountDeletion = false
     @State private var showsReflectionCreditsSheet = false
+    @State private var promptAutoDismissTask: Task<Void, Never>?
 
     init(
         viewModel: YouViewModel,
@@ -90,6 +91,7 @@ struct YouView: View {
                     if showsAccountDeletion {
                         YouPanel(spacing: 0) {
                             Button(role: .destructive) {
+                                AnkyHaptics.warning()
                                 confirmDeleteAccountAndData = true
                             } label: {
                                 YouDestructiveMenuRow(title: "DELETE ACCOUNT AND DATA")
@@ -287,6 +289,7 @@ struct YouView: View {
 
     private func promptButton(_ prompt: YouPrompt, icon: String, title: String, subtitle: String) -> some View {
         Button {
+            AnkyHaptics.light()
             if prompt == .credits {
                 openCreditsSheet()
             } else {
@@ -340,6 +343,7 @@ struct YouView: View {
 
     private func legalButton(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button {
+            AnkyHaptics.light()
             activePrompt = nil
             isShowingSystemPrompt = false
             ankyCompanion.hideBubble()
@@ -373,13 +377,27 @@ struct YouView: View {
                 close: dismissCurrentPrompt
             )
         )
+        schedulePromptAutoDismiss()
     }
 
     private func dismissCurrentPrompt() {
+        promptAutoDismissTask?.cancel()
+        promptAutoDismissTask = nil
         activePrompt = nil
         isShowingSystemPrompt = false
         viewModel.dismissMessages()
         ankyCompanion.hideBubble()
+    }
+
+    private func schedulePromptAutoDismiss() {
+        promptAutoDismissTask?.cancel()
+        promptAutoDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else {
+                return
+            }
+            dismissCurrentPrompt()
+        }
     }
 
     private func refreshCreditsBubbleIfNeeded() {
@@ -526,6 +544,7 @@ struct YouView: View {
         Binding {
             viewModel.isICloudBackupEnabled
         } set: { isEnabled in
+            AnkyHaptics.light()
             if isEnabled {
                 Task { await viewModel.enableICloudBackup() }
             } else {
@@ -559,6 +578,7 @@ struct YouView: View {
         Binding {
             biometricIdentityConfirmation
         } set: { isEnabled in
+            AnkyHaptics.light()
             setFaceID(isEnabled)
         }
     }
@@ -945,6 +965,7 @@ private struct AccountPage: View {
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16))
                     .onChange(of: dailyReminderEnabled) { _, isEnabled in
+                        AnkyHaptics.light()
                         Task {
                             await viewModel.setDailyReminder(enabled: isEnabled, date: reminderDate)
                         }
@@ -1120,7 +1141,7 @@ private struct TermsAndConditionsReflectionSheet: View {
         .heading("Reflections"),
         .paragraph("Reflections are optional. Asking for a reflection sends the `.anky` writing to the configured mirror service so it can return a response. Reflections may require credits."),
         .heading("Credits and purchases"),
-        .paragraph("Credits are used for reflections, not writing. The first reflection is limited by device checks to reduce abuse. Paid credit purchases are handled through Apple and RevenueCat where available."),
+        .paragraph("Credits are used for reflections, not writing. The first two reflections are limited by device checks to reduce abuse. Paid credit purchases are handled through Apple and RevenueCat where available."),
         .heading("Backups and recovery"),
         .paragraph("iCloud Keychain recovery stores the recovery phrase for your local identity. Data export is the separate backup path for writing and reflections."),
         .heading("No professional advice"),
@@ -1255,6 +1276,9 @@ private struct ExportDataPage: View {
                     ShareLink(item: formattedWritingExportURL) {
                         YouActionLabel("Export writings")
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        AnkyHaptics.light()
+                    })
                 } else {
                     YouDisabledRow("No writing to export yet")
                 }
@@ -2319,7 +2343,10 @@ private struct YouDataToggleRow: View {
 
     var body: some View {
         HStack(spacing: 13) {
-            Button(action: action) {
+            Button {
+                AnkyHaptics.light()
+                action()
+            } label: {
                 HStack(spacing: 13) {
                     YouMenuIcon(icon: icon)
 
@@ -2487,7 +2514,14 @@ private struct YouActionButton: View {
     }
 
     var body: some View {
-        Button(role: role, action: action) {
+        Button(role: role) {
+            if role == .destructive {
+                AnkyHaptics.warning()
+            } else {
+                AnkyHaptics.light()
+            }
+            action()
+        } label: {
             YouActionLabel(title, destructive: role == .destructive)
         }
         .buttonStyle(.plain)

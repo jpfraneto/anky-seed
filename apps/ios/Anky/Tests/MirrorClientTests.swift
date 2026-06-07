@@ -149,7 +149,7 @@ final class MirrorClientTests: XCTestCase {
     func testMirrorClientPreservesServerErrorCode() async throws {
         let body = Data("1770000000000 h\n472000 i\n8000".utf8)
         let identity = WriterIdentity.generate()
-        let message = "This device already used its free Anky reflection. Buy credits to reflect more writing."
+        let message = "This device already used its free Anky reflections. Buy credits to reflect more writing."
 
         MockURLProtocol.handler = { request in
             let response = HTTPURLResponse(
