@@ -9,20 +9,20 @@ struct AnkyReflectionCreditsSheet: View {
     let onSelectPack: (RevenueCatCreditPackage) -> Void
 
     var body: some View {
-        ZStack {
-            Color.clear
+        ZStack(alignment: .top) {
+            sheetBackground
 
             VStack(spacing: 0) {
                 dragHandle
                     .padding(.top, 10)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 14)
 
                 header
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 22)
 
                 availableCreditsCard
-                    .padding(.horizontal, 24)
-                    .padding(.top, 26)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
 
                 VStack(spacing: 12) {
                     if packs.isEmpty {
@@ -39,49 +39,53 @@ struct AnkyReflectionCreditsSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 22)
                 .padding(.top, 18)
 
                 footer
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
 
-                Spacer(minLength: 24)
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 610)
-            .background(sheetBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
-            .overlay(sheetBorder)
-            .shadow(color: Color.black.opacity(0.55), radius: 40, x: 0, y: -10)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AnkyReflectionCreditsPalette.almostBlack)
+        .clipShape(sheetShape)
+        .overlay(sheetBorder)
+        .shadow(color: Color.black.opacity(0.55), radius: 40, x: 0, y: -10)
         .ignoresSafeArea(edges: .bottom)
     }
 
     private var dragHandle: some View {
         Capsule()
-            .fill(Color.white.opacity(0.42))
+            .fill(Color.white.opacity(0.35))
             .frame(width: 42, height: 5)
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: "sparkle")
-                .font(.system(size: 26, weight: .medium))
+                .font(.system(size: 21, weight: .medium))
                 .foregroundStyle(AnkyReflectionCreditsPalette.gold)
+                .frame(width: 28, height: 34)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Anky reflection credits")
-                    .font(.system(size: 34, weight: .medium, design: .serif))
+                    .font(.system(size: 29, weight: .medium, design: .serif))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.8)
 
                 Text("Your space to be seen, held, and mirrored.")
                     .font(.system(size: 15, weight: .regular))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.68))
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
             }
+            .layoutPriority(1)
 
             Spacer()
 
@@ -93,16 +97,16 @@ struct AnkyReflectionCreditsSheet: View {
                         .strokeBorder(AnkyReflectionCreditsPalette.gold.opacity(0.42), lineWidth: 1.2)
                         .background(
                             Circle()
-                                .fill(AnkyReflectionCreditsPalette.purpleDeep.opacity(0.55))
+                                .fill(AnkyReflectionCreditsPalette.purpleDeep.opacity(0.42))
                         )
-                        .frame(width: 54, height: 54)
+                        .frame(width: 46, height: 46)
 
                     if isRefreshing {
                         ProgressView()
                             .tint(AnkyReflectionCreditsPalette.gold)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AnkyReflectionCreditsPalette.gold)
                     }
                 }
@@ -137,7 +141,7 @@ struct AnkyReflectionCreditsSheet: View {
 
             HStack(alignment: .center, spacing: 22) {
                 Text(availableCredits.map(String.init) ?? "...")
-                    .font(.system(size: 72, weight: .bold, design: .serif))
+                    .font(.system(size: 68, weight: .bold, design: .serif))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
@@ -152,15 +156,15 @@ struct AnkyReflectionCreditsSheet: View {
                     .minimumScaleFactor(0.62)
 
                 Text("available\ncredits")
-                    .font(.system(size: 24, weight: .medium, design: .serif))
+                    .font(.system(size: 23, weight: .medium, design: .serif))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.78))
                     .lineSpacing(4)
 
                 Spacer()
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 26)
         }
-        .frame(height: 132)
+        .frame(height: 124)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -198,11 +202,13 @@ struct AnkyReflectionCreditsSheet: View {
 
     private var sheetBackground: some View {
         ZStack {
+            AnkyReflectionCreditsPalette.almostBlack
+
             LinearGradient(
                 colors: [
-                    Color(hexString: "1A0D28"),
-                    Color(hexString: "080610"),
-                    Color(hexString: "05040B")
+                    Color(hexString: "130A1F").opacity(0.98),
+                    Color(hexString: "080610").opacity(0.99),
+                    AnkyReflectionCreditsPalette.almostBlack
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -215,12 +221,12 @@ struct AnkyReflectionCreditsSheet: View {
                 ],
                 center: .topLeading,
                 startRadius: 0,
-                endRadius: 520
+                endRadius: 480
             )
 
             RadialGradient(
                 colors: [
-                    AnkyReflectionCreditsPalette.gold.opacity(0.08),
+                    AnkyReflectionCreditsPalette.gold.opacity(0.075),
                     Color.clear
                 ],
                 center: .bottom,
@@ -231,7 +237,7 @@ struct AnkyReflectionCreditsSheet: View {
     }
 
     private var sheetBorder: some View {
-        RoundedRectangle(cornerRadius: 38, style: .continuous)
+        sheetShape
             .strokeBorder(
                 LinearGradient(
                     colors: [
@@ -244,6 +250,18 @@ struct AnkyReflectionCreditsSheet: View {
                 ),
                 lineWidth: 1
             )
+    }
+
+    private var sheetShape: some InsettableShape {
+        UnevenRoundedRectangle(
+            cornerRadii: .init(
+                topLeading: 38,
+                bottomLeading: 0,
+                bottomTrailing: 0,
+                topTrailing: 38
+            ),
+            style: .continuous
+        )
     }
 
     private func isRecommended(_ pack: RevenueCatCreditPackage) -> Bool {
@@ -266,50 +284,56 @@ private struct AnkyReflectionCreditPackRow: View {
             }
             action()
         } label: {
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 icon
+                    .frame(width: 48, height: 48)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 10) {
-                        Text(pack.title)
-                            .font(.system(size: 28, weight: .semibold, design: .serif))
-                            .foregroundStyle(AnkyReflectionCreditsPalette.cream)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.74)
-
-                        if isRecommended {
-                            Text("recommended")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(AnkyReflectionCreditsPalette.almostBlack)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(AnkyReflectionCreditsPalette.gold, in: Capsule())
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                    }
+                    Text(pack.title)
+                        .font(.system(size: 25, weight: .semibold, design: .serif))
+                        .foregroundStyle(AnkyReflectionCreditsPalette.cream)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .layoutPriority(1)
 
                     Text(pack.subtitle)
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.58))
+                        .lineLimit(1)
                 }
+                .layoutPriority(1)
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 if isPurchasing {
                     ProgressView()
                         .tint(AnkyReflectionCreditsPalette.gold)
                         .scaleEffect(1.05)
+                        .frame(width: 72, alignment: .trailing)
                 } else {
-                    Text(pack.price)
-                        .font(.system(size: 24, weight: .semibold, design: .serif))
-                        .foregroundStyle(AnkyReflectionCreditsPalette.gold)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
+                    VStack(alignment: .trailing, spacing: 8) {
+                        if isRecommended {
+                            Text("best value")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(AnkyReflectionCreditsPalette.almostBlack)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(AnkyReflectionCreditsPalette.gold, in: Capsule())
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+
+                        Text(pack.price)
+                            .font(.system(size: 23, weight: .semibold, design: .serif))
+                            .foregroundStyle(AnkyReflectionCreditsPalette.gold)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .frame(minWidth: 72, alignment: .trailing)
                 }
             }
-            .padding(.horizontal, 18)
-            .frame(height: 92)
+            .padding(.horizontal, 16)
+            .frame(height: 86)
             .background(rowBackground)
             .overlay(rowBorder)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -350,13 +374,13 @@ private struct AnkyReflectionCreditPackRow: View {
                         endRadius: 42
                     )
                 )
-                .frame(width: 56, height: 56)
+                .frame(width: 48, height: 48)
 
             Circle()
                 .strokeBorder(AnkyReflectionCreditsPalette.gold.opacity(0.24), lineWidth: 1)
 
             Image(systemName: "sparkle")
-                .font(.system(size: 22, weight: .medium))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(AnkyReflectionCreditsPalette.gold)
                 .shadow(color: AnkyReflectionCreditsPalette.gold.opacity(0.55), radius: 8)
         }

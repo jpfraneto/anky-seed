@@ -33,6 +33,7 @@ DerivedData/
 
 # Local protocol scratch output
 *.local.anky
+historical_ankys.txt
 tmp/
 
 *.p8
