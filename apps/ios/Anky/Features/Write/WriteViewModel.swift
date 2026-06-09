@@ -39,22 +39,22 @@ final class WriteViewModel: ObservableObject {
     }
 
     var hasReachedRitualMark: Bool {
-        if completedArtifact != nil {
-            return true
+        if let completedArtifact {
+            return completedArtifact.isComplete
         }
         return writer.writingElapsedMs >= AnkyDuration.completeRitualMs || elapsedMs >= AnkyDuration.completeRitualMs
     }
 
     var isPausedOnDraft: Bool {
-        isFrozen && writer.isStarted && !writer.isClosed && !hasReachedRitualMark
+        isFrozen && !resumesOnNextInput && writer.isStarted && !writer.isClosed && !hasReachedRitualMark
+    }
+
+    var isWaitingToResumeContinuedDraft: Bool {
+        isFrozen && resumesOnNextInput && writer.isStarted && !writer.isClosed && !hasReachedRitualMark
     }
 
     var canBeginNewPage: Bool {
         isPausedOnDraft || completedArtifact != nil
-    }
-
-    var shouldShowTopActions: Bool {
-        !hasActiveDotAnky || isPausedOnDraft || completedArtifact != nil
     }
 
     var shouldShowRitualRing: Bool {
@@ -79,6 +79,8 @@ final class WriteViewModel: ObservableObject {
     private var needsImmediateClose = false
     private var isClosing = false
     private var isFrozen = false
+    private var resumesOnNextInput = false
+    private var continuedArtifactToReplace: SavedAnky?
     private var errorMessageTask: Task<Void, Never>?
     private var errorRecallExpirationDate: Date?
     private let rejectedInputOnboardingKey = "anky.didShowRejectedInputOnboarding"
@@ -112,7 +114,6 @@ final class WriteViewModel: ObservableObject {
         self.userDefaults = userDefaults
         resetDotAnkyIfNeeded()
         refreshTodayCount()
-        restoreDraftIfPresent()
     }
 
     func bindCompletion(_ completion: @escaping (SavedAnky) -> Void) {
@@ -168,7 +169,7 @@ final class WriteViewModel: ObservableObject {
 
     var nudgeDialogueMessage: String {
         if isRequestingNudge {
-            return "anky is finding the live thread."
+            return AnkyLocalization.ui("anky is finding the live thread.")
         }
         return nudgeMessage ?? ""
     }
@@ -194,10 +195,21 @@ final class WriteViewModel: ObservableObject {
     }
 
     func persistOnBackground() {
-        guard writer.isStarted, !writer.isClosed, !isFrozen else {
+        guard writer.isStarted, !writer.isClosed else {
+            return
+        }
+        if let completedArtifact {
+            guard !completedArtifact.isComplete else {
+                return
+            }
+            draftStore.save(completedArtifact.text)
             return
         }
         draftStore.save(writer.text)
+    }
+
+    func persistForNavigation() {
+        persistOnBackground()
     }
 
     func abandonIfEmpty() {
@@ -210,10 +222,6 @@ final class WriteViewModel: ObservableObject {
 
     func clipboardText() -> String? {
         ClipboardClient().readText()
-    }
-
-    var devSampleAnkyArtifact: String {
-        DevAnkyFixture.validArtifact
     }
 
     func clearCurrentSession() {
@@ -230,6 +238,58 @@ final class WriteViewModel: ObservableObject {
         }
         resetForNextSession()
         clearErrorMessage()
+    }
+
+    func beginBlankSessionFromWriteTab() {
+        persistOnBackground()
+        resetForNextSession()
+        clearErrorMessage()
+    }
+
+    @discardableResult
+    func continueSession(from artifact: SavedAnky) -> Bool {
+        guard !artifact.isComplete else {
+            clearCompletedSession()
+            return false
+        }
+
+        do {
+            let restored = try AnkyWriter(draftText: artifact.text)
+            let parsed = try AnkyParser.parse(artifact.text)
+            guard !restored.isClosed else {
+                showPersistentError("This writing session cannot be continued.")
+                return false
+            }
+
+            silenceTask?.cancel()
+            tickerTask?.cancel()
+            nudgeTask?.cancel()
+
+            writer = restored
+            completedArtifact = nil
+            protocolText = writer.text
+            displayedText = AnkyReconstructor.reconstructText(parsed)
+            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
+            lastCharacter = nil
+            elapsedMs = writer.writingElapsedMs
+            silenceElapsedMs = 0
+            silenceRemainingMs = AnkyDuration.terminalSilenceMs
+            needsImmediateClose = false
+            isClosing = false
+            isFrozen = true
+            resumesOnNextInput = true
+            lastMinuteHaptic = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
+            lastAlarmHapticSecond = 0
+            keyboardFocusID = UUID()
+            clearErrorMessage()
+            clearNudgeMessage()
+            continuedArtifactToReplace = artifact
+            draftStore.save(protocolText)
+            return true
+        } catch {
+            showPersistentError("Could not continue this writing session.")
+            return false
+        }
     }
 
     @discardableResult
@@ -318,37 +378,6 @@ final class WriteViewModel: ObservableObject {
         }
     }
 
-    private func restoreDraftIfPresent() {
-        guard let draft = draftStore.load(), !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return
-        }
-
-        do {
-            let restored = try AnkyWriter(draftText: draft)
-            let parsed = try AnkyParser.parse(draft)
-
-            writer = restored
-            protocolText = writer.text
-            displayedText = AnkyReconstructor.reconstructText(parsed)
-            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
-            lastCharacter = displayedText.last
-            updateLiveState()
-
-            if writer.isClosed {
-                resetForNextSession()
-                refreshTodayCount()
-            } else if let lastAcceptedMs = writer.lastAcceptedMs,
-                      Self.nowMs() - lastAcceptedMs >= AnkyDuration.terminalSilenceMs {
-                closeOrFreezeAfterSilence()
-            } else {
-                startTicker()
-                closeIfSilenceElapsed()
-            }
-        } catch {
-            showPersistentError("Could not restore the active draft.")
-        }
-    }
-
     private func persistDraftAndScheduleSilence() {
         protocolText = writer.text
         draftStore.save(protocolText)
@@ -428,6 +457,7 @@ final class WriteViewModel: ObservableObject {
         }
         writer.prepareToResume(at: now)
         isFrozen = false
+        resumesOnNextInput = false
         startTicker()
     }
 
@@ -439,7 +469,6 @@ final class WriteViewModel: ObservableObject {
         isClosing = true
         silenceTask?.cancel()
         tickerTask?.cancel()
-        writer.closeWithTerminalSilence()
         protocolText = writer.text
 
         let validation = AnkyValidator.validate(protocolText)
@@ -451,28 +480,18 @@ final class WriteViewModel: ObservableObject {
         }
 
         do {
-            let saved = try archive.save(
-                protocolText,
-                inputStats: WritingInputStats(
-                    backspaceCount: rejectedBackspaceCount,
-                    enterCount: rejectedEnterCount
-                )
+            let inputStats = WritingInputStats(
+                backspaceCount: rejectedBackspaceCount,
+                enterCount: rejectedEnterCount
             )
-            try? sessionIndexStore.upsert(
-                SessionSummary.make(
-                    artifact: saved,
-                    reflection: reflectionStore.load(hash: saved.hash)
-                )
-            )
-            draftStore.clear()
-            completedArtifact = saved
+            let persisted = try persistSealedSession(protocolText: protocolText, inputStats: inputStats)
+            completedArtifact = persisted
             isFrozen = true
-            elapsedMs = saved.durationMs
+            elapsedMs = persisted.durationMs
             silenceElapsedMs = AnkyDuration.terminalSilenceMs
             silenceRemainingMs = 0
             isClosing = false
-            completion?(saved)
-            refreshTodayCount()
+            completion?(persisted)
         } catch {
             showPersistentError("Could not save this .anky.")
             draftStore.save(protocolText)
@@ -503,6 +522,8 @@ final class WriteViewModel: ObservableObject {
         needsImmediateClose = false
         isClosing = false
         isFrozen = false
+        resumesOnNextInput = false
+        continuedArtifactToReplace = nil
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         keyboardFocusID = UUID()
@@ -603,12 +624,12 @@ final class WriteViewModel: ObservableObject {
 
     private static func nudgeErrorMessage(from message: String) -> String {
         if message.localizedCaseInsensitiveContains("credit") {
-            return "that nudge needs one credit."
+            return AnkyLocalization.ui("that nudge needs one credit.")
         }
         if message.localizedCaseInsensitiveContains("incomplete") {
-            return "the mirror is not ready to nudge unfinished ankys yet."
+            return AnkyLocalization.ui("the mirror is not ready to nudge unfinished ankys yet.")
         }
-        return "anky could not return a nudge right now."
+        return AnkyLocalization.ui("anky could not return a nudge right now.")
     }
 
     private var wordCount: Int {
@@ -624,10 +645,10 @@ final class WriteViewModel: ObservableObject {
             || [" que ", " de ", " en ", " para ", " pero ", " estoy ", " siento ", " quiero "].contains { lower.contains($0) }
 
         if looksSpanish {
-            return "que detalle de esto todavia quiere otra frase?"
+            return AnkyLocalization.ui("que detalle de esto todavia quiere otra frase?")
         }
 
-        return "what detail here still wants one more sentence?"
+        return AnkyLocalization.ui("what detail here still wants one more sentence?")
     }
 
     private func startTicker() {
@@ -648,7 +669,13 @@ final class WriteViewModel: ObservableObject {
         elapsedMs = writer.writingElapsedMs
 
         if let lastAcceptedMs = writer.lastAcceptedMs {
-            silenceElapsedMs = max(0, now - lastAcceptedMs)
+            let currentSilenceElapsedMs = max(0, now - lastAcceptedMs)
+            if currentSilenceElapsedMs >= AnkyDuration.terminalSilenceMs {
+                closeOrFreezeAfterSilence()
+                return
+            }
+
+            silenceElapsedMs = currentSilenceElapsedMs
             silenceRemainingMs = max(0, AnkyDuration.terminalSilenceMs - silenceElapsedMs)
             updateLatestGlyphColorProgress(silenceElapsedMs: silenceElapsedMs)
             if silenceElapsedMs < 1000 {
@@ -700,6 +727,29 @@ final class WriteViewModel: ObservableObject {
         } else {
             sealAndSave()
         }
+    }
+
+    private func persistSealedSession(protocolText: String, inputStats: WritingInputStats) throws -> SavedAnky {
+        let saved = try archive.save(protocolText, inputStats: inputStats)
+        if let continuedArtifactToReplace,
+           continuedArtifactToReplace.hash != saved.hash {
+            try? archive.delete(continuedArtifactToReplace)
+            try? sessionIndexStore.delete(hash: continuedArtifactToReplace.hash)
+        }
+        continuedArtifactToReplace = nil
+        try? sessionIndexStore.upsert(
+            SessionSummary.make(
+                artifact: saved,
+                reflection: reflectionStore.load(hash: saved.hash)
+            )
+        )
+        if saved.isComplete {
+            draftStore.clear()
+        } else {
+            draftStore.save(protocolText)
+        }
+        refreshTodayCount()
+        return saved
     }
 
     private func refreshTodayCount(now: Date = Date()) {

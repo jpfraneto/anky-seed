@@ -9,15 +9,23 @@ import inc.anky.android.app.UserSettingsStore
 import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditState
 import inc.anky.android.core.credits.CreditsClient
+import inc.anky.android.core.credits.NoopReflectionCreditCache
+import inc.anky.android.core.credits.ReflectionCreditCache
+import inc.anky.android.core.credits.cachedCreditState
 import inc.anky.android.core.identity.BiometricGate
 import inc.anky.android.core.identity.WriterIdentityStore
+import inc.anky.android.core.mirror.ReflectionCreditPresentation
 import inc.anky.android.core.notifications.DailyReminderScheduler
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.core.storage.ActiveDraftStore
+import inc.anky.android.core.storage.AppOpenStore
 import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.BackupExporting
 import inc.anky.android.core.storage.LocalAnkyArchive
+import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionIndexStore
+import inc.anky.android.core.storage.SessionSummary
 import java.io.File
 import java.net.URLEncoder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,14 +42,17 @@ data class YouState(
     val dailyReminderMinutes: Int = 9 * 60,
     val mirrorBaseUrl: String = BuildConfig.DEFAULT_MIRROR_BASE_URL,
     val creditState: CreditState = CreditState(false, null, "no credit packs available"),
+    val hasClaimedFreeCredits: Boolean = false,
     val purchasingCreditPackageId: String? = null,
     val isRestoringPurchases: Boolean = false,
     val exportedFile: File? = null,
+    val formattedWritingExportFile: File? = null,
     val localAnkyFileCount: Int = 0,
     val completeAnkyCount: Int = 0,
     val totalWritingMinutes: Int = 0,
     val currentStreak: Int = 0,
     val reflectionCount: Int = 0,
+    val completeAnkySessions: List<SessionSummary> = emptyList(),
     val statusMessage: String? = null,
     val error: String? = null,
 ) {
@@ -61,6 +72,25 @@ data class YouState(
             val body = mailtoQueryValue("account id: $accountId\n\n")
             return "mailto:support@anky.app?subject=$subject&body=$body"
         }
+
+    val presentedCreditBalance: Int?
+        get() = if (hasClaimedFreeCredits) creditState.balance else ReflectionCreditPresentation.FirstGiftCount
+
+    val hasUnspentGiftCredit: Boolean
+        get() = !hasClaimedFreeCredits
+
+    val canPurchaseCredits: Boolean
+        get() = hasClaimedFreeCredits
+
+    val creditDetailTitle: String
+        get() = if (hasUnspentGiftCredit) {
+            ReflectionCreditPresentation.FirstGiftCount.toString()
+        } else {
+            creditState.balance?.toString() ?: "..."
+        }
+
+    val creditDetailCaption: String
+        get() = if (hasUnspentGiftCredit) YouStatusCopy.CreditGiftCaption else "credits"
 }
 
 private fun mailtoQueryValue(value: String): String =
@@ -71,11 +101,15 @@ class YouViewModel(
     private val settingsStore: UserSettingsStore,
     private val reminderScheduler: DailyReminderScheduler,
     private val creditsClient: CreditsClient,
+    private val reflectionCreditCache: ReflectionCreditCache = NoopReflectionCreditCache,
     private val exporter: BackupExporting,
     private val backupImporter: BackupImporter,
+    private val activeDraftStore: ActiveDraftStore,
     private val archive: LocalAnkyArchive,
     private val reflectionStore: ReflectionStore,
+    private val requestStore: ReflectionRequestStore,
     private val indexStore: SessionIndexStore,
+    private val appOpenStore: AppOpenStore,
     private val biometricGate: BiometricGate,
 ) : ViewModel() {
     private val _state = MutableStateFlow(YouState())
@@ -92,6 +126,7 @@ class YouViewModel(
                 return@launch
             }
             accountIdState.value = identity.accountId
+            cachedCreditState(reflectionCreditCache.balance(identity.accountId))?.let { creditState.value = it }
             combine(settingsStore.settings, creditState, accountIdState) { settings, credits, accountId ->
                 val sessions = indexStore.rebuild(archive, reflectionStore)
                 YouState(
@@ -101,11 +136,13 @@ class YouViewModel(
                     dailyReminderMinutes = settings.dailyReminderMinutes,
                     mirrorBaseUrl = settings.mirrorBaseUrl,
                     creditState = credits,
+                    hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId),
                     localAnkyFileCount = sessions.size,
                     completeAnkyCount = sessions.count { it.isComplete },
                     totalWritingMinutes = totalWritingMinutes(sessions),
                     currentStreak = currentStreak(sessions.filter { it.isComplete }.map { it.createdAt }),
                     reflectionCount = localReflectionCount(),
+                    completeAnkySessions = completeSessions(sessions),
                 )
             }.collect { refreshed ->
                 _state.update { previous -> mergeRefreshedYouState(previous, refreshed) }
@@ -242,12 +279,13 @@ class YouViewModel(
     fun refreshCredits() {
         viewModelScope.launch {
             creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
-            if (_state.value.accountId.isBlank()) {
-                if (!configureCreditsForCurrentIdentity()) return@launch
+            val accountId = if (_state.value.accountId.isBlank()) {
+                configureCreditsForCurrentIdentity() ?: return@launch
             } else {
-                creditsClient.configure(_state.value.accountId)
+                _state.value.accountId.also { creditsClient.configure(it) }
             }
             val refreshed = creditsClient.refresh()
+            reflectionCreditCache.storeBalance(refreshed.balance, accountId)
             creditState.value = refreshed
             if (refreshed.message == YouStatusCopy.CouldNotLoadCredits) {
                 _state.update { it.copy(error = YouStatusCopy.CouldNotLoadCredits) }
@@ -259,12 +297,17 @@ class YouViewModel(
 
     fun purchaseCredits(packageId: String, activity: Activity?) {
         viewModelScope.launch {
+            if (!_state.value.canPurchaseCredits) {
+                _state.update { it.copy(statusMessage = YouStatusCopy.SpendGiftBeforeBuying, error = null) }
+                return@launch
+            }
             if (_state.value.purchasingCreditPackageId != null) return@launch
             _state.update { it.copy(purchasingCreditPackageId = packageId) }
             try {
                 creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
-                if (!configureCreditsForCurrentIdentity()) return@launch
+                val accountId = configureCreditsForCurrentIdentity() ?: return@launch
                 val refreshed = creditsClient.purchase(packageId, activity)
+                reflectionCreditCache.storeBalance(refreshed.balance, accountId)
                 creditState.value = refreshed
                 when (refreshed.message) {
                     "Could not complete that credit purchase." -> _state.update { it.copy(error = "Could not complete that credit purchase.") }
@@ -282,8 +325,9 @@ class YouViewModel(
             _state.update { it.copy(isRestoringPurchases = true, statusMessage = null, error = null) }
             try {
                 creditState.value = creditState.value.copy(message = "restoring purchases", isLoading = true)
-                if (!configureCreditsForCurrentIdentity()) return@launch
+                val accountId = configureCreditsForCurrentIdentity() ?: return@launch
                 val restored = creditsClient.restorePurchases()
+                reflectionCreditCache.storeBalance(restored.balance, accountId)
                 creditState.value = restored
                 when (restored.message) {
                     CreditCatalog.RestoreSuccessMessage -> _state.update {
@@ -321,6 +365,29 @@ class YouViewModel(
         }
     }
 
+    fun prepareFormattedWritingExport() {
+        viewModelScope.launch {
+            runCatching {
+                exporter.exportFormattedWritings()
+            }.onSuccess { exportFile ->
+                _state.update {
+                    it.copy(
+                        formattedWritingExportFile = exportFile,
+                        statusMessage = if (exportFile == null) YouStatusCopy.NoWritingToExportYet else it.statusMessage,
+                        error = null,
+                    )
+                }
+            }.onFailure {
+                _state.update {
+                    it.copy(
+                        formattedWritingExportFile = null,
+                        error = YouStatusCopy.CouldNotCreateWritingExport,
+                    )
+                }
+            }
+        }
+    }
+
     fun importBackup(uri: Uri) {
         viewModelScope.launch {
             runCatching {
@@ -334,6 +401,7 @@ class YouViewModel(
                         totalWritingMinutes = totalWritingMinutes(sessions),
                         currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = localReflectionCount(),
+                        completeAnkySessions = completeSessions(sessions),
                         statusMessage = "Imported ${pluralize(result.ankyCount, ".anky file", ".anky files")} and ${pluralize(result.reflectionCount, "reflection", "reflections")}.",
                         error = null,
                     )
@@ -344,17 +412,32 @@ class YouViewModel(
         }
     }
 
-    fun refreshLocalStats() {
+    fun refresh() {
+        val accountId = _state.value.accountId.ifBlank {
+            runCatching { identityStore.loadOrCreate().accountId }
+                .onSuccess { accountIdState.value = it }
+                .getOrDefault("")
+        }
+        val cachedCredits = if (accountId.isBlank()) null else cachedCreditState(reflectionCreditCache.balance(accountId))
         val sessions = indexStore.rebuild(archive, reflectionStore)
         _state.update {
             it.copy(
+                accountId = accountId.ifBlank { it.accountId },
+                creditState = cachedCredits ?: it.creditState,
+                hasClaimedFreeCredits = if (accountId.isBlank()) it.hasClaimedFreeCredits else reflectionCreditCache.hasClaimedFreeCredits(accountId),
                 completeAnkyCount = sessions.count { session -> session.isComplete },
                 localAnkyFileCount = sessions.size,
                 totalWritingMinutes = totalWritingMinutes(sessions),
                 currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                 reflectionCount = localReflectionCount(),
+                completeAnkySessions = completeSessions(sessions),
             )
         }
+        if (cachedCredits != null) creditState.value = cachedCredits
+    }
+
+    fun refreshLocalStats() {
+        refresh()
     }
 
     fun clearLocalWritingData() {
@@ -371,6 +454,7 @@ class YouViewModel(
                         totalWritingMinutes = 0,
                         currentStreak = 0,
                         reflectionCount = 0,
+                        completeAnkySessions = emptyList(),
                         exportedFile = null,
                         statusMessage = YouStatusCopy.LocalWritingDataCleared,
                         error = null,
@@ -394,6 +478,7 @@ class YouViewModel(
                         totalWritingMinutes = totalWritingMinutes(sessions),
                         currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = localReflectionCount(),
+                        completeAnkySessions = completeSessions(sessions),
                         statusMessage = YouStatusCopy.MapIndexRepaired,
                         error = null,
                     )
@@ -417,6 +502,7 @@ class YouViewModel(
                         totalWritingMinutes = totalWritingMinutes(sessions),
                         currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
                         reflectionCount = 0,
+                        completeAnkySessions = completeSessions(sessions),
                         statusMessage = YouStatusCopy.LocalReflectionsCleared,
                         error = null,
                     )
@@ -440,6 +526,7 @@ class YouViewModel(
                         totalWritingMinutes = 0,
                         currentStreak = 0,
                         reflectionCount = localReflectionCount(),
+                        completeAnkySessions = emptyList(),
                         exportedFile = null,
                         statusMessage = YouStatusCopy.LocalAnkyArchiveCleared,
                         error = null,
@@ -447,6 +534,54 @@ class YouViewModel(
                 }
             }.onFailure {
                 _state.update { it.copy(error = "Could not clear local .anky files.") }
+            }
+        }
+    }
+
+    fun deleteAccountAndDataEverywhere(onDeleted: () -> Unit = {}) {
+        viewModelScope.launch {
+            runCatching {
+                archive.clear()
+                reflectionStore.clear()
+                requestStore.clear()
+                indexStore.clear()
+                activeDraftStore.clear()
+                reminderScheduler.setEnabled(false, 9 * 60)
+                settingsStore.resetToDefaults()
+                appOpenStore.clear()
+                identityStore.resetForDevelopment()
+                creditsClient.logOutIfConfigured()
+                reflectionCreditCache.clear()
+            }.onSuccess {
+                creditState.value = CreditState(false, null, "no credit packs available")
+                accountIdState.value = ""
+                _state.update {
+                    it.copy(
+                        accountId = "",
+                        recoveryPhrase = null,
+                        appLockEnabled = false,
+                        dailyReminderEnabled = false,
+                        dailyReminderMinutes = 9 * 60,
+                        mirrorBaseUrl = BuildConfig.DEFAULT_MIRROR_BASE_URL,
+                        creditState = CreditState(false, null, "no credit packs available"),
+                        hasClaimedFreeCredits = false,
+                        purchasingCreditPackageId = null,
+                        isRestoringPurchases = false,
+                        exportedFile = null,
+                        formattedWritingExportFile = null,
+                        localAnkyFileCount = 0,
+                        completeAnkyCount = 0,
+                        totalWritingMinutes = 0,
+                        currentStreak = 0,
+                        reflectionCount = 0,
+                        completeAnkySessions = emptyList(),
+                        statusMessage = YouStatusCopy.AccountAndDataDeleted,
+                        error = null,
+                    )
+                }
+                onDeleted()
+            }.onFailure {
+                _state.update { it.copy(error = YouStatusCopy.CouldNotDeleteAllAccountData) }
             }
         }
     }
@@ -487,27 +622,30 @@ class YouViewModel(
         return streak
     }
 
-    private suspend fun configureCreditsForCurrentIdentity(): Boolean {
+    private suspend fun configureCreditsForCurrentIdentity(): String? {
         val accountId = _state.value.accountId.ifBlank {
             val identity = runCatching { identityStore.loadOrCreate() }.getOrElse {
                 creditState.value = creditLoadFailureState()
                 _state.update { state -> state.copy(error = YouStatusCopy.CouldNotLoadCredits) }
-                return false
+                return null
             }
             accountIdState.value = identity.accountId
             identity.accountId
         }
         creditsClient.configure(accountId)
-        return true
+        return accountId
     }
 
-    private fun totalWritingMinutes(sessions: List<inc.anky.android.core.storage.SessionSummary>): Int {
+    private fun totalWritingMinutes(sessions: List<SessionSummary>): Int {
         if (sessions.isEmpty()) return 0
         val totalDurationMs = sessions.sumOf { it.durationMs }
         return maxOf(1, ((totalDurationMs + 59_999) / 60_000).toInt())
     }
 
     private fun localReflectionCount(): Int = reflectionStore.fileList().size
+
+    private fun completeSessions(sessions: List<SessionSummary>): List<SessionSummary> =
+        sessions.filter { it.isComplete }.sortedByDescending { it.createdAt }
 
     private fun pluralize(count: Int, singular: String, plural: String): String =
         "$count ${if (count == 1) singular else plural}"
@@ -534,6 +672,7 @@ internal fun mergeRefreshedYouState(previous: YouState, refreshed: YouState): Yo
         purchasingCreditPackageId = previous.purchasingCreditPackageId,
         isRestoringPurchases = previous.isRestoringPurchases,
         exportedFile = previous.exportedFile,
+        formattedWritingExportFile = previous.formattedWritingExportFile,
         statusMessage = previous.statusMessage,
         error = previous.error,
     )
@@ -548,14 +687,24 @@ internal fun creditLoadFailureState(): CreditState =
     CreditState(false, null, YouStatusCopy.CouldNotLoadCredits)
 
 internal object YouStatusCopy {
-    const val IdentityBackupSaved = "Anky identity backup saved to device secure storage. Anky cannot read or recover it."
+    const val IdentityBackupSaved = "Recovery phrase saved to device secure storage. Use Data export for writing and reflection backups."
     const val RecoveryPhraseImported = "Identity recovered."
     const val MapIndexRepaired = "Map index repaired."
     const val LocalReflectionsCleared = "Local reflections cleared."
     const val LocalAnkyArchiveCleared = "Local .anky archive cleared."
     const val LocalWritingDataCleared = "Local writing data cleared."
     const val LocalIdentityReset = "Local identity reset."
+    const val AccountAndDataDeleted = "Account and data deleted from this device."
+    const val CouldNotDeleteAllAccountData = "Could not delete all account data."
     const val CouldNotCreateBackupZip = "Could not create a backup zip."
+    const val CouldNotCreateWritingExport = "Could not create a writing export."
+    const val NoWritingToExportYet = "There is no writing to export yet."
+    const val CreditGiftSummary = "2 reflections - This device"
+    const val CreditGiftCaption = "device gift"
+    const val CreditGiftPrompt = "This device has two free reflections from Anky. Use them before buying more credits."
+    const val CreditPacksLocked = "Credit packs unlock after this device spends its first two reflections"
+    const val CreditGiftDetail = "Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits."
+    const val SpendGiftBeforeBuying = "Use this device's first two reflections before buying more credits."
     const val CouldNotLoadLocalWriterIdentity = "Could not load the local Base identity."
     const val CouldNotLoadRecoveryPhrase = "Could not load the recovery phrase."
     const val CouldNotBackUpAnkyIdentity = "Could not back up Anky identity."

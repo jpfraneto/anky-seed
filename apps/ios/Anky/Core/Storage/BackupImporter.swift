@@ -214,11 +214,12 @@ struct BackupImporter {
             }
 
             let timeText = line[..<separator]
-            let characterText = line[line.index(after: separator)...]
-            guard characterText == "SPACE" else {
+            let characterText = String(line[line.index(after: separator)...])
+            let trimmedCharacterText = characterText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedCharacterText == "SPACE" || characterText == " " else {
                 return line
             }
-            return "\(timeText)  "
+            return "\(timeText) SPACE"
         }
         .joined(separator: "\n")
     }

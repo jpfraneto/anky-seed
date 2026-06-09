@@ -9,7 +9,7 @@ final class MirrorClientTests: XCTestCase {
     }
 
     func testMirrorClientSendsExactAnkyBodyAndSignatureHeaders() async throws {
-        let body = Data("1770000000000 h\n472000 i\n8000".utf8)
+        let body = Data("1770000000000 h\n480000 i".utf8)
         let expectedHash = AnkyHasher.sha256Hex(body)
         let identity = WriterIdentity.generate()
 
@@ -115,7 +115,7 @@ final class MirrorClientTests: XCTestCase {
     }
 
     func testMirrorResponseParsesUpdatedCreditBalance() async throws {
-        let body = Data("1770000000000 h\n472000 i\n8000".utf8)
+        let body = Data("1770000000000 h\n480000 i".utf8)
         let expectedHash = AnkyHasher.sha256Hex(body)
         let identity = WriterIdentity.generate()
 
@@ -147,7 +147,7 @@ final class MirrorClientTests: XCTestCase {
     }
 
     func testMirrorClientPreservesServerErrorCode() async throws {
-        let body = Data("1770000000000 h\n472000 i\n8000".utf8)
+        let body = Data("1770000000000 h\n480000 i".utf8)
         let identity = WriterIdentity.generate()
         let message = "This device already used its free Anky reflections. Buy credits to reflect more writing."
 

@@ -16,10 +16,6 @@ struct YouView: View {
     @AppStorage("anky.biometricIdentityConfirmation") private var biometricIdentityConfirmation = false
     @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
     @AppStorage("anky.skipNextFaceIDEnableAuthentication") private var skipsNextFaceIDEnableAuthentication = false
-    @State private var confirmClearArchive = false
-    @State private var confirmClearReflections = false
-    @State private var confirmClearWritingData = false
-    @State private var confirmResetIdentity = false
     @State private var confirmDeleteAccountAndData = false
     @State private var isImportingBackup = false
     @State private var isImportingRecoveryPhrase = false
@@ -64,7 +60,7 @@ struct YouView: View {
 
                         YouDivider()
 
-                        promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy Policy", subtitle: "What leaves this phone")
+                        promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy Policy", subtitle: "How your data is handled.")
 
                         YouDivider()
 
@@ -106,7 +102,7 @@ struct YouView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             }
-            .navigationTitle("You")
+            .navigationTitle(AnkyLocalization.ui("You"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -126,7 +122,7 @@ struct YouView: View {
                             .frame(width: 34, height: 38)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityLabel(showsAccountDeletion ? "Hide delete account action" : "Show delete account action")
+                    .accessibilityLabel(AnkyLocalization.ui(showsAccountDeletion ? "Hide delete account action" : "Show delete account action"))
                 }
             }
             .navigationDestination(for: YouRoute.self) { route in
@@ -197,37 +193,15 @@ struct YouView: View {
                 isPresented: $isImportingRecoveryPhrase
             )
         }
-        .confirmationDialog("delete local writing data?", isPresented: $confirmClearWritingData, titleVisibility: .visible) {
-            Button("delete local writing data", role: .destructive) {
-                viewModel.clearLocalWritingData()
-            }
-        }
-        .confirmationDialog("clear local .anky archive?", isPresented: $confirmClearArchive, titleVisibility: .visible) {
-            Button("clear .anky archive", role: .destructive) {
-                viewModel.clearLocalArchive()
-            }
-        }
-        .confirmationDialog("clear local reflections?", isPresented: $confirmClearReflections, titleVisibility: .visible) {
-            Button("clear reflections", role: .destructive) {
-                viewModel.clearLocalReflections()
-            }
-        }
-        .confirmationDialog("reset local identity?", isPresented: $confirmResetIdentity, titleVisibility: .visible) {
-            Button("reset identity", role: .destructive) {
-                viewModel.resetIdentityForDevelopment()
-            }
-        } message: {
-            Text("Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.")
-        }
-        .alert("Delete Account and Data?", isPresented: $confirmDeleteAccountAndData) {
-            Button("Delete", role: .destructive) {
+        .alert(AnkyLocalization.ui("Delete Account and Data?"), isPresented: $confirmDeleteAccountAndData) {
+            Button(AnkyLocalization.ui("Delete"), role: .destructive) {
                 Task {
                     await deleteAccountAndData()
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(AnkyLocalization.ui("Cancel"), role: .cancel) {}
         } message: {
-            Text("This deletes your Anky data from this device and iCloud. This cannot be undone.")
+            Text(AnkyLocalization.ui("This deletes your Anky data from this device and iCloud. This cannot be undone."))
         }
         .fileImporter(
             isPresented: $isImportingBackup,
@@ -414,22 +388,22 @@ struct YouView: View {
 
         if activePrompt == .credits {
             if viewModel.creditsLoading {
-                return "Anky is checking the credit gate."
+                    return AnkyLocalization.ui("Anky is checking the credit gate.")
             }
             return creditsPromptMessage
         }
 
         if activePrompt == .export {
             if viewModel.isICloudBackupWorking {
-                return "Anky is updating the encrypted iCloud backup."
+                return AnkyLocalization.ui("Anky is updating the encrypted iCloud backup.")
             }
             if viewModel.isICloudBackupEnabled {
                 if let date = viewModel.iCloudBackupLastDate {
-                    return "Encrypted iCloud backup is on. Last updated \(date.formatted(date: .abbreviated, time: .shortened))."
+                    return AnkyLocalization.ui("Encrypted iCloud backup is on. Last updated %@.", date.formatted(date: .abbreviated, time: .shortened))
                 }
-                return "Encrypted iCloud backup is on. It will run after your next writing session."
+                return AnkyLocalization.ui("Encrypted iCloud backup is on. It will run after your next writing session.")
             }
-            return "Export readable writings or turn on encrypted iCloud backup for reinstall recovery."
+            return AnkyLocalization.ui("Export readable writings or turn on encrypted iCloud backup for reinstall recovery.")
         }
 
         return activePrompt?.message ?? ""
@@ -462,10 +436,10 @@ struct YouView: View {
             return []
         case .export:
             return [
-                AnkyChatAction(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now", isPrimary: true) {
+                AnkyChatAction(AnkyLocalization.ui(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now"), isPrimary: true) {
                     Task { await viewModel.backUpToICloudNow() }
                 },
-                AnkyChatAction("Export writings") {
+                AnkyChatAction(AnkyLocalization.ui("Export writings")) {
                     viewModel.prepareFormattedWritingExport()
                     if let exportURL = viewModel.formattedWritingExportURL {
                         presentShareSheet(item: exportURL)
@@ -485,7 +459,7 @@ struct YouView: View {
             let packages = Array(viewModel.creditPackages.prefix(3))
             if packages.isEmpty {
                 return [
-                    AnkyChatAction(viewModel.creditsLoading ? "Loading packs" : "Refresh credits", isPrimary: true) {
+                    AnkyChatAction(AnkyLocalization.ui(viewModel.creditsLoading ? "Loading packs" : "Refresh credits"), isPrimary: true) {
                         Task { await viewModel.refreshCredits() }
                     }
                 ]
@@ -496,9 +470,9 @@ struct YouView: View {
                     || creditPackage.id.hasSuffix(".credits.11")
                 let isPurchasing = viewModel.purchasingCreditPackageID == creditPackage.id
                 return AnkyChatAction(
-                    isPurchasing ? "Loading" : creditPackage.title,
+                    AnkyLocalization.ui(isPurchasing ? "Loading" : creditPackage.title),
                     subtitle: creditPackage.price,
-                    badge: isRecommended ? "recommended" : nil,
+                    badge: isRecommended ? AnkyLocalization.ui("recommended") : nil,
                     isPrimary: isRecommended
                 ) {
                     AnkyHaptics.light()
@@ -507,19 +481,10 @@ struct YouView: View {
             }
         case .support:
             return [
-                AnkyChatAction("Open email", isPrimary: true) {
+                AnkyChatAction(AnkyLocalization.ui("Open email"), isPrimary: true) {
                     if let emailURL = viewModel.supportFeedbackEmailURL {
                         openURL(emailURL)
                     }
-                }
-            ]
-        case .developer:
-            return [
-                AnkyChatAction("Repair map", isPrimary: true) {
-                    viewModel.rebuildSessionIndex()
-                },
-                AnkyChatAction("Delete local data") {
-                    confirmClearWritingData = true
                 }
             ]
         }
@@ -527,7 +492,7 @@ struct YouView: View {
 
     private var creditsMenuSubtitle: String {
         if viewModel.creditsLoading && viewModel.creditBalance == nil {
-            return "Loading balance"
+            return AnkyLocalization.ui("Loading balance")
         }
 
         return viewModel.creditSummaryText
@@ -535,9 +500,9 @@ struct YouView: View {
 
     private var dataMenuSubtitle: String {
         if viewModel.isICloudBackupEnabled {
-            return "Encrypted iCloud backup on"
+            return AnkyLocalization.ui("Encrypted iCloud backup on")
         }
-        return "Export writings or enable iCloud"
+        return AnkyLocalization.ui("Export writings or enable iCloud")
     }
 
     private var iCloudBackupBinding: Binding<Bool> {
@@ -590,14 +555,18 @@ struct YouView: View {
 
         let balance: String
         if viewModel.creditsLoading && viewModel.creditBalance == nil {
-            balance = "Loading..."
+            balance = AnkyLocalization.ui("Loading...")
         } else if let creditBalance = viewModel.presentedCreditBalance {
             balance = "\(creditBalance)"
         } else {
-            balance = "unknown"
+            balance = AnkyLocalization.ui("unknown")
         }
 
-        return "You have \(balance) reflection \(balance == "1" ? "credit" : "credits"). Choose a pack to add more."
+        return AnkyLocalization.ui(
+            "You have %@ reflection %@. Choose a pack to add more.",
+            balance,
+            AnkyLocalization.ui(balance == "1" ? "credit" : "credits")
+        )
     }
 
     private var ankyContractAddress: String {
@@ -626,8 +595,9 @@ struct YouView: View {
         } label: {
             YouMenuRow(
                 icon: "you-icon-anky-token",
-                title: "$ANKY on Base",
-                subtitle: didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
+                title: "$ANKY",
+                subtitle: "To be deployed",
+                // subtitle: "" didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
                 showsDisclosure: false
             )
         }
@@ -727,20 +697,17 @@ private enum YouPrompt: Hashable {
     case export
     case credits
     case support
-    case developer
 
     var message: String {
         switch self {
         case .privacy:
-            return "Writing stays local unless you export or ask for a reflection."
+            return AnkyLocalization.ui("Writing stays local unless you export or ask for a reflection.")
         case .export:
-            return "Your archive is yours. Export readable writings or keep an encrypted iCloud backup."
+            return AnkyLocalization.ui("Your archive is yours. Export readable writings or keep an encrypted iCloud backup.")
         case .credits:
-            return "Credits are only for reflections. Writing is free."
+            return AnkyLocalization.ui("Credits are only for reflections. Writing is free.")
         case .support:
-            return "Send support or feedback by email. Include only what you choose to write."
-        case .developer:
-            return "Local tools. Repair first, delete only when you mean it."
+            return AnkyLocalization.ui("Send us an email! We want to evolve this app based on your feedback.")
         }
     }
 }
@@ -821,13 +788,13 @@ private struct YouAllAnkysHistoryView: View {
         VStack(spacing: 24) {
             Spacer(minLength: 96)
 
-            Text("0 ankys")
+            Text(AnkyLocalization.ui("0 ankys"))
                 .font(.system(size: 36, weight: .bold))
                 .foregroundStyle(MapDayPalette.gold)
 
             Button(action: onWriteRequested) {
                 HStack(spacing: 10) {
-                    Text("WRITE \(AnkyDuration.completeRitualMinutes) MINUTES")
+                    Text(AnkyLocalization.ui("WRITE %d MINUTES", AnkyDuration.completeRitualMinutes))
                         .font(.system(size: 16, weight: .semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
@@ -874,38 +841,38 @@ private struct AccountPage: View {
     let reminderBinding: Binding<Date>
 
     var body: some View {
-        YouDetailShell(title: "local identity", subtitle: "private to this device") {
+        YouDetailShell(title: "private access", subtitle: "private to this device") {
             YouPanel {
-                Text("Local identity")
+                Text(AnkyLocalization.ui("Private access"))
                     .youCaption()
-                Text("Anky created a Base account for this device.")
+                Text(AnkyLocalization.ui("Anky created a private local profile for this device."))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(YouPalette.paper)
-                Text("Your writing and identity live here unless you choose to export or recover them elsewhere.")
+                Text(AnkyLocalization.ui("Your writing and access stay here unless you choose to export or recover them elsewhere."))
                     .youBody()
             }
 
             YouPanel {
-                Text("Advanced recovery")
+                Text(AnkyLocalization.ui("Advanced recovery"))
                     .youCaption()
-                Text("This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.")
+                Text(AnkyLocalization.ui("These words restore your Anky access. Never share them. Anky cannot recover them for you."))
                     .youBody()
 
                 YouDivider()
 
-                Toggle("device lock app protection", isOn: $biometricIdentityConfirmation)
+                Toggle(AnkyLocalization.ui("device lock app protection"), isOn: $biometricIdentityConfirmation)
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16))
 
-                Text("Your recovery phrase can only be shown after device lock protection is enabled.")
+                Text(AnkyLocalization.ui("Your recovery words can only be shown after device lock protection is enabled."))
                     .youBody()
 
-                Text("Your passcode or biometrics protect local access. They are not an Anky login.")
+                Text(AnkyLocalization.ui("Your passcode or biometrics protect local access. They are not an Anky login."))
                     .youBody()
 
                 if viewModel.recoveryPhraseText.isEmpty {
-                    YouActionButton("Reveal recovery phrase") {
+                    YouActionButton(AnkyLocalization.ui("Reveal recovery words")) {
                         Task {
                             await viewModel.revealRecoveryPhrase()
                         }
@@ -919,34 +886,34 @@ private struct AccountPage: View {
                         .textSelection(.enabled)
 
                     VStack(spacing: 10) {
-                        YouActionButton("Copy recovery phrase") {
+                        YouActionButton(AnkyLocalization.ui("Copy recovery words")) {
                             ClipboardClient().copy(viewModel.recoveryPhraseText)
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
-                        YouActionButton("Hide") {
+                        YouActionButton(AnkyLocalization.ui("Hide")) {
                             viewModel.hideRecoveryPhrase()
                         }
                     }
                 }
 
-                YouActionButton("Recover identity") {
+                YouActionButton(AnkyLocalization.ui("Recover access")) {
                     recoveryPhraseInput = ""
                     isImportingRecoveryPhrase = true
                 }
 
                 if viewModel.isIdentityBackedUpToICloud {
-                    YouDisabledRow("Recovery phrase saved in iCloud Keychain")
+                    YouDisabledRow(AnkyLocalization.ui("Recovery words saved in iCloud Keychain"))
                 } else {
-                    YouActionButton("Back up recovery phrase to iCloud Keychain") {
+                    YouActionButton(AnkyLocalization.ui("Back up recovery words to iCloud Keychain")) {
                         Task { await viewModel.backUpIdentityToICloudKeychain() }
                     }
                 }
 
-                Text("This stores your recovery phrase in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.")
+                Text(AnkyLocalization.ui("This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you."))
                     .youBody()
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Anky address")
+                    Text(AnkyLocalization.ui("Support ID"))
                         .youCaption()
                     Text(viewModel.accountId)
                         .font(.system(size: 12, design: .monospaced))
@@ -954,13 +921,13 @@ private struct AccountPage: View {
                         .textSelection(.enabled)
                 }
 
-                YouActionButton("Import account") {
+                YouActionButton(AnkyLocalization.ui("Import recovery backup")) {
                     Task { await viewModel.recoverIdentityFromICloudKeychain() }
                 }
             }
 
             YouPanel {
-                Toggle("Daily reminder", isOn: $dailyReminderEnabled)
+                Toggle(AnkyLocalization.ui("Daily reminder"), isOn: $dailyReminderEnabled)
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
                     .font(.system(size: 16))
@@ -971,16 +938,16 @@ private struct AccountPage: View {
                         }
                     }
 
-                DatePicker("Time", selection: reminderBinding, displayedComponents: .hourAndMinute)
+                DatePicker(AnkyLocalization.ui("Time"), selection: reminderBinding, displayedComponents: .hourAndMinute)
                     .disabled(!dailyReminderEnabled)
                     .tint(YouPalette.gold)
                     .foregroundStyle(YouPalette.paper)
             }
 
             YouPanel {
-                Text("Ownership note")
+                Text(AnkyLocalization.ui("Ownership note"))
                     .youCaption()
-                Text("Your writing belongs to this device unless you choose to export or recover it elsewhere.")
+                Text(AnkyLocalization.ui("Your writing belongs to this device unless you choose to export or recover it elsewhere."))
                     .youBody()
             }
         }
@@ -989,110 +956,199 @@ private struct AccountPage: View {
 
 private struct PrivacyPolicyPage: View {
     var body: some View {
-        YouDetailShell(title: "Privacy", subtitle: "Local-first. Private. Sovereign.") {
-            VStack(spacing: 12) {
-
-
-                Text("Privacy is the shape of Anky, not a feature added later.")
-                    .font(.system(size: 19, weight: .semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(YouPalette.paper)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, 8)
-
+        YouDetailShell(title: "Privacy", subtitle: "Local-first writing and reflection") {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(Self.policyCopy.indices, id: \.self) { index in
                     PrivacyCopyLine(Self.policyCopy[index])
                 }
             }
-
-            YouPanel {
-                Text("Questions, deletion requests, and privacy reports")
-                    .youCaption()
-
-                Text("jp@anky.app")
-                    .font(.system(size: 14, design: .monospaced))
-                    .foregroundStyle(YouPalette.paper)
-                    .textSelection(.enabled)
-            }
         }
     }
 
     fileprivate static let policyCopy: [PrivacyCopyItem] = [
-        .caption("Last updated: 2026-05-14"),
-        .paragraph("Anky is a local-first writing app. The core artifact is the `.anky` file on your device. The app should let you write, save, revisit, export, import, and delete your writing without making a server the owner of your interior life."),
-        .heading("The private artifact"),
-        .paragraph("Your `.anky` writing is stored on your device by default. A saved `.anky` file contains the accepted writing stream and timing data for a session."),
-        .paragraph("Anky computes a SHA-256 hash of the exact `.anky` bytes. The hash is for integrity. It is not encryption. If someone has the same `.anky` bytes, they can compute the same hash."),
-        .paragraph("The source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/ios/Anky/Core/Protocol)."),
-        .heading("Local identity"),
-        .paragraph("Anky creates a local Base account, stores its recovery phrase in device secure storage, and derives the Anky address locally. The recovery phrase is not sent to Anky."),
-        .paragraph("The relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/WriterIdentityStore.swift) and [keychain storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Identity/KeychainClient.swift)."),
-        .heading("When plaintext leaves"),
-        .paragraph("Writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
-        .paragraph("Plaintext can leave when you choose an action that sends it somewhere: asking Anky for a reflection, exporting or sharing files, importing a backup from a place you chose, or contacting support with text you provide."),
-        .paragraph("The processing and backup paths are [reflection client](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Mirror/MirrorClient.swift), [backup importer](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Core/Storage/BackupImporter.swift), and [you page model](https://github.com/jpfraneto/anky-seed/blob/main/apps/ios/Anky/Features/You/YouViewModel.swift)."),
-        .heading("Reflections"),
-        .paragraph("When you ask for a reflection, the app sends the saved `.anky` bytes to the configured mirror service. The mirror checks the hash, reconstructs readable text for processing, and returns a reflection."),
-        .paragraph("The local app stores the returned reflection as a local sidecar. Reflections are optional. Writing is free and does not depend on reflections."),
-        .heading("Backups and deletion"),
-        .paragraph("Exports and backups can contain plaintext writing, reflections, and related local metadata. Keep them somewhere private."),
-        .paragraph("Deleting local writing data removes local `.anky` files, local reflections, and the local session index from this app's storage area. It does not automatically delete backend records already created by optional processing."),
-        .heading("What this does not claim"),
-        .paragraph("Anky does not claim that hashes encrypt writing. Anky does not claim anonymity. Timing, identity identifiers, processing requests, purchases, and support requests can be linkable."),
-        .paragraph("Anky does not claim optional processing is local-only. If you ask for a reflection, plaintext writing is sent for processing."),
-        .paragraph("Anky does claim the default direction of the app is local-first: the `.anky` file belongs first to the person who wrote it.")
+        .caption("Anky, Inc. - Effective June 7, 2026"),
+        .callout("The short version: Anky is local-first. Your writing stays on your device unless you choose to export it, back it up, contact support, or ask Anky for a reflection. When you ask for a reflection, your writing is sent to Anky's mirror service and AI providers so a reflection can be generated. We use providers that don't store your writing. We do not sell your data, use it for advertising, or use your writing to train our own models."),
+        .heading("1. Who We Are"),
+        .paragraph("Anky is operated by **Anky, Inc.**, a Delaware corporation."),
+        .paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
+        .paragraph("This Privacy Policy explains how Anky handles information when you use the Anky mobile app, website, mirror service, purchases, support, and related services."),
+        .heading("2. What Anky Is"),
+        .paragraph("Anky is a local-first writing and reflection app."),
+        .paragraph("The core artifact is the `.anky` file: a forward-only writing session created under constraint. The app lets you write, save, revisit, export, import, delete, and optionally reflect on that writing."),
+        .paragraph("Anky is not a therapist, medical service, crisis service, financial advisor, legal advisor, or spiritual authority."),
+        .heading("3. What Stays On Your Device By Default"),
+        .paragraph("The following data is stored locally on your device unless you choose to export it, back it up, recover it elsewhere, contact support, or request a reflection:"),
+        .bullets([
+            "Your `.anky` writing files",
+            "Active writing drafts",
+            "Reconstructed readable writing",
+            "Local reflections returned by Anky",
+            "Session history and Map data",
+            "Local app settings",
+            "Daily reminder settings",
+            "Local Anky access information",
+            "Private recovery material stored in secure device storage",
+            "Local credit balance cache",
+            "Local export/import files you create"
+        ]),
+        .paragraph("Writing, saving, revealing, copying, browsing Map, and viewing local history do not require sending your writing to Anky's server."),
+        .heading("4. What Leaves Your Device"),
+        .paragraph("Data leaves your device in these situations:"),
+        .subheading("Asking Anky for a reflection or writing nudge"),
+        .paragraph("When you tap **Ask Anky** or request a writing nudge, the app sends the exact `.anky` file bytes to Anky's mirror service."),
+        .paragraph("The mirror service:"),
+        .bullets([
+            "Verifies the request",
+            "Verifies the `.anky` format and hash",
+            "Reconstructs readable text from the `.anky`",
+            "Sends the reconstructed writing and prompt to AI service providers",
+            "Receives the generated reflection or nudge",
+            "Returns the result to your device",
+            "Checks credits for reflections and spends one reflection credit after a successful reflection"
+        ]),
+        .paragraph("The returned reflection is stored locally on your device."),
+        .subheading("Purchases and credits"),
+        .paragraph("If you buy reflection credits, purchases are processed by Apple and managed through RevenueCat. We do not receive or store your credit card number."),
+        .paragraph("Anky uses purchase-related records, credit balances, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Apple and RevenueCat to grant and manage reflection credits."),
+        .subheading("Local access and request safety"),
+        .paragraph("Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and return credits to the right profile."),
+        .paragraph("Credit operations identify your RevenueCat customer with your Anky profile so credits can be loaded, purchased, and spent correctly."),
+        .paragraph("Your private recovery material is not sent to Anky."),
+        .subheading("Device trial and abuse prevention"),
+        .paragraph("For free trials, abuse prevention, fraud prevention, and request safety, the app asks Apple DeviceCheck for a token when DeviceCheck is supported. Reflection and nudge requests send that token to the mirror service as trial proof. The mirror service also uses timestamps, hashes, app version, platform/client, and request intent."),
+        .subheading("iCloud, Keychain, backup, export, and import"),
+        .paragraph("When you enable backup, recovery, or export features, the selected writing, reflections, recovery information, or related files are stored using Apple services such as iCloud, iCloud Keychain, device backups, or the destination you choose through the share sheet or file picker."),
+        .paragraph("Anky cannot control the privacy of files after you export or share them."),
+        .subheading("Support"),
+        .paragraph("If you contact support, you choose what to send. Support messages include the email address you send from and any Anky support ID, platform, app version, text, screenshots, files, or context you include."),
+        .heading("5. What We Do Not Collect"),
+        .paragraph("Anky does not require:"),
+        .bullets([
+            "Your legal name",
+            "Your phone number",
+            "Your contacts",
+            "Your precise location",
+            "Your camera",
+            "Your microphone",
+            "Your photos",
+            "Your social accounts",
+            "A traditional username/password login"
+        ]),
+        .paragraph("Anky does not sell personal data."),
+        .paragraph("Anky does not use your writing for advertising."),
+        .paragraph("Anky does not use your writing to train Anky-owned AI models."),
+        .heading("6. Third-Party Services"),
+        .paragraph("Anky uses the following third-party services for the app features described in this policy:"),
+        .bullets([
+            "**Apple** - App Store purchases, refunds, device services, iCloud, iCloud Keychain, device backup, DeviceCheck, notifications, and platform services.",
+            "**RevenueCat** - purchase management, credit balances, entitlements, and transaction-related records.",
+            "**OpenRouter** - routing reflection requests to AI model providers.",
+            "**AI model providers** - generating reflections from the text you choose to send.",
+            "**Cloud hosting / infrastructure providers** - operating Anky's mirror service, logs, security, and reliability.",
+            "**Email/support providers** - receiving and responding to support requests."
+        ]),
+        .paragraph("These providers process data according to their own terms and privacy policies."),
+        .heading("7. AI Processing"),
+        .paragraph("When you ask for a reflection, your writing is processed by AI systems."),
+        .paragraph("AI-generated reflections can be inaccurate, incomplete, unexpected, emotionally intense, or not useful. Reflections are generated automatically and should not be treated as professional advice."),
+        .paragraph("We design Anky's mirror service to avoid permanently storing raw `.anky` writing, reconstructed writing, or reflection text unless needed for a user-requested support/debugging flow, security, abuse prevention, legal compliance, or another clearly stated purpose."),
+        .paragraph("AI providers process requests according to their own data-handling policies. We use privacy-protective settings where available, but we cannot promise that every downstream provider has identical retention practices."),
+        .heading("8. Operational Metadata"),
+        .paragraph("To operate Anky, we collect and process limited metadata, such as:"),
+        .bullets([
+            "Anky support ID or app user identifier",
+            "Request timestamps",
+            "Request hashes",
+            "App version",
+            "Platform",
+            "Credit balance and credit transaction records",
+            "Purchase product identifiers",
+            "Error states",
+            "Provider usage metadata",
+            "Security and abuse-prevention signals",
+            "Support request metadata"
+        ]),
+        .paragraph("We use this data to provide reflections, manage credits, prevent abuse, debug issues, respond to support, comply with law, and operate the service."),
+        .heading("9. Payments"),
+        .paragraph("Payments are handled by Apple through the App Store and managed with RevenueCat."),
+        .paragraph("We do not receive your full payment card details."),
+        .paragraph("Refunds, billing disputes, and purchase history are handled according to Apple's policies."),
+        .heading("10. Tokens And Public References"),
+        .paragraph("Anky may display token or public-reference information when those features are available."),
+        .paragraph("Your private recovery material remains on your device unless you export, reveal, back up, or otherwise share it."),
+        .paragraph("Never share your recovery words. If you lose them, Anky cannot restore access without a backup you control."),
+        .paragraph("Some token, transaction, and public-reference information can be public by nature. Anky cannot delete information written to public networks."),
+        .heading("11. Data Retention"),
+        .paragraph("Local data remains on your device until you delete it, delete the app, reset the app, or remove backups."),
+        .paragraph("Reflection-related operational metadata is retained as long as needed to operate the service, manage credits, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security."),
+        .paragraph("Purchase records are retained by Apple, RevenueCat, and Anky as needed for billing, accounting, fraud prevention, tax, legal, and support purposes."),
+        .paragraph("Support emails are retained as long as needed to respond to you, keep records, and protect Anky."),
+        .heading("12. Deletion"),
+        .paragraph("You can delete local writing, local reflections, private access, and local app data from inside the app where deletion tools are available, or by deleting the app from your device."),
+        .paragraph("Deleting the app does not delete data outside the app, including:"),
+        .bullets([
+            "Files you exported or shared",
+            "iCloud backups or device backups controlled by Apple settings",
+            "App Store purchase records",
+            "RevenueCat purchase records",
+            "Support emails you sent",
+            "Backend metadata needed for security, credit accounting, fraud prevention, legal compliance, or dispute resolution",
+            "Public network data"
+        ]),
+        .paragraph("To request deletion of data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
+        .heading("13. Children"),
+        .paragraph("Anky is not intended for children under 13."),
+        .paragraph("If you are under 18, use Anky only with permission from a parent or guardian."),
+        .paragraph("We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information, contact **[support@anky.app](mailto:support@anky.app)**."),
+        .heading("14. Your Rights"),
+        .paragraph("Depending on where you live, your rights can include access, correction, deletion, export, restriction, or objection to certain uses of your personal data."),
+        .paragraph("Because Anky is local-first, much of your data is only on your device and can be managed by you directly."),
+        .paragraph("For requests about data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
+        .heading("15. Security"),
+        .paragraph("We use reasonable technical and organizational measures to protect data we process."),
+        .paragraph("No system is perfectly secure. You are responsible for protecting your device, passcode, recovery words, exported files, iCloud account, and any place where you store or share your writing."),
+        .heading("16. International Users"),
+        .paragraph("Anky, Inc. is based in the United States. Data sent to Anky or its service providers is processed in the United States or other countries where those providers operate."),
+        .heading("17. Changes"),
+        .paragraph("We update this Privacy Policy when the policy changes."),
+        .paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated policy."),
+        .heading("18. Contact"),
+        .paragraph("**Anky, Inc.**"),
+        .paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**")
     ]
 }
 
 fileprivate enum PrivacyCopyItem {
     case caption(String)
+    case callout(String)
     case heading(String)
+    case subheading(String)
     case paragraph(String)
+    case bullets([String])
 }
 
 private struct PrivacyPolicyReflectionSheet: View {
     var body: some View {
         ZStack {
             PrivacySheetPalette.ink.ignoresSafeArea()
-            PrivacySheetBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Privacy")
+                        Text("Privacy Policy")
                             .font(.system(size: 30, weight: .bold))
                             .foregroundStyle(PrivacySheetPalette.heading)
                             .tracking(0)
 
-                        Text("Local-first. Private. Sovereign.")
+                        Text("Your writing is sacred and we take that seriously. All of the code is open source.")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .foregroundStyle(PrivacySheetPalette.paper.opacity(0.54))
                     }
                     .padding(.bottom, 8)
 
-                    Text("Privacy is the shape of Anky, not a feature added later.")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(PrivacySheetPalette.paper)
-                        .lineSpacing(6)
-
                     ForEach(Array(PrivacyPolicyPage.policyCopy.enumerated()), id: \.offset) { _, item in
                         PrivacyPolicyReflectionLine(item: item)
                     }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Questions, deletion requests, and privacy reports")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .tracking(1.0)
-                            .foregroundStyle(PrivacySheetPalette.paper.opacity(0.46))
-
-                        Text("jp@anky.app")
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundStyle(PrivacySheetPalette.gold)
-                            .textSelection(.enabled)
-                    }
-                    .padding(.top, 8)
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 24)
@@ -1106,7 +1162,6 @@ private struct TermsAndConditionsReflectionSheet: View {
     var body: some View {
         ZStack {
             PrivacySheetPalette.ink.ignoresSafeArea()
-            PrivacySheetBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -1116,7 +1171,7 @@ private struct TermsAndConditionsReflectionSheet: View {
                             .foregroundStyle(PrivacySheetPalette.heading)
                             .tracking(0)
 
-                        Text("The agreement for using Anky.")
+                        Text("Writing and reflection agreement")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .foregroundStyle(PrivacySheetPalette.paper.opacity(0.54))
                     }
@@ -1134,24 +1189,151 @@ private struct TermsAndConditionsReflectionSheet: View {
     }
 
     private static let termsCopy: [PrivacyCopyItem] = [
-        .caption("Last updated: 2026-06-05"),
-        .paragraph("By using Anky, you agree to use it as a private writing tool and to make your own decisions about what you write, export, share, delete, or send for reflection."),
-        .heading("Your writing"),
-        .paragraph("Your writing belongs to you. Anky stores `.anky` files locally by default. You are responsible for keeping backups if you want to preserve writing outside this install."),
-        .heading("Reflections"),
-        .paragraph("Reflections are optional. Asking for a reflection sends the `.anky` writing to the configured mirror service so it can return a response. Reflections may require credits."),
-        .heading("Credits and purchases"),
-        .paragraph("Credits are used for reflections, not writing. The first two reflections are limited by device checks to reduce abuse. Paid credit purchases are handled through Apple and RevenueCat where available."),
-        .heading("Backups and recovery"),
-        .paragraph("iCloud Keychain recovery stores the recovery phrase for your local identity. Data export is the separate backup path for writing and reflections."),
-        .heading("No professional advice"),
-        .paragraph("Anky is not medical, legal, financial, or emergency advice. Do not rely on Anky reflections as a substitute for professional support."),
-        .heading("Acceptable use"),
-        .paragraph("Do not use Anky to abuse services, evade credit limits, interfere with the app, or submit content you do not have the right to submit."),
-        .heading("Changes"),
-        .paragraph("Anky may change these terms as the product evolves. Continued use after changes means you accept the updated terms."),
-        .heading("Contact"),
-        .paragraph("Questions about these terms can be sent to support@anky.app.")
+        .caption("Anky, Inc. - Effective June 7, 2026"),
+        .callout("Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery words, your purchases, and how you use AI-generated reflections."),
+        .heading("1. Acceptance"),
+        .paragraph("These Terms and Conditions are an agreement between you and **Anky, Inc.**, a Delaware corporation."),
+        .paragraph("By downloading, accessing, or using Anky, you agree to these Terms."),
+        .paragraph("If you do not agree, do not use Anky."),
+        .heading("2. What Anky Provides"),
+        .paragraph("Anky lets you:"),
+        .bullets([
+            "Write forward-only `.anky` sessions",
+            "Save writing locally",
+            "Revisit local writing history",
+            "Export or import writing files",
+            "Manage private Anky access",
+            "Buy or use reflection credits",
+            "Ask Anky for AI-generated reflections",
+            "Use related features we provide over time"
+        ]),
+        .paragraph("We may change, suspend, or discontinue any part of Anky at any time."),
+        .heading("3. Age Requirement"),
+        .paragraph("Anky is not intended for children under 13."),
+        .paragraph("If you are under 18, you may use Anky only with permission from a parent or guardian."),
+        .paragraph("By using Anky, you represent that you meet these requirements."),
+        .heading("4. Anky Is Not Professional Advice"),
+        .paragraph("Anky is not a therapist, doctor, emergency service, financial advisor, legal advisor, religious authority, or spiritual authority."),
+        .paragraph("AI-generated reflections are for personal writing reflection only."),
+        .paragraph("They may be inaccurate, incomplete, unexpected, emotionally intense, or not useful."),
+        .paragraph("Do not rely on Anky for medical, mental health, legal, financial, emergency, or safety decisions."),
+        .paragraph("If you may hurt yourself or someone else, or if you are in immediate danger, contact local emergency services or a trusted person immediately."),
+        .heading("5. Your Writing"),
+        .paragraph("You own your writing."),
+        .paragraph("By using Anky, you give Anky, Inc. a limited permission to process your writing only as needed to provide the features you choose, such as saving locally, generating a reflection, exporting, importing, backing up, debugging, support, security, and abuse prevention."),
+        .paragraph("You are responsible for what you write, export, send, share, or back up."),
+        .paragraph("Do not write, upload, export, or share content through Anky in a way that violates the law or harms others."),
+        .heading("6. Local-First Design"),
+        .paragraph("Anky is designed to be local-first."),
+        .paragraph("Your writing normally stays on your device."),
+        .paragraph("When you ask for a reflection, you understand that your writing is sent to Anky's mirror service and AI service providers to generate the reflection. We use providers that don't store your writing."),
+        .paragraph("When you export, share, back up, or contact support, you are choosing to send or store data outside the app."),
+        .heading("7. Private Access And Recovery"),
+        .paragraph("Anky may create private local access for your device."),
+        .paragraph("You are responsible for protecting your recovery words, device passcode, biometric access, iCloud account, and exported files."),
+        .paragraph("Never share your recovery words."),
+        .paragraph("If you lose your recovery words, Anky may not be able to restore your credits, profile state, or related data."),
+        .paragraph("Anky is not responsible for losses caused by lost recovery words, compromised devices, shared credentials, or unauthorized access to your device or accounts."),
+        .heading("8. Purchases, Credits, and Refunds"),
+        .paragraph("Writing in Anky is free."),
+        .paragraph("Reflections may require credits."),
+        .paragraph("Credits are digital app credits used only inside Anky for reflection requests. Credits are not money, not cryptocurrency, not stored value, not withdrawable, not redeemable for cash, and not transferable unless we explicitly say otherwise."),
+        .paragraph("Purchases are processed through Apple's App Store and may be managed by RevenueCat."),
+        .paragraph("We do not handle or store your full payment card details."),
+        .paragraph("Refunds are handled by Apple according to Apple's policies."),
+        .paragraph("We may change pricing, credit packs, free trials, or credit rules at any time, subject to applicable law and App Store rules."),
+        .heading("9. AI-Generated Reflections"),
+        .paragraph("AI-generated reflections are produced automatically."),
+        .paragraph("You understand that reflections may:"),
+        .bullets([
+            "Be wrong",
+            "Miss important context",
+            "Sound more certain than they are",
+            "Be emotionally uncomfortable",
+            "Fail to understand your language, tone, or intent",
+            "Contain unexpected content",
+            "Be unavailable because of technical errors"
+        ]),
+        .paragraph("You remain responsible for interpreting and using any reflection."),
+        .paragraph("Anky, Inc. is not responsible for decisions you make based on AI-generated content."),
+        .heading("10. Token References"),
+        .paragraph("Anky may display token references, public references, or related information."),
+        .paragraph("These references are informational only."),
+        .paragraph("Nothing in Anky is financial advice, investment advice, tax advice, legal advice, or an offer to buy or sell any token, security, or asset."),
+        .paragraph("Using Anky does not require buying, holding, or trading any token."),
+        .paragraph("Public-network transactions may be public, irreversible, volatile, risky, and outside Anky's control."),
+        .paragraph("You are responsible for your own purchases, transactions, taxes, and financial decisions."),
+        .heading("11. User Conduct"),
+        .paragraph("You agree not to:"),
+        .bullets([
+            "Use Anky if you do not meet the age requirements",
+            "Use Anky for illegal activity",
+            "Abuse, attack, disrupt, or overload Anky's systems",
+            "Circumvent credits, paywalls, trials, app attestation, or security controls",
+            "Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, or backend systems",
+            "Use bots, scripts, or automation to abuse the app",
+            "Attempt to access another person's data, recovery words, private access, or account",
+            "Upload or share content that violates another person's rights",
+            "Use Anky to generate instructions for harming yourself or others",
+            "Misrepresent Anky, Anky, Inc., or any affiliation with us"
+        ]),
+        .paragraph("We may suspend, restrict, or terminate access if we believe you violated these Terms, abused the service, created risk, or used Anky unlawfully."),
+        .heading("12. Intellectual Property"),
+        .paragraph("Anky, Inc. owns Anky's software, design, name, logos, characters, visual assets, prompts, product concepts, documentation, and related intellectual property."),
+        .paragraph("You may not copy, modify, distribute, sell, reverse engineer, or create derivative works from Anky except where allowed by law or by an open-source license we explicitly provide."),
+        .paragraph("You retain ownership of your own writing."),
+        .heading("13. Feedback"),
+        .paragraph("If you send us feedback, ideas, suggestions, bug reports, or feature requests, you give Anky, Inc. permission to use them without restriction or compensation."),
+        .paragraph("This does not give us ownership of your private writing."),
+        .heading("14. Third-Party Services"),
+        .paragraph("Anky depends on third-party services, which may include Apple, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and public networks."),
+        .paragraph("We are not responsible for third-party services, terms, outages, policies, prices, decisions, or data practices."),
+        .paragraph("Your use of third-party services may be subject to their terms and privacy policies."),
+        .heading("15. App Store Terms"),
+        .paragraph("If you downloaded Anky from Apple's App Store, Apple's terms also apply."),
+        .paragraph("Apple is not responsible for Anky, its content, support, warranties, or claims, except as required by applicable law or Apple's own terms."),
+        .heading("16. Availability"),
+        .paragraph("Anky may be unavailable, delayed, interrupted, inaccurate, or discontinued."),
+        .paragraph("We do not guarantee that Anky will always work, that reflections will always be available, that credits will always sync instantly, or that local data will never be lost."),
+        .paragraph("Back up anything important."),
+        .heading("17. Termination"),
+        .paragraph("You may stop using Anky at any time."),
+        .paragraph("You can delete the app and delete local data where the app provides deletion tools."),
+        .paragraph("We may suspend, limit, or terminate your access to Anky at any time if we believe it is necessary to protect Anky, users, third parties, or the integrity of the service."),
+        .heading("18. Disclaimer of Warranties"),
+        .paragraph("ANKY IS PROVIDED \"AS IS\" AND \"AS AVAILABLE.\""),
+        .paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RELIABILITY."),
+        .paragraph("YOUR USE OF ANKY IS AT YOUR OWN RISK."),
+        .heading("19. Limitation of Liability"),
+        .paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT."),
+        .paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.'S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:"),
+        .paragraph("(A) THE AMOUNT YOU PAID TO ANKY, INC. THROUGH THE APP IN THE 12 MONTHS BEFORE THE CLAIM, OR"),
+        .paragraph("(B) $50 USD."),
+        .paragraph("Some jurisdictions do not allow certain limitations, so some of these limits may not apply to you."),
+        .heading("20. Indemnification"),
+        .paragraph("You agree to defend, indemnify, and hold harmless Anky, Inc. and its owners, directors, officers, employees, contractors, service providers, and affiliates from claims, damages, losses, liabilities, costs, and expenses arising from:"),
+        .bullets([
+            "Your use of Anky",
+            "Your writing or exported content",
+            "Your violation of these Terms",
+            "Your violation of law",
+            "Your violation of another person's rights",
+            "Your misuse of AI-generated reflections",
+            "Your token, transaction, or recovery activity"
+        ]),
+        .heading("21. Governing Law"),
+        .paragraph("These Terms are governed by the laws of the State of Delaware, without regard to conflict-of-law principles, except where your local law requires otherwise."),
+        .heading("22. Disputes and Arbitration"),
+        .paragraph("To the fullest extent permitted by law, disputes between you and Anky, Inc. will be resolved through binding individual arbitration, not in a class action or jury trial."),
+        .paragraph("You and Anky, Inc. agree to bring claims only on an individual basis."),
+        .paragraph("This section does not prevent either party from seeking relief in small claims court or seeking injunctive relief for intellectual property, security, or unauthorized access issues."),
+        .paragraph("If this arbitration section is not enforceable where you live, the rest of these Terms still apply."),
+        .heading("23. Changes"),
+        .paragraph("We may update these Terms from time to time."),
+        .paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated Terms."),
+        .heading("24. Contact"),
+        .paragraph("**Anky, Inc.**"),
+        .paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**")
     ]
 }
 
@@ -1161,55 +1343,75 @@ private struct PrivacyPolicyReflectionLine: View {
     var body: some View {
         switch item {
         case .caption(let text):
-            Text(text)
+            Text(AnkyLocalization.ui(text))
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .tracking(1.0)
                 .foregroundStyle(PrivacySheetPalette.paper.opacity(0.46))
                 .frame(maxWidth: .infinity, alignment: .leading)
+        case .callout(let text):
+            Text(attributedText(from: text))
+                .font(.system(size: 16, weight: .semibold))
+                .lineSpacing(5)
+                .foregroundStyle(PrivacySheetPalette.paper)
+                .tint(PrivacySheetPalette.gold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(PrivacySheetPalette.gold.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(PrivacySheetPalette.gold.opacity(0.22), lineWidth: 1)
+                        )
+                )
+                .textSelection(.enabled)
         case .heading(let text):
-            Text(text)
-                .font(.system(size: 25, weight: .bold))
+            Text(AnkyLocalization.ui(text))
+                .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(PrivacySheetPalette.heading)
                 .tracking(0)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 8)
+                .padding(.top, 12)
+        case .subheading(let text):
+            Text(AnkyLocalization.ui(text))
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(PrivacySheetPalette.gold)
+                .tracking(0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
         case .paragraph(let text):
             Text(attributedText(from: text))
-                .font(.system(size: 18))
-                .lineSpacing(7)
+                .font(.system(size: 16))
+                .lineSpacing(6)
                 .foregroundStyle(PrivacySheetPalette.paper)
                 .tint(PrivacySheetPalette.gold)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, text in
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Text("•")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(PrivacySheetPalette.gold)
+                        Text(attributedText(from: text))
+                            .font(.system(size: 16))
+                            .lineSpacing(5)
+                            .foregroundStyle(PrivacySheetPalette.paper)
+                            .tint(PrivacySheetPalette.gold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+            .padding(.leading, 3)
         }
     }
 
     private func attributedText(from text: String) -> AttributedString {
-        (try? AttributedString(markdown: text)) ?? AttributedString(text)
-    }
-}
-
-private struct PrivacySheetBackground: View {
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                ForEach([0.19, 0.47, 0.78], id: \.self) { position in
-                    Rectangle()
-                        .fill(PrivacySheetPalette.gold.opacity(0.075))
-                        .frame(height: 1)
-                        .offset(y: proxy.size.height * position)
-                }
-
-                Ellipse()
-                    .fill(PrivacySheetPalette.violet.opacity(0.055))
-                    .frame(width: proxy.size.width * 1.2, height: 280)
-                    .blur(radius: 42)
-                    .offset(y: proxy.size.height * 0.4)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .allowsHitTesting(false)
-        .ignoresSafeArea()
+        let localized = AnkyLocalization.ui(text)
+        return (try? AttributedString(markdown: localized)) ?? AttributedString(localized)
     }
 }
 
@@ -1241,17 +1443,50 @@ private struct PrivacyCopyLine: View {
     var body: some View {
         switch item {
         case .caption(let text):
-            Text(text)
+            Text(AnkyLocalization.ui(text))
                 .youCaption()
+        case .callout(let text):
+            Text(attributedText(from: text))
+                .font(.system(size: 16, weight: .semibold))
+                .lineSpacing(5)
+                .foregroundStyle(YouPalette.paper)
+                .tint(YouPalette.gold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(YouPalette.gold.opacity(0.08))
+                )
         case .heading(let text):
-            Text(text)
+            Text(AnkyLocalization.ui(text))
                 .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(YouPalette.gold)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 4)
+        case .subheading(let text):
+            Text(AnkyLocalization.ui(text))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(YouPalette.gold)
+                .frame(maxWidth: .infinity, alignment: .leading)
         case .paragraph(let text):
             MarkdownArticleText(text)
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, text in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("•")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(YouPalette.gold)
+                        MarkdownArticleText(text)
+                    }
+                }
+            }
         }
+    }
+
+    private func attributedText(from text: String) -> AttributedString {
+        let localized = AnkyLocalization.ui(text)
+        return (try? AttributedString(markdown: localized)) ?? AttributedString(localized)
     }
 }
 
@@ -1263,24 +1498,24 @@ private struct ExportDataPage: View {
     var body: some View {
         YouDetailShell(title: "Export data", subtitle: "Your archive is yours") {
             YouPanel {
-                Text("\(viewModel.ankyFileURLs.count) writings · \(viewModel.reflectionFileURLs.count) reflections")
+                Text(AnkyLocalization.ui("%d writings · %d reflections", viewModel.ankyFileURLs.count, viewModel.reflectionFileURLs.count))
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(YouPalette.gold)
 
-                Text("Readable exports include plaintext writing. Keep them somewhere private.")
+                Text(AnkyLocalization.ui("Readable exports include plaintext writing. Keep them somewhere private."))
                     .youBody()
             }
 
             YouPanel {
                 if let formattedWritingExportURL = viewModel.formattedWritingExportURL {
                     ShareLink(item: formattedWritingExportURL) {
-                        YouActionLabel("Export writings")
+                        YouActionLabel(AnkyLocalization.ui("Export writings"))
                     }
                     .simultaneousGesture(TapGesture().onEnded {
                         AnkyHaptics.light()
                     })
                 } else {
-                    YouDisabledRow("No writing to export yet")
+                    YouDisabledRow(AnkyLocalization.ui("No writing to export yet"))
                 }
             }
 
@@ -1288,32 +1523,32 @@ private struct ExportDataPage: View {
                 YouToggleRow(
                     isOn: iCloudBackupBinding,
                     iconName: "icloud",
-                    title: "Encrypted iCloud backup",
-                    subtitle: viewModel.isICloudBackupEnabled ? "On" : "Off"
+                    title: AnkyLocalization.ui("Encrypted iCloud backup"),
+                    subtitle: AnkyLocalization.ui(viewModel.isICloudBackupEnabled ? "On" : "Off")
                 )
 
-                Text(viewModel.isICloudBackupEnabled ? "Anky backs up writing and reflections after each writing session." : "Turn this on for iCloud recovery after reinstalling.")
+                Text(AnkyLocalization.ui(viewModel.isICloudBackupEnabled ? "Anky backs up writing and reflections after each writing session." : "Turn this on for iCloud recovery after reinstalling."))
                     .youBody()
 
                 if let lastDate = viewModel.iCloudBackupLastDate {
-                    Text("Last backup: \(lastDate.formatted(date: .abbreviated, time: .shortened))")
+                    Text(AnkyLocalization.ui("Last backup: %@", lastDate.formatted(date: .abbreviated, time: .shortened)))
                         .youBody()
                 }
 
                 if viewModel.isICloudBackupEnabled {
-                    YouActionButton(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now") {
+                    YouActionButton(AnkyLocalization.ui(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now")) {
                         Task { await viewModel.backUpToICloudNow() }
                     }
                 }
             }
 
             YouDangerPanel {
-                Text("Danger zone")
+                Text(AnkyLocalization.ui("Danger zone"))
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(YouPalette.danger)
-                Text("This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them.")
+                Text(AnkyLocalization.ui("This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them."))
                     .youBody()
-                YouActionButton("Delete local data", role: .destructive) {
+                YouActionButton(AnkyLocalization.ui("Delete local data"), role: .destructive) {
                     confirmClearWritingData = true
                 }
             }
@@ -1352,9 +1587,9 @@ struct CreditsPage: View {
             }
 
             YouPanel {
-                YouRuleRow("1 credit = reflection")
-                YouRuleRow("ask anky spends one credit")
-                YouRuleRow("writing is always free")
+                YouRuleRow(AnkyLocalization.ui("1 credit = reflection"))
+                YouRuleRow(AnkyLocalization.ui("ask anky spends one credit"))
+                YouRuleRow(AnkyLocalization.ui("writing is always free"))
             }
 
             YouPanel {
@@ -1363,9 +1598,9 @@ struct CreditsPage: View {
                     Text(AnkyLocalization.text(.creditGiftDetail))
                         .youBody()
                 } else if viewModel.creditsLoading && viewModel.creditPackages.isEmpty {
-                    YouDisabledRow("loading credit packs")
+                    YouDisabledRow(AnkyLocalization.ui("loading credit packs"))
                 } else if viewModel.creditPackages.isEmpty {
-                    YouDisabledRow("no credit packs available")
+                    YouDisabledRow(AnkyLocalization.ui("no credit packs available"))
                 } else {
                     ForEach(viewModel.creditPackages) { creditPackage in
                         CreditPackageButton(
@@ -1380,7 +1615,7 @@ struct CreditsPage: View {
                     }
                 }
 
-                YouActionButton("refresh credits") {
+                YouActionButton(AnkyLocalization.ui("refresh credits")) {
                     Task {
                         await viewModel.refreshCredits()
                     }
@@ -1388,13 +1623,13 @@ struct CreditsPage: View {
             }
 
             YouPanel {
-                YouActionButton("support / feedback") {
+                YouActionButton(AnkyLocalization.ui("support / feedback")) {
                     if let emailURL = viewModel.supportFeedbackEmailURL {
                         openURL(emailURL)
                     }
                 }
 
-                Text("email support@anky.app. include only what you choose to write.")
+                Text(AnkyLocalization.ui("email support@anky.app. include only what you choose to write."))
                     .youBody()
             }
         }
@@ -1410,10 +1645,10 @@ private struct CreditPackageButton: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(creditPackage.title)
+                    Text(AnkyLocalization.ui(creditPackage.title))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(YouPalette.paper)
-                    Text(creditPackage.subtitle)
+                    Text(AnkyLocalization.ui(creditPackage.subtitle))
                         .youCaption()
                 }
 
@@ -1453,49 +1688,8 @@ private struct MarkdownArticleText: View {
     }
 
     private var attributedText: AttributedString {
-        (try? AttributedString(markdown: text)) ?? AttributedString(text)
-    }
-}
-
-private struct DeveloperPage: View {
-    @Binding var mirrorBaseURL: String
-    @Binding var confirmClearArchive: Bool
-    @Binding var confirmClearReflections: Bool
-    @Binding var confirmResetIdentity: Bool
-    @ObservedObject var viewModel: YouViewModel
-
-    var body: some View {
-        YouDetailShell(title: "developer", subtitle: "local tools") {
-            YouPanel {
-                TextField("mirror base url", text: $mirrorBaseURL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(YouPalette.paper)
-                    .font(.system(size: 14, design: .monospaced))
-                    .padding(12)
-                    .background(YouPalette.panelStrong, in: RoundedRectangle(cornerRadius: 12))
-
-                Text("simulator local mirror: http://127.0.0.1:3000. physical devices should use the deployed https mirror or an https tunnel to local.")
-                    .youBody()
-
-                YouActionButton("repair map index") {
-                    viewModel.rebuildSessionIndex()
-                }
-            }
-
-            YouPanel {
-                YouActionButton("clear local reflections", role: .destructive) {
-                    confirmClearReflections = true
-                }
-                YouActionButton("clear local .anky archive", role: .destructive) {
-                    confirmClearArchive = true
-                }
-                YouActionButton("reset local identity", role: .destructive) {
-                    confirmResetIdentity = true
-                }
-            }
-        }
+        let localized = AnkyLocalization.ui(text)
+        return (try? AttributedString(markdown: localized)) ?? AttributedString(localized)
     }
 }
 
@@ -1527,7 +1721,7 @@ private struct AnkyExperienceView: View {
                         .padding(.horizontal, 10)
                         .frame(height: 32)
                         .background(.thinMaterial, in: Capsule())
-                        .accessibilityLabel("Anky experience time \(viewModel.elapsedClockText)")
+                        .accessibilityLabel(AnkyLocalization.ui("Anky experience time %@", viewModel.elapsedClockText))
 
                     Spacer()
 
@@ -1542,7 +1736,7 @@ private struct AnkyExperienceView: View {
                             .background(.thinMaterial, in: Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Close The Anky Experience")
+                    .accessibilityLabel(AnkyLocalization.ui("Close The Anky Experience"))
                 }
 
                 Spacer()
@@ -1566,7 +1760,7 @@ private struct AnkyExperienceView: View {
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Anky companion")
+                    .accessibilityLabel(AnkyLocalization.ui("Anky companion"))
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 18)
@@ -1577,12 +1771,12 @@ private struct AnkyExperienceView: View {
                     Spacer()
 
                     AnkyConversationPromptView(
-                        message: "copy your .anky or copy your writing.",
+                        message: AnkyLocalization.ui("copy your .anky or copy your writing."),
                         actions: [
-                            AnkyChatAction("copy your .anky", isPrimary: true) {
+                            AnkyChatAction(AnkyLocalization.ui("copy your .anky"), isPrimary: true) {
                                 viewModel.copyCurrentAnky()
                             },
-                            AnkyChatAction("copy your writing") {
+                            AnkyChatAction(AnkyLocalization.ui("copy your writing")) {
                                 viewModel.copyCurrentWriting()
                             }
                         ],
@@ -1721,7 +1915,7 @@ private struct ExperiencePortalRing: View {
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
-                Text(subtitle)
+                Text(AnkyLocalization.ui(subtitle))
                     .font(.system(size: 11, weight: .medium))
                     .lineSpacing(2)
                     .multilineTextAlignment(.center)
@@ -1731,7 +1925,7 @@ private struct ExperiencePortalRing: View {
         }
         .frame(width: 220, height: 220)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(clockText). \(subtitle)")
+        .accessibilityLabel(AnkyLocalization.ui("%@. %@", clockText, subtitle))
     }
 }
 
@@ -1812,15 +2006,15 @@ private final class AnkyExperienceViewModel: ObservableObject {
     var centerSubtitle: String {
         switch phase {
         case .openingAnky:
-            return "the experience is open"
+            return AnkyLocalization.ui("the experience is open")
         case .portal:
-            return "the experience is open"
+            return AnkyLocalization.ui("the experience is open")
         case .closingWarning:
-            return "the experience is open"
+            return AnkyLocalization.ui("the experience is open")
         case .closingAnky:
-            return "the experience is open"
+            return AnkyLocalization.ui("the experience is open")
         case .finished:
-            return "the experience is complete"
+            return AnkyLocalization.ui("the experience is complete")
         }
     }
 
@@ -2100,23 +2294,23 @@ private struct ImportRecoveryPhraseSheet: View {
                         .background(YouPalette.panel, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(YouPalette.goldDim, lineWidth: 1))
 
-                    Text("recovering replaces the local identity used for ask anky and future credit balances. local .anky files stay on this device.")
+                    Text(AnkyLocalization.ui("recovering replaces the private access used for Ask Anky and future credit balances. local .anky files stay on this device."))
                         .youBody()
 
                     Spacer()
                 }
                 .padding(20)
             }
-            .navigationTitle("recover identity")
+            .navigationTitle(AnkyLocalization.ui("recover access"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("cancel") {
+                    Button(AnkyLocalization.ui("cancel")) {
                         isPresented = false
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("recover") {
+                    Button(AnkyLocalization.ui("recover")) {
                         Task {
                             if await viewModel.importRecoveryPhrase(recoveryPhraseInput) {
                                 isPresented = false
@@ -2157,10 +2351,10 @@ private struct YouDetailShell<Content: View>: View {
                     Spacer()
 
                     VStack(spacing: 3) {
-                        Text(title)
+                        Text(AnkyLocalization.ui(title))
                             .font(.system(size: 26, weight: .semibold))
                             .foregroundStyle(YouPalette.gold)
-                        Text(subtitle)
+                        Text(AnkyLocalization.ui(subtitle))
                             .font(.system(size: 12))
                             .foregroundStyle(YouPalette.paperMuted)
                     }
@@ -2208,11 +2402,11 @@ private struct YouTitle: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(title)
+            Text(AnkyLocalization.ui(title))
                 .font(.system(size: 34, weight: .semibold))
                 .foregroundStyle(YouPalette.gold)
             if !subtitle.isEmpty {
-                Text(subtitle)
+                Text(AnkyLocalization.ui(subtitle))
                     .font(.system(size: 14))
                     .foregroundStyle(YouPalette.paperMuted)
             }
@@ -2272,7 +2466,7 @@ private struct YouStatsPanel: View {
             .frame(height: 68)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open all ankys")
+        .accessibilityLabel(AnkyLocalization.ui("Open all ankys"))
     }
 }
 
@@ -2291,7 +2485,7 @@ private struct YouStatCell: View {
                 Text(value)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(YouPalette.paper)
-                Text(label)
+                Text(AnkyLocalization.ui(label))
                     .font(.system(size: 10))
                     .foregroundStyle(YouPalette.paperMuted)
             }
@@ -2311,10 +2505,10 @@ private struct YouMenuRow: View {
             YouMenuIcon(icon: icon)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(AnkyLocalization.ui(title))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(YouPalette.paper)
-                Text(subtitle)
+                Text(AnkyLocalization.ui(subtitle))
                     .font(.system(size: 12))
                     .foregroundStyle(YouPalette.paperMuted)
             }
@@ -2351,10 +2545,10 @@ private struct YouDataToggleRow: View {
                     YouMenuIcon(icon: icon)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
+                        Text(AnkyLocalization.ui(title))
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(YouPalette.paper)
-                        Text(subtitle)
+                        Text(AnkyLocalization.ui(subtitle))
                             .font(.system(size: 12))
                             .foregroundStyle(YouPalette.paperMuted)
                     }
@@ -2365,10 +2559,10 @@ private struct YouDataToggleRow: View {
             }
             .buttonStyle(.plain)
 
-            Toggle(title, isOn: $isOn)
+            Toggle(AnkyLocalization.ui(title), isOn: $isOn)
                 .labelsHidden()
                 .tint(YouPalette.gold)
-                .accessibilityLabel("Encrypted iCloud backup")
+                .accessibilityLabel(AnkyLocalization.ui("Encrypted iCloud backup"))
         }
         .padding(.vertical, 14)
     }
@@ -2388,10 +2582,10 @@ private struct YouToggleRow: View {
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(AnkyLocalization.ui(title))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(YouPalette.paper)
-                Text(subtitle)
+                Text(AnkyLocalization.ui(subtitle))
                     .font(.system(size: 12))
                     .foregroundStyle(YouPalette.paperMuted)
             }
@@ -2452,7 +2646,7 @@ private struct YouDestructiveMenuRow: View {
                 .foregroundStyle(YouPalette.danger)
                 .frame(width: 24, height: 24)
 
-            Text(title)
+            Text(AnkyLocalization.ui(title))
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(YouPalette.danger)
                 .lineLimit(1)
@@ -2538,7 +2732,7 @@ private struct YouActionLabel: View {
     }
 
     var body: some View {
-        Text(title)
+        Text(AnkyLocalization.ui(title))
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(destructive ? YouPalette.danger : YouPalette.gold)
             .frame(maxWidth: .infinity)
@@ -2557,7 +2751,7 @@ private struct YouDetailRow: View {
 
     var body: some View {
         HStack {
-            Text(title)
+            Text(AnkyLocalization.ui(title))
                 .youCaption()
             Spacer()
             Text(value)
@@ -2579,7 +2773,7 @@ private struct YouRuleRow: View {
             Circle()
                 .fill(YouPalette.gold.opacity(0.72))
                 .frame(width: 5, height: 5)
-            Text(text)
+            Text(AnkyLocalization.ui(text))
                 .youBody()
         }
     }
@@ -2593,7 +2787,7 @@ private struct YouDisabledRow: View {
     }
 
     var body: some View {
-        Text(text)
+        Text(AnkyLocalization.ui(text))
             .youBody()
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)

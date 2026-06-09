@@ -4,6 +4,7 @@ import android.app.Activity
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.credits.CreditState
 import inc.anky.android.core.credits.CreditsClient
+import inc.anky.android.core.credits.ReflectionCreditCache
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorConfiguration
@@ -191,6 +192,7 @@ class RevealViewModelTest {
         val server = MockWebServer()
         val stores = stores()
         val credits = FakeCreditsClient(balance = 9)
+        val creditCache = FakeReflectionCreditCache()
         val artifact = stores.archive.save(completeAnky())
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = 7))
@@ -204,6 +206,7 @@ class RevealViewModelTest {
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
                 creditsClient = credits,
+                reflectionCreditCache = creditCache,
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
 
@@ -214,6 +217,7 @@ class RevealViewModelTest {
             assertEquals(listOf("truth", "body"), stores.reflections.load(artifact.hash)?.tags)
             assertFalse(stores.requests.isPending(artifact.hash))
             assertEquals(7, viewModel.state.value.creditBalance)
+            assertEquals(7, creditCache.balance(identity().accountId))
             assertTrue(viewModel.state.value.hasClaimedFreeCredits)
             assertEquals(1, credits.invalidateCount)
         } finally {
@@ -283,6 +287,7 @@ class RevealViewModelTest {
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
         val credits = FakeCreditsClient(balance = 2)
+        val creditCache = FakeReflectionCreditCache()
         val viewModel = RevealViewModel(
             hash = artifact.hash,
             archive = stores.archive,
@@ -291,6 +296,7 @@ class RevealViewModelTest {
             identityProvider = { identity() },
             mirrorClientProvider = { error("Refreshing credits should not ask the mirror.") },
             creditsClient = credits,
+            reflectionCreditCache = creditCache,
             hasClaimedFreeCreditsProvider = { true },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
@@ -300,6 +306,7 @@ class RevealViewModelTest {
 
         assertEquals(identity().accountId, credits.configuredAppUserId)
         assertEquals(2, viewModel.state.value.creditBalance)
+        assertEquals(2, creditCache.balance(identity().accountId))
         assertEquals(credits.packages, viewModel.state.value.creditPackages)
         assertFalse(viewModel.state.value.creditsDenied)
         assertFalse(viewModel.state.value.creditsLoading)
@@ -341,6 +348,7 @@ class RevealViewModelTest {
             purchaseBalance = 3,
             packages = listOf(CreditPackage("inc.anky.credits.3", "inc.anky.credits.3", "3 reflections", "starter", "$2.99")),
         )
+        val creditCache = FakeReflectionCreditCache()
         val viewModel = RevealViewModel(
             hash = artifact.hash,
             archive = stores.archive,
@@ -349,6 +357,7 @@ class RevealViewModelTest {
             identityProvider = { identity() },
             mirrorClientProvider = { error("Purchasing credits should not ask the mirror.") },
             creditsClient = credits,
+            reflectionCreditCache = creditCache,
             hasClaimedFreeCreditsProvider = { true },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
@@ -359,6 +368,7 @@ class RevealViewModelTest {
         assertEquals(identity().accountId, credits.configuredAppUserId)
         assertEquals("inc.anky.credits.3", credits.purchasedPackageId)
         assertEquals(3, viewModel.state.value.creditBalance)
+        assertEquals(3, creditCache.balance(identity().accountId))
         assertEquals(credits.packages, viewModel.state.value.creditPackages)
         assertFalse(viewModel.state.value.creditsDenied)
         assertEquals(null, viewModel.state.value.purchasingCreditPackageId)
@@ -427,6 +437,30 @@ class RevealViewModelTest {
         } finally {
             server.shutdown()
         }
+    }
+
+    @Test
+    fun revealSeedsCreditBalanceFromPerAccountCacheLikeIos() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val creditCache = FakeReflectionCreditCache().apply {
+            storeBalance(6, identity().accountId)
+        }
+
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Cached credit load should not ask the mirror.") },
+            reflectionCreditCache = creditCache,
+            hasClaimedFreeCreditsProvider = { true },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertEquals(6, viewModel.state.value.creditBalance)
+        assertEquals(ReflectionCreditPromptState.Available(6), viewModel.state.value.creditPromptState)
     }
 
     @Test
@@ -507,7 +541,7 @@ class RevealViewModelTest {
     }
 
     private fun completeAnky(): String =
-        "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+        "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n80000 !\n8000"
 
     private fun identity(): WriterIdentity =
         WriterIdentity.fromRecoveryPhrase(
@@ -579,6 +613,36 @@ class RevealViewModelTest {
 
         override suspend fun invalidateCreditBalanceCache() {
             invalidateCount += 1
+        }
+
+        override suspend fun logOutIfConfigured() = Unit
+    }
+
+    private class FakeReflectionCreditCache : ReflectionCreditCache {
+        private val balances = mutableMapOf<String, Int>()
+        private val claimedAccountIds = mutableSetOf<String>()
+
+        override fun hasClaimedFreeCredits(accountId: String): Boolean =
+            claimedAccountIds.contains(accountId)
+
+        override fun markFreeCreditsClaimed(accountId: String) {
+            claimedAccountIds += accountId
+        }
+
+        override fun balance(accountId: String): Int? =
+            balances[accountId]
+
+        override fun storeBalance(balance: Int?, accountId: String) {
+            if (balance == null) {
+                balances.remove(accountId)
+            } else {
+                balances[accountId] = balance
+            }
+        }
+
+        override fun clear() {
+            balances.clear()
+            claimedAccountIds.clear()
         }
     }
 }

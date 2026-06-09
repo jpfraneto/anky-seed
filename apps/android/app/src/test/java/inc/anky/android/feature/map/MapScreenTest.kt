@@ -3,6 +3,7 @@ package inc.anky.android.feature.map
 import inc.anky.android.core.storage.SessionSummary
 import inc.anky.android.core.storage.SessionDay
 import java.time.Instant
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,7 +56,7 @@ class MapScreenTest {
     }
 
     @Test
-    fun sessionAccessibilityLabelMatchesSwiftMetadataShape() {
+    fun sessionAccessibilityLabelMatchesCurrentSwiftPreviewShape() {
         val label = sessionAccessibilityLabel(
             SessionSummary(
                 hash = "a".repeat(64),
@@ -70,14 +71,11 @@ class MapScreenTest {
             ),
         )
 
-        assertTrue(label.startsWith("quiet thread, hello from the map, "))
-        assertTrue(label.contains("8m 10s"))
-        assertTrue(label.contains("4 words"))
-        assertTrue(label.endsWith("anky · reflected"))
+        assertEquals("quiet thread, hello from the map", label)
     }
 
     @Test
-    fun sessionAccessibilityLabelOmitsReflectionAndAnkyForFragments() {
+    fun sessionAccessibilityLabelUsesPreviewOnlyForFragments() {
         val label = sessionAccessibilityLabel(
             SessionSummary(
                 hash = "b".repeat(64),
@@ -92,9 +90,7 @@ class MapScreenTest {
             ),
         )
 
-        assertTrue(label.startsWith("short spark, "))
-        assertTrue(label.contains("0m 45s"))
-        assertTrue(label.contains("2 words"))
+        assertEquals("short spark", label)
         assertFalse(label.contains("anky"))
         assertFalse(label.contains("reflected"))
     }

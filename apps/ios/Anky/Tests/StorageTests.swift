@@ -77,7 +77,7 @@ final class StorageTests: XCTestCase {
     func testLocalArchiveImportsValidAnkyIdempotentlyByHash() throws {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)
-        let text = "1770000000000 h\n480000 i\n8000"
+        let text = "1770000000000 h\n480000 i"
 
         let first = try archive.importArtifact(text)
         let second = try archive.importArtifact(text)
@@ -96,7 +96,6 @@ final class StorageTests: XCTestCase {
         ```anky
         1770000000000 h
         480000 i
-        8000
         ```
         """
 
@@ -113,13 +112,22 @@ final class StorageTests: XCTestCase {
             "    1770000000000 h",
             "    240000 SPACE",
             "    240000 i   ",
-            "    8000",
             ""
         ].joined(separator: "\n")
 
         let saved = try archive.importArtifact(text)
 
-        XCTAssertEqual(saved.text, "1770000000000 h\n240000  \n240000 i\n8000")
+        XCTAssertEqual(saved.text, "1770000000000 h\n240000 SPACE\n240000 i")
+        XCTAssertEqual(saved.reconstructedText, "h i")
+    }
+
+    func testLocalArchiveMigratesLiteralSpacePayloadOnImport() throws {
+        let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+
+        let saved = try archive.importArtifact("1770000000000 h\n240000  \n240000 i")
+
+        XCTAssertEqual(saved.text, "1770000000000 h\n240000 SPACE\n240000 i")
         XCTAssertEqual(saved.reconstructedText, "h i")
     }
 
@@ -127,7 +135,7 @@ final class StorageTests: XCTestCase {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)
 
-        XCTAssertThrowsError(try archive.importArtifact("1770000000000 h\n471999 i\n8000")) { error in
+        XCTAssertThrowsError(try archive.importArtifact("1770000000000 h\n479999 i")) { error in
             XCTAssertEqual(error as? AnkyImportError, .invalidArtifact)
         }
         XCTAssertTrue(archive.fileURLs().isEmpty)
@@ -391,7 +399,7 @@ final class StorageTests: XCTestCase {
         try FileManager.default.createDirectory(at: files, withIntermediateDirectories: true)
 
         let backupAnkyText = "1770000000000 h\n480000 SPACE\n0200 i\n8000"
-        let normalizedAnkyText = "1770000000000 h\n480000  \n0200 i\n8000"
+        let normalizedAnkyText = "1770000000000 h\n480000 SPACE\n0200 i\n8000"
         let backupHash = AnkyHasher.sha256Hex(backupAnkyText)
         let localHash = AnkyHasher.sha256Hex(normalizedAnkyText)
         try Data(backupAnkyText.utf8).write(to: files.appendingPathComponent("\(backupHash).anky"))
@@ -438,7 +446,7 @@ final class StorageTests: XCTestCase {
         let sourceRoot = temporaryDirectory()
         let sourceArchive = LocalAnkyArchive(directoryURL: sourceRoot.appendingPathComponent("ankys", isDirectory: true))
         let sourceReflections = ReflectionStore(directoryURL: sourceRoot.appendingPathComponent("reflections", isDirectory: true))
-        let anky = try sourceArchive.save("1770000000000 h\n480000  \n0200 i\n8000")
+        let anky = try sourceArchive.save("1770000000000 h\n480000 SPACE\n0200 i\n8000")
         try sourceReflections.save(LocalReflection(
             hash: anky.hash,
             title: "Exported Thread",

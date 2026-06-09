@@ -1,5 +1,395 @@
 # iOS Delta Parity Log
 
+## 2026-06-08 Reveal Credit Sheet Icon Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/Credits/AnkyReflectionCreditsSheet.swift`, where the sheet uses native symbol imagery for refresh and ornamental credit-sheet marks.
+- Android target: remove text-glyph refresh/star stand-ins from the visible Reveal reflection credits sheet and use native Compose icon components.
+
+Migrated Android changes:
+
+- Replaced the Reveal credit sheet refresh glyph with `Icons.Filled.Refresh`.
+- Replaced the footer star text glyphs with `Icons.Filled.AutoAwesome`, matching the icon-component treatment already used by the You credit sheet.
+- Source parity coverage now asserts the Reveal credit sheet keeps native icons and does not render the old `↻` / `✦` text glyphs.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.revealCreditPurchaseSheetUsesCurrentIosCreditsSurface` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Manual side-by-side sheet screenshot QA remains pending.
+
+## 2026-06-08 You Credits Sheet Flow Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift` and `Features/Credits/AnkyReflectionCreditsSheet.swift`, where the You `Credits` row calls `openCreditsSheet()` and presents `.ankyReflectionCreditsSheet(...)`.
+- Android target: make the main You Credits row open the same reflection-credits sheet surface instead of navigating to a full detail page.
+
+Migrated Android changes:
+
+- Added a You-owned `ModalBottomSheet` for reflection credits, backed directly by `YouState`.
+- Reused the current iOS credit sheet copy and artwork: `Anky reflection credits`, `Your space to be seen, held, and mirrored.`, `credits_thread_background`, `available credits`, `best value`, and `Writing is free. One credit = one reflection.`
+- The You Credits row now clears the companion prompt, opens the sheet, and refreshes credits, matching iOS' `openCreditsSheet()` behavior.
+- Kept the existing direct `YouPage.Credits` route for native deep links / Reveal handoff while making the main row sheet-first like iOS.
+- Source parity coverage now asserts the iOS credits sheet presenter and Android `ModalBottomSheet` / `YouReflectionCreditsSheet` path.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Live purchase/balance QA still needs configured RevenueCat and Google Play products.
+
+## 2026-06-08 You Inline Title Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift`, which uses `.navigationTitle("You")` with `.navigationBarTitleDisplayMode(.inline)` and a trailing destructive-toggle toolbar item.
+- Android target: restore compact native-style You screen title chrome without bringing back the stale large tappable `you` title from the older home layout.
+
+Migrated Android changes:
+
+- Added a compact centered `You` title at the top of Android `YouHome`.
+- Moved the main row panel below the compact title area.
+- Kept the red exclamation toggle in the top-right position, matching iOS' title-plus-trailing-toolbar composition.
+- Updated source parity coverage to assert iOS inline navigation title and Android compact top title.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Manual screenshot QA should confirm top spacing and title weight against iOS.
+
+## 2026-06-08 You First-Screen Composition Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift` body. The live first screen renders the main `YouPanel` rows under the native navigation title; older `YouTitle`, `YouStatsPanel`, and `AnkyExperienceView` structs remain in the Swift file but are not mounted by the current body.
+- Android target: remove stale visible Android-only You header/stats entry points from the live first screen while retaining existing native code paths that are not currently mounted.
+
+Migrated Android changes:
+
+- Removed the large tappable `you` title from Android `YouHome`.
+- Removed the visible stats panel from Android `YouHome`, so the first screen now starts with the current Swift-shaped main row panel.
+- Left the retained local history and Anky Experience implementations in source, matching Swift's retained-but-unmounted code shape.
+- Updated source invariants to assert Android no longer mounts the stale visible title/stats call while preserving the retained implementations.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youExperienceCodeIsRetainedButNotVisibleOnCurrentHome --tests inc.anky.android.privacy.SourceInvariantTest.youStatsOpenCurrentIosAllAnkysHistory --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Manual screenshot QA should confirm the resulting top spacing against iOS' native navigation title area.
+
+## 2026-06-08 You Token Row Icon Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift`, where the `$ANKY on Base` menu row uses `you-icon-anky-token`, mapped to the native `dollarsign.circle` symbol.
+- Android target: stop using the large `$ANKY` coin art as the small row icon while keeping the coin art on the token detail page.
+
+Migrated Android changes:
+
+- Added `you_icon_anky_token.xml`, a small gold token-circle vector for the You home row.
+- Switched the `$ANKY on Base` `PromptRow` to `R.drawable.you_icon_anky_token`.
+- Kept `you_ankycoin.png` on the `$ANKY` detail page, matching iOS' separation between row symbol and detail artwork.
+- Updated source parity coverage so the You row shape requires the token-row icon and the detail page still uses the migrated coin image.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Manual visual QA should still confirm final icon weight/color against iOS.
+
+## 2026-06-08 You Device Lock Toggle Reachability Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift`, especially `shouldShowFaceIDControl`, `YouToggleRow`, and `setFaceID(_:)`.
+- Android target: keep app-lock control reachable from the production You home like iOS, while using Android-native device credential / biometric confirmation.
+
+Migrated Android changes:
+
+- You home now shows a main-panel `Device lock` / biometric lock row when Android reports usable biometric or device credential authentication.
+- The row uses the same visible status shape as iOS, showing `On` or `Off` beside the toggle state.
+- Enabling the row now routes through root `DeviceBiometricGate.authenticate("Protect ANKY with your device lock.")`, marks the one-time device-lock prompt completed, and skips the immediate duplicate unlock prompt after a successful enable.
+- Disabling the row turns off app lock directly through `UserSettingsStore`, matching iOS' direct-off behavior.
+- The retained Account page app-lock switch now uses the same authenticated root callback if that route is opened later.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeDeviceLockToggleMatchesCurrentIosReachability` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and JVM/assembly checks. Real device QA still needs to exercise the actual Android system credential prompt.
+
+## 2026-06-08 Delete Account and Data Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift` and `Features/You/YouViewModel.swift`, especially the `Delete Account and Data?` confirmation and `deleteAccountAndDataEverywhere()` destructive reset.
+- Android target: add the missing Android-native account/data deletion path while keeping platform differences explicit: local device data, Android settings/reminders, secure identity, RevenueCat logout, and cached credit state.
+
+Migrated Android changes:
+
+- You Account now exposes a red danger-zone `DELETE ACCOUNT AND DATA` action with the iOS confirmation title/buttons and Android-native device-only warning copy.
+- You home now mirrors iOS' hidden destructive-entry pattern: a red exclamation control toggles the `DELETE ACCOUNT AND DATA` row without adding an always-visible account row to the main panel.
+- `YouViewModel.deleteAccountAndDataEverywhere()` clears local `.anky` files, reflections, pending reflection requests, the session index, active draft, first-open state, settings/reminders, local identity, RevenueCat session/package cache, and per-account reflection credit cache.
+- Successful deletion resets You state to an empty local identity/credits/stats surface and keeps the success message visible: `Account and data deleted from this device.`
+- Root cleanup now clears the active Write state, refreshes Map, and removes the root credit badge without immediately recreating the You view model.
+- `WriteViewModel.resetAfterAccountDeletion()` cancels pending close/nudge/error work, clears the active draft, and prevents a pending writing session from archiving after the account delete.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.feature.you.YouViewModelStateTest --tests inc.anky.android.write.WriteViewModelTest --tests inc.anky.android.privacy.SourceInvariantTest.youDeleteAccountAndDataMatchesCurrentIosDestructiveFlow` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by JVM tests and source invariants. Device-level QA should still exercise the destructive flow with real Android credentials and a configured RevenueCat session.
+
+## 2026-06-08 You Local History Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/You/YouView.swift` and `Features/You/YouViewModel.swift`, especially `YouAllAnkysHistoryView`, `YouRoute.allAnkys`, and the tappable stats panel.
+- Android target: add the missing native You history surface so the stats panel can open all local complete `.anky` sessions like iOS.
+
+Migrated Android changes:
+
+- `YouState` now exposes `completeAnkySessions`, derived from the same rebuilt local `SessionIndexStore` data that powers Map.
+- The You stats panel is now tappable and exposes the iOS accessibility label `Open all ankys`.
+- Added a native Compose `YouHistoryPage` using the Map background texture, dark ink overlay, 87% responsive content width, `N anky/ankys` title, iOS-style empty `0 ankys` state, and `WRITE 8 MINUTES` CTA.
+- History rows render local complete sessions with reflection title/fallback title, medium-date/short-time metadata, word count, divider, chevron, and tap-through to the existing Reveal route by hash.
+- Empty history CTA routes through the existing root retry-writing path so it returns to Write and opens the writing portal.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.feature.you.YouViewModelStateTest --tests inc.anky.android.privacy.SourceInvariantTest.youStatsOpenCurrentIosAllAnkysHistory` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariants/JVM tests. It still needs visual QA against iOS' `YouAllAnkysHistoryView`.
+
+## 2026-06-08 Reflection Credit Cache Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Core/Mirror/MirrorEligibility.swift`, `Features/Reveal/RevealViewModel.swift`, and `Features/You/YouViewModel.swift`.
+- Android target: mirror iOS' per-account `ReflectionCreditCache` behavior so Reveal and You can show the last known credit balance immediately, preserve free-reflection claimed state, and keep balances current after mirror, refresh, purchase, and restore paths.
+
+Migrated Android changes:
+
+- Added `ReflectionCreditCache` with a `SharedPreferencesReflectionCreditCache` implementation using the same `anky.hasClaimedFreeReflections.<accountId>` and `anky.reflectionCreditBalance.<accountId>` key shapes as iOS, with fallback to Android's previous global free-claim preference.
+- `AppContainer` now owns the shared credit cache and injects it into Reveal and You.
+- Reveal now seeds `creditBalance` from the per-account cache, reads/marks the cached free-reflection claim through the same cache, stores non-null mirror `creditsRemaining`, and writes refreshed/purchased balances back to the cache.
+- You now seeds its credits state from the same per-account cache and writes refresh, purchase, and restore balances back under the configured account id.
+- You credits now mirrors iOS' unspent-gift gate: the page shows the device gift caption/detail, package rows are locked, conversation purchase actions are suppressed, and direct purchase attempts return `Use this device's first two reflections before buying more credits.` until the free-reflection claim has been marked.
+- You now rereads local identity, cached credit balance, cached free-claim state, and local stats on screen entry like Swift's `viewModel.refresh()` on appear.
+- Source parity coverage asserts iOS and Android both keep per-account credit/free-claim cache reads, write-backs, and unspent-gift purchase gating wired through Reveal and You.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.feature.reveal.RevealViewModelTest --tests inc.anky.android.feature.you.YouViewModelStateTest --tests inc.anky.android.privacy.SourceInvariantTest.reflectionCreditBalanceCacheMirrorsIosPerAccountPersistence` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This was verified with JVM tests and source invariants. Live RevenueCat / Google Play credit balance and purchase behavior still needs configured-device QA.
+
+## 2026-06-08 Reveal Credits Sheet Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/Credits/AnkyReflectionCreditsSheet.swift` and its Reveal presenter.
+- Android target: align the active Reveal credit-purchase sheet with the current iOS credit surface instead of leaving the newly migrated credits background asset unused.
+
+Migrated Android changes:
+
+- Reveal credit purchase sheet now uses the iOS title and subtitle: `Anky reflection credits` and `Your space to be seen, held, and mirrored.`
+- The available-credit card now uses the migrated `credits_thread_background` image with the same `available credits` framing.
+- Credit package rows now use the larger iOS-style row treatment, sparkle icon, serif title/price scale, and `best value` badge for the 11-reflection pack.
+- Footer copy now matches iOS: `Writing is free. One credit = one reflection.`
+- Source parity coverage asserts the active Android Reveal sheet stays aligned with the iOS credits sheet copy, badge, and image asset.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.revealCreditPurchaseSheetUsesCurrentIosCreditsSurface` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+
+Known follow-up:
+
+- This was not live-purchase tested. RevenueCat / Google Play purchase validation still requires configured Android products and a device/test account.
+
+## 2026-06-08 Device Lock Activation Prompt Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `AppRoot.presentFaceIDActivationPromptIfNeeded()` and `AnkyLocalization` device-lock copy.
+- Android target: add the missing native Android prompt that offers device-lock app protection after the user has at least one complete `.anky`.
+
+Migrated Android changes:
+
+- Android settings now persist `deviceLockPromptCompleted`, mirroring iOS' one-time privacy onboarding completion flag.
+- Android root now checks for an existing complete local session, available device credential/biometric support, app lock disabled, and prompt not completed before showing an activation dialog.
+- Dialog copy matches current iOS in Android-native terms: `Activate Device Lock` and `Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone.`
+- Confirming the dialog authenticates with `Protect ANKY with your device lock.`, enables Android app lock on success, and skips the immediate follow-up unlock prompt. Dismissing or choosing `not now` marks the prompt completed like iOS.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.appLockActivationPromptAfterFirstCompleteMatchesCurrentIos` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariants and JVM/assembly checks. A real device should still exercise the actual Android system credential prompt before release.
+
+## 2026-06-08 First Launch Onboarding Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky`, especially `Features/Onboarding/OnboardingView.swift` and `AppRoot.shouldShowOnboarding`.
+- Android target: move the newly migrated onboarding art from asset-only parity into a real native Android first-launch surface that follows the current iOS three-page flow.
+
+Migrated Android changes:
+
+- Added a native Compose `AnkyOnboardingScreen` with the same three full-screen onboarding images, copy lines, CTA labels, dot indicator, dark image overlay, and gold/purple CTA treatment.
+- Android root now shows onboarding on the unlocked Write tab before the normal launch bubble, suppressing root tab/presence chrome underneath it like iOS.
+- The final `Write 8 minutes` CTA hides onboarding, dismisses the launch prompt, navigates to Write, and opens the Write portal.
+- Source parity coverage now asserts the iOS and Android onboarding pages, CTAs, image resources, and root gating remain aligned.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.firstLaunchOnboardingMatchesCurrentIosPages` passed.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- `adb devices` showed no attached devices, so no fresh onboarding screenshot was captured in this pass.
+
+## 2026-06-08 Source Invariant / Protocol Duration Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky` plus shared TypeScript protocol sources in `protocol/implementations/typescript`.
+- Android target: clear stale source-invariant drift left after the You passes and align Android protocol duration/completion semantics with current Swift/TypeScript behavior.
+
+Migrated Android changes:
+
+- Android `.anky` duration now matches Swift and TypeScript: `durationMs` is writing duration only, and terminal silence does not make a fragment complete.
+- Added `AnkyDuration.writingDurationMs()` and changed `isComplete` to use `writingDurationMs >= 480000`.
+- Updated complete test/dev fixtures from `472000 + 8000 terminal silence` to `480000 writing duration` where the fixture is meant to be complete.
+- Android You identity copy now uses current Swift-shaped Base account / recovery phrase language while keeping Android secure-storage wording.
+- You privacy prompt actions now match the current Swift empty-action shape, and support prompt action copy now uses `Open email`.
+- Map day-detail rows now use the current Swift responsive content width, current session accessibility metadata shape, and no visible empty-state `no writing saved` copy.
+- Source invariants were refreshed for current Swift Write launch steps, hidden dev paste source shape, tag-session title typography, Map session rows, You privacy/support prompt actions, You identity copy, You export actions, You legal rows, and image asset coverage.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest` passed.
+- Focused protocol/mirror/write/reveal tests passed after the duration semantics update.
+- Full `./gradlew :app:testDebugUnitTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass did not run fresh emulator or real-device visual QA. Remaining full-goal gaps are still manual side-by-side iOS comparison and live RevenueCat/Google Play purchase QA.
+
+## 2026-06-08 You Readable Export Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky`, especially `BackupExporter.exportFormattedWritings()`, `YouViewModel.prepareFormattedWritingExport()`, and the current You Data prompt actions.
+- Android target: add the missing readable writing export path and align the Android You Data prompt with Swift's current `Back up now` / `Export writings` shape while keeping Android restore/ZIP backup native.
+
+Migrated Android changes:
+
+- Android storage now exports readable writings as `anky-writings-YYYY-MM-DD.md`.
+- The formatted export content mirrors iOS: each saved writing renders as `ISO8601-createdAt:reconstructedText`, with entries separated by blank lines.
+- `YouState` now tracks `formattedWritingExportFile` separately from the ZIP backup file.
+- Android You Data prompt now exposes `Back up now` and `Export writings`, matching the current Swift conversation actions.
+- Android You Data detail now shows readable export first, with `No writing to export yet` when empty, then keeps Android-native backup ZIP and restore controls in a separate panel.
+- Android share handling now supports `text/markdown` for readable writing exports in addition to ZIP backup sharing.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youExportPromptMatchesCurrentIosReadableExportActions --tests inc.anky.android.storage.StorageTest.formattedWritingExportMatchesIosReadableWritingShape --tests inc.anky.android.feature.you.YouViewModelStateTest` passed.
+- `./gradlew :app:assembleDebug` passed.
+
+Known follow-up:
+
+- Full `SourceInvariantTest` is still failing on six independent drift checks: current iOS changes around Write launch copy, hidden dev paste copy, Map session row source assertions, tag-session title typography assertions, You privacy/support prompt shape, and You identity copy. Those remain next-pass targets.
+
+## 2026-06-08 You Legal / Asset Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS worktree in `apps/ios/Anky`, especially the current `Features/You/YouView.swift` home panel and in-app legal sheets.
+- Android target: move the Android You home closer to the current Swift row order/copy while preserving native Android export, credit purchase, support email, and local token-copy behavior.
+
+Migrated Android changes:
+
+- Android You home now uses the current iOS-facing first panel shape: `Data`, `Credits`, `Support / Feedback`, `Privacy Policy`, `Terms & Conditions`, and `$ANKY on Base`.
+- Support and terms rows now use distinct native Android vector icons migrated from the iOS SVG concepts instead of reusing the credits icon.
+- Tapping `$ANKY on Base` now copies the Base contract address directly from the You home row and shows a temporary `Copied to clipboard` subtitle, matching the Swift row behavior.
+- Android now includes a native Terms page with the current iOS legal structure, adapted only where Android must refer to Google Play instead of Apple's App Store.
+- Newly present iOS raster representatives for onboarding and credits/reflections artwork were migrated into Android drawable resources for asset parity coverage.
+- The iOS asset coverage invariant now accepts Android vector drawables for iOS SVG image sets and parent-prefixed names for numeric iOS filenames such as `onboarding/1.png`.
+
+Validation run:
+
+- `./gradlew :app:compileDebugKotlin` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.iosImageAssetsHaveAndroidDrawableResources --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- `./gradlew :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- The full `SourceInvariantTest` suite currently fails on older assertions that no longer match the current dirty iOS source for Write launch prompts, tag session refresh, Map session accessibility, You export/privacy/support/identity copy, and related drift. Those failures are now useful next-pass parity targets rather than regressions from this You legal/asset pass.
+
 ## 2026-06-03 Inline Reveal / Write Input Parity Pass
 
 Baseline:

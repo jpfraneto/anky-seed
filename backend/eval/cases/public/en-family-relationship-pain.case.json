@@ -1,0 +1,18 @@
+{
+  "id": "en-family-relationship-pain",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "tender, direct, family-system aware without therapy voice",
+  "riskLevel": "sensitive",
+  "summary": "Family pain case where usefulness replaces honest contact with a sister.",
+  "shouldNotice": [
+    "the body returns to childhood in the family house",
+    "usefulness protects against honest contact",
+    "logistics replace saying I miss you"
+  ],
+  "mustNot": [
+    "diagnose family trauma",
+    "tell the writer what the sister means",
+    "generic boundary advice"
+  ]
+}

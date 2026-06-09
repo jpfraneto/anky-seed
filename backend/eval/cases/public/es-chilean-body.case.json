@@ -1,0 +1,19 @@
+{
+  "id": "es-chilean-body",
+  "source": "synthetic",
+  "expectedLanguage": "es",
+  "expectedRegister": "Chilean Spanish, intimate, casual, not Argentine",
+  "riskLevel": "none",
+  "summary": "Spanish/Chilean body-pressure entry about performance, fatigue, love, and rest.",
+  "shouldNotice": [
+    "body signals in guata and chest",
+    "performance pressure even around silence",
+    "love mixed with pressure and tiredness"
+  ],
+  "mustNot": [
+    "answer in English",
+    "use Argentine phrasing",
+    "medicalize the body signal",
+    "generic self-care advice"
+  ]
+}

@@ -8,11 +8,14 @@ object AnkyDuration {
     const val CompleteRitualMs: Long = CompleteRitualMinutes * 60 * 1000L
     const val TerminalSilenceMs: Long = 8000
 
+    fun writingDurationMs(parsed: ParsedAnky): Long =
+        parsed.events.sumOf { it.deltaMs }
+
     fun durationMs(parsed: ParsedAnky): Long =
-        parsed.events.sumOf { it.deltaMs } + (parsed.terminalSilenceMs ?: 0)
+        writingDurationMs(parsed)
 
     fun isComplete(parsed: ParsedAnky): Boolean =
-        durationMs(parsed) >= CompleteRitualMs && parsed.terminalSilenceMs == TerminalSilenceMs
+        writingDurationMs(parsed) >= CompleteRitualMs
 
     fun formatted(durationMs: Long): String {
         val totalSeconds = maxOf(0, durationMs / 1000)

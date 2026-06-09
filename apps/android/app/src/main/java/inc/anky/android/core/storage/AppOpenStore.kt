@@ -31,6 +31,10 @@ class AppOpenStore(
         return candidateDay
     }
 
+    fun clear() {
+        preferences.edit().remove(KEY_FIRST_OPEN_EPOCH_MS).apply()
+    }
+
     private companion object {
         const val KEY_FIRST_OPEN_EPOCH_MS = "first_open_epoch_ms"
     }

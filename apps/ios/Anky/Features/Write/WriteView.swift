@@ -5,6 +5,7 @@ struct WriteView: View {
     @StateObject private var viewModel: WriteViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var keyboardFrame: CGRect?
+    @State private var lastObservedKeyboardHeight: CGFloat?
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
@@ -28,22 +29,25 @@ struct WriteView: View {
                 let shouldPreReserveKeyboard = shouldFocus && viewModel.canAcceptInput && keyboardFrame == nil
                 let keyboardTop = keyboardFrame?.minY ?? (
                     shouldPreReserveKeyboard
-                    ? globalFrame.maxY - predictedKeyboardHeight(
+                    ? globalFrame.maxY - reservedKeyboardHeight(
                         containerSize: geometry.size,
                         safeAreaBottom: geometry.safeAreaInsets.bottom
                     )
                     : globalFrame.maxY
                 )
-                let visibleHeight = max(1, min(globalFrame.maxY, keyboardTop) - globalFrame.minY)
+                let keyboardOverlap = max(0, globalFrame.maxY - keyboardTop)
                 let keyboardIsVisible = keyboardTop < globalFrame.maxY
                 let ringSize = RitualRingsView.size
                 let ringRadius = ringSize / 2
                 let ringCenter = CGPoint(
                     x: geometry.size.width / 2,
-                    y: max(ringRadius + 24, geometry.size.height * 0.36)
+                    y: stableRingCenterY(
+                        globalFrame: globalFrame,
+                        ringRadius: ringRadius
+                    )
                 )
-                let textViewHeight = max(1, visibleHeight)
-                let textBottomInset: CGFloat = keyboardIsVisible ? 24 : 36
+                let textViewHeight = max(1, geometry.size.height)
+                let textBottomInset: CGFloat = keyboardOverlap + (keyboardIsVisible ? 24 : 36)
                 let textSideInset: CGFloat = 24
                 let acceptsWritingInput = shouldFocus && viewModel.canAcceptInput
 
@@ -93,31 +97,31 @@ struct WriteView: View {
                             x: ringCenter.x,
                             y: max(16, ringCenter.y - ringRadius - 24)
                         )
-                        .accessibilityLabel("Writing time \(AnkyDuration.clock(viewModel.elapsedMs))")
+                        .accessibilityLabel(AnkyLocalization.ui("Writing time %@", AnkyDuration.clock(viewModel.elapsedMs)))
                         .transaction { transaction in
                             transaction.animation = nil
                         }
                         .transition(.opacity)
                 }
             }
-
         }
-        .background(Color(.systemBackground))
+        .background(pageBackground)
+        .ignoresSafeArea(.container, edges: isImmersiveWriting ? [.top, .bottom] : [])
         .ignoresSafeArea(.keyboard)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(viewModel.shouldShowTopActions ? .visible : .hidden, for: .navigationBar)
+        .toolbar(showsMapButton ? .visible : .hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if showsMapButton {
                     Button {
-                        viewModel.clearCurrentSession()
+                        viewModel.persistForNavigation()
                         onCloseToMap()
                     } label: {
                         Image(systemName: "chevron.left")
                     }
-                    .accessibilityLabel("Open Map")
+                    .accessibilityLabel(AnkyLocalization.ui("Open Map"))
                 }
             }
 
@@ -128,12 +132,12 @@ struct WriteView: View {
                     } label: {
                         Image(systemName: "doc")
                     }
-                    .accessibilityLabel("Begin a new page")
+                    .accessibilityLabel(AnkyLocalization.ui("Begin a new page"))
                 }
             }
         }
-        .statusBarHidden(!viewModel.shouldShowTopActions)
-        .persistentSystemOverlays(viewModel.shouldShowTopActions ? .visible : .hidden)
+        .statusBarHidden(isImmersiveWriting)
+        .persistentSystemOverlays(isImmersiveWriting ? .hidden : .visible)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
             updateKeyboardFrame(from: notification)
         }
@@ -144,7 +148,7 @@ struct WriteView: View {
             updateKeyboardFrame(from: notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardFrame = nil
+            updateKeyboardFrame(nil)
         }
         .onAppear {
             viewModel.bindCompletion(onCompleted)
@@ -173,6 +177,14 @@ struct WriteView: View {
         return 0.32 + resolveProgress * 0.68
     }
 
+    private var pageBackground: Color {
+        isImmersiveWriting ? .black : Color(.systemBackground)
+    }
+
+    private var isImmersiveWriting: Bool {
+        viewModel.hasStarted && !showsMapButton
+    }
+
     private var activeRhythmColor: Color {
         WritingRhythmColor.color(progress: latestCharacterColorProgress)
     }
@@ -182,11 +194,45 @@ struct WriteView: View {
     }
 
     private var showsMapButton: Bool {
-        !viewModel.hasActiveDotAnky || viewModel.isPausedOnDraft || viewModel.completedArtifact != nil
+        !viewModel.hasActiveDotAnky
+            || viewModel.isPausedOnDraft
+            || viewModel.isWaitingToResumeContinuedDraft
+            || viewModel.completedArtifact != nil
     }
 
     private func updateKeyboardFrame(from notification: Notification) {
-        keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+        let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+        updateKeyboardFrame(frame, from: notification)
+    }
+
+    private func updateKeyboardFrame(_ frame: CGRect?, from notification: Notification? = nil) {
+        if let frame {
+            let height = max(0, UIScreen.main.bounds.maxY - frame.minY)
+            if height > 0 {
+                lastObservedKeyboardHeight = height
+            }
+        }
+
+        let duration = notification?.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        let animation = Animation.easeOut(duration: max(0.16, duration ?? 0.24))
+        withAnimation(animation) {
+            keyboardFrame = frame
+        }
+    }
+
+    private func stableRingCenterY(globalFrame: CGRect, ringRadius: CGFloat) -> CGFloat {
+        let targetGlobalY = UIScreen.main.bounds.height * 0.36
+        let targetLocalY = targetGlobalY - globalFrame.minY
+        let minimumY = ringRadius + 24
+        let maximumY = max(minimumY, globalFrame.height - ringRadius - 24)
+        return min(max(targetLocalY, minimumY), maximumY)
+    }
+
+    private func reservedKeyboardHeight(containerSize: CGSize, safeAreaBottom: CGFloat) -> CGFloat {
+        if let lastObservedKeyboardHeight {
+            return lastObservedKeyboardHeight
+        }
+        return predictedKeyboardHeight(containerSize: containerSize, safeAreaBottom: safeAreaBottom)
     }
 
     private func predictedKeyboardHeight(containerSize: CGSize, safeAreaBottom: CGFloat) -> CGFloat {
@@ -401,7 +447,7 @@ private struct RitualRingsView: View {
                     .frame(width: Self.silenceDiameter + 10, height: Self.silenceDiameter + 10)
                     .shadow(color: Color(red: 0.95, green: 0.04, blue: 0.03).opacity(0.14 * voidPulse), radius: 8)
 
-                if silenceElapsedMs >= 3000 {
+                if silenceElapsedMs >= 3000 && remainingSilenceSeconds > 0 {
                     Text("\(remainingSilenceSeconds)")
                         .font(.system(size: 42, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AnkyTheme.gold.opacity(0.88))

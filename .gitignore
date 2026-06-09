@@ -37,3 +37,7 @@ historical_ankys.txt
 tmp/
 
 *.p8
+
+# Local prompt evolution artifacts
+backend/eval/cases/private/
+backend/eval/runs/

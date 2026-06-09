@@ -73,7 +73,7 @@ struct AnkyTabBarCTAOverlay: View {
                                 .opacity(0.9)
                         }
 
-                        Text(controller.title)
+                        Text(AnkyLocalization.ui(controller.title))
                             .font(.system(size: 22, weight: .medium, design: .serif))
                             .foregroundStyle(
                                 LinearGradient(

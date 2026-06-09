@@ -7,7 +7,7 @@ internal object DevAnkyFixture {
 100000 l
 100000 l
 100000 o
-72000 !
+80000 !
 8000
 """.trimIndent()
 }

@@ -16,9 +16,9 @@ struct AnkyOnboardingView: View {
     ]
 
     private let lines = [
-        "You don't need another prompt.",
-        "Write forward. 8 seconds of silence ends it.",
-        "Tell me who you are."
+        "You don't need another place to perform.",
+        "Anky gives you 8 minutes to let out what you're carrying.",
+        "At the end, you see what was underneath."
     ]
 
     var body: some View {
@@ -53,7 +53,7 @@ struct AnkyOnboardingView: View {
                 VStack(spacing: 0) {
                     Spacer()
 
-                    Text(lines[page])
+                    Text(AnkyLocalization.ui(lines[page]))
                         .font(.system(size: 27, weight: .medium, design: .serif))
                         .foregroundStyle(
                             LinearGradient(
@@ -97,7 +97,7 @@ struct AnkyCTAButton: View {
 
             action()
         } label: {
-            Text(title)
+            Text(AnkyLocalization.ui(title))
                 .font(.system(size: 24, weight: .medium, design: .serif))
                 .foregroundStyle(
                     LinearGradient(
@@ -221,7 +221,7 @@ struct AnkyOnboardingFooter: View {
 
     private let ctas = [
         "Be with what is here",
-        "No backspace. Just write.",
+        "Let it all out",
         "Write 8 minutes"
     ]
 

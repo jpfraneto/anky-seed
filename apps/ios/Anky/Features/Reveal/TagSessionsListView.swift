@@ -30,7 +30,7 @@ struct TagSessionsListView: View {
                         .padding(.top, 18)
 
                     if sessions.isEmpty {
-                        Text("no saved sessions with this tag.")
+                        Text(AnkyLocalization.ui("no saved sessions with this tag."))
                             .font(.system(size: 14, weight: .medium, design: .monospaced))
                             .foregroundStyle(RevealPalette.paper.opacity(0.68))
                             .padding(.top, 8)
@@ -79,7 +79,7 @@ private struct TagSessionRow: View {
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(RevealPalette.paper.opacity(0.58))
 
-                Text("\(summary.wordCount) \(summary.wordCount == 1 ? "word" : "words")")
+                Text("\(summary.wordCount) \(AnkyLocalization.ui(summary.wordCount == 1 ? "word" : "words"))")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(RevealPalette.paper.opacity(0.48))
             }

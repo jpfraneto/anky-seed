@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -407,16 +408,20 @@ private fun DayDetail(day: SessionDay, onBack: () -> Unit, onOpenReveal: (String
                 )
                 Spacer(Modifier.size(48.dp))
             }
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 26.dp)
-                    .padding(top = 24.dp, bottom = 72.dp),
-            ) {
-                if (day.sessions.isEmpty()) item {
-                    Text("no writing saved", style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted), modifier = Modifier.fillMaxWidth().padding(top = 96.dp), textAlign = TextAlign.Center)
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val contentWidth = maxWidth * 0.87f
+                val horizontalPadding = (maxWidth - contentWidth) / 2
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = horizontalPadding)
+                        .padding(top = 24.dp, bottom = 72.dp),
+                ) {
+                    if (day.sessions.isEmpty()) item {
+                        Spacer(Modifier.fillMaxWidth().height(180.dp))
+                    }
+                    items(day.sessions, key = { it.hash }) { SessionRow(it, onOpenReveal) }
                 }
-                items(day.sessions, key = { it.hash }) { SessionRow(it, onOpenReveal) }
             }
         }
     }
@@ -470,17 +475,7 @@ internal fun sessionAccessibilityLabel(session: SessionSummary): String =
     listOfNotNull(
         session.reflectedTitle(),
         session.preview,
-        sessionMetadataText(session),
     ).joinToString(", ")
-
-private fun sessionMetadataText(session: SessionSummary): String =
-    buildList {
-        add(session.createdAt.formattedForMapSessionTime())
-        add(AnkyDuration.formatted(session.durationMs))
-        add("${session.wordCount} ${if (session.wordCount == 1) "word" else "words"}")
-        if (session.isComplete) add("anky")
-        if (session.hasReflection) add("reflected")
-    }.joinToString(" · ")
 
 private fun SessionSummary.reflectedTitle(): String? =
     reflectionTitle

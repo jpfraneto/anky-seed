@@ -15,6 +15,7 @@ import com.revenuecat.purchases.PurchasesException
 import com.revenuecat.purchases.PurchasesTransactionException
 import com.revenuecat.purchases.awaitGetVirtualCurrencies
 import com.revenuecat.purchases.awaitLogIn
+import com.revenuecat.purchases.awaitLogOut
 import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
 import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
@@ -45,6 +46,7 @@ interface CreditsClient {
     suspend fun purchase(packageId: String, activity: Activity?): CreditState
     suspend fun restorePurchases(): CreditState
     suspend fun invalidateCreditBalanceCache()
+    suspend fun logOutIfConfigured()
 }
 
 class RevenueCatCreditsClient(
@@ -156,6 +158,15 @@ class RevenueCatCreditsClient(
         if (configured) {
             runCatching { Purchases.sharedInstance.invalidateVirtualCurrenciesCache() }
         }
+    }
+
+    override suspend fun logOutIfConfigured() {
+        if (!configured || !Purchases.isConfigured) return
+        runCatching { Purchases.sharedInstance.awaitLogOut() }
+        configured = false
+        configuredAppUserId = null
+        configureFailure = null
+        revenueCatPackages.clear()
     }
 
     private suspend fun loadCreditPackages(purchases: Purchases): List<RevenueCatPackage> {

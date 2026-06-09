@@ -1,0 +1,19 @@
+{
+  "id": "mixed-spanglish-shame",
+  "source": "synthetic",
+  "expectedLanguage": "mixed",
+  "expectedRegister": "Spanglish, intimate, self-aware, lightly informal",
+  "riskLevel": "none",
+  "summary": "Spanglish entry about hiding desire behind jokes/lore to avoid rejection.",
+  "shouldNotice": [
+    "jokes and lore protect against wanting",
+    "fear of rejection makes desire feel dangerous",
+    "the hidden ask is that the work matters"
+  ],
+  "mustNot": [
+    "flatten into only English",
+    "flatten into only formal Spanish",
+    "mock the Spanglish register",
+    "generic motivation advice"
+  ]
+}

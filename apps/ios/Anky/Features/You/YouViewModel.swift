@@ -9,7 +9,7 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var formattedWritingExportURL: URL?
     @Published private(set) var errorMessage: String?
     @Published private(set) var statusMessage: String?
-    @Published private(set) var identityStatus = "Local identity"
+    @Published private(set) var identityStatus = AnkyLocalization.ui("Private access")
     @Published private(set) var isIdentityBackedUpToICloud = false
     @Published private(set) var sensitiveIdentityConfirmed = false
     @Published private(set) var recoveryPhraseText = ""
@@ -89,7 +89,7 @@ final class YouViewModel: ObservableObject {
             reflectionFileURLs = reflectionStore.fileURLs()
             backupZipURL = try backupExporter.exportBackup()
             formattedWritingExportURL = try backupExporter.exportFormattedWritings()
-            identityStatus = "Local identity"
+            identityStatus = AnkyLocalization.ui("Private access")
             isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             let iCloudStatus = iCloudBackupStore.status
             isICloudBackupEnabled = iCloudStatus.isEnabled
@@ -99,7 +99,7 @@ final class YouViewModel: ObservableObject {
             updateStats()
             errorMessage = nil
         } catch {
-            errorMessage = "Could not load the local Base identity."
+            errorMessage = AnkyLocalization.ui("Could not load private access.")
         }
     }
 
@@ -118,7 +118,7 @@ final class YouViewModel: ObservableObject {
         } catch {
             backupZipURL = nil
             formattedWritingExportURL = nil
-            errorMessage = "Could not create a backup zip."
+            errorMessage = AnkyLocalization.ui("Could not create a backup zip.")
         }
     }
 
@@ -127,21 +127,21 @@ final class YouViewModel: ObservableObject {
             formattedWritingExportURL = try backupExporter.exportFormattedWritings()
             errorMessage = nil
             if formattedWritingExportURL == nil {
-                statusMessage = "There is no writing to export yet."
+                statusMessage = AnkyLocalization.ui("There is no writing to export yet.")
             }
         } catch {
             formattedWritingExportURL = nil
-            errorMessage = "Could not create a writing export."
+            errorMessage = AnkyLocalization.ui("Could not create a writing export.")
         }
     }
 
     func confirmSensitiveIdentityAccess() async {
-        sensitiveIdentityConfirmed = await biometricAuth.confirm(reason: "Confirm access to local ANKY identity settings.")
+        sensitiveIdentityConfirmed = await biometricAuth.confirm(reason: AnkyLocalization.ui("Confirm access to Anky private settings."))
     }
 
     func revealRecoveryPhrase() async {
-        guard await biometricAuth.confirm(reason: "Show your ANKY recovery phrase.") else {
-            errorMessage = "Could not confirm identity."
+        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Show your Anky recovery words.")) else {
+            errorMessage = AnkyLocalization.ui("Could not confirm access.")
             return
         }
 
@@ -150,32 +150,32 @@ final class YouViewModel: ObservableObject {
             sensitiveIdentityConfirmed = true
             errorMessage = nil
         } catch {
-            errorMessage = "Could not load the recovery phrase."
+            errorMessage = AnkyLocalization.ui("Could not load the recovery words.")
         }
     }
 
     func backUpIdentityToICloudKeychain() async {
-        guard await biometricAuth.confirm(reason: "Back up your ANKY recovery phrase to iCloud Keychain.") else {
-            errorMessage = "Could not confirm identity."
+        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Back up your Anky recovery words to iCloud Keychain.")) else {
+            errorMessage = AnkyLocalization.ui("Could not confirm access.")
             return
         }
 
         do {
             try identityStore.backUpRecoveryPhraseToICloudKeychain()
             isIdentityBackedUpToICloud = true
-            statusMessage = "Recovery phrase saved to iCloud Keychain. Use Data export for writing and reflection backups."
+            statusMessage = AnkyLocalization.ui("Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups.")
             errorMessage = nil
         } catch WriterIdentityStoreError.iCloudBackupVerificationFailed {
             isIdentityBackedUpToICloud = false
-            errorMessage = "iCloud Keychain did not confirm the identity backup."
+            errorMessage = AnkyLocalization.ui("iCloud Keychain did not confirm the recovery backup.")
         } catch {
-            errorMessage = "Could not back up Anky identity."
+            errorMessage = AnkyLocalization.ui("Could not back up Anky recovery.")
         }
     }
 
     func importRecoveryPhrase(_ phraseText: String) async -> Bool {
-        guard await biometricAuth.confirm(reason: "Recover your ANKY local identity.") else {
-            errorMessage = "Could not confirm identity."
+        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Recover your Anky access.")) else {
+            errorMessage = AnkyLocalization.ui("Could not confirm access.")
             return false
         }
 
@@ -186,24 +186,24 @@ final class YouViewModel: ObservableObject {
             sensitiveIdentityConfirmed = false
             isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             refresh()
-            statusMessage = "Identity recovered."
+            statusMessage = AnkyLocalization.ui("Access recovered.")
             errorMessage = nil
             return true
         } catch RecoveryPhraseError.invalidWordCount {
-            errorMessage = "Recovery phrase must be 12 words."
+            errorMessage = AnkyLocalization.ui("Recovery words must be 12 words.")
             return false
         } catch RecoveryPhraseError.unknownWord {
-            errorMessage = "Recovery phrase contains an unrecognized word."
+            errorMessage = AnkyLocalization.ui("Recovery words contain an unrecognized word.")
             return false
         } catch {
-            errorMessage = "Could not recover that identity."
+            errorMessage = AnkyLocalization.ui("Could not recover access.")
             return false
         }
     }
 
     func recoverIdentityFromICloudKeychain() async {
-        guard await biometricAuth.confirm(reason: "Recover your ANKY identity from iCloud Keychain.") else {
-            errorMessage = "Could not confirm identity."
+        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Recover your Anky access from iCloud Keychain.")) else {
+            errorMessage = AnkyLocalization.ui("Could not confirm access.")
             return
         }
 
@@ -213,18 +213,18 @@ final class YouViewModel: ObservableObject {
             recoveryPhraseText = ""
             sensitiveIdentityConfirmed = false
             refresh()
-            statusMessage = "Recovery phrase restored from iCloud Keychain. Use Data restore for writing and reflections."
+            statusMessage = AnkyLocalization.ui("Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections.")
             errorMessage = nil
         } catch WriterIdentityStoreError.missingICloudBackup {
-            errorMessage = "No Anky identity backup was found in iCloud Keychain."
+            errorMessage = AnkyLocalization.ui("No Anky recovery backup was found in iCloud Keychain.")
         } catch {
-            errorMessage = "Could not recover the Anky identity from iCloud Keychain."
+            errorMessage = AnkyLocalization.ui("Could not recover Anky access from iCloud Keychain.")
         }
     }
 
     func enableICloudBackup() async {
-        guard await biometricAuth.confirm(reason: "Enable encrypted Anky iCloud backup.") else {
-            errorMessage = "Could not confirm identity."
+        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Enable encrypted Anky iCloud backup.")) else {
+            errorMessage = AnkyLocalization.ui("Could not confirm access.")
             return
         }
 
@@ -234,22 +234,22 @@ final class YouViewModel: ObservableObject {
         do {
             try iCloudBackupStore.enableAndBackUpNow()
             refresh()
-            statusMessage = "Encrypted iCloud backup is on."
+            statusMessage = AnkyLocalization.ui("Encrypted iCloud backup is on.")
             errorMessage = nil
         } catch ICloudBackupError.noLocalData {
             iCloudBackupStore.setEnabled(true)
             refresh()
-            statusMessage = "Encrypted iCloud backup is on. It will run after your next writing session."
+            statusMessage = AnkyLocalization.ui("Encrypted iCloud backup is on. It will run after your next writing session.")
             errorMessage = nil
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not enable iCloud backup."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Could not enable iCloud backup.")
         }
     }
 
     func disableICloudBackup() {
         iCloudBackupStore.setEnabled(false)
         refresh()
-        statusMessage = "Encrypted iCloud backup is off."
+        statusMessage = AnkyLocalization.ui("Encrypted iCloud backup is off.")
         errorMessage = nil
     }
 
@@ -260,10 +260,10 @@ final class YouViewModel: ObservableObject {
         do {
             try iCloudBackupStore.backUpNow()
             refresh()
-            statusMessage = "Encrypted iCloud backup updated."
+            statusMessage = AnkyLocalization.ui("Encrypted iCloud backup updated.")
             errorMessage = nil
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not update iCloud backup."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Could not update iCloud backup.")
         }
     }
 
@@ -280,7 +280,7 @@ final class YouViewModel: ObservableObject {
     func setDailyReminder(enabled: Bool, date: Date) async {
         if enabled {
             guard await notifications.requestAuthorization() else {
-                errorMessage = "Notifications are not allowed for ANKY."
+                errorMessage = AnkyLocalization.ui("Notifications are not allowed for ANKY.")
                 return
             }
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
@@ -291,21 +291,10 @@ final class YouViewModel: ObservableObject {
                 )
                 errorMessage = nil
             } catch {
-                errorMessage = "Could not schedule the daily reminder."
+                errorMessage = AnkyLocalization.ui("Could not schedule the daily reminder.")
             }
         } else {
             notifications.cancelDailyReminder()
-        }
-    }
-
-    func rebuildSessionIndex() {
-        do {
-            try sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
-            refresh()
-            statusMessage = "Map index repaired."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not rebuild the local session index."
         }
     }
 
@@ -313,85 +302,18 @@ final class YouViewModel: ObservableObject {
         do {
             let result = try backupImporter.importBackup(from: url)
             refresh()
-            statusMessage = "Imported \(Self.pluralize(result.ankyCount, singular: ".anky file", plural: ".anky files")) and \(Self.pluralize(result.reflectionCount, singular: "reflection", plural: "reflections"))."
+            statusMessage = AnkyLocalization.ui(
+                "Imported %d %@ and %d %@.",
+                result.ankyCount,
+                AnkyLocalization.ui(result.ankyCount == 1 ? ".anky file" : ".anky files"),
+                result.reflectionCount,
+                AnkyLocalization.ui(result.reflectionCount == 1 ? "reflection" : "reflections")
+            )
             errorMessage = nil
             return true
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not import that backup: \(error)."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Could not import that backup: %@.", String(describing: error))
             return false
-        }
-    }
-
-    func clearLocalReflections() {
-        do {
-            try reflectionStore.clear()
-            _ = try? sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
-            refresh()
-            statusMessage = "Local reflections cleared."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not clear local reflections."
-        }
-    }
-
-    func clearLocalArchive() {
-        do {
-            try archive.clear()
-            try? sessionIndexStore.clear()
-            refresh()
-            statusMessage = "Local .anky archive cleared."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not clear local .anky files."
-        }
-    }
-
-    func clearLocalWritingData() {
-        do {
-            try archive.clear()
-            try reflectionStore.clear()
-            try? sessionIndexStore.clear()
-            refresh()
-            statusMessage = "Local writing data cleared."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not clear local writing data."
-        }
-    }
-
-    func resetIdentityForDevelopment() {
-        do {
-            try identityStore.resetForDevelopment()
-            refresh()
-            statusMessage = "Local identity reset."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not reset the local identity."
-        }
-    }
-
-    func wipeEverythingForDevelopment() {
-        do {
-            try archive.clear()
-            try reflectionStore.clear()
-            try? sessionIndexStore.clear()
-            ActiveDraftStore().clear()
-            notifications.cancelDailyReminder()
-            appOpenStore.clear()
-            clearDevelopmentDefaults()
-            try identityStore.resetForDevelopment(includeICloudBackup: true)
-            accountId = ""
-            recoveryPhraseText = ""
-            sensitiveIdentityConfirmed = false
-            ReflectionCreditCache.clear(defaults: defaults)
-            creditBalance = nil
-            creditPackages = []
-            hasClaimedFreeCredits = false
-            refresh()
-            statusMessage = "Development wipe complete. A fresh local account was created."
-            errorMessage = nil
-        } catch {
-            errorMessage = "Could not wipe the app for development."
         }
     }
 
@@ -421,10 +343,10 @@ final class YouViewModel: ObservableObject {
             creditBalance = nil
             creditPackages = []
             hasClaimedFreeCredits = false
-            statusMessage = "Account and data deleted from this device and Anky iCloud backup."
+            statusMessage = AnkyLocalization.ui("Account and data deleted from this device and Anky iCloud backup.")
             errorMessage = nil
         } catch {
-            errorMessage = "Could not delete all account data."
+            errorMessage = AnkyLocalization.ui("Could not delete all account data.")
         }
     }
 
@@ -449,7 +371,7 @@ final class YouViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             if showError {
-                errorMessage = "Could not load credits."
+                errorMessage = AnkyLocalization.ui("Could not load credits.")
             }
         }
     }
@@ -478,13 +400,13 @@ final class YouViewModel: ObservableObject {
             creditBalance = balance
             ReflectionCreditCache.storeBalance(balance, accountId: accountId, defaults: defaults)
             if let balance {
-                statusMessage = "Credits updated. You have \(balance) \(balance == 1 ? "credit" : "credits")."
+                statusMessage = AnkyLocalization.ui("Credits updated. You have %d %@.", balance, AnkyLocalization.ui(balance == 1 ? "credit" : "credits"))
             } else {
-                statusMessage = "Credits updated."
+                statusMessage = AnkyLocalization.ui("Credits updated.")
             }
             errorMessage = nil
         } catch {
-            errorMessage = "Payment did not finish. No credits were added."
+            errorMessage = AnkyLocalization.ui("Payment did not finish. No credits were added.")
         }
     }
 
@@ -508,9 +430,9 @@ final class YouViewModel: ObservableObject {
             return AnkyLocalization.text(.creditGiftSummary)
         }
         guard let creditBalance else {
-            return "reflection balance"
+            return AnkyLocalization.ui("reflection balance")
         }
-        return "\(creditBalance) \(creditBalance == 1 ? "credit" : "credits")"
+        return "\(creditBalance) \(AnkyLocalization.ui(creditBalance == 1 ? "credit" : "credits"))"
     }
 
     var creditDetailTitle: String {
@@ -521,7 +443,7 @@ final class YouViewModel: ObservableObject {
     }
 
     var creditDetailCaption: String {
-        hasUnspentGiftCredit ? AnkyLocalization.text(.creditGiftCaption) : "credits"
+        hasUnspentGiftCredit ? AnkyLocalization.text(.creditGiftCaption) : AnkyLocalization.ui("credits")
     }
 
     var freeCreditMessage: String {
@@ -539,7 +461,7 @@ final class YouViewModel: ObservableObject {
         components.path = "support@anky.app"
         components.queryItems = [
             URLQueryItem(name: "subject", value: "Anky support / feedback"),
-            URLQueryItem(name: "body", value: "account id: \(accountId)\n\n")
+            URLQueryItem(name: "body", value: "support id: \(accountId)\n\n")
         ]
         return components.url
     }

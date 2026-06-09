@@ -27,6 +27,10 @@ class ReflectionRequestStore private constructor(
         save(load(nowMs).filter { it.hash != hash })
     }
 
+    fun clear() {
+        if (file.exists()) file.delete()
+    }
+
     private fun load(nowMs: Long): List<PendingRequest> {
         if (!file.exists()) return emptyList()
         val decoded = runCatching {

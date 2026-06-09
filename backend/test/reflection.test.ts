@@ -21,9 +21,16 @@ describe("dotAnky reflection helpers", () => {
   });
 
   test("preserves spaces and punctuation", () => {
-    const parsed = parseDotAnky("0000 h\n0178 i\n0044  \n0091 !\n");
+    const parsed = parseDotAnky("0000 h\n0178 i\n0044 SPACE\n0091 !\n");
 
     expect(reconstructText(parsed)).toBe("hi !");
+  });
+
+  test("rejects non-canonical literal space payloads", () => {
+    const parsed = parseDotAnky("0000 h\n0044  \n0091 i\n");
+
+    expect(reconstructText(parsed)).toBe("hi");
+    expect(parsed.invalidLineCount).toBe(1);
   });
 
   test("ignores invalid lines", () => {
@@ -69,18 +76,15 @@ describe("dotAnky reflection helpers", () => {
     try {
       await reflectDotAnkyToMarkdown("0000 h\n0044 o\n0044 l\n0044 a\n8000\n");
 
-      expect(capturedPrompt).toContain("Write the entire reflection in that same language. Do not translate the user's writing into another language and do not answer in the app locale, device locale, developer locale, or prompt language unless that is also the dominant language of the reconstructed text.");
-      expect(capturedPrompt).toContain("If the writing is English, the reflection must be English. If the writing is Spanish, the reflection must be Spanish. Same for every language.");
-      expect(capturedPrompt).toContain("do not answer in the app locale, device locale, developer locale, or prompt language unless that is also the dominant language of the reconstructed text");
-      expect(capturedPrompt).toContain("Treat the English structure labels and examples in this prompt as instructions to localize, not as language evidence.");
-      expect(capturedPrompt).toContain("Mirror the user's dialect, regional register, intimacy level, and sentence texture as much as possible without parody.");
+      expect(capturedPrompt).toContain("Detect the dominant language and emotional center of the reconstructed writing.");
+      expect(capturedPrompt).toContain("Write the entire reflection in that same language.");
+      expect(capturedPrompt).toContain("Preserve dialect, register, intimacy, and texture without parody.");
       expect(capturedPrompt).toContain("If the writing sounds Chilean, do not answer with Argentine phrasing.");
-      expect(capturedPrompt).toContain("If the reconstructed text is primarily English, every visible word you generate must be English.");
-      expect(capturedPrompt).toContain("The title, tags, section headings, body, experiment, and final line must all use that language.");
-      expect(capturedPrompt).toContain("If any title, tag, heading, paragraph, experiment, or final line drifted into a different language, rewrite that part into the dominant language before returning.");
-      expect(capturedPrompt).toContain("Localize every visible heading label");
-      expect(capturedPrompt).toContain("Do not leave any heading in English if the reflection language is not English.");
-      expect(capturedPrompt).toContain("Never end with a sentence in a different language than the rest of the reflection.");
+      expect(capturedPrompt).toContain("If the writing is Spanglish or mixed, follow the language that carries the emotional center.");
+      expect(capturedPrompt).toContain("All visible output must stay in that language: title, tags, headings, body, experiment, and final line.");
+      expect(capturedPrompt).toContain("Translate or rewrite the headings into the dominant language of the writing.");
+      expect(capturedPrompt).toContain("Lo que apareció");
+      expect(capturedPrompt).toContain("One line to carry");
     } finally {
       restore();
     }

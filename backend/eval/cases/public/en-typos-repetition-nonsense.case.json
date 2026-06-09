@@ -1,0 +1,18 @@
+{
+  "id": "en-typos-repetition-nonsense",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "messy, intimate, typo-tolerant, direct",
+  "riskLevel": "none",
+  "summary": "Messy typo/repetition entry where envy hides a desire for permission.",
+  "shouldNotice": [
+    "repetition around thing/envy/permission",
+    "keyboard cleaning as displaced feeling",
+    "envy points toward wanting permission, not the other person's life"
+  ],
+  "mustNot": [
+    "mock typos",
+    "over-clean the voice",
+    "generic jealousy advice"
+  ]
+}

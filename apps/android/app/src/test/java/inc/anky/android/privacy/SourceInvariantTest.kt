@@ -311,7 +311,7 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun youExportPromptMatchesCurrentIosPreparedBackupActions() {
+    fun youExportPromptMatchesCurrentIosReadableExportActions() {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
@@ -319,15 +319,147 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
 
-        assertTrue(iosYou.contains("""AnkyChatAction("restore backup")"""))
-        assertTrue(iosYou.contains("""AnkyChatAction("export backup", isPrimary: true)"""))
-        assertTrue(iosYou.contains("if let backupZipURL = viewModel.backupZipURL"))
+        assertTrue(iosYou.contains("""AnkyChatAction(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now", isPrimary: true)"""))
+        assertTrue(iosYou.contains("""AnkyChatAction("Export writings")"""))
+        assertTrue(iosYou.contains("viewModel.prepareFormattedWritingExport()"))
+        assertTrue(iosYou.contains("if let exportURL = viewModel.formattedWritingExportURL"))
         assertTrue(!iosYou.contains("""AnkyChatAction("prepare backup""""))
 
-        assertTrue(androidYou.contains("""AnkyChatAction("restore backup")"""))
-        assertTrue(androidYou.contains("""AnkyChatAction("export backup", isPrimary = true)"""))
-        assertTrue(androidYou.contains("state.exportedFile?.let"))
+        assertTrue(androidYou.contains("""AnkyChatAction("Back up now", isPrimary = true)"""))
+        assertTrue(androidYou.contains("""AnkyChatAction("Export writings")"""))
+        assertTrue(androidYou.contains("viewModel.prepareFormattedWritingExport()"))
+        assertTrue(androidYou.contains("state.formattedWritingExportFile?.let"))
         assertTrue(!androidYou.contains("""AnkyChatAction("prepare backup""""))
+    }
+
+    @Test
+    fun youStatsOpenCurrentIosAllAnkysHistory() {
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+        val iosYouModel = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
+            .readText()
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidYouModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+
+        assertTrue(iosYou.contains("case .allAnkys:"))
+        assertTrue(iosYou.contains("YouAllAnkysHistoryView("))
+        assertTrue(iosYou.contains("viewModel.completeAnkySessions"))
+        assertTrue(iosYou.contains(".accessibilityLabel(\"Open all ankys\")"))
+        assertTrue(iosYou.contains("NavigationLink(value: session)"))
+        assertTrue(iosYou.contains("Text(\"0 ankys\")"))
+        assertTrue(iosYou.contains("Text(\"WRITE \\(AnkyDuration.completeRitualMinutes) MINUTES\")"))
+        assertTrue(iosYouModel.contains("@Published private(set) var completeAnkySessions: [SessionSummary] = []"))
+
+        assertTrue(androidYou.contains("YouPage.History"))
+        assertTrue(androidYou.contains("YouHistoryPage("))
+        assertTrue(androidYou.contains("state.completeAnkySessions"))
+        assertTrue(androidYou.contains("contentDescription = \"Open all ankys\""))
+        assertTrue(androidYou.contains("onOpenReveal(session.hash)"))
+        assertTrue(androidYou.contains("\"0 ankys\""))
+        assertTrue(androidYou.contains("\"WRITE ${'$'}{AnkyDuration.CompleteRitualMinutes} MINUTES\""))
+        assertTrue(!androidYou.contains("YouStats(state, onClick"))
+        assertTrue(androidYouModel.contains("val completeAnkySessions: List<SessionSummary> = emptyList()"))
+        assertTrue(androidYouModel.contains("completeSessions(sessions)"))
+        assertTrue(androidApp.contains("onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) }"))
+        assertTrue(androidApp.contains("onWriteRequested = { beginRetryWriting() }"))
+    }
+
+    @Test
+    fun youDeleteAccountAndDataMatchesCurrentIosDestructiveFlow() {
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+        val iosYouModel = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
+            .readText()
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidYouModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+        val androidWriteModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteViewModel.kt")
+            .readText()
+        val androidSettingsStore = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/UserSettingsStore.kt")
+            .readText()
+        val androidAppOpenStore = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/storage/AppOpenStore.kt")
+            .readText()
+        val androidRequestStore = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/storage/ReflectionRequestStore.kt")
+            .readText()
+        val androidCreditsClient = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt")
+            .readText()
+
+        assertTrue(iosYou.contains("@State private var confirmDeleteAccountAndData"))
+        assertTrue(iosYou.contains("@State private var showsAccountDeletion"))
+        assertTrue(iosYou.contains("showsAccountDeletion.toggle()"))
+        assertTrue(iosYou.contains("Image(systemName: \"exclamationmark\")"))
+        assertTrue(iosYou.contains("\"Hide delete account action\" : \"Show delete account action\""))
+        assertTrue(iosYou.contains("YouDestructiveMenuRow(title: \"DELETE ACCOUNT AND DATA\")"))
+        assertTrue(iosYou.contains(".alert(\"Delete Account and Data?\""))
+        assertTrue(iosYou.contains("Text(\"This deletes your Anky data from this device and iCloud. This cannot be undone.\")"))
+        assertTrue(iosYou.contains("await viewModel.deleteAccountAndDataEverywhere()"))
+        assertTrue(iosYouModel.contains("func deleteAccountAndDataEverywhere() async"))
+        assertTrue(iosYouModel.contains("try archive.clear()"))
+        assertTrue(iosYouModel.contains("try reflectionStore.clear()"))
+        assertTrue(iosYouModel.contains("try? sessionIndexStore.clear()"))
+        assertTrue(iosYouModel.contains("ActiveDraftStore().clear()"))
+        assertTrue(iosYouModel.contains("appOpenStore.clear()"))
+        assertTrue(iosYouModel.contains("try identityStore.resetForDevelopment(includeICloudBackup: true)"))
+        assertTrue(iosYouModel.contains("await creditsClient.logOutIfConfigured()"))
+        assertTrue(iosYouModel.contains("ReflectionCreditCache.clear(defaults: defaults)"))
+        assertTrue(iosYouModel.contains("Account and data deleted from this device and Anky iCloud backup."))
+
+        assertTrue(androidYou.contains("confirmDeleteAccountAndData"))
+        assertTrue(androidYou.contains("val showsAccountDeletion = remember { mutableStateOf(false) }"))
+        assertTrue(androidYou.contains("onToggleAccountDeletion = { showsAccountDeletion.value = !showsAccountDeletion.value }"))
+        assertTrue(androidYou.contains("Icons.Filled.PriorityHigh"))
+        assertTrue(androidYou.contains("\"Hide delete account action\""))
+        assertTrue(androidYou.contains("\"Show delete account action\""))
+        assertTrue(androidYou.contains("DestructiveMenuRow(\"DELETE ACCOUNT AND DATA\", onClick = onDeleteAccountAndData)"))
+        assertTrue(androidYou.contains("\"Delete Account and Data?\""))
+        assertTrue(androidYou.contains("\"This deletes your Anky data from this device. This cannot be undone.\""))
+        assertTrue(androidYou.contains("\"DELETE ACCOUNT AND DATA\""))
+        assertTrue(androidYou.contains("viewModel.deleteAccountAndDataEverywhere(onDeleted = onAccountDeleted)"))
+        assertTrue(androidYouModel.contains("fun deleteAccountAndDataEverywhere(onDeleted: () -> Unit = {})"))
+        assertTrue(androidYouModel.contains("archive.clear()"))
+        assertTrue(androidYouModel.contains("reflectionStore.clear()"))
+        assertTrue(androidYouModel.contains("requestStore.clear()"))
+        assertTrue(androidYouModel.contains("indexStore.clear()"))
+        assertTrue(androidYouModel.contains("activeDraftStore.clear()"))
+        assertTrue(androidYouModel.contains("settingsStore.resetToDefaults()"))
+        assertTrue(androidYouModel.contains("appOpenStore.clear()"))
+        assertTrue(androidYouModel.contains("identityStore.resetForDevelopment()"))
+        assertTrue(androidYouModel.contains("creditsClient.logOutIfConfigured()"))
+        assertTrue(androidYouModel.contains("reflectionCreditCache.clear()"))
+        assertTrue(androidYouModel.contains("YouStatusCopy.AccountAndDataDeleted"))
+        assertTrue(androidYouModel.contains("YouStatusCopy.CouldNotDeleteAllAccountData"))
+        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.resetAfterAccountDeletion()"))
+        assertTrue(androidApp.contains("mapViewModel.refresh()"))
+        assertTrue(androidApp.contains("rootCreditBalance.value = null"))
+        assertTrue(!androidApp.contains("rootCreditBalance.value = null\n                                identityRecoveryNonce.intValue += 1"))
+        assertTrue(androidWriteModel.contains("fun resetAfterAccountDeletion()"))
+        assertTrue(androidSettingsStore.contains("suspend fun resetToDefaults()"))
+        assertTrue(androidAppOpenStore.contains("fun clear()"))
+        assertTrue(androidRequestStore.contains("fun clear()"))
+        assertTrue(androidCreditsClient.contains("suspend fun logOutIfConfigured()"))
+        assertTrue(androidCreditsClient.contains("Purchases.sharedInstance.awaitLogOut()"))
     }
 
     @Test
@@ -409,12 +541,20 @@ class SourceInvariantTest {
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
             .readText()
+        val iosLocalization = repoRoot()
+            .resolve("apps/ios/Anky/Support/AnkyLocalization.swift")
+            .readText()
 
-        listOf("write one character", "keep the thread alive", "let silence close it").forEach { step ->
-            assertTrue(iosApp.contains("""AnkyBubbleStep("$step")"""))
-            assertTrue(androidApp.contains(""""$step""""))
+        mapOf(
+            ".stepWriteOneCharacter" to "write one character",
+            ".stepKeepThreadAlive" to "keep the thread alive",
+            ".stepLetSilenceCloseIt" to "let silence close it",
+        ).forEach { (key, androidStep) ->
+            assertTrue(iosApp.contains("AnkyBubbleStep(AnkyLocalization.text($key))"))
+            assertTrue(iosLocalization.contains(key))
+            assertTrue(androidApp.contains(""""$androidStep""""))
         }
-        assertTrue(iosApp.contains("the living .anky string is the state of this session."))
+        assertTrue(iosLocalization.contains(".launchEmpty: \"The living .anky string is the state of this session.\""))
         assertTrue(androidApp.contains("the living .anky string is the state of this session."))
         assertTrue(androidPrompt.contains("steps: List<String> = emptyList()"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
@@ -453,9 +593,8 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/Write/WriteViewModel.swift")
             .readText()
 
-        assertTrue(iosWrite.contains("WriteToolbarPasteButton("))
-        assertTrue(iosWrite.contains("LongPressGesture(minimumDuration: 5)"))
-        assertTrue(iosWrite.contains("Hold for five seconds to paste the built-in dev .anky"))
+        assertTrue(!iosWrite.contains("WriteToolbarPasteButton("))
+        assertTrue(!iosWrite.contains("LongPressGesture(minimumDuration: 5)"))
         assertTrue(iosWriteModel.contains("var devSampleAnkyArtifact: String"))
 
         assertTrue(androidWrite.contains("DevPasteChromeButton("))
@@ -586,28 +725,28 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(iosMap.contains(".accessibilityLabel(accessibilityLabel)"))
-        assertTrue(iosMap.contains("private var metadataText: String"))
-        assertTrue(iosMap.contains("AnkyDuration.formatted(session.durationMs)"))
-        assertTrue(iosMap.contains("""items.append("reflected")"""))
+        assertTrue(iosMap.contains("reflectedTitle,\n            session.preview"))
         assertTrue(iosMap.contains(".overlay(alignment: .bottom)"))
         assertTrue(iosMap.contains(".frame(height: 1.5)"))
 
         assertTrue(androidMap.contains(".semantics(mergeDescendants = true)"))
         assertTrue(androidMap.contains("contentDescription = sessionAccessibilityLabel(session)"))
         assertTrue(androidMap.contains("internal fun sessionAccessibilityLabel"))
-        assertTrue(androidMap.contains("AnkyDuration.formatted(session.durationMs)"))
-        assertTrue(androidMap.contains("""if (session.hasReflection) add("reflected")"""))
+        assertTrue(androidMap.contains("session.reflectedTitle(),\n        session.preview"))
+        assertTrue(!androidMap.contains("sessionMetadataText(session)"))
         assertTrue(androidMap.contains(".align(Alignment.BottomStart)"))
         assertTrue(androidMap.contains(".height(1.5.dp)"))
-        assertTrue(iosMap.contains(".padding(.horizontal, 26)"))
-        assertTrue(androidMap.contains(".padding(horizontal = 26.dp)"))
+        assertTrue(iosMap.contains("let contentWidth = max(0, viewportWidth * 0.87)"))
+        assertTrue(iosMap.contains("let horizontalPadding = max(0, (viewportWidth - contentWidth) / 2)"))
+        assertTrue(androidMap.contains("val contentWidth = maxWidth * 0.87f"))
+        assertTrue(androidMap.contains("val horizontalPadding = (maxWidth - contentWidth) / 2"))
         assertTrue(iosMap.contains(".padding(.top, 24)"))
         assertTrue(androidMap.contains(".padding(top = 24.dp, bottom = 72.dp)"))
-        assertTrue(iosMap.contains(".padding(.bottom, 72)"))
+        assertTrue(iosMap.contains(".padding(.bottom, bottomNavigationReserve)"))
         assertTrue(!androidMap.contains(".padding(horizontal = 26.dp, vertical = 24.dp)"))
-        assertTrue(iosMap.contains("Text(\"no writing saved\")"))
-        assertTrue(iosMap.contains(".font(.custom(\"Georgia\", size: 20))"))
-        assertTrue(androidMap.contains("Text(\"no writing saved\", style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
+        assertTrue(!iosMap.contains("Text(\"no writing saved\")"))
+        assertTrue(androidMap.contains("Spacer(Modifier.fillMaxWidth().height(180.dp))"))
+        assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
         assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Heading.copy(fontSize = 20.sp"))
         assertTrue(!androidMap.contains("style = AnkyType.Heading.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
     }
@@ -792,7 +931,7 @@ class SourceInvariantTest {
         assertTrue(androidTags.contains("Triple(1.20f, bloomHeight, 0.030f)"))
         assertTrue(androidTags.contains("Triple(1.06f, 220.dp.toPx(), 0.024f)"))
         assertTrue(androidTags.contains("Text(\n                        tag,"))
-        assertTrue(iosTags.contains(".font(.custom(\"Georgia\", size: 30).weight(.bold))"))
+        assertTrue(iosTags.contains(".font(.system(size: 30, weight: .bold))"))
         assertTrue(androidTags.contains("AnkyType.Heading.copy(fontSize = 30.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold)"))
         assertTrue(iosTags.contains(".padding(.top, 18)"))
         assertTrue(androidTags.contains("Modifier.padding(top = 18.dp)"))
@@ -913,6 +1052,142 @@ class SourceInvariantTest {
     }
 
     @Test
+    fun revealCreditPurchaseSheetUsesCurrentIosCreditsSurface() {
+        val androidReveal = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
+            .readText()
+        val iosCreditsSheet = repoRoot()
+            .resolve("apps/ios/Anky/Features/Credits/AnkyReflectionCreditsSheet.swift")
+            .readText()
+        val iosReveal = repoRoot()
+            .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
+            .readText()
+
+        listOf(
+            "Anky reflection credits",
+            "Your space to be seen, held, and mirrored.",
+            "available\\ncredits",
+            "Writing is free. One credit = one reflection.",
+            "loading credit packs",
+            "no credit packs available",
+            "best value",
+            "credits-thread-background",
+        ).forEach { copy ->
+            assertTrue(iosCreditsSheet.contains(copy))
+        }
+        assertTrue(iosReveal.contains(".ankyReflectionCreditsSheet("))
+        assertTrue(iosCreditsSheet.contains("AnkyReflectionCreditsSheet("))
+
+        listOf(
+            "Anky reflection credits",
+            "Your space to be seen, held, and mirrored.",
+            "available\\ncredits",
+            "Writing is free. One credit = one reflection.",
+            "loading credit packs",
+            "no credit packs available",
+            "best value",
+            "R.drawable.credits_thread_background",
+        ).forEach { copy ->
+            assertTrue(androidReveal.contains(copy))
+        }
+        assertTrue(androidReveal.contains("RevealCreditPurchaseSheet("))
+        assertTrue(androidReveal.contains("Icons.Filled.Refresh"))
+        assertTrue(androidReveal.contains("Icons.Filled.AutoAwesome"))
+        assertTrue(!androidReveal.contains("Text(\"↻\""))
+        assertTrue(!androidReveal.contains("Text(\"✦\""))
+        assertTrue(!androidReveal.contains("writing stays free. each reflection spends one credit."))
+        assertTrue(!androidReveal.contains("\"recommended\""))
+    }
+
+    @Test
+    fun reflectionCreditBalanceCacheMirrorsIosPerAccountPersistence() {
+        val iosEligibility = repoRoot()
+            .resolve("apps/ios/Anky/Core/Mirror/MirrorEligibility.swift")
+            .readText()
+        val iosReveal = repoRoot()
+            .resolve("apps/ios/Anky/Features/Reveal/RevealViewModel.swift")
+            .readText()
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
+            .readText()
+        val iosYouView = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+        val iosLocalization = repoRoot()
+            .resolve("apps/ios/Anky/Support/AnkyLocalization.swift")
+            .readText()
+        val androidCache = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/credits/ReflectionCreditCache.kt")
+            .readText()
+        val androidReveal = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealViewModel.kt")
+            .readText()
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val androidYouScreen = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AppContainer.kt")
+            .readText()
+        val androidRoot = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+
+        assertTrue(iosEligibility.contains("enum ReflectionCreditCache"))
+        assertTrue(iosEligibility.contains("private static let claimedKey = \"anky.hasClaimedFreeReflections\""))
+        assertTrue(iosEligibility.contains("private static let balanceKey = \"anky.reflectionCreditBalance\""))
+        assertTrue(iosEligibility.contains("static func hasClaimedFreeCredits(accountId: String"))
+        assertTrue(iosEligibility.contains("static func markFreeCreditsClaimed(accountId: String"))
+        assertTrue(iosEligibility.contains("static func balance(accountId: String"))
+        assertTrue(iosEligibility.contains("static func storeBalance(_ balance: Int?"))
+        assertTrue(iosReveal.contains("hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: identity.accountId"))
+        assertTrue(iosReveal.contains("ReflectionCreditCache.markFreeCreditsClaimed(accountId: accountId"))
+        assertTrue(iosReveal.contains("creditBalance = ReflectionCreditCache.balance(accountId: identity.accountId"))
+        assertTrue(iosReveal.contains("ReflectionCreditCache.storeBalance(response.creditsRemaining"))
+        assertTrue(iosReveal.contains("ReflectionCreditCache.storeBalance(creditBalance, accountId: identity.accountId"))
+        assertTrue(iosYou.contains("hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: accountId"))
+        assertTrue(iosYou.contains("creditBalance = ReflectionCreditCache.balance(accountId: accountId"))
+        assertTrue(iosYou.contains("ReflectionCreditCache.storeBalance(balance, accountId: accountId"))
+        assertTrue(iosYouView.contains(".onAppear {\n            viewModel.refresh()"))
+        assertTrue(iosYou.contains("guard canPurchaseCredits else"))
+        assertTrue(iosYou.contains("statusMessage = AnkyLocalization.text(.spendGiftBeforeBuying)"))
+        assertTrue(iosYou.contains("var presentedCreditBalance: Int?"))
+        assertTrue(iosYou.contains("var hasUnspentGiftCredit: Bool"))
+        assertTrue(iosLocalization.contains("This device has two free reflections from Anky. Use them before buying more credits."))
+        assertTrue(iosLocalization.contains("Credit packs unlock after this device spends its first two reflections"))
+        assertTrue(iosLocalization.contains("Use this device's first two reflections before buying more credits."))
+
+        assertTrue(androidCache.contains("interface ReflectionCreditCache"))
+        assertTrue(androidCache.contains("const val ClaimedKey = \"anky.hasClaimedFreeReflections\""))
+        assertTrue(androidCache.contains("const val BalanceKey = \"anky.reflectionCreditBalance\""))
+        assertTrue(androidCache.contains("fun hasClaimedFreeCredits(accountId: String): Boolean"))
+        assertTrue(androidCache.contains("fun markFreeCreditsClaimed(accountId: String)"))
+        assertTrue(androidCache.contains("fun balance(accountId: String): Int?"))
+        assertTrue(androidCache.contains("fun storeBalance(balance: Int?, accountId: String)"))
+        assertTrue(androidApp.contains("SharedPreferencesReflectionCreditCache(appContext)"))
+        assertTrue(androidRoot.contains("container.reflectionCreditCache.hasClaimedFreeCredits(container.identityStore.loadOrCreate().accountId)"))
+        assertTrue(androidRoot.contains("container.reflectionCreditCache.markFreeCreditsClaimed(container.identityStore.loadOrCreate().accountId)"))
+        assertTrue(androidReveal.contains("hasClaimedFreeCreditsProvider() || reflectionStore.list().isNotEmpty()"))
+        assertTrue(androidReveal.contains("markFreeCreditsClaimed()"))
+        assertTrue(androidReveal.contains("cachedCreditBalance()"))
+        assertTrue(androidReveal.contains("reflectionCreditCache.storeBalance(payload.creditsRemaining, identity.accountId)"))
+        assertTrue(androidReveal.contains("reflectionCreditCache.storeBalance(creditState.balance, accountId)"))
+        assertTrue(androidYou.contains("cachedCreditState(reflectionCreditCache.balance(identity.accountId))"))
+        assertTrue(androidYou.contains("reflectionCreditCache.storeBalance(refreshed.balance, accountId)"))
+        assertTrue(androidYou.contains("fun refresh()"))
+        assertTrue(androidYouScreen.contains("viewModel.refresh()"))
+        assertTrue(androidYou.contains("val presentedCreditBalance: Int?"))
+        assertTrue(androidYou.contains("val hasUnspentGiftCredit: Boolean"))
+        assertTrue(androidYou.contains("if (!_state.value.canPurchaseCredits)"))
+        assertTrue(androidYou.contains("YouStatusCopy.SpendGiftBeforeBuying"))
+        assertTrue(androidYouScreen.contains("state.hasUnspentGiftCredit"))
+        assertTrue(androidYouScreen.contains("YouStatusCopy.CreditPacksLocked"))
+        assertTrue(androidYouScreen.contains("YouStatusCopy.CreditGiftPrompt"))
+    }
+
+    @Test
     fun companionTapMessagesMatchCurrentIosTabs() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
@@ -975,6 +1250,85 @@ class SourceInvariantTest {
     }
 
     @Test
+    fun appLockActivationPromptAfterFirstCompleteMatchesCurrentIos() {
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+        val androidSettings = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/UserSettingsStore.kt")
+            .readText()
+        val iosApp = repoRoot()
+            .resolve("apps/ios/Anky/AppRoot.swift")
+            .readText()
+        val iosLocalization = repoRoot()
+            .resolve("apps/ios/Anky/Support/AnkyLocalization.swift")
+            .readText()
+
+        assertTrue(iosApp.contains("@AppStorage(\"anky.biometricPrivacyOnboardingCompleted\")"))
+        assertTrue(iosApp.contains("presentFaceIDActivationPromptIfNeeded()"))
+        assertTrue(iosApp.contains("SessionIndexStore().load().contains(where: { ${'$'}0.isComplete })"))
+        assertTrue(iosApp.contains("enableFaceIDLockFromOnboarding()"))
+        assertTrue(iosLocalization.contains("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone."))
+        assertTrue(iosLocalization.contains("Activate Device Lock"))
+        assertTrue(iosLocalization.contains("Protect ANKY with your device lock."))
+
+        assertTrue(androidSettings.contains("val deviceLockPromptCompleted: Boolean = false"))
+        assertTrue(androidSettings.contains("setDeviceLockPromptCompleted(completed: Boolean)"))
+        assertTrue(androidSettings.contains("booleanPreferencesKey(\"device_lock_prompt_completed\")"))
+        assertTrue(androidApp.contains("val showsDeviceLockActivationPrompt = remember { mutableStateOf(false) }"))
+        assertTrue(androidApp.contains("val skipNextAppLockAuthentication = remember { mutableStateOf(false) }"))
+        assertTrue(androidApp.contains("settings.deviceLockPromptCompleted"))
+        assertTrue(androidApp.contains("container.sessionIndexStore.load().any { it.isComplete }"))
+        assertTrue(androidApp.contains("canUseDeviceLock(context)"))
+        assertTrue(androidApp.contains("AlertDialog("))
+        assertTrue(androidApp.contains("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone."))
+        assertTrue(androidApp.contains("Text(\"Activate Device Lock\")"))
+        assertTrue(androidApp.contains("Text(\"not now\")"))
+        assertTrue(androidApp.contains("biometricGate.authenticate(\"Protect ANKY with your device lock.\")"))
+        assertTrue(androidApp.contains("container.settingsStore.setAppLockEnabled(true)"))
+        assertTrue(androidApp.contains("container.settingsStore.setDeviceLockPromptCompleted(true)"))
+    }
+
+    @Test
+    fun youHomeDeviceLockToggleMatchesCurrentIosReachability() {
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+
+        assertTrue(iosYou.contains("if shouldShowFaceIDControl"))
+        assertTrue(iosYou.contains("BiometricAuthClient().canAuthenticate()"))
+        assertTrue(iosYou.contains("YouToggleRow("))
+        assertTrue(iosYou.contains("title: deviceAuthenticationName"))
+        assertTrue(iosYou.contains("subtitle: biometricIdentityConfirmation ? \"On\" : \"Off\""))
+        assertTrue(iosYou.contains("setFaceID(isEnabled)"))
+        assertTrue(iosYou.contains("BiometricAuthClient().confirm(reason: AnkyLocalization.text(.protectFaceIDReason))"))
+        assertTrue(iosYou.contains("skipsNextFaceIDEnableAuthentication = true"))
+        assertTrue(iosYou.contains("faceIDPrivacyOnboardingCompleted = true"))
+
+        assertTrue(androidYou.contains("val shouldShowDeviceLockControl = remember(context) { canUseDeviceLock(context) }"))
+        assertTrue(androidYou.contains("DeviceLockRow("))
+        assertTrue(androidYou.contains("title = lockTitle"))
+        assertTrue(androidYou.contains("checked = state.appLockEnabled"))
+        assertTrue(androidYou.contains("onChecked = onAppLockChange"))
+        assertTrue(androidYou.contains("if (checked) \"On\" else \"Off\""))
+        assertTrue(androidYou.contains("private fun canUseDeviceLock(context: Context): Boolean"))
+        assertTrue(androidYou.contains("BiometricManager.Authenticators.BIOMETRIC_WEAK or"))
+        assertTrue(androidYou.contains("BiometricManager.Authenticators.DEVICE_CREDENTIAL"))
+        assertTrue(androidYou.contains("private fun deviceLockControlTitle(context: Context): String"))
+        assertTrue(androidApp.contains("onAppLockChange = { enabled ->"))
+        assertTrue(androidApp.contains("biometricGate.authenticate(\"Protect ANKY with your device lock.\")"))
+        assertTrue(androidApp.contains("container.settingsStore.setDeviceLockPromptCompleted(true)"))
+        assertTrue(androidApp.contains("skipNextAppLockAuthentication.value = true"))
+        assertTrue(androidApp.contains("container.settingsStore.setAppLockEnabled(false)"))
+    }
+
+    @Test
     fun youPrivacyAndSupportPromptActionsMatchCurrentIos() {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
@@ -989,15 +1343,15 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
             .readText()
 
-        assertTrue(iosYou.contains("""AnkyChatAction("read privacy policy", isPrimary: true)"""))
-        assertTrue(iosYou.contains("""AnkyChatAction("open email", isPrimary: true)"""))
-        assertTrue(iosYou.contains("send support or feedback by email. include only what you choose to write."))
+        assertTrue(iosYou.contains("case .privacy:\n            return []"))
+        assertTrue(iosYou.contains("""AnkyChatAction("Open email", isPrimary: true)"""))
+        assertTrue(iosYou.contains("Send support or feedback by email. Include only what you choose to write."))
         assertTrue(iosModel.contains("supportFeedbackEmailURL"))
 
-        assertTrue(androidYou.contains("""AnkyChatAction("read privacy policy", isPrimary = true)"""))
-        assertTrue(androidYou.contains("""AnkyChatAction("open email", isPrimary = true)"""))
-        assertTrue(androidYou.contains("send support or feedback by email. include only what you choose to write."))
-        assertTrue(androidYou.contains("support / feedback"))
+        assertTrue(androidYou.contains("YouPrompt.Privacy -> emptyList()"))
+        assertTrue(androidYou.contains("""AnkyChatAction("Open email", isPrimary = true)"""))
+        assertTrue(androidYou.contains("Send support or feedback by email. Include only what you choose to write."))
+        assertTrue(androidYou.contains("Support / Feedback"))
         assertTrue(androidModel.contains("supportFeedbackEmailUrl"))
         assertTrue(!androidYou.contains("support messages include your account id, not your writing."))
         assertTrue(!androidYou.contains("copy privacy email"))
@@ -1050,18 +1404,26 @@ class SourceInvariantTest {
             .readText()
 
         listOf(
-            "anky created a Base account for this device.",
-            "this phrase controls your Anky Base account. never share it. anky cannot recover it for you.",
-            "Your password/biometrics protect local access. They are not an Anky login.",
-            "reveal recovery phrase",
-            "copy recovery phrase",
-            "Back up Anky identity",
+            "Anky created a Base account for this device.",
+            "This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.",
+            "Your passcode or biometrics protect local access. They are not an Anky login.",
+            "This stores your recovery phrase in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.",
         ).forEach { copy ->
             assertTrue(iosYou.contains(copy))
+        }
+        listOf(
+            "Anky created a Base account for this device.",
+            "This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.",
+            "Your passcode or biometrics protect local access. They are not an Anky login.",
+            "This stores your recovery phrase in device secure storage. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.",
+            "Reveal recovery phrase",
+            "Copy recovery phrase",
+            "Back up recovery phrase to device secure storage",
+        ).forEach { copy ->
             assertTrue(androidYou.contains(copy))
         }
-        assertTrue(iosYou.contains("""AnkyChatAction("back up identity", isPrimary: true)"""))
-        assertTrue(androidYou.contains("""AnkyChatAction("back up identity", isPrimary = true)"""))
+        assertTrue(iosYou.contains("""YouActionButton("Back up recovery phrase to iCloud Keychain")"""))
+        assertTrue(androidYou.contains("""AnkyChatAction("Back up recovery phrase", isPrimary = true)"""))
         assertTrue(iosYou.contains("viewModel.backUpIdentityToICloudKeychain()"))
         assertTrue(androidYou.contains("viewModel.backUpIdentityToDeviceSecureStorage()"))
         assertTrue(iosModel.contains("func backUpIdentityToICloudKeychain() async"))
@@ -1128,7 +1490,7 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun youTitleOpensAnkyExperienceLikeIos() {
+    fun youExperienceCodeIsRetainedButNotVisibleOnCurrentHome() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
@@ -1139,10 +1501,18 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
 
+        assertTrue(iosYou.contains("private struct AnkyExperienceView: View"))
+        assertTrue(!iosYou.contains("AnkyExperienceView("))
+        assertTrue(iosYou.contains("private struct YouStatsPanel: View"))
+        assertTrue(!iosYou.contains("YouStatsPanel("))
+
         assertTrue(androidYou.contains("val isShowingAnkyExperience = remember { mutableStateOf(false) }"))
         assertTrue(androidYou.contains("onExperienceVisibilityChanged: (Boolean) -> Unit = {}"))
         assertTrue(androidYou.contains("onExperienceVisibilityChanged(isShowingAnkyExperience.value)"))
-        assertTrue(androidYou.contains("onOpenExperience = { isShowingAnkyExperience.value = true }"))
+        assertTrue(!androidYou.contains("onOpenExperience"))
+        assertTrue(!androidYou.contains("YouStats(state, onClick"))
+        assertTrue(!androidYou.contains("""Text(
+                "you","""))
         assertTrue(androidYou.contains("AnkyExperienceOverlay("))
         assertTrue(androidYou.contains("AnkyExperienceSystemBarsHidden()"))
         assertTrue(androidYou.contains("WindowCompat.setDecorFitsSystemWindows(window, false)"))
@@ -1161,7 +1531,109 @@ class SourceInvariantTest {
         assertTrue(androidApp.contains("val isShowingYouExperience = remember { mutableStateOf(false) }"))
         assertTrue(androidApp.contains("onExperienceVisibilityChanged = { isShowingYouExperience.value = it }"))
         assertTrue(androidApp.contains("!isShowingYouExperience.value"))
-        assertTrue(androidApp.contains("if (!isShowingYouExperience.value)"))
+        assertTrue(androidApp.contains("if (!isShowingYouExperience.value && !shouldShowOnboarding)"))
+    }
+
+    @Test
+    fun firstLaunchOnboardingMatchesCurrentIosPages() {
+        val iosOnboarding = repoRoot()
+            .resolve("apps/ios/Anky/Features/Onboarding/OnboardingView.swift")
+            .readText()
+        val iosApp = repoRoot()
+            .resolve("apps/ios/Anky/AppRoot.swift")
+            .readText()
+        val androidOnboarding = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/onboarding/OnboardingScreen.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+
+        listOf(
+            "onboarding-1",
+            "onboarding-2",
+            "onboarding-3",
+            "You don't need another prompt.",
+            "Write forward. 8 seconds of silence ends it.",
+            "Tell me who you are.",
+            "Be with what is here",
+            "No backspace. Just write.",
+            "Write 8 minutes",
+        ).forEach { expected ->
+            assertTrue(iosOnboarding.contains(expected))
+        }
+        assertTrue(iosApp.contains("if shouldShowOnboarding"))
+        assertTrue(iosApp.contains("AnkyOnboardingView {"))
+        assertTrue(iosApp.contains("completeOnboarding()"))
+        assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
+
+        listOf(
+            "R.drawable.onboarding_1",
+            "R.drawable.onboarding_2",
+            "R.drawable.onboarding_3",
+            "You don't need another prompt.",
+            "Write forward. 8 seconds of silence ends it.",
+            "Tell me who you are.",
+            "Be with what is here",
+            "No backspace. Just write.",
+            "Write 8 minutes",
+            "HorizontalPager(",
+            "AnkyOnboardingScreen(",
+        ).forEach { expected ->
+            assertTrue(androidOnboarding.contains(expected) || androidApp.contains(expected))
+        }
+        assertTrue(androidApp.contains("val showsOnboarding = remember { mutableStateOf(true) }"))
+        assertTrue(androidApp.contains("val shouldShowOnboarding ="))
+        assertTrue(androidApp.contains("!shouldShowOnboarding"))
+        assertTrue(androidApp.contains("showsOnboarding.value = false"))
+        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
+    }
+
+    @Test
+    fun youHomeRowsMatchCurrentIosPromptAndLegalShape() {
+        val androidYou = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val iosYou = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouView.swift")
+            .readText()
+        val androidTokenIcon = repoRoot()
+            .resolve("apps/android/app/src/main/res/drawable/you_icon_anky_token.xml")
+            .readText()
+
+        assertTrue(iosYou.contains("""promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)"""))
+        assertTrue(iosYou.contains("private func openCreditsSheet()"))
+        assertTrue(iosYou.contains("showsReflectionCreditsSheet = true"))
+        assertTrue(iosYou.contains(".ankyReflectionCreditsSheet("))
+        assertTrue(iosYou.contains("""promptButton(.support, icon: "you-icon-support", title: "Support / Feedback", subtitle: "Email support@anky.app")"""))
+        assertTrue(iosYou.contains("""promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy Policy", subtitle: "How your data is handled")"""))
+        assertTrue(iosYou.contains("""legalButton(icon: "you-icon-terms", title: "Terms & Conditions", subtitle: "The agreement for using Anky")"""))
+        assertTrue(iosYou.contains("""YouMenuRow(
+                icon: "you-icon-anky-token",
+                title: "${'$'}ANKY on Base""""))
+        assertTrue(iosYou.contains(".navigationTitle(\"You\")"))
+        assertTrue(iosYou.contains(".navigationBarTitleDisplayMode(.inline)"))
+
+        assertTrue(androidYou.contains("""Text(
+            "You","""))
+        assertTrue(androidYou.contains(".align(Alignment.TopCenter)"))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_export, "Data", "Export writings or back up locally""""))
+        assertTrue(androidYou.contains("val showsReflectionCreditsSheet = remember { mutableStateOf(false) }"))
+        assertTrue(androidYou.contains("showsReflectionCreditsSheet.value = true"))
+        assertTrue(androidYou.contains("ModalBottomSheet("))
+        assertTrue(androidYou.contains("YouReflectionCreditsSheet("))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "Credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onOpenCreditsSheet() }"""))
+        assertTrue(!androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "Credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onOpenPage(YouPage.Credits) }"""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_support, "Support / Feedback", "Email support@anky.app""""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_privacy, "Privacy Policy", "What leaves this phone""""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_terms, "Terms & Conditions", "The agreement for using Anky""""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_anky_token, "\${'$'}ANKY on Base""""))
+        assertTrue(androidYou.contains("painterResource(R.drawable.you_ankycoin)"))
+        assertTrue(androidTokenIcon.contains("""android:viewportWidth="24""""))
+        assertTrue(androidTokenIcon.contains("#D7BA73"))
+        assertTrue(androidYou.contains("YouPage.Terms -> TermsPage()"))
+        assertTrue(androidYou.contains("private val TermsCopy = listOf("))
+        assertTrue(!androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "support / feedback""""))
     }
 
     @Test
@@ -1198,20 +1670,32 @@ class SourceInvariantTest {
 
     @Test
     fun iosImageAssetsHaveAndroidDrawableResources() {
-        val androidDrawables: Set<String> = Files.walk(repoRoot().resolve("apps/android/app/src/main/res/drawable-nodpi").toPath()).use { paths ->
-            paths
-                .filter { Files.isRegularFile(it) }
-                .map { path: Path -> path.toFile().nameWithoutExtension }
-                .toList()
-                .toSet()
-        }
+        val androidDrawables: Set<String> = listOf("drawable-nodpi", "drawable")
+            .flatMap { directory ->
+                Files.walk(repoRoot().resolve("apps/android/app/src/main/res/$directory").toPath()).use { paths ->
+                    paths
+                        .filter { Files.isRegularFile(it) }
+                        .map { path: Path -> path.toFile().nameWithoutExtension }
+                        .toList()
+                }
+            }
+            .toSet()
         val missing = iosImageSetDirectories().mapNotNull { imageSet ->
-            val candidates = imageSet.listFiles()
+            val parentName = imageSet.name.removeSuffix(".imageset").lowercase().replace("-", "_")
+            val fileCandidates = imageSet.listFiles()
                 .orEmpty()
-                .filter { it.isFile && it.extension.equals("png", ignoreCase = true) }
-                .map { imageFile -> imageFile.nameWithoutExtension.replace(Regex("""@\d+x$"""), "") }
-                .map { assetName -> assetName.lowercase().replace("-", "_") }
-                .toSet()
+                .filter { it.isFile && (it.extension.equals("png", ignoreCase = true) || it.extension.equals("svg", ignoreCase = true)) }
+                .flatMap { imageFile ->
+                    val assetName = imageFile.nameWithoutExtension
+                        .replace(Regex("""@\d+x$"""), "")
+                        .lowercase()
+                        .replace("-", "_")
+                    listOf(
+                        assetName,
+                        "${parentName}_$assetName",
+                    )
+                }
+            val candidates = (fileCandidates + parentName).toSet()
 
             if (candidates.any { it in androidDrawables }) {
                 null

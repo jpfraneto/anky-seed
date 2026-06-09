@@ -7,17 +7,17 @@ struct MapView: View {
     @EnvironmentObject private var ankyCompanion: AnkyCompanionStore
     @State private var path: [MapRoute] = []
     @State private var pendingReflectionReadyArtifact: SavedAnky?
-    private let onTryAgain: () -> Void
+    private let onContinueWriting: (SavedAnky) -> Void
     private let onBackupRequested: () -> Void
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     init(
         revealAfterWriting: Binding<SavedAnky?> = .constant(nil),
-        onTryAgain: @escaping () -> Void = {},
+        onContinueWriting: @escaping (SavedAnky) -> Void = { _ in },
         onBackupRequested: @escaping () -> Void = {}
     ) {
         _revealAfterWriting = revealAfterWriting
-        self.onTryAgain = onTryAgain
+        self.onContinueWriting = onContinueWriting
         self.onBackupRequested = onBackupRequested
     }
 
@@ -40,10 +40,7 @@ struct MapView: View {
                 switch route {
                 case .day(let day):
                     DayDetailView(
-                        day: viewModel.day(for: day.date) ?? day,
-                        createTestAnky: {
-                            try viewModel.createTestAnky(on: day.date)
-                        }
+                        day: viewModel.day(for: day.date) ?? day
                     )
                 case .allAnkys:
                     MapAllAnkysHistoryView(
@@ -55,7 +52,9 @@ struct MapView: View {
                         RevealView(
                             viewModel: RevealViewModel(artifact: artifact),
                             onDeleted: viewModel.refresh,
-                            onTryAgain: tryAgain,
+                            onTryAgain: {
+                                continueWriting(from: artifact)
+                            },
                             onReflectionReady: {
                                 onBackupRequested()
                                 showReflectionReadyBubble(for: artifact)
@@ -68,7 +67,9 @@ struct MapView: View {
                     RevealView(
                         viewModel: RevealViewModel(artifact: artifact),
                         onDeleted: viewModel.refresh,
-                        onTryAgain: tryAgain,
+                        onTryAgain: {
+                            continueWriting(from: artifact)
+                        },
                         onReflectionReady: {
                             onBackupRequested()
                             showReflectionReadyBubble(for: artifact)
@@ -77,11 +78,20 @@ struct MapView: View {
                 }
             }
             .onAppear {
-                viewModel.refresh()
-                openPendingRevealIfNeeded()
+                if openPendingRevealIfNeeded() {
+                    DispatchQueue.main.async {
+                        viewModel.refresh()
+                    }
+                } else {
+                    viewModel.refresh()
+                }
             }
             .onChange(of: revealAfterWriting) { _, _ in
-                openPendingRevealIfNeeded()
+                if openPendingRevealIfNeeded() {
+                    DispatchQueue.main.async {
+                        viewModel.refresh()
+                    }
+                }
             }
             .onChange(of: path) { _, newPath in
                 guard newPath.isEmpty, let artifact = pendingReflectionReadyArtifact else {
@@ -96,19 +106,26 @@ struct MapView: View {
         }
     }
 
-    private func openPendingRevealIfNeeded() {
+    @discardableResult
+    private func openPendingRevealIfNeeded() -> Bool {
         guard let artifact = revealAfterWriting else {
-            return
+            return false
         }
 
-        viewModel.refresh()
         path = [.reveal(artifact)]
         revealAfterWriting = nil
+        return true
     }
 
-    private func tryAgain() {
-        path.removeAll()
-        onTryAgain()
+    private func continueWriting(from artifact: SavedAnky) {
+        onContinueWriting(artifact)
+        DispatchQueue.main.async {
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                path.removeAll()
+            }
+        }
     }
 
     private func showReflectionReadyBubble(for artifact: SavedAnky) {
@@ -246,7 +263,7 @@ private struct TrailMapView: View {
                                         .background(.thinMaterial, in: Circle())
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Go to current day")
+                                .accessibilityLabel(AnkyLocalization.ui("Go to current day"))
                                 .padding(.trailing, 18)
                                 .padding(.bottom, 18)
                                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
@@ -518,7 +535,7 @@ private struct CurrentDayProgressRing: View {
                     .rotationEffect(.degrees(-90))
             }
         }
-        .accessibilityLabel("UTC day progress")
+        .accessibilityLabel(AnkyLocalization.ui("UTC day progress"))
     }
 }
 
@@ -532,7 +549,7 @@ private struct DayCompletionMarker: View {
                     .stroke(Color.black.opacity(0.62), lineWidth: 3)
             )
             .shadow(color: MapDayPalette.gold.opacity(0.38), radius: 6)
-            .accessibilityLabel("showed up")
+            .accessibilityLabel(AnkyLocalization.ui("showed up"))
     }
 }
 
@@ -575,7 +592,7 @@ private struct MapStatsPanel: View {
             .shadow(color: Color.black.opacity(0.24), radius: 12, y: 6)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open all ankys")
+        .accessibilityLabel(AnkyLocalization.ui("Open all ankys"))
     }
 }
 
@@ -679,9 +696,6 @@ private struct MapAllAnkysHistoryView: View {
 
 private struct DayDetailView: View {
     let day: SessionDay
-    let createTestAnky: () throws -> SavedAnky
-    @State private var isCreatingTestAnky = false
-    @State private var testAnkyErrorMessage: String?
     private let bottomNavigationReserve: CGFloat = 152
 
     private var title: String {
@@ -735,29 +749,6 @@ private struct DayDetailView: View {
         .toolbarBackground(MapDayPalette.ink.opacity(0.96), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    createTestAnkyFromToolbar()
-                } label: {
-                    if isCreatingTestAnky {
-                        ProgressView()
-                            .tint(MapDayPalette.gold)
-                    } else {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(MapDayPalette.gold)
-                    }
-                }
-                .disabled(isCreatingTestAnky)
-                .accessibilityLabel("Create test .anky")
-            }
-        }
-        .alert("Could not create test .anky", isPresented: testAnkyErrorBinding) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(testAnkyErrorMessage ?? "The test fixture could not be imported.")
-        }
     }
 
     private var emptyState: some View {
@@ -766,32 +757,6 @@ private struct DayDetailView: View {
             .frame(height: 180)
     }
 
-    private func createTestAnkyFromToolbar() {
-        guard !isCreatingTestAnky else {
-            return
-        }
-
-        isCreatingTestAnky = true
-        do {
-            _ = try createTestAnky()
-            testAnkyErrorMessage = nil
-            AnkyHaptics.medium()
-        } catch {
-            testAnkyErrorMessage = "The test fixture could not be imported."
-            AnkyHaptics.warning()
-        }
-        isCreatingTestAnky = false
-    }
-
-    private var testAnkyErrorBinding: Binding<Bool> {
-        Binding {
-            testAnkyErrorMessage != nil
-        } set: { isPresented in
-            if !isPresented {
-                testAnkyErrorMessage = nil
-            }
-        }
-    }
 }
 
 struct SessionRow: View {

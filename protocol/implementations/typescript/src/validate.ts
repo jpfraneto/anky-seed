@@ -21,7 +21,7 @@ export function validateAnky(text: string): AnkyValidation {
     if (text.trim().length === 0) throw new Error("EMPTY_ANKY");
     const parsed = parseAnky(text);
     const elapsed = durationMs(parsed);
-    const isComplete = elapsed >= COMPLETE_RITUAL_MS && parsed.terminalSilenceMs === 8000;
+    const isComplete = elapsed >= COMPLETE_RITUAL_MS;
     return {
       isValid: true,
       kind: isComplete ? "complete" : "fragment",

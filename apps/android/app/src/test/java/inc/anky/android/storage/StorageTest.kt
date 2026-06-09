@@ -4,6 +4,7 @@ import inc.anky.android.core.storage.ActiveDraftStore
 import inc.anky.android.core.storage.BackupImportResult
 import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.BackupZipWriter
+import inc.anky.android.core.storage.FormattedWritingExportWriter
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.core.storage.ReflectionStore
@@ -353,6 +354,21 @@ class StorageTest {
         assertEquals("Here is what I saw.", reflectionJson.getString("reflection"))
         assertEquals("2026-05-14T15:44:58Z", reflectionJson.getString("createdAt"))
         assertEquals(3, reflectionJson.getInt("creditsRemaining"))
+    }
+
+    @Test
+    fun formattedWritingExportMatchesIosReadableWritingShape() {
+        val archive = LocalAnkyArchive.forDirectory(temp.newFolder("ankys"))
+        val first = archive.save("1770000000000 h\n0042 i\n8000")
+        val second = archive.save("1770000100000 t\n0042 h\n0042 e\n0042 r\n0042 e\n8000")
+        val output = File(temp.newFolder("exports"), "anky-writings.md")
+
+        FormattedWritingExportWriter.write(output, listOf(first, second))
+
+        assertEquals(
+            "2026-02-02T02:40:00.000Z:hi\n\n2026-02-02T02:41:40.000Z:there",
+            output.readText(Charsets.UTF_8),
+        )
     }
 
     @Test

@@ -46,7 +46,7 @@ class WriteViewModelTest {
 
         val saved = stores.archive.list().single()
         assertEquals("$start h\n471000 e\n8000", saved.text)
-        assertEquals(479000, saved.durationMs)
+        assertEquals(471000, saved.durationMs)
         assertEquals(false, saved.isComplete)
         assertNull(stores.draft.load())
         assertEquals(saved.hash, stores.index.load().single().hash)
@@ -79,13 +79,13 @@ class WriteViewModelTest {
     fun completedHashCanBeConsumedAfterRevealNavigation() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
-        stores.draft.save("$start h\n472000 e")
+        stores.draft.save("$start h\n480000 e")
         val viewModel = WriteViewModel(
             activeDraftStore = stores.draft,
             archive = stores.archive,
             reflectionStore = stores.reflections,
             indexStore = stores.index,
-            nowMs = { start + 472000 + 8000 },
+            nowMs = { start + 480000 + 8000 },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
         advanceUntilIdle()
@@ -101,7 +101,7 @@ class WriteViewModelTest {
     fun todayAnkyCountCountsCompleteUtcSessionsLikeIosLaunchPrompt() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
-        val complete = stores.archive.save("$start h\n472000 e\n8000")
+        val complete = stores.archive.save("$start h\n480000 e\n8000")
         val fragment = stores.archive.save("${start + 20_000} h\n1000 e\n8000")
         stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(complete, null))
         stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(fragment, null))
@@ -122,13 +122,13 @@ class WriteViewModelTest {
     fun completedSessionFreezesWriteStateLikeIos() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
-        stores.draft.save("$start h\n472000 e")
+        stores.draft.save("$start h\n480000 e")
         val viewModel = WriteViewModel(
             activeDraftStore = stores.draft,
             archive = stores.archive,
             reflectionStore = stores.reflections,
             indexStore = stores.index,
-            nowMs = { start + 472000 + 8000 },
+            nowMs = { start + 480000 + 8000 },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
         advanceUntilIdle()
@@ -154,20 +154,20 @@ class WriteViewModelTest {
         val reflections = ReflectionStore.forDirectory(File(root, "reflections"))
         val index = SessionIndexStore.forFile(File(root, "session-index.json"))
         val start = 1_770_000_000_000
-        draft.save("$start h\n472000 e")
+        draft.save("$start h\n480000 e")
 
         val viewModel = WriteViewModel(
             activeDraftStore = draft,
             archive = LocalAnkyArchive.forDirectory(archiveFile),
             reflectionStore = reflections,
             indexStore = index,
-            nowMs = { start + 472000 + 8000 },
+            nowMs = { start + 480000 + 8000 },
             dispatcher = StandardTestDispatcher(testScheduler),
         )
         advanceUntilIdle()
 
         assertEquals("Could not save this .anky.", viewModel.state.value.errorMessage)
-        assertEquals("$start h\n472000 e\n8000", draft.load())
+        assertEquals("$start h\n480000 e\n8000", draft.load())
         assertEquals(0, index.load().size)
     }
 
@@ -313,6 +313,43 @@ class WriteViewModelTest {
         viewModel.openWritingPortal()
 
         assertEquals(initialFocusRequest + 1, viewModel.state.value.keyboardFocusRequestId)
+    }
+
+    @Test
+    fun resetAfterAccountDeletionClearsActiveDraftAndTransientWriteState() = runTest {
+        val stores = stores()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = dispatcher,
+        )
+
+        viewModel.acceptGlyph("h")
+        viewModel.ignoreBackspaceOrReplacement()
+
+        assertEquals("$now h", stores.draft.load())
+        assertEquals("h", viewModel.state.value.displayedText)
+        assertEquals(1, viewModel.state.value.acceptedGlyphCount)
+        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+
+        viewModel.resetAfterAccountDeletion()
+        now += 8_000
+        advanceTimeBy(8_000)
+        runCurrent()
+
+        assertNull(stores.draft.load())
+        assertEquals(0, stores.archive.list().size)
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(false, viewModel.state.value.isClosing)
+        assertNull(viewModel.state.value.completedHash)
+        assertNull(viewModel.state.value.errorMessage)
+        assertEquals(false, viewModel.state.value.shouldShowNudgeDialogue)
     }
 
     @Test

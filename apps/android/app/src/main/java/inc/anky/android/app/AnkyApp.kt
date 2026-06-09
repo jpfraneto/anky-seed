@@ -3,6 +3,7 @@ package inc.anky.android.app
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.HapticFeedbackConstants
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -22,6 +24,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
@@ -32,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -60,6 +64,7 @@ import inc.anky.android.core.identity.DeviceBiometricGate
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.feature.map.MapScreen
 import inc.anky.android.feature.map.MapViewModel
+import inc.anky.android.feature.onboarding.AnkyOnboardingScreen
 import inc.anky.android.feature.reveal.RevealScreen
 import inc.anky.android.feature.reveal.RevealViewModel
 import inc.anky.android.feature.reveal.TagSessionsScreen
@@ -75,6 +80,7 @@ import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.components.AnkySequenceName
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun AnkyApp(container: AppContainer) {
@@ -87,11 +93,9 @@ fun AnkyApp(container: AppContainer) {
         ).value
         val context = LocalContext.current
         val rootView = LocalView.current
+        val rootScope = rememberCoroutineScope()
         val biometricGate = remember(context) {
             DeviceBiometricGate { context.findFragmentActivity() }
-        }
-        val freeCreditPromptPrefs = remember(context) {
-            context.getSharedPreferences("anky-credit-prompt", Context.MODE_PRIVATE)
         }
         val lifecycleOwner = LocalLifecycleOwner.current
         val lockState = remember { mutableStateOf(LockState.Locked) }
@@ -101,6 +105,8 @@ fun AnkyApp(container: AppContainer) {
         val recoveryError = remember { mutableStateOf<String?>(null) }
         val identityRecoveryNonce = remember { mutableIntStateOf(0) }
         val rootCreditBalance = remember { mutableStateOf<Int?>(null) }
+        val showsDeviceLockActivationPrompt = remember { mutableStateOf(false) }
+        val skipNextAppLockAuthentication = remember { mutableStateOf(false) }
 
         suspend fun refreshRootCreditBalance() {
             val identity = runCatching { container.identityStore.loadOrCreate() }.getOrNull() ?: return
@@ -142,15 +148,23 @@ fun AnkyApp(container: AppContainer) {
 
         LaunchedEffect(settings.appLockEnabled, unlockAttempt.intValue) {
             if (settings.appLockEnabled) {
-                lockState.value = LockState.Authenticating
-                if (biometricGate.authenticate("Unlock ANKY.")) {
+                if (skipNextAppLockAuthentication.value) {
+                    skipNextAppLockAuthentication.value = false
                     failedAuthAttempts.intValue = 0
                     recoveryPhraseInput.value = ""
                     recoveryError.value = null
                     lockState.value = LockState.Unlocked
                 } else {
-                    failedAuthAttempts.intValue += 1
-                    lockState.value = LockState.Failed
+                    lockState.value = LockState.Authenticating
+                    if (biometricGate.authenticate("Unlock ANKY.")) {
+                        failedAuthAttempts.intValue = 0
+                        recoveryPhraseInput.value = ""
+                        recoveryError.value = null
+                        lockState.value = LockState.Unlocked
+                    } else {
+                        failedAuthAttempts.intValue += 1
+                        lockState.value = LockState.Failed
+                    }
                 }
             } else {
                 failedAuthAttempts.intValue = 0
@@ -279,12 +293,38 @@ fun AnkyApp(container: AppContainer) {
         val mapCompanionNoteIndex = remember { mutableIntStateOf(0) }
         val youCompanionNoteIndex = remember { mutableIntStateOf(0) }
         val isShowingYouExperience = remember { mutableStateOf(false) }
+        val showsOnboarding = remember { mutableStateOf(true) }
         val importedCompletedHash = remember { mutableStateOf<String?>(null) }
         val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash
+        val shouldShowOnboarding =
+            showsOnboarding.value &&
+                lockState.value == LockState.Unlocked &&
+                (currentRoute == AnkyRoute.Write.route || currentRoute == null) &&
+                !isShowingYouExperience.value
+
+        LaunchedEffect(
+            settings.deviceLockPromptCompleted,
+            settings.appLockEnabled,
+            lockState.value,
+            shouldShowOnboarding,
+            postWriteCompletedHash,
+        ) {
+            if (
+                !settings.deviceLockPromptCompleted &&
+                !settings.appLockEnabled &&
+                lockState.value == LockState.Unlocked &&
+                !shouldShowOnboarding &&
+                canUseDeviceLock(context) &&
+                container.sessionIndexStore.load().any { it.isComplete }
+            ) {
+                showsDeviceLockActivationPrompt.value = true
+            }
+        }
 
         LaunchedEffect(writeState.acceptedGlyphCount) {
             if (writeState.acceptedGlyphCount > 0) {
                 showsLaunchDialogue.value = false
+                showsOnboarding.value = false
             }
         }
         LaunchedEffect(postWriteCompletedHash, lockState.value) {
@@ -332,7 +372,8 @@ fun AnkyApp(container: AppContainer) {
                         currentRoute != AnkyRoute.Write.route &&
                         currentRoute != AnkyRoute.Reveal.route &&
                         currentRoute != AnkyRoute.TagSessions.route &&
-                        !isShowingYouExperience.value
+                        !isShowingYouExperience.value &&
+                        !shouldShowOnboarding
                     ) {
                         NavigationBar(
                             containerColor = AnkyColors.Ink.copy(alpha = 0.96f),
@@ -413,16 +454,41 @@ fun AnkyApp(container: AppContainer) {
                                 settingsStore = container.settingsStore,
                                 reminderScheduler = container.reminderScheduler,
                                 creditsClient = container.creditsClient,
+                                reflectionCreditCache = container.reflectionCreditCache,
                                 exporter = container.exporter,
                                 backupImporter = container.backupImporter,
+                                activeDraftStore = container.activeDraftStore,
                                 archive = container.archive,
                                 reflectionStore = container.reflectionStore,
+                                requestStore = container.reflectionRequestStore,
                                 indexStore = container.sessionIndexStore,
+                                appOpenStore = container.appOpenStore,
                                 biometricGate = biometricGate,
                             )
                         }
                         YouScreen(
                             viewModel = viewModel,
+                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
+                            onWriteRequested = { beginRetryWriting() },
+                            onAccountDeleted = {
+                                writeViewModelWithCurrentMirror.resetAfterAccountDeletion()
+                                mapViewModel.refresh()
+                                rootCreditBalance.value = null
+                            },
+                            onAppLockChange = { enabled ->
+                                rootScope.launch {
+                                    if (enabled) {
+                                        val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                        container.settingsStore.setDeviceLockPromptCompleted(true)
+                                        if (confirmed) {
+                                            skipNextAppLockAuthentication.value = true
+                                            container.settingsStore.setAppLockEnabled(true)
+                                        }
+                                    } else {
+                                        container.settingsStore.setAppLockEnabled(false)
+                                    }
+                                }
+                            },
                             onExperienceVisibilityChanged = { isShowingYouExperience.value = it },
                         )
                     }
@@ -434,11 +500,15 @@ fun AnkyApp(container: AppContainer) {
                                 settingsStore = container.settingsStore,
                                 reminderScheduler = container.reminderScheduler,
                                 creditsClient = container.creditsClient,
+                                reflectionCreditCache = container.reflectionCreditCache,
                                 exporter = container.exporter,
                                 backupImporter = container.backupImporter,
+                                activeDraftStore = container.activeDraftStore,
                                 archive = container.archive,
                                 reflectionStore = container.reflectionStore,
+                                requestStore = container.reflectionRequestStore,
                                 indexStore = container.sessionIndexStore,
+                                appOpenStore = container.appOpenStore,
                                 biometricGate = biometricGate,
                             )
                         }
@@ -446,6 +516,27 @@ fun AnkyApp(container: AppContainer) {
                             viewModel = viewModel,
                             initialPage = YouInitialPage.Credits,
                             onInitialPageBack = { navController.popBackStack() },
+                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
+                            onWriteRequested = { beginRetryWriting() },
+                            onAccountDeleted = {
+                                writeViewModelWithCurrentMirror.resetAfterAccountDeletion()
+                                mapViewModel.refresh()
+                                rootCreditBalance.value = null
+                            },
+                            onAppLockChange = { enabled ->
+                                rootScope.launch {
+                                    if (enabled) {
+                                        val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                        container.settingsStore.setDeviceLockPromptCompleted(true)
+                                        if (confirmed) {
+                                            skipNextAppLockAuthentication.value = true
+                                            container.settingsStore.setAppLockEnabled(true)
+                                        }
+                                    } else {
+                                        container.settingsStore.setAppLockEnabled(false)
+                                    }
+                                }
+                            },
                             onExperienceVisibilityChanged = { isShowingYouExperience.value = it },
                         )
                     }
@@ -471,11 +562,16 @@ fun AnkyApp(container: AppContainer) {
                                 identityStore = container.identityStore,
                                 mirrorClientProvider = { container.mirrorClient(settings.mirrorBaseUrl) },
                                 creditsClient = container.creditsClient,
+                                reflectionCreditCache = container.reflectionCreditCache,
                                 hasClaimedFreeCreditsProvider = {
-                                    freeCreditPromptPrefs.getBoolean("hasClaimedFreeReflections", false)
+                                    runCatching {
+                                        container.reflectionCreditCache.hasClaimedFreeCredits(container.identityStore.loadOrCreate().accountId)
+                                    }.getOrDefault(false)
                                 },
                                 markFreeCreditsClaimed = {
-                                    freeCreditPromptPrefs.edit().putBoolean("hasClaimedFreeReflections", true).apply()
+                                    runCatching {
+                                        container.reflectionCreditCache.markFreeCreditsClaimed(container.identityStore.loadOrCreate().accountId)
+                                    }
                                 },
                             )
                         }
@@ -507,7 +603,7 @@ fun AnkyApp(container: AppContainer) {
                     }
                 }
             }
-            if (!isShowingYouExperience.value) {
+            if (!isShowingYouExperience.value && !shouldShowOnboarding) {
                 AnkyPresenceOverlay(
                     defaultSequence = presenceSequence(currentRoute, writeState.hasReachedRitualMark),
                     goldenGlow = currentRoute == AnkyRoute.Write.route && writeState.hasReachedRitualMark,
@@ -525,6 +621,22 @@ fun AnkyApp(container: AppContainer) {
                 )
             }
             if (
+                shouldShowOnboarding
+            ) {
+                AnkyOnboardingScreen(
+                    startWriting = {
+                        showsOnboarding.value = false
+                        showsLaunchDialogue.value = false
+                        companionNote.value = null
+                        navController.navigate(AnkyRoute.Write.route) {
+                            launchSingleTop = true
+                            popUpTo(AnkyRoute.Write.route) { inclusive = false }
+                        }
+                        writeViewModelWithCurrentMirror.openWritingPortal()
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (
                 currentRoute == AnkyRoute.Write.route &&
                 postWriteCompletedHash != null
             ) {
@@ -623,6 +735,50 @@ fun AnkyApp(container: AppContainer) {
                     )
                 }
             }
+
+            if (showsDeviceLockActivationPrompt.value && !shouldShowOnboarding && !isShowingYouExperience.value) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showsDeviceLockActivationPrompt.value = false
+                        rootScope.launch {
+                            container.settingsStore.setDeviceLockPromptCompleted(true)
+                        }
+                    },
+                    title = { Text("Activate Device Lock") },
+                    text = {
+                        Text("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone.")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showsDeviceLockActivationPrompt.value = false
+                                rootScope.launch {
+                                    val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                    container.settingsStore.setDeviceLockPromptCompleted(true)
+                                    if (confirmed) {
+                                        skipNextAppLockAuthentication.value = true
+                                        container.settingsStore.setAppLockEnabled(true)
+                                    }
+                                }
+                            },
+                        ) {
+                            Text("Activate Device Lock")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showsDeviceLockActivationPrompt.value = false
+                                rootScope.launch {
+                                    container.settingsStore.setDeviceLockPromptCompleted(true)
+                                }
+                            },
+                        ) {
+                            Text("not now")
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -678,6 +834,12 @@ private fun companionMessages(route: String?, writeRitualComplete: Boolean): Lis
         )
         else -> listOf("you are here.")
     }
+
+private fun canUseDeviceLock(context: Context): Boolean =
+    BiometricManager.from(context).canAuthenticate(
+        BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+    ) == BiometricManager.BIOMETRIC_SUCCESS
 
 private fun AnkyRoute.icon() =
     when (this) {

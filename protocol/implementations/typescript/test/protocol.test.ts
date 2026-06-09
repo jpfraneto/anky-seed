@@ -59,13 +59,27 @@ describe(".anky protocol", () => {
     expect(fromText).toHaveLength(64);
   });
 
-  test("parser keeps exact accepted spaces", () => {
-    const parsed = parseAnky("1770000000000 h\n0042  \n8000");
+  test("parser keeps canonical accepted spaces", () => {
+    const parsed = parseAnky("1770000000000 h\n0042 SPACE");
     expect(reconstructText(parsed)).toBe("h ");
   });
 
+  test("parser rejects literal trailing-space payloads", () => {
+    expect(() => parseAnky("1770000000000 h\n0042  \n8000")).toThrow(
+      "NON_CANONICAL_SPACE",
+    );
+  });
+
   test("parser accepts one user-visible grapheme per event", () => {
-    const parsed = parseAnky("1770000000000 a\n0042 🧘🏽\n0042 é\n8000");
+    const parsed = parseAnky("1770000000000 a\n0042 🧘🏽\n0042 é");
     expect(reconstructText(parsed)).toBe("a🧘🏽é");
+  });
+
+  test("terminal silence does not make a fragment complete", () => {
+    const validation = validateAnky("1770000000000 h\n472000 i\n8000");
+    expect(validation.isValid).toBe(true);
+    if (!validation.isValid) return;
+    expect(validation.durationMs).toBe(472000);
+    expect(validation.isComplete).toBe(false);
   });
 });

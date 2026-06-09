@@ -2,6 +2,7 @@ package inc.anky.android.protocol
 
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.protocol.AnkyHasher
+import inc.anky.android.core.protocol.AnkyParser
 import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyValidation
 import inc.anky.android.core.protocol.AnkyValidator
@@ -96,6 +97,15 @@ class ProtocolFixtureTest {
         assertEquals("8:00", AnkyDuration.clock(480_000))
         assertEquals("8:01", AnkyDuration.clock(481_000))
         assertEquals("9:12", AnkyDuration.clock(552_000))
+    }
+
+    @Test
+    fun terminalSilenceDoesNotMakeFragmentComplete() {
+        val parsed = AnkyParser.parse("1770000000000 h\n472000 i\n${AnkyDuration.TerminalSilenceMs}")
+
+        assertEquals(472000, AnkyDuration.writingDurationMs(parsed))
+        assertEquals(472000, AnkyDuration.durationMs(parsed))
+        assertFalse(AnkyDuration.isComplete(parsed))
     }
 
     @Test

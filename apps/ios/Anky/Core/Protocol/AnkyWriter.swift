@@ -52,10 +52,10 @@ public struct AnkyWriter {
 
         if let lastAcceptedEpochMs {
             let delta = max(0, epochMs - lastAcceptedEpochMs)
-            lines.append("\(delta) \(character)")
+            lines.append("\(delta) \(Self.protocolCharacterText(for: character))")
             writingElapsedMs += delta
         } else {
-            lines.append("\(epochMs) \(character)")
+            lines.append("\(epochMs) \(Self.protocolCharacterText(for: character))")
         }
 
         lastAcceptedEpochMs = epochMs
@@ -72,6 +72,10 @@ public struct AnkyWriter {
 
     private func isProtocolCharacter(_ character: Character) -> Bool {
         character != "\n" && character != "\r"
+    }
+
+    private static func protocolCharacterText(for character: Character) -> String {
+        character == " " ? "SPACE" : String(character)
     }
 
     private static func lines(from text: String) -> [String] {

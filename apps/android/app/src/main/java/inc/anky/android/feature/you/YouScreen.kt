@@ -20,6 +20,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,19 +30,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +67,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
@@ -70,6 +83,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
@@ -88,9 +102,11 @@ import inc.anky.android.R
 import inc.anky.android.core.credits.CreditCatalog
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.protocol.AnkyParser
 import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyWriter
+import inc.anky.android.core.storage.SessionSummary
 import inc.anky.android.feature.write.HiddenTextInput
 import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyConversationPrompt
@@ -100,6 +116,10 @@ import inc.anky.android.ui.theme.AnkyCosmicBackground
 import inc.anky.android.ui.theme.AnkyPanel
 import inc.anky.android.ui.theme.AnkyType
 import java.io.File
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import kotlinx.coroutines.delay
 
 private const val AnkyExperienceTotalSeconds = 88 * 60
@@ -108,11 +128,16 @@ enum class YouInitialPage {
     Credits,
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun YouScreen(
     viewModel: YouViewModel,
     initialPage: YouInitialPage? = null,
     onInitialPageBack: (() -> Unit)? = null,
+    onOpenReveal: (String) -> Unit = {},
+    onWriteRequested: () -> Unit = {},
+    onAccountDeleted: () -> Unit = {},
+    onAppLockChange: (Boolean) -> Unit = viewModel::setAppLock,
     onExperienceVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
@@ -124,11 +149,16 @@ fun YouScreen(
     val mirrorUrl = remember(state.mirrorBaseUrl) { mutableStateOf(state.mirrorBaseUrl) }
     val showImportPhrase = remember { mutableStateOf(false) }
     val confirmDeleteLocalData = remember { mutableStateOf(false) }
+    val confirmDeleteAccountAndData = remember { mutableStateOf(false) }
     val confirmClearArchive = remember { mutableStateOf(false) }
     val confirmClearReflections = remember { mutableStateOf(false) }
     val confirmResetIdentity = remember { mutableStateOf(false) }
     val showReminderTime = remember { mutableStateOf(false) }
     val isShowingAnkyExperience = remember { mutableStateOf(false) }
+    val didCopyAnkyContract = remember { mutableStateOf(false) }
+    val showsAccountDeletion = remember { mutableStateOf(false) }
+    val showsReflectionCreditsSheet = remember { mutableStateOf(false) }
+    val reflectionCreditsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val phraseInput = remember { mutableStateOf("") }
     val reminderHourInput = remember(state.dailyReminderMinutes) {
         mutableStateOf((state.dailyReminderMinutes / 60).toString().padStart(2, '0'))
@@ -159,8 +189,9 @@ fun YouScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.refreshLocalStats()
+        viewModel.refresh()
         viewModel.exportArchive()
+        viewModel.prepareFormattedWritingExport()
     }
     LaunchedEffect(state.statusMessage) {
         if (state.statusMessage != null) {
@@ -177,6 +208,12 @@ fun YouScreen(
     LaunchedEffect(isShowingAnkyExperience.value) {
         onExperienceVisibilityChanged(isShowingAnkyExperience.value)
     }
+    LaunchedEffect(didCopyAnkyContract.value) {
+        if (didCopyAnkyContract.value) {
+            delay(1_600)
+            didCopyAnkyContract.value = false
+        }
+    }
     DisposableEffect(Unit) {
         onDispose { onExperienceVisibilityChanged(false) }
     }
@@ -187,7 +224,23 @@ fun YouScreen(
                 YouHome(
                     state = state,
                     activePrompt = activePrompt.value,
-                    onOpenExperience = { isShowingAnkyExperience.value = true },
+                    onOpenPage = { page.value = it },
+                    onCopyAnkyContract = {
+                        context.copyText("Anky contract address", PrivacyMessages.AnkyCoinContractAddress)
+                        didCopyAnkyContract.value = true
+                    },
+                    onOpenCreditsSheet = {
+                        activePrompt.value = null
+                        isShowingSystemPrompt.value = false
+                        isPromptVisible.value = false
+                        showsReflectionCreditsSheet.value = true
+                        viewModel.refreshCredits()
+                    },
+                    didCopyAnkyContract = didCopyAnkyContract.value,
+                    showsAccountDeletion = showsAccountDeletion.value,
+                    onToggleAccountDeletion = { showsAccountDeletion.value = !showsAccountDeletion.value },
+                    onDeleteAccountAndData = { confirmDeleteAccountAndData.value = true },
+                    onAppLockChange = onAppLockChange,
                     onPrompt = {
                         activePrompt.value = it
                         isShowingSystemPrompt.value = false
@@ -215,17 +268,6 @@ fun YouScreen(
                                 context = context,
                                 viewModel = viewModel,
                                 page = { page.value = it },
-                                importBackup = {
-                                    backupImporter.launch(
-                                        arrayOf(
-                                            "application/zip",
-                                            "application/x-zip-compressed",
-                                            "application/octet-stream",
-                                            "application/json",
-                                            "text/plain",
-                                        ),
-                                    )
-                                },
                                 confirmDeleteLocalData = { confirmDeleteLocalData.value = true },
                             )
                         },
@@ -236,6 +278,13 @@ fun YouScreen(
                             .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
+            } else if (page.value == YouPage.History) {
+                YouHistoryPage(
+                    state = state,
+                    onBack = { page.value = null },
+                    onOpenReveal = onOpenReveal,
+                    onWriteRequested = onWriteRequested,
+                )
             } else {
                 YouDetailShell(
                     page = page.value!!,
@@ -259,15 +308,19 @@ fun YouScreen(
                                 phraseInput.value = ""
                                 showImportPhrase.value = true
                             },
-                            onAppLock = viewModel::setAppLock,
+                            onAppLock = onAppLockChange,
                             onReminder = setReminderWithPermission,
                             onReminderTime = { showReminderTime.value = true },
+                            onDeleteAccountAndData = { confirmDeleteAccountAndData.value = true },
                         )
                         YouPage.Privacy -> PrivacyPage()
+                        YouPage.Terms -> TermsPage()
                         YouPage.Export -> ExportPage(
                             state = state,
                             onExport = viewModel::exportArchive,
-                            onShare = { state.exportedFile?.let(context::shareFile) },
+                            onPrepareWritingExport = viewModel::prepareFormattedWritingExport,
+                            onShareWritingExport = { state.formattedWritingExportFile?.let { context.shareFile(it, "text/markdown", "export writings") } },
+                            onShareBackup = { state.exportedFile?.let { context.shareFile(it, "application/zip", "export backup zip") } },
                             onRestore = {
                                 backupImporter.launch(
                                     arrayOf(
@@ -281,6 +334,7 @@ fun YouScreen(
                             },
                             onDeleteLocalData = { confirmDeleteLocalData.value = true },
                         )
+                        YouPage.History -> Unit
                         YouPage.Credits -> CreditsPage(
                             state = state,
                             onRefresh = viewModel::refreshCredits,
@@ -311,6 +365,21 @@ fun YouScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+        }
+    }
+
+    if (showsReflectionCreditsSheet.value) {
+        ModalBottomSheet(
+            onDismissRequest = { showsReflectionCreditsSheet.value = false },
+            sheetState = reflectionCreditsSheetState,
+            containerColor = Color(0xFF06050A),
+        ) {
+            YouReflectionCreditsSheet(
+                state = state,
+                onRefresh = viewModel::refreshCredits,
+                onPurchase = { packageId -> viewModel.purchaseCredits(packageId, context.findActivity()) },
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 28.dp),
+            )
         }
     }
 
@@ -368,6 +437,31 @@ fun YouScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeleteLocalData.value = false }) { Text("cancel") }
+            },
+            containerColor = AnkyColors.PanelStrong,
+        )
+    }
+
+    if (confirmDeleteAccountAndData.value) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteAccountAndData.value = false },
+            title = { Text("Delete Account and Data?", style = AnkyType.Heading.copy(color = AnkyColors.Danger)) },
+            text = {
+                Text(
+                    "This deletes your Anky data from this device. This cannot be undone.",
+                    style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDeleteAccountAndData.value = false
+                        viewModel.deleteAccountAndDataEverywhere(onDeleted = onAccountDeleted)
+                    },
+                ) { Text("Delete", color = AnkyColors.Danger) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteAccountAndData.value = false }) { Text("Cancel") }
             },
             containerColor = AnkyColors.PanelStrong,
         )
@@ -746,35 +840,88 @@ private fun experienceClock(seconds: Int): String {
 private fun YouHome(
     state: YouState,
     activePrompt: YouPrompt?,
-    onOpenExperience: () -> Unit,
+    onOpenPage: (YouPage) -> Unit,
+    onCopyAnkyContract: () -> Unit,
+    onOpenCreditsSheet: () -> Unit,
+    didCopyAnkyContract: Boolean,
+    showsAccountDeletion: Boolean,
+    onToggleAccountDeletion: () -> Unit,
+    onDeleteAccountAndData: () -> Unit,
+    onAppLockChange: (Boolean) -> Unit,
     onPrompt: (YouPrompt) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 62.dp, bottom = 220.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
+    val context = LocalContext.current
+    val shouldShowDeviceLockControl = remember(context) { canUseDeviceLock(context) }
+    val lockTitle = remember(context) { deviceLockControlTitle(context) }
+    Box(Modifier.fillMaxSize()) {
         Text(
-            "you",
-            style = AnkyType.Title,
-            modifier = Modifier.clickable(onClick = onOpenExperience),
+            "You",
+            style = AnkyType.Body.copy(
+                fontSize = 17.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = AnkyColors.Paper,
+            ),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 56.dp),
+            maxLines = 1,
         )
-        YouStats(state)
-        AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-            PromptRow(R.drawable.you_icon_account, "identity", "save it to secure storage", activePrompt == YouPrompt.Identity) { onPrompt(YouPrompt.Identity) }
-            Divider()
-            PromptRow(R.drawable.you_icon_privacy, "privacy", "what leaves this phone", activePrompt == YouPrompt.Privacy) { onPrompt(YouPrompt.Privacy) }
-            Divider()
-            PromptRow(R.drawable.you_icon_export, "data", "export or restore writing", activePrompt == YouPrompt.Export) { onPrompt(YouPrompt.Export) }
-            Divider()
-            PromptRow(R.drawable.you_icon_credits, "credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onPrompt(YouPrompt.Credits) }
-            Divider()
-            PromptRow(R.drawable.you_icon_credits, "support / feedback", "email support@anky.app", activePrompt == YouPrompt.Support) { onPrompt(YouPrompt.Support) }
-        }
-        if (BuildConfig.DEBUG) {
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 106.dp, bottom = 220.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
             AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-                PromptRow(R.drawable.you_icon_settings, "developer", "local repair tools", activePrompt == YouPrompt.Developer) { onPrompt(YouPrompt.Developer) }
+                PromptRow(R.drawable.you_icon_export, "Data", "Export writings or back up locally", activePrompt == YouPrompt.Export) { onPrompt(YouPrompt.Export) }
+                Divider()
+                PromptRow(R.drawable.you_icon_credits, "Credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onOpenCreditsSheet() }
+                Divider()
+                PromptRow(R.drawable.you_icon_support, "Support / Feedback", "Email support@anky.app", activePrompt == YouPrompt.Support) { onPrompt(YouPrompt.Support) }
+                Divider()
+                PromptRow(R.drawable.you_icon_privacy, "Privacy Policy", "How your data is handled", selected = false) { onOpenPage(YouPage.Privacy) }
+                Divider()
+                PromptRow(R.drawable.you_icon_terms, "Terms & Conditions", "The agreement for using Anky", selected = false) { onOpenPage(YouPage.Terms) }
+                if (shouldShowDeviceLockControl) {
+                    Divider()
+                    DeviceLockRow(
+                        title = lockTitle,
+                        checked = state.appLockEnabled,
+                        onChecked = onAppLockChange,
+                    )
+                }
+                Divider()
+                PromptRow(R.drawable.you_icon_anky_token, "\$ANKY on Base", if (didCopyAnkyContract) "Copied to clipboard" else ankyContractDisplayAddress(), selected = false) { onCopyAnkyContract() }
             }
+            if (showsAccountDeletion) {
+                AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
+                    DestructiveMenuRow("DELETE ACCOUNT AND DATA", onClick = onDeleteAccountAndData)
+                }
+            }
+            if (BuildConfig.DEBUG) {
+                AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
+                    PromptRow(R.drawable.you_icon_settings, "developer", "local repair tools", activePrompt == YouPrompt.Developer) { onPrompt(YouPrompt.Developer) }
+                }
+            }
+        }
+        IconButton(
+            onClick = onToggleAccountDeletion,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 46.dp, end = 16.dp)
+                .semantics {
+                    contentDescription = if (showsAccountDeletion) {
+                        "Hide delete account action"
+                    } else {
+                        "Show delete account action"
+                    }
+                },
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PriorityHigh,
+                contentDescription = null,
+                tint = AnkyColors.Danger.copy(alpha = 0.88f),
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
@@ -842,17 +989,188 @@ private fun YouAvatar() {
 }
 
 @Composable
-private fun YouStats(state: YouState) {
-    AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-        Row(Modifier.fillMaxWidth().height(68.dp), verticalAlignment = Alignment.CenterVertically) {
-            StatCell(R.drawable.you_icon_feather_stat, state.completeAnkyCount.toString(), "ankys")
-            VerticalDivider()
-            StatCell(R.drawable.you_icon_clock_stat, state.totalWritingMinutes.toString(), "minutes")
-            VerticalDivider()
-            StatCell(R.drawable.you_icon_flame_stat, state.currentStreak.toString(), "streak")
+private fun YouStats(state: YouState, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Open all ankys" },
+    ) {
+        AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+            Row(Modifier.fillMaxWidth().height(68.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatCell(R.drawable.you_icon_feather_stat, state.completeAnkyCount.toString(), "ankys")
+                VerticalDivider()
+                StatCell(R.drawable.you_icon_clock_stat, state.totalWritingMinutes.toString(), "minutes")
+                VerticalDivider()
+                StatCell(R.drawable.you_icon_flame_stat, state.currentStreak.toString(), "streak")
+            }
         }
     }
 }
+
+@Composable
+private fun YouHistoryPage(
+    state: YouState,
+    onBack: () -> Unit,
+    onOpenReveal: (String) -> Unit,
+    onWriteRequested: () -> Unit,
+) {
+    val sessions = state.completeAnkySessions
+    Box(Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(R.drawable.map_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(Modifier.fillMaxSize().background(AnkyColors.Ink.copy(alpha = 0.76f)))
+        Canvas(Modifier.fillMaxSize()) {
+            listOf(0.18f, 0.54f, 0.82f).forEach { position ->
+                drawLine(
+                    color = AnkyColors.Gold.copy(alpha = 0.10f),
+                    start = Offset(0f, size.height * position),
+                    end = Offset(size.width, size.height * position),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+        }
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(AnkyColors.Ink.copy(alpha = 0.96f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Filled.ChevronLeft,
+                        contentDescription = "Back",
+                        tint = AnkyColors.Gold,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+                Text(
+                    historyTitle(sessions.size),
+                    style = AnkyType.Body.copy(
+                        fontSize = 17.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = AnkyColors.Paper,
+                    ),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.size(48.dp))
+            }
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val contentWidth = maxWidth * 0.87f
+                val horizontalPadding = (maxWidth - contentWidth) / 2
+                if (sessions.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = horizontalPadding)
+                            .padding(top = 96.dp, bottom = 152.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        Text(
+                            "0 ankys",
+                            style = AnkyType.Title.copy(fontSize = 36.sp, color = AnkyColors.Gold),
+                            textAlign = TextAlign.Center,
+                        )
+                        AnkyActionButton(
+                            "WRITE ${AnkyDuration.CompleteRitualMinutes} MINUTES",
+                            onClick = onWriteRequested,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = horizontalPadding)
+                            .padding(top = 24.dp, bottom = 152.dp),
+                    ) {
+                        items(sessions, key = { it.hash }) { session ->
+                            YouHistorySessionRow(session = session, onOpenReveal = onOpenReveal)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YouHistorySessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenReveal(session.hash) }
+            .semantics(mergeDescendants = true) { contentDescription = historySessionAccessibilityLabel(session) }
+            .padding(vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                session.title.lowercase(),
+                style = AnkyType.Mono.copy(
+                    fontSize = 15.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = AnkyColors.Gold.copy(alpha = 0.9f),
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                session.createdAt.formattedForYouHistory(),
+                style = AnkyType.Mono.copy(
+                    fontSize = 12.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    color = AnkyColors.Paper.copy(alpha = 0.58f),
+                ),
+            )
+            Text(
+                "${session.wordCount} ${if (session.wordCount == 1) "word" else "words"}",
+                style = AnkyType.Mono.copy(
+                    fontSize = 12.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    color = AnkyColors.Paper.copy(alpha = 0.48f),
+                ),
+            )
+        }
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = AnkyColors.Gold.copy(alpha = 0.7f),
+            modifier = Modifier.size(13.dp),
+        )
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(AnkyColors.Gold.copy(alpha = 0.13f)),
+    )
+}
+
+private fun historyTitle(count: Int): String =
+    "$count ${if (count == 1) "anky" else "ankys"}"
+
+private fun historySessionAccessibilityLabel(session: SessionSummary): String =
+    listOf(session.title, session.preview).joinToString(", ")
+
+private fun java.time.Instant.formattedForYouHistory(): String =
+    DateTimeFormatter
+        .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+        .withLocale(Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
+        .format(this)
 
 @Composable
 private fun RowScope.StatCell(icon: Int, value: String, label: String) {
@@ -877,6 +1195,63 @@ private fun MenuRow(icon: Int, title: String, subtitle: String, onClick: () -> U
             Text(subtitle, style = AnkyType.Caption.copy(fontSize = 12.sp, color = AnkyColors.PaperMuted), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Image(painterResource(R.drawable.you_icon_chevron_right), null, modifier = Modifier.size(14.dp).alpha(0.82f))
+    }
+}
+
+@Composable
+private fun DestructiveMenuRow(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.PriorityHigh,
+            contentDescription = null,
+            tint = AnkyColors.Danger.copy(alpha = 0.9f),
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            title,
+            style = AnkyType.Body.copy(
+                fontSize = 16.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = AnkyColors.Danger.copy(alpha = 0.94f),
+            ),
+            modifier = Modifier.padding(start = 13.dp),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun DeviceLockRow(title: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Lock,
+            contentDescription = null,
+            tint = AnkyColors.PaperMuted.copy(alpha = 0.86f),
+            modifier = Modifier.size(24.dp),
+        )
+        Column(Modifier.weight(1f).padding(start = 13.dp)) {
+            Text(
+                title,
+                style = AnkyType.Body.copy(
+                    fontSize = 17.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = AnkyColors.Paper,
+                ),
+                maxLines = 1,
+            )
+            Text(
+                if (checked) "On" else "Off",
+                style = AnkyType.Caption.copy(fontSize = 12.sp, color = AnkyColors.PaperMuted),
+                maxLines = 1,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onChecked)
     }
 }
 
@@ -947,13 +1322,14 @@ private fun AccountPage(
     onAppLock: (Boolean) -> Unit,
     onReminder: (Boolean) -> Unit,
     onReminderTime: () -> Unit,
+    onDeleteAccountAndData: () -> Unit,
 ) {
     val context = LocalContext.current
     val lockLabel = remember(context) { biometricLockLabel(context) }
     AnkyPanel {
         Text("local identity", style = AnkyType.Caption)
         Text(
-            "anky created a Base account for this device.",
+            "Anky created a Base account for this device.",
             style = AnkyType.Body.copy(
                 fontSize = 17.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
@@ -964,23 +1340,23 @@ private fun AccountPage(
     }
     AnkyPanel {
         Text("advanced recovery", style = AnkyType.Caption)
-        Text("this phrase controls your Anky Base account. never share it. anky cannot recover it for you.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         Divider()
         SwitchRow("$lockLabel app lock", state.appLockEnabled, onAppLock)
         Text("your recovery phrase can only be shown after $lockLabel lock is enabled.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
-        Text("Your password/biometrics protect local access. They are not an Anky login.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("Your passcode or biometrics protect local access. They are not an Anky login.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         if (state.recoveryPhrase == null) {
-            AnkyActionButton("reveal recovery phrase", enabled = state.appLockEnabled, onClick = onRevealRecovery)
+            AnkyActionButton("Reveal recovery phrase", enabled = state.appLockEnabled, onClick = onRevealRecovery)
         } else {
             Text(state.recoveryPhrase, style = AnkyType.Mono.copy(color = AnkyColors.Paper))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnkyActionButton("copy recovery phrase", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
-                AnkyActionButton("hide", modifier = Modifier.weight(1f), onClick = onHideRecovery)
+                AnkyActionButton("Copy recovery phrase", modifier = Modifier.weight(1f), onClick = onCopyRecovery)
+                AnkyActionButton("Hide", modifier = Modifier.weight(1f), onClick = onHideRecovery)
             }
         }
-        AnkyActionButton("recover identity", onClick = onImportPhrase)
-        AnkyActionButton("Back up Anky identity", onClick = onBackupIdentity)
-        Text("This stores your recovery phrase in device secure storage. Anky cannot read it.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        AnkyActionButton("Recover identity", onClick = onImportPhrase)
+        AnkyActionButton("Back up recovery phrase to device secure storage", onClick = onBackupIdentity)
+        Text("This stores your recovery phrase in device secure storage. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
         Text("Anky address", style = AnkyType.Caption)
         Text(state.accountId, style = AnkyType.Mono.copy(color = AnkyColors.PaperMuted))
         AnkyActionButton("copy account", onClick = onCopyAccountId)
@@ -993,6 +1369,11 @@ private fun AccountPage(
     AnkyPanel {
         Text("ownership note", style = AnkyType.Caption)
         Text("your writing belongs to this device unless you choose to export or recover it elsewhere.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+    }
+    YouDangerPanel {
+        Text("danger zone", style = AnkyType.Heading.copy(fontSize = 18.sp, color = AnkyColors.Danger))
+        Text("This deletes local writing, reflections, the map index, active draft, local identity, reminder settings, and cached credit state from this device.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        AnkyActionButton("DELETE ACCOUNT AND DATA", destructive = true, onClick = onDeleteAccountAndData)
     }
 }
 
@@ -1007,25 +1388,42 @@ private fun PrivacyPage() {
 }
 
 @Composable
+private fun TermsPage() {
+    Text("Terms & Conditions", style = AnkyType.Heading.copy(fontSize = 24.sp, color = AnkyColors.Paper), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    Text("Writing and reflection agreement", style = AnkyType.Caption.copy(color = AnkyColors.PaperMuted), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    TermsCopy.forEach { ArticleLine(it) }
+}
+
+@Composable
 private fun ExportPage(
     state: YouState,
     onExport: () -> Unit,
-    onShare: () -> Unit,
+    onPrepareWritingExport: () -> Unit,
+    onShareWritingExport: () -> Unit,
+    onShareBackup: () -> Unit,
     onRestore: () -> Unit,
     onDeleteLocalData: () -> Unit,
 ) {
     LaunchedEffect(Unit) {
         onExport()
+        onPrepareWritingExport()
     }
 
     AnkyPanel {
         Text("${state.localAnkyFileCount} local .anky files · ${state.reflectionCount} reflections", style = AnkyType.Heading)
-        Text("backups may include plaintext writing and reflections. keep them somewhere private.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text("Readable exports include plaintext writing. Keep them somewhere private.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
     AnkyPanel {
+        when (formattedWritingExportAction(state)) {
+            FormattedWritingExportAction.Share -> AnkyActionButton("Export writings", onClick = onShareWritingExport)
+            FormattedWritingExportAction.Empty -> DisabledRow("No writing to export yet")
+        }
+    }
+    AnkyPanel {
+        AnkyActionButton("Back up now", onClick = onExport)
         when (exportBackupAction(state)) {
-            ExportBackupAction.Share -> AnkyActionButton("export backup zip", onClick = onShare)
-            ExportBackupAction.Empty -> DisabledRow("no local data to export yet")
+            ExportBackupAction.Share -> AnkyActionButton("export backup zip", onClick = onShareBackup)
+            ExportBackupAction.Empty -> DisabledRow("no local data to back up yet")
         }
         AnkyActionButton("restore backup", onClick = onRestore)
     }
@@ -1060,7 +1458,7 @@ private fun CreditsPage(
 ) {
     AnkyPanel {
         Text(
-            state.creditState.balance?.toString() ?: "...",
+            state.creditDetailTitle,
             style = AnkyType.Title.copy(
                 fontSize = 62.sp,
                 shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.35f), blurRadius = 18f),
@@ -1068,7 +1466,7 @@ private fun CreditsPage(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
-        Text("credits", style = AnkyType.Caption, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        Text(state.creditDetailCaption, style = AnkyType.Caption, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
     }
     AnkyPanel {
         Rule("1 credit = reflection")
@@ -1077,6 +1475,10 @@ private fun CreditsPage(
     }
     AnkyPanel {
         when {
+            state.hasUnspentGiftCredit -> {
+                DisabledRow(YouStatusCopy.CreditPacksLocked)
+                Text(YouStatusCopy.CreditGiftDetail, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+            }
             state.creditState.isLoading && state.creditState.packages.isEmpty() -> DisabledRow("loading credit packs")
             state.creditState.packages.isEmpty() -> DisabledRow("no credit packs available")
             else -> {
@@ -1101,6 +1503,233 @@ private fun CreditsPage(
         AnkyActionButton("support / feedback", onClick = onSupportFeedback)
         Text("email support@anky.app. include only what you choose to write.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
+}
+
+@Composable
+private fun YouReflectionCreditsSheet(
+    state: YouState,
+    onRefresh: () -> Unit,
+    onPurchase: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(
+                imageVector = Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = AnkyColors.Gold,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Anky reflection credits",
+                    style = AnkyType.Heading.copy(fontSize = 29.sp, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "Your space to be seen, held, and mirrored.",
+                    style = AnkyType.Body.copy(fontSize = 15.sp, color = AnkyColors.Paper.copy(alpha = 0.68f)),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onRefresh, enabled = !state.creditState.isLoading) {
+                if (state.creditState.isLoading) {
+                    CircularProgressIndicator(
+                        color = AnkyColors.Gold,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Text("refresh", style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Gold))
+                }
+            }
+        }
+
+        YouCreditBalancePanel(state.presentedCreditBalance)
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            when {
+                state.creditState.isLoading && state.creditState.packages.isEmpty() -> YouCreditDisabledRow("loading credit packs")
+                state.creditState.packages.isEmpty() -> YouCreditDisabledRow("no credit packs available")
+                else -> {
+                    state.creditState.packages.take(3).forEach { creditPackage ->
+                        YouCreditPackageRow(
+                            creditPackage = creditPackage,
+                            isRecommended = creditPackage.title == "11 reflections" ||
+                                creditPackage.packageId.endsWith(".credits.11"),
+                            isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
+                            onPurchase = onPurchase,
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold.copy(alpha = 0.78f), modifier = Modifier.size(13.dp))
+            Text(
+                "Writing is free. One credit = one reflection.",
+                style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.68f)),
+                modifier = Modifier.padding(horizontal = 10.dp),
+                textAlign = TextAlign.Center,
+            )
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold.copy(alpha = 0.78f), modifier = Modifier.size(13.dp))
+        }
+
+        state.error?.let { error ->
+            Text(
+                error.lowercase(),
+                style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun YouCreditBalancePanel(balance: Int?) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(124.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.Black.copy(alpha = 0.58f))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.34f), RoundedCornerShape(18.dp)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.credits_thread_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            AnkyColors.Ink.copy(alpha = 0.90f),
+                            AnkyColors.Ink.copy(alpha = 0.38f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 26.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+        ) {
+            Text(
+                balance?.toString() ?: "...",
+                style = AnkyType.Title.copy(
+                    fontSize = 68.sp,
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.35f), blurRadius = 14f),
+                ),
+            )
+            Text(
+                "available\ncredits",
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.78f)),
+                lineHeight = 28.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun YouCreditPackageRow(
+    creditPackage: CreditPackage,
+    isRecommended: Boolean,
+    isPurchasing: Boolean,
+    onPurchase: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(86.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF150B20).copy(alpha = 0.95f),
+                        Color(0xFF07050D).copy(alpha = 0.98f),
+                    ),
+                ),
+            )
+            .border(
+                if (isRecommended) 1.5.dp else 1.dp,
+                AnkyColors.Gold.copy(alpha = if (isRecommended) 0.52f else 0.28f),
+                RoundedCornerShape(16.dp),
+            )
+            .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Gold.copy(alpha = 0.16f))
+                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.24f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                creditPackage.title,
+                style = AnkyType.Heading.copy(fontSize = 25.sp, fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                creditPackage.subtitle,
+                style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (isRecommended && !isPurchasing) {
+                Text(
+                    "best value",
+                    style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(AnkyColors.Gold)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
+            }
+            Text(
+                if (isPurchasing) "..." else creditPackage.price,
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Gold),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun YouCreditDisabledRow(text: String) {
+    Text(
+        text,
+        style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.Black.copy(alpha = 0.14f))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 18.dp, vertical = 22.dp),
+    )
 }
 
 @Composable
@@ -1158,6 +1787,21 @@ private fun biometricLockLabel(context: Context): String {
         else -> "device"
     }
 }
+
+private fun canUseDeviceLock(context: Context): Boolean =
+    BiometricManager.from(context).canAuthenticate(
+        BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+    ) == BiometricManager.BIOMETRIC_SUCCESS
+
+private fun deviceLockControlTitle(context: Context): String =
+    when (biometricLockLabel(context)) {
+        "fingerprint" -> "Fingerprint"
+        "face" -> "Face unlock"
+        "iris" -> "Iris"
+        "biometric" -> "Biometric lock"
+        else -> "Device lock"
+    }
 
 @Composable
 private fun TokenPage(onCopy: () -> Unit) {
@@ -1236,8 +1880,14 @@ private fun SwitchRow(label: String, checked: Boolean, onChecked: (Boolean) -> U
 private fun ArticleLine(item: ArticleItem) {
     when (item) {
         is ArticleItem.Caption -> Text(item.text, style = AnkyType.Caption)
+        is ArticleItem.Callout -> AnkyPanel {
+            MarkdownArticleText(item.text)
+        }
         is ArticleItem.Heading -> Text(item.text, style = AnkyType.Heading.copy(fontSize = 21.sp), modifier = Modifier.padding(top = 4.dp))
         is ArticleItem.Paragraph -> MarkdownArticleText(item.text)
+        is ArticleItem.Bullets -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item.items.forEach { Rule(it) }
+        }
     }
 }
 
@@ -1287,8 +1937,10 @@ private fun markdownLinks(text: String): AnnotatedString = buildAnnotatedString 
 
 private sealed interface ArticleItem {
     data class Caption(val text: String) : ArticleItem
+    data class Callout(val text: String) : ArticleItem
     data class Heading(val text: String) : ArticleItem
     data class Paragraph(val text: String) : ArticleItem
+    data class Bullets(val items: List<String>) : ArticleItem
 }
 
 private val PrivacyCopy = listOf(
@@ -1317,6 +1969,162 @@ private val PrivacyCopy = listOf(
     ArticleItem.Paragraph("anky does claim the default direction of the app is local-first: the `.anky` file belongs first to the person who wrote it."),
 )
 
+private val TermsCopy = listOf(
+    ArticleItem.Caption("Anky, Inc. - Effective June 7, 2026"),
+    ArticleItem.Callout("Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery phrase, your purchases, and how you use AI-generated reflections."),
+    ArticleItem.Heading("1. Acceptance"),
+    ArticleItem.Paragraph("These Terms and Conditions are an agreement between you and **Anky, Inc.**, a Delaware corporation."),
+    ArticleItem.Paragraph("By downloading, accessing, or using Anky, you agree to these Terms."),
+    ArticleItem.Paragraph("If you do not agree, do not use Anky."),
+    ArticleItem.Heading("2. What Anky Provides"),
+    ArticleItem.Paragraph("Anky lets you:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Write forward-only `.anky` sessions",
+            "Save writing locally",
+            "Revisit local writing history",
+            "Export or import writing files",
+            "Manage a local Anky identity",
+            "Buy or use reflection credits",
+            "Ask Anky for AI-generated reflections",
+            "Use related features we provide over time",
+        ),
+    ),
+    ArticleItem.Paragraph("We may change, suspend, or discontinue any part of Anky at any time."),
+    ArticleItem.Heading("3. Age Requirement"),
+    ArticleItem.Paragraph("Anky is not intended for children under 13."),
+    ArticleItem.Paragraph("If you are under 18, you may use Anky only with permission from a parent or guardian."),
+    ArticleItem.Paragraph("By using Anky, you represent that you meet these requirements."),
+    ArticleItem.Heading("4. Anky Is Not Professional Advice"),
+    ArticleItem.Paragraph("Anky is not a therapist, doctor, emergency service, financial advisor, legal advisor, religious authority, or spiritual authority."),
+    ArticleItem.Paragraph("AI-generated reflections are for personal writing reflection only."),
+    ArticleItem.Paragraph("They may be inaccurate, incomplete, unexpected, emotionally intense, or not useful."),
+    ArticleItem.Paragraph("Do not rely on Anky for medical, mental health, legal, financial, emergency, or safety decisions."),
+    ArticleItem.Paragraph("If you may hurt yourself or someone else, or if you are in immediate danger, contact local emergency services or a trusted person immediately."),
+    ArticleItem.Heading("5. Your Writing"),
+    ArticleItem.Paragraph("You own your writing."),
+    ArticleItem.Paragraph("By using Anky, you give Anky, Inc. a limited permission to process your writing only as needed to provide the features you choose, such as saving locally, generating a reflection, exporting, importing, backing up, debugging, support, security, and abuse prevention."),
+    ArticleItem.Paragraph("You are responsible for what you write, export, send, share, or back up."),
+    ArticleItem.Paragraph("Do not write, upload, export, or share content through Anky in a way that violates the law or harms others."),
+    ArticleItem.Heading("6. Local-First Design"),
+    ArticleItem.Paragraph("Anky is designed to be local-first."),
+    ArticleItem.Paragraph("Your writing normally stays on your device."),
+    ArticleItem.Paragraph("When you ask for a reflection, you understand that your `.anky` writing is sent to Anky's mirror service and AI service providers to generate the reflection."),
+    ArticleItem.Paragraph("When you export, share, back up, or contact support, you are choosing to send or store data outside the app."),
+    ArticleItem.Heading("7. Local Identity and Recovery Phrase"),
+    ArticleItem.Paragraph("Anky may create a local account/identity for your device."),
+    ArticleItem.Paragraph("You are responsible for protecting your recovery phrase, private key, device passcode, biometric access, account backups, and exported files."),
+    ArticleItem.Paragraph("Never share your recovery phrase."),
+    ArticleItem.Paragraph("If you lose your recovery phrase, Anky may not be able to recover your identity, credits, account state, or related data."),
+    ArticleItem.Paragraph("Anky is not responsible for losses caused by lost recovery phrases, compromised devices, shared credentials, or unauthorized access to your device or accounts."),
+    ArticleItem.Heading("8. Purchases, Credits, and Refunds"),
+    ArticleItem.Paragraph("Writing in Anky is free."),
+    ArticleItem.Paragraph("Reflections may require credits."),
+    ArticleItem.Paragraph("Credits are digital app credits used only inside Anky for reflection requests. Credits are not money, not cryptocurrency, not stored value, not withdrawable, not redeemable for cash, and not transferable unless we explicitly say otherwise."),
+    ArticleItem.Paragraph("Purchases are processed through Google Play and may be managed by RevenueCat."),
+    ArticleItem.Paragraph("We do not handle or store your full payment card details."),
+    ArticleItem.Paragraph("Refunds are handled by Google Play according to Google's policies."),
+    ArticleItem.Paragraph("We may change pricing, credit packs, free trials, or credit rules at any time, subject to applicable law and Google Play rules."),
+    ArticleItem.Heading("9. AI-Generated Reflections"),
+    ArticleItem.Paragraph("AI-generated reflections are produced automatically."),
+    ArticleItem.Paragraph("You understand that reflections may:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Be wrong",
+            "Miss important context",
+            "Sound more certain than they are",
+            "Be emotionally uncomfortable",
+            "Fail to understand your language, tone, or intent",
+            "Contain unexpected content",
+            "Be unavailable because of technical errors",
+        ),
+    ),
+    ArticleItem.Paragraph("You remain responsible for interpreting and using any reflection."),
+    ArticleItem.Paragraph("Anky, Inc. is not responsible for decisions you make based on AI-generated content."),
+    ArticleItem.Heading("10. Blockchain and Token References"),
+    ArticleItem.Paragraph("Anky may display blockchain addresses, token references, contract addresses, or related information."),
+    ArticleItem.Paragraph("These references are informational only."),
+    ArticleItem.Paragraph("Nothing in Anky is financial advice, investment advice, tax advice, legal advice, or an offer to buy or sell any token, security, or asset."),
+    ArticleItem.Paragraph("Using Anky does not require buying, holding, or trading any token."),
+    ArticleItem.Paragraph("Blockchain transactions may be public, irreversible, volatile, risky, and outside Anky's control."),
+    ArticleItem.Paragraph("You are responsible for your own wallets, keys, transactions, taxes, and financial decisions."),
+    ArticleItem.Heading("11. User Conduct"),
+    ArticleItem.Paragraph("You agree not to:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Use Anky if you do not meet the age requirements",
+            "Use Anky for illegal activity",
+            "Abuse, attack, disrupt, or overload Anky's systems",
+            "Circumvent credits, paywalls, trials, signatures, app attestation, or security controls",
+            "Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, keys, or backend systems",
+            "Use bots, scripts, or automation to abuse the app",
+            "Attempt to access another person's data, identity, recovery phrase, or account",
+            "Upload or share content that violates another person's rights",
+            "Use Anky to generate instructions for harming yourself or others",
+            "Misrepresent Anky, Anky, Inc., or any affiliation with us",
+        ),
+    ),
+    ArticleItem.Paragraph("We may suspend, restrict, or terminate access if we believe you violated these Terms, abused the service, created risk, or used Anky unlawfully."),
+    ArticleItem.Heading("12. Intellectual Property"),
+    ArticleItem.Paragraph("Anky, Inc. owns Anky's software, design, name, logos, characters, visual assets, prompts, product concepts, documentation, and related intellectual property."),
+    ArticleItem.Paragraph("You may not copy, modify, distribute, sell, reverse engineer, or create derivative works from Anky except where allowed by law or by an open-source license we explicitly provide."),
+    ArticleItem.Paragraph("You retain ownership of your own writing."),
+    ArticleItem.Heading("13. Feedback"),
+    ArticleItem.Paragraph("If you send us feedback, ideas, suggestions, bug reports, or feature requests, you give Anky, Inc. permission to use them without restriction or compensation."),
+    ArticleItem.Paragraph("This does not give us ownership of your private writing."),
+    ArticleItem.Heading("14. Third-Party Services"),
+    ArticleItem.Paragraph("Anky depends on third-party services, which may include Google, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and blockchain networks."),
+    ArticleItem.Paragraph("We are not responsible for third-party services, terms, outages, policies, prices, decisions, or data practices."),
+    ArticleItem.Paragraph("Your use of third-party services may be subject to their terms and privacy policies."),
+    ArticleItem.Heading("15. App Store Terms"),
+    ArticleItem.Paragraph("If you downloaded Anky from Google Play, Google's terms also apply."),
+    ArticleItem.Paragraph("Google is not responsible for Anky, its content, support, warranties, or claims, except as required by applicable law or Google's own terms."),
+    ArticleItem.Heading("16. Availability"),
+    ArticleItem.Paragraph("Anky may be unavailable, delayed, interrupted, inaccurate, or discontinued."),
+    ArticleItem.Paragraph("We do not guarantee that Anky will always work, that reflections will always be available, that credits will always sync instantly, or that local data will never be lost."),
+    ArticleItem.Paragraph("Back up anything important."),
+    ArticleItem.Heading("17. Termination"),
+    ArticleItem.Paragraph("You may stop using Anky at any time."),
+    ArticleItem.Paragraph("You can delete the app and delete local data where the app provides deletion tools."),
+    ArticleItem.Paragraph("We may suspend, limit, or terminate your access to Anky at any time if we believe it is necessary to protect Anky, users, third parties, or the integrity of the service."),
+    ArticleItem.Heading("18. Disclaimer of Warranties"),
+    ArticleItem.Paragraph("ANKY IS PROVIDED \"AS IS\" AND \"AS AVAILABLE.\""),
+    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RELIABILITY."),
+    ArticleItem.Paragraph("YOUR USE OF ANKY IS AT YOUR OWN RISK."),
+    ArticleItem.Heading("19. Limitation of Liability"),
+    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST KEYS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT."),
+    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.'S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:"),
+    ArticleItem.Paragraph("(A) THE AMOUNT YOU PAID TO ANKY, INC. THROUGH THE APP IN THE 12 MONTHS BEFORE THE CLAIM, OR"),
+    ArticleItem.Paragraph("(B) $50 USD."),
+    ArticleItem.Paragraph("Some jurisdictions do not allow certain limitations, so some of these limits may not apply to you."),
+    ArticleItem.Heading("20. Indemnification"),
+    ArticleItem.Paragraph("You agree to defend, indemnify, and hold harmless Anky, Inc. and its owners, directors, officers, employees, contractors, service providers, and affiliates from claims, damages, losses, liabilities, costs, and expenses arising from:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Your use of Anky",
+            "Your writing or exported content",
+            "Your violation of these Terms",
+            "Your violation of law",
+            "Your violation of another person's rights",
+            "Your misuse of AI-generated reflections",
+            "Your blockchain, wallet, token, or recovery phrase activity",
+        ),
+    ),
+    ArticleItem.Heading("21. Governing Law"),
+    ArticleItem.Paragraph("These Terms are governed by the laws of the State of Delaware, without regard to conflict-of-law principles, except where your local law requires otherwise."),
+    ArticleItem.Heading("22. Disputes and Arbitration"),
+    ArticleItem.Paragraph("To the fullest extent permitted by law, disputes between you and Anky, Inc. will be resolved through binding individual arbitration, not in a class action or jury trial."),
+    ArticleItem.Paragraph("You and Anky, Inc. agree to bring claims only on an individual basis."),
+    ArticleItem.Paragraph("This section does not prevent either party from seeking relief in small claims court or seeking injunctive relief for intellectual property, security, or unauthorized access issues."),
+    ArticleItem.Paragraph("If this arbitration section is not enforceable where you live, the rest of these Terms still apply."),
+    ArticleItem.Heading("23. Changes"),
+    ArticleItem.Paragraph("We may update these Terms from time to time."),
+    ArticleItem.Paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated Terms."),
+    ArticleItem.Heading("24. Contact"),
+    ArticleItem.Paragraph("**Anky, Inc.**"),
+    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
+)
+
 private val TokenCopy = listOf(
     ArticleItem.Paragraph("a memecoin is the simplest possible expression of an idea on the internet. no pitch deck, no roadmap, no Series A. just a name, a ticker, and a bet that enough people will recognize what it points to."),
     ArticleItem.Paragraph("\$ANKY exists as a memecoin. that's it. no presale, no team allocation, no vesting schedule. the bonding curve did what bonding curves do."),
@@ -1339,10 +2147,20 @@ internal enum class ExportBackupAction {
     Empty,
 }
 
+internal fun formattedWritingExportAction(state: YouState): FormattedWritingExportAction =
+    if (state.formattedWritingExportFile != null) FormattedWritingExportAction.Share else FormattedWritingExportAction.Empty
+
+internal enum class FormattedWritingExportAction {
+    Share,
+    Empty,
+}
+
 private enum class YouPage(val title: String, val subtitle: String) {
     Account("local identity", "private to this device"),
     Privacy("privacy", "local-first. private. sovereign."),
+    Terms("terms & conditions", "writing and reflection agreement"),
     Export("export data", "your archive is yours"),
+    History("all ankys", "local writing history"),
     Credits("credits", "reflection fuel"),
     Token("\$ANKY", "the memetic layer"),
     Developer("developer", "local tools"),
@@ -1355,11 +2173,11 @@ private fun YouInitialPage.toYouPage(): YouPage =
 
 private enum class YouPrompt(val message: String) {
     Identity("your identity can be saved to secure storage."),
-    Privacy("writing stays local unless you export or ask for a reflection."),
-    Export("your archive is yours. export it or restore one."),
-    Credits("credits are only for reflections. writing is free."),
-    Support("send support or feedback by email. include only what you choose to write."),
-    Developer("local tools. repair first, delete only when you mean it."),
+    Privacy("Writing stays local unless you export or ask for a reflection."),
+    Export("Your archive is yours. Export readable writings or keep a local backup."),
+    Credits("Credits are only for reflections. Writing is free."),
+    Support("Send support or feedback by email. Include only what you choose to write."),
+    Developer("Local tools. Repair first, delete only when you mean it."),
 }
 
 private fun youConversationMessage(
@@ -1387,12 +2205,15 @@ private fun isConversationThinking(activePrompt: YouPrompt?, state: YouState): B
 
 private fun creditsMenuSubtitle(state: YouState): String =
     when {
-        state.creditState.isLoading && state.creditState.balance == null -> "loading balance"
+        state.hasUnspentGiftCredit -> YouStatusCopy.CreditGiftSummary
+        state.creditState.isLoading && state.creditState.balance == null -> "Loading balance"
         state.creditState.balance != null -> "${state.creditState.balance} ${if (state.creditState.balance == 1) "credit" else "credits"}"
-        else -> "reflection balance"
+        else -> "Reflection balance"
     }
 
 private fun creditsPromptMessage(state: YouState): String {
+    if (state.hasUnspentGiftCredit) return YouStatusCopy.CreditGiftPrompt
+
     val balance = when {
         state.creditState.isLoading && state.creditState.balance == null -> "loading..."
         state.creditState.balance != null -> state.creditState.balance.toString()
@@ -1401,32 +2222,41 @@ private fun creditsPromptMessage(state: YouState): String {
     return "you have $balance reflection ${if (balance == "1") "credit" else "credits"}. choose a pack to add more."
 }
 
+private fun ankyContractDisplayAddress(): String {
+    val address = PrivacyMessages.AnkyCoinContractAddress
+    return "${address.take(5)}...${address.takeLast(5)}"
+}
+
 private fun youPromptActions(
     prompt: YouPrompt?,
     state: YouState,
     context: Context,
     viewModel: YouViewModel,
     page: (YouPage) -> Unit,
-    importBackup: () -> Unit,
     confirmDeleteLocalData: () -> Unit,
 ): List<AnkyChatAction> =
     when (prompt) {
         YouPrompt.Identity -> listOf(
-            AnkyChatAction("back up identity", isPrimary = true) { viewModel.backUpIdentityToDeviceSecureStorage() },
+            AnkyChatAction("Back up recovery phrase", isPrimary = true) { viewModel.backUpIdentityToDeviceSecureStorage() },
             AnkyChatAction("copy account") { context.copyText("Anky address", state.accountId) },
         )
-        YouPrompt.Privacy -> listOf(
-            AnkyChatAction("read privacy policy", isPrimary = true) { context.openUrl("https://anky.app/privacy") },
-        )
+        YouPrompt.Privacy -> emptyList()
         YouPrompt.Export -> buildList {
-            state.exportedFile?.let { file ->
-                add(AnkyChatAction("export backup", isPrimary = true) { context.shareFile(file) })
-            }
-            add(AnkyChatAction("restore backup") { importBackup() })
+            add(AnkyChatAction("Back up now", isPrimary = true) { viewModel.exportArchive() })
+            add(
+                AnkyChatAction("Export writings") {
+                    viewModel.prepareFormattedWritingExport()
+                    state.formattedWritingExportFile?.let { file ->
+                        context.shareFile(file, "text/markdown", "export writings")
+                    }
+                },
+            )
         }
         YouPrompt.Credits -> {
             val packages = state.creditState.packages.take(3)
-            if (packages.isEmpty()) {
+            if (state.hasUnspentGiftCredit) {
+                emptyList()
+            } else if (packages.isEmpty()) {
                 listOf(
                     AnkyChatAction(if (state.creditState.isLoading) "loading packs" else "refresh credits", isPrimary = true) {
                         viewModel.refreshCredits()
@@ -1448,7 +2278,7 @@ private fun youPromptActions(
             }
         }
         YouPrompt.Support -> listOf(
-            AnkyChatAction("open email", isPrimary = true) { context.openUrl(state.supportFeedbackEmailUrl) },
+            AnkyChatAction("Open email", isPrimary = true) { context.openUrl(state.supportFeedbackEmailUrl) },
         )
         YouPrompt.Developer -> if (BuildConfig.DEBUG) {
             listOf(
@@ -1470,13 +2300,13 @@ private fun Context.openUrl(url: String) {
     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
 }
 
-private fun Context.shareFile(file: File) {
+private fun Context.shareFile(file: File, mimeType: String = "application/zip", chooserTitle: String = "export backup zip") {
     val uri = FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
     val intent = Intent(Intent.ACTION_SEND)
-        .setType("application/zip")
+        .setType(mimeType)
         .putExtra(Intent.EXTRA_STREAM, uri)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    startActivity(Intent.createChooser(intent, "export backup zip"))
+    startActivity(Intent.createChooser(intent, chooserTitle))
 }
 
 private tailrec fun Context.findActivity(): Activity? =

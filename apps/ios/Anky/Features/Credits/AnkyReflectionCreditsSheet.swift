@@ -73,13 +73,13 @@ struct AnkyReflectionCreditsSheet: View {
                 .frame(width: 28, height: 34)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Anky reflection credits")
+                Text(AnkyLocalization.ui("Anky reflection credits"))
                     .font(.system(size: 29, weight: .medium, design: .serif))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text("Your space to be seen, held, and mirrored.")
+                Text(AnkyLocalization.ui("Your private space to be witnessed."))
                     .font(.system(size: 15, weight: .regular))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.68))
                     .lineLimit(1)
@@ -113,7 +113,7 @@ struct AnkyReflectionCreditsSheet: View {
             }
             .buttonStyle(.plain)
             .disabled(isRefreshing)
-            .accessibilityLabel("Refresh reflection credits")
+            .accessibilityLabel(AnkyLocalization.ui("Refresh reflection credits"))
         }
     }
 
@@ -155,7 +155,7 @@ struct AnkyReflectionCreditsSheet: View {
                     .shadow(color: AnkyReflectionCreditsPalette.gold.opacity(0.35), radius: 14)
                     .minimumScaleFactor(0.62)
 
-                Text("available\ncredits")
+                Text(AnkyLocalization.ui("available\ncredits"))
                     .font(.system(size: 23, weight: .medium, design: .serif))
                     .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.78))
                     .lineSpacing(4)
@@ -183,19 +183,27 @@ struct AnkyReflectionCreditsSheet: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "sparkle")
-                .font(.system(size: 13))
-                .foregroundStyle(AnkyReflectionCreditsPalette.gold.opacity(0.78))
+        VStack(spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AnkyReflectionCreditsPalette.gold.opacity(0.78))
 
-            Text("Writing is free. One credit = one reflection.")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.68))
+                Text(AnkyLocalization.ui("Writing is free. One credit = one reflection."))
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.68))
+                    .multilineTextAlignment(.center)
+
+                Image(systemName: "sparkle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AnkyReflectionCreditsPalette.gold.opacity(0.78))
+            }
+
+            Text(.init(AnkyLocalization.ui("Don't want to pay? Watch [this video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)")))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.58))
+                .tint(AnkyReflectionCreditsPalette.gold)
                 .multilineTextAlignment(.center)
-
-            Image(systemName: "sparkle")
-                .font(.system(size: 13))
-                .foregroundStyle(AnkyReflectionCreditsPalette.gold.opacity(0.78))
         }
         .frame(maxWidth: .infinity)
     }
@@ -289,14 +297,14 @@ private struct AnkyReflectionCreditPackRow: View {
                     .frame(width: 48, height: 48)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(pack.title)
+                    Text(AnkyLocalization.ui(pack.title))
                         .font(.system(size: 25, weight: .semibold, design: .serif))
                         .foregroundStyle(AnkyReflectionCreditsPalette.cream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                         .layoutPriority(1)
 
-                    Text(pack.subtitle)
+                    Text(AnkyLocalization.ui(pack.subtitle))
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.58))
                         .lineLimit(1)
@@ -313,7 +321,7 @@ private struct AnkyReflectionCreditPackRow: View {
                 } else {
                     VStack(alignment: .trailing, spacing: 8) {
                         if isRecommended {
-                            Text("best value")
+                            Text(AnkyLocalization.ui("best value"))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(AnkyReflectionCreditsPalette.almostBlack)
                                 .padding(.horizontal, 10)
@@ -355,7 +363,7 @@ private struct AnkyReflectionCreditPackRow: View {
                     }
                 }
         )
-        .accessibilityLabel("\(pack.title), \(pack.subtitle), \(pack.price)")
+        .accessibilityLabel("\(AnkyLocalization.ui(pack.title)), \(AnkyLocalization.ui(pack.subtitle)), \(pack.price)")
         .accessibilityHint("Double tap to buy.")
     }
 
@@ -447,7 +455,7 @@ private struct AnkyReflectionCreditEmptyRow: View {
     let text: String
 
     var body: some View {
-        Text(text)
+        Text(AnkyLocalization.ui(text))
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.58))
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -485,7 +493,7 @@ struct AnkyReflectionCreditsSheetPresenter: ViewModifier {
                 .presentationDetents([.height(650), .large])
                 .presentationDragIndicator(.hidden)
                 .presentationCornerRadius(38)
-                .presentationBackground(.clear)
+                .presentationBackground(AnkyReflectionCreditsPalette.almostBlack)
             }
     }
 }

@@ -78,7 +78,7 @@ struct RevealView: View {
                                 }
 
                                 if privacyDisclosure.isExpanded {
-                                    Text("Your writing is sacred. It stays on your phone and only leaves if you ask for a reflection. Anky mirrors it back and never stores it.")
+                                    Text(AnkyLocalization.ui("Your writing is sacred. It stays on your phone and only leaves if you ask for a reflection. Anky mirrors it back and never stores it."))
                                         .font(.system(size: 13, weight: .medium))
                                         .lineSpacing(4)
                                         .foregroundStyle(RevealPalette.paper.opacity(0.62))
@@ -179,7 +179,7 @@ struct RevealView: View {
                             .frame(width: 34, height: 38)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityLabel(didCopyWriting ? "Writing copied" : "Copy writing")
+                    .accessibilityLabel(AnkyLocalization.ui(didCopyWriting ? "Writing copied" : "Copy writing"))
 
                     Button {
                         AnkyHaptics.warning()
@@ -197,19 +197,19 @@ struct RevealView: View {
                         }
                     }
                     .disabled(viewModel.isDeleting)
-                    .accessibilityLabel("Delete writing session")
+                    .accessibilityLabel(AnkyLocalization.ui("Delete writing session"))
                 }
                 .padding(.horizontal, 2)
             }
         }
-        .alert("Delete writing session?", isPresented: $confirmDelete) {
-            Button("Delete", role: .destructive) {
+        .alert(AnkyLocalization.ui("Delete writing session?"), isPresented: $confirmDelete) {
+            Button(AnkyLocalization.ui("Delete"), role: .destructive) {
                 AnkyHaptics.warning()
                 viewModel.deleteSession()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(AnkyLocalization.ui("Cancel"), role: .cancel) {}
         } message: {
-            Text("This permanently deletes this writing session. This cannot be undone.")
+            Text(AnkyLocalization.ui("This permanently deletes this writing session. This cannot be undone."))
         }
         .ankyReflectionCreditsSheet(
             isPresented: $isShowingCreditPurchaseSheet,
@@ -232,7 +232,7 @@ struct RevealView: View {
         )
         .onAppear {
             Task {
-                await viewModel.refreshCredits(showError: false)
+                await viewModel.prepareAfterFirstRender()
             }
             ankyCompanion.hideBubble()
             isNavigationBarHidden = false
@@ -343,30 +343,33 @@ struct RevealView: View {
 
     private var bottomActionTitle: String {
         if viewModel.isAskingAnky {
-            return "Receiving reflection…"
+            return AnkyLocalization.ui("Receiving reflection...")
         }
         if viewModel.reflection != nil {
-            return "READ REFLECTION"
+            return AnkyLocalization.ui("READ REFLECTION")
         }
         if viewModel.needsCreditsToReflect {
-            return "GET MORE CREDITS"
+            return AnkyLocalization.ui("GET MORE CREDITS")
         }
         if viewModel.isComplete {
             return reflectButtonTitle
         }
-        return "WRITE \(AnkyDuration.completeRitualMinutes) MINUTES"
+        if viewModel.canContinueWriting {
+            return AnkyLocalization.ui("CONTINUE - %@ LEFT", viewModel.remainingWritingTime)
+        }
+        return AnkyLocalization.ui("WRITE %d MINUTES", AnkyDuration.completeRitualMinutes)
     }
 
     private var reflectButtonTitle: String {
         switch viewModel.creditPromptState {
         case .available(let count):
-            return "REFLECT THIS ANKY - \(count) LEFT"
+            return AnkyLocalization.ui("REFLECT THIS ANKY - %d LEFT", count)
         case .freeGift:
-            return "REFLECT THIS ANKY - DEVICE GIFT"
+            return AnkyLocalization.ui("REFLECT THIS ANKY - DEVICE GIFT")
         case .unknown:
-            return "REFLECT THIS ANKY"
+            return AnkyLocalization.ui("REFLECT THIS ANKY")
         case .unavailable:
-            return "GET MORE CREDITS"
+            return AnkyLocalization.ui("GET MORE CREDITS")
         }
     }
 
@@ -463,7 +466,7 @@ private struct RevealCreditPurchaseSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Reflection credits")
+                        Text(AnkyLocalization.ui("Reflection credits"))
                             .font(.system(size: 25, weight: .semibold))
                             .foregroundStyle(RevealPalette.gold)
                     }
@@ -495,7 +498,7 @@ private struct RevealCreditPurchaseSheet: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(viewModel.creditsLoading)
-                    .accessibilityLabel("Refresh credits")
+                    .accessibilityLabel(AnkyLocalization.ui("Refresh credits"))
                 }
 
                 RevealCreditBalancePanel(balance: viewModel.creditBalance)
@@ -522,7 +525,7 @@ private struct RevealCreditPurchaseSheet: View {
 
                 }
 
-                Text("Writing is free. One credit = one reflection.")
+                Text(AnkyLocalization.ui("Writing is free. One credit = one reflection."))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(RevealPalette.paper.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
@@ -550,7 +553,7 @@ private struct RevealCreditBalancePanel: View {
                 .font(.system(size: 48, weight: .bold))
                 .foregroundStyle(RevealPalette.gold)
                 .shadow(color: RevealPalette.gold.opacity(0.28), radius: 14)
-            Text(balance == 1 ? "credit" : "credits")
+            Text(AnkyLocalization.ui(balance == 1 ? "credit" : "credits"))
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
                 .foregroundStyle(RevealPalette.paper.opacity(0.62))
             Spacer()
@@ -576,11 +579,11 @@ private struct RevealCreditPackageRow: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Text(creditPackage.title)
+                        Text(AnkyLocalization.ui(creditPackage.title))
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(RevealPalette.paper)
                         if isRecommended {
-                            Text("recommended")
+                            Text(AnkyLocalization.ui("recommended"))
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(RevealPalette.ink)
                                 .padding(.horizontal, 7)
@@ -588,7 +591,7 @@ private struct RevealCreditPackageRow: View {
                                 .background(RevealPalette.gold, in: Capsule())
                         }
                     }
-                    Text(creditPackage.subtitle)
+                    Text(AnkyLocalization.ui(creditPackage.subtitle))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(RevealPalette.paper.opacity(0.58))
                 }
@@ -626,7 +629,7 @@ private struct RevealCreditDisabledRow: View {
     }
 
     var body: some View {
-        Text(text)
+        Text(AnkyLocalization.ui(text))
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(RevealPalette.paper.opacity(0.58))
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -863,7 +866,7 @@ private struct PrivacyDivider: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Toggle privacy message")
+        .accessibilityLabel(AnkyLocalization.ui("Toggle privacy message"))
     }
 }
 
@@ -882,7 +885,7 @@ private struct WritingSessionStatsHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(wordCount) words, \(duration), \(backspaceCount) backspaces, \(enterCount) enters")
+        .accessibilityLabel(AnkyLocalization.ui("%d words, %@, %d backspaces, %d enters", wordCount, duration, backspaceCount, enterCount))
     }
 }
 
@@ -994,12 +997,12 @@ private struct ReflectionErrorPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("the mirror did not open")
+            Text(AnkyLocalization.ui("the mirror did not open"))
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(RevealPalette.markdownHeading)
                 .tracking(0)
 
-            Text(message)
+            Text(AnkyLocalization.ui(message))
                 .font(.system(size: 13, weight: .medium, design: .monospaced))
                 .foregroundStyle(Color.red.opacity(0.82))
                 .lineSpacing(4)

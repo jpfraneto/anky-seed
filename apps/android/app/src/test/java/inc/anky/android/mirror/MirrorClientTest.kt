@@ -29,7 +29,7 @@ class MirrorClientTest {
     @Test
     fun eligibilityRejectsFragments() {
         assertFalse(MirrorEligibility.canAsk("1770000000000 h\n0042 e"))
-        assertTrue(MirrorEligibility.canAsk("1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"))
+        assertTrue(MirrorEligibility.canAsk("1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n80000 !\n8000"))
         assertFalse(MirrorEligibility.canAsk(isComplete = false, hasReflection = false))
         assertTrue(MirrorEligibility.canAsk(isComplete = true, hasReflection = false))
         assertFalse(MirrorEligibility.canAsk(isComplete = true, hasReflection = true))
@@ -73,7 +73,7 @@ class MirrorClientTest {
 
     @Test
     fun invalidMirrorUrlUsesIosCopy() {
-        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n80000 !\n8000"
             .toByteArray(Charsets.UTF_8)
         val invalidUrls = listOf("not a url", "http://")
 
@@ -90,7 +90,7 @@ class MirrorClientTest {
     @Test
     fun sendsExactBodyBytesAndRequiredHeaders() {
         val server = MockWebServer()
-        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n80000 !\n8000"
             .toByteArray(Charsets.UTF_8)
         server.enqueue(
             MockResponse()
@@ -136,7 +136,7 @@ class MirrorClientTest {
     @Test
     fun parsesStreamingReflectionEventsAndChunks() {
         val server = MockWebServer()
-        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n72000 !\n8000"
+        val body = "1770000000000 h\n100000 e\n100000 l\n100000 l\n100000 o\n80000 !\n8000"
             .toByteArray(Charsets.UTF_8)
         server.enqueue(
             MockResponse()

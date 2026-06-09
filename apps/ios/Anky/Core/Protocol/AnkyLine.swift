@@ -27,6 +27,7 @@ public enum AnkyParseError: Error, Equatable {
     case malformedLine
     case invalidTime
     case missingCharacter
+    case nonCanonicalSpace
     case multiCharacterEvent
     case unsafeTime
     case duplicateTerminalSilence

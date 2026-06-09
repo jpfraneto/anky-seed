@@ -12,6 +12,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,9 +69,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -82,6 +86,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import inc.anky.android.R
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.LocalReflection
@@ -614,47 +619,88 @@ private fun RevealCreditPurchaseSheet(
     onPurchase: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(
-                "reflection credits",
-                style = AnkyType.Heading.copy(fontSize = 27.sp, fontWeight = FontWeight.SemiBold),
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(
+                imageVector = Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = AnkyColors.Gold,
+                modifier = Modifier.size(28.dp),
             )
-            Text(
-                "writing stays free. each reflection spends one credit.",
-                style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Paper.copy(alpha = 0.72f)),
-            )
-        }
-
-        RevealCreditBalancePanel(state.creditBalance)
-
-        when {
-            state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow("loading credit packs")
-            state.creditPackages.isEmpty() -> RevealCreditDisabledRow("no credit packs available")
-            else -> {
-                state.creditPackages.take(3).forEach { creditPackage ->
-                    RevealCreditPackageRow(
-                        creditPackage = creditPackage,
-                        isRecommended = creditPackage.title == "11 reflections" ||
-                            creditPackage.packageId.endsWith(".credits.11"),
-                        isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
-                        onPurchase = onPurchase,
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Anky reflection credits",
+                    style = AnkyType.Heading.copy(fontSize = 29.sp, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "Your space to be seen, held, and mirrored.",
+                    style = AnkyType.Body.copy(fontSize = 15.sp, color = AnkyColors.Paper.copy(alpha = 0.68f)),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onRefresh, enabled = !state.creditsLoading) {
+                if (state.creditsLoading) {
+                    CircularProgressIndicator(
+                        color = AnkyColors.Gold,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Refresh reflection credits",
+                        tint = AnkyColors.Gold,
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
         }
 
-        TextButton(
-            onClick = onRefresh,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(7.dp))
-                .background(Color.Black.copy(alpha = 0.18f))
-                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.28f), RoundedCornerShape(7.dp)),
+        RevealCreditBalancePanel(state.creditBalance)
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            when {
+                state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow("loading credit packs")
+                state.creditPackages.isEmpty() -> RevealCreditDisabledRow("no credit packs available")
+                else -> {
+                    state.creditPackages.take(3).forEach { creditPackage ->
+                        RevealCreditPackageRow(
+                            creditPackage = creditPackage,
+                            isRecommended = creditPackage.title == "11 reflections" ||
+                                creditPackage.packageId.endsWith(".credits.11"),
+                            isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
+                            onPurchase = onPurchase,
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(
+                imageVector = Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = AnkyColors.Gold.copy(alpha = 0.78f),
+                modifier = Modifier.size(13.dp),
+            )
             Text(
-                if (state.creditsLoading) "loading packs" else "refresh credits",
-                style = AnkyType.Mono.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
+                "Writing is free. One credit = one reflection.",
+                style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.68f)),
+                modifier = Modifier.padding(horizontal = 10.dp),
+                textAlign = TextAlign.Center,
+            )
+            Icon(
+                imageVector = Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = AnkyColors.Gold.copy(alpha = 0.78f),
+                modifier = Modifier.size(13.dp),
             )
         }
 
@@ -669,29 +715,53 @@ private fun RevealCreditPurchaseSheet(
 
 @Composable
 private fun RevealCreditBalancePanel(balance: Int?) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
-            .background(Color.Black.copy(alpha = 0.18f))
-            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(7.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .height(124.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.Black.copy(alpha = 0.58f))
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.34f), RoundedCornerShape(18.dp)),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            balance?.toString() ?: "...",
-            style = AnkyType.Title.copy(
-                fontSize = 54.sp,
-                fontWeight = FontWeight.Bold,
-                shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.28f), blurRadius = 14f),
-            ),
+        Image(
+            painter = painterResource(R.drawable.credits_thread_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
         )
-        Text(
-            if (balance == 1) "credit" else "credits",
-            style = AnkyType.Mono.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Paper.copy(alpha = 0.62f)),
-            modifier = Modifier.padding(bottom = 10.dp),
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            AnkyColors.Ink.copy(alpha = 0.90f),
+                            AnkyColors.Ink.copy(alpha = 0.38f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
         )
+        Row(
+            modifier = Modifier.padding(horizontal = 26.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+        ) {
+            Text(
+                balance?.toString() ?: "...",
+                style = AnkyType.Title.copy(
+                    fontSize = 68.sp,
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.35f), blurRadius = 14f),
+                ),
+            )
+            Text(
+                "available\ncredits",
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.78f)),
+                lineHeight = 28.sp,
+            )
+        }
     }
 }
 
@@ -705,46 +775,67 @@ private fun RevealCreditPackageRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
-            .background(Color.Black.copy(alpha = 0.18f))
+            .height(86.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF150B20).copy(alpha = 0.95f),
+                        Color(0xFF07050D).copy(alpha = 0.98f),
+                    ),
+                ),
+            )
             .border(
-                1.dp,
+                if (isRecommended) 1.5.dp else 1.dp,
                 AnkyColors.Gold.copy(alpha = if (isRecommended) 0.52f else 0.28f),
-                RoundedCornerShape(7.dp),
+                RoundedCornerShape(16.dp),
             )
             .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    creditPackage.title,
-                    style = AnkyType.Body.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
-                )
-                if (isRecommended) {
-                    Text(
-                        "recommended",
-                        style = AnkyType.Mono.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(AnkyColors.Gold)
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    )
-                }
-            }
-            if (creditPackage.subtitle.isNotBlank() && creditPackage.subtitle != creditPackage.title) {
-                Text(
-                    creditPackage.subtitle,
-                    style = AnkyType.Caption.copy(color = AnkyColors.Paper.copy(alpha = 0.58f)),
-                )
-            }
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(AnkyColors.Gold.copy(alpha = 0.16f))
+                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.24f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold, modifier = Modifier.size(18.dp))
         }
-        Text(
-            if (isPurchasing) "..." else creditPackage.price,
-            style = AnkyType.Caption.copy(fontSize = 15.sp, color = AnkyColors.Gold),
-        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                creditPackage.title,
+                style = AnkyType.Heading.copy(fontSize = 25.sp, fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                creditPackage.subtitle,
+                style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (isRecommended && !isPurchasing) {
+                Text(
+                    "best value",
+                    style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(AnkyColors.Gold)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
+            }
+            Text(
+                if (isPurchasing) "..." else creditPackage.price,
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Gold),
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -752,13 +843,14 @@ private fun RevealCreditPackageRow(
 private fun RevealCreditDisabledRow(text: String) {
     Text(
         text,
-        style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+        style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
+            .height(68.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.Black.copy(alpha = 0.14f))
-            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.16f), RoundedCornerShape(7.dp))
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 18.dp, vertical = 22.dp),
     )
 }
 

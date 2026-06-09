@@ -1,0 +1,19 @@
+{
+  "id": "en-product-loop",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "intimate, plain, work-and-family emotional undercurrent",
+  "riskLevel": "none",
+  "summary": "English product/work loop where launch control hides family approval hunger.",
+  "shouldNotice": [
+    "the launch is standing in for approval and worth",
+    "the repeated slide editing is avoidance of the email",
+    "control/perfection is being used to avoid contact"
+  ],
+  "mustNot": [
+    "generic startup advice",
+    "financial advice",
+    "diagnosis",
+    "ignore the father/approval thread"
+  ]
+}

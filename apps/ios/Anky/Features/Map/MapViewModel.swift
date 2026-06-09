@@ -17,7 +17,6 @@ final class MapViewModel: ObservableObject {
     private let sessionIndexStore: SessionIndexStore
     private let appOpenStore: AppOpenStore
     private let calendar: Calendar
-    private static let testAnkyRandomCharacters = Array("abcdefghijklmnopqrstuvwxyz0123456789")
 
     init(
         archive: LocalAnkyArchive = LocalAnkyArchive(),
@@ -74,67 +73,6 @@ final class MapViewModel: ObservableObject {
 
     func artifact(for summary: SessionSummary) -> SavedAnky? {
         try? archive.load(url: summary.localFileURL)
-    }
-
-    @discardableResult
-    func createTestAnky(on dayDate: Date, now: Date = Date()) throws -> SavedAnky {
-        let createdAt = testAnkyCreatedAt(for: dayDate, now: now)
-        let ankyText = try Self.testAnkyText(
-            template: DevAnkyFixture.validArtifact,
-            startEpochMs: Int64(createdAt.timeIntervalSince1970 * 1000)
-        )
-        let saved = try archive.importArtifact(ankyText)
-        try sessionIndexStore.rebuild(archive: archive, reflectionStore: reflectionStore)
-        refresh()
-        return saved
-    }
-
-    private func testAnkyCreatedAt(for dayDate: Date, now: Date) -> Date {
-        guard !calendar.isDate(dayDate, inSameDayAs: now) else {
-            return now
-        }
-
-        let dayComponents = calendar.dateComponents([.year, .month, .day], from: dayDate)
-        let timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: now)
-        var components = DateComponents()
-        components.calendar = calendar
-        components.timeZone = calendar.timeZone
-        components.year = dayComponents.year
-        components.month = dayComponents.month
-        components.day = dayComponents.day
-        components.hour = timeComponents.hour
-        components.minute = timeComponents.minute
-        components.second = timeComponents.second
-        components.nanosecond = timeComponents.nanosecond
-        return calendar.date(from: components) ?? dayDate
-    }
-
-    private static func testAnkyText(template: String, startEpochMs: Int64) throws -> String {
-        var lines = template
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init)
-
-        guard let firstLine = lines.first,
-              let separator = firstLine.firstIndex(where: { $0.isWhitespace }) else {
-            throw AnkyImportError.invalidArtifact
-        }
-
-        let characterPart = firstLine[separator...]
-        lines[0] = "\(startEpochMs)\(characterPart)"
-
-        guard let terminalIndex = lines.lastIndex(where: {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines) == "\(AnkyDuration.terminalSilenceMs)"
-        }) else {
-            throw AnkyImportError.invalidArtifact
-        }
-
-        let randomDelta = Int.random(in: 1...Int(AnkyDuration.terminalSilenceMs))
-        let randomCharacter = testAnkyRandomCharacters.randomElement() ?? "x"
-        lines.insert("\(String(format: "%04d", randomDelta)) \(randomCharacter)", at: terminalIndex)
-
-        return lines.joined(separator: "\n")
     }
 
     private static func currentStreak(from dates: [Date], calendar: Calendar, now: Date) -> Int {

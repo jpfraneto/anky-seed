@@ -300,8 +300,8 @@ struct LocalAnkyArchive {
         let characterText = String(line[afterSeparator...])
         let trimmedCharacterText = characterText.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if trimmedCharacterText == "SPACE" {
-            return "\(timeText)  "
+        if trimmedCharacterText == "SPACE" || characterText == " " {
+            return "\(timeText) SPACE"
         }
 
         if characterText.count == 1 {

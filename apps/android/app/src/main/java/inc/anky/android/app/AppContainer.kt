@@ -2,7 +2,9 @@ package inc.anky.android.app
 
 import android.content.Context
 import inc.anky.android.core.credits.CreditsClient
+import inc.anky.android.core.credits.ReflectionCreditCache
 import inc.anky.android.core.credits.RevenueCatCreditsClient
+import inc.anky.android.core.credits.SharedPreferencesReflectionCreditCache
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorConfiguration
@@ -31,6 +33,7 @@ class AppContainer(
     val settingsStore = UserSettingsStore(appContext)
     val reminderScheduler = DailyReminderScheduler(appContext)
     val creditsClient: CreditsClient = RevenueCatCreditsClient(appContext)
+    val reflectionCreditCache: ReflectionCreditCache = SharedPreferencesReflectionCreditCache(appContext)
     val exporter = Exporter(appContext, archive, reflectionStore)
     val backupImporter = BackupImporter(
         appContext,

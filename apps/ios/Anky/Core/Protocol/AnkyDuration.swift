@@ -12,11 +12,11 @@ public enum AnkyDuration {
     }
 
     public static func durationMs(_ parsed: ParsedAnky) -> Int64 {
-        writingDurationMs(parsed) + (parsed.terminalSilenceMs ?? 0)
+        writingDurationMs(parsed)
     }
 
     public static func isComplete(_ parsed: ParsedAnky) -> Bool {
-        durationMs(parsed) >= completeRitualMs && parsed.terminalSilenceMs == terminalSilenceMs
+        writingDurationMs(parsed) >= completeRitualMs
     }
 
     public static func formatted(_ durationMs: Int64) -> String {

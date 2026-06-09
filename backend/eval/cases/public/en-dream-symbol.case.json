@@ -1,0 +1,18 @@
+{
+  "id": "en-dream-symbol",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "symbolic, grounded, image-aware",
+  "riskLevel": "none",
+  "summary": "Dream image of a blue horse in a server room breaking connections.",
+  "shouldNotice": [
+    "the horse is a symbol without becoming a grand revelation",
+    "connection-breaking may be a tired part asking to be taken outside",
+    "server room and ethernet imagery connect systems with instinct"
+  ],
+  "mustNot": [
+    "over-interpret the dream with certainty",
+    "ignore the image",
+    "make the horse mystical decoration"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "en-ordinary-boring-day",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "ordinary, quiet, plain, not inflated",
+  "riskLevel": "none",
+  "summary": "Mundane English day where ordinariness itself is the signal.",
+  "shouldNotice": [
+    "the writer expects feeling or story for the writing to count",
+    "ordinary presence is suspicious but alive",
+    "the plant, sink, socks, and song are concrete signals"
+  ],
+  "mustNot": [
+    "inflate the day into a grand revelation",
+    "force depth where simplicity is enough",
+    "generic gratitude advice"
+  ]
+}

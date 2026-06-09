@@ -28,6 +28,16 @@ enum AnkyLocalizedKey: String, CaseIterable {
 enum AnkyLocalization {
     static func text(_ key: AnkyLocalizedKey, _ arguments: CVarArg...) -> String {
         let format = localizedFormat(for: key)
+        return formatted(format, arguments)
+    }
+
+    static func ui(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = resourceLocalizedString(forKey: key)
+            ?? key
+        return formatted(format, arguments)
+    }
+
+    private static func formatted(_ format: String, _ arguments: [CVarArg]) -> String {
         guard !arguments.isEmpty else {
             return format
         }
@@ -35,6 +45,10 @@ enum AnkyLocalization {
     }
 
     private static func localizedFormat(for key: AnkyLocalizedKey) -> String {
+        if let localized = resourceLocalizedString(forKey: key.rawValue) {
+            return localized
+        }
+
         let code = preferredLanguageCode
         if let translation = translations[code]?[key] {
             return translation
@@ -52,11 +66,19 @@ enum AnkyLocalization {
 
     private static func normalizedLanguageCode(_ code: String) -> String {
         switch code {
-        case "es", "pt", "fr", "de", "it", "ja", "ko", "zh":
+        case "es", "pt", "fr", "de", "it", "ja", "ko", "zh", "hi":
             return code
         default:
             return "en"
         }
+    }
+
+    private static func resourceLocalizedString(forKey key: String) -> String? {
+        let localized = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+        guard localized != key else {
+            return nil
+        }
+        return localized
     }
 
     private static let translations: [String: [AnkyLocalizedKey: String]] = [

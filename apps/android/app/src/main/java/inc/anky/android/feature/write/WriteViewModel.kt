@@ -214,6 +214,24 @@ class WriteViewModel(
         if (writer.isStarted) _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
     }
 
+    fun resetAfterAccountDeletion() {
+        closeJob?.cancel()
+        nudgeJob?.cancel()
+        nudgeClearJob?.cancel()
+        errorClearJob?.cancel()
+        writer = AnkyWriter()
+        sessionStartMs = null
+        displayedText = ""
+        displayedGlyphs = emptyList()
+        acceptedGlyphCount = 0
+        nudgeMessage = null
+        isRequestingNudge = false
+        visibleErrorMessage = null
+        recentErrorMessage = null
+        activeDraftStore.clear()
+        _state.value = deriveState()
+    }
+
     private fun scheduleClose(afterMs: Long) {
         closeJob?.cancel()
         closeJob = viewModelScope.launch(dispatcher) {

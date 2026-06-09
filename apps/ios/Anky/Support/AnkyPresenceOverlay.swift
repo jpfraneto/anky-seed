@@ -3,7 +3,7 @@ import UIKit
 
 enum AnkyPresencePlacement: Equatable {
     case trailingCenter
-    case writeRightLane
+    case topTrailing
 }
 
 enum AnkyBubblePlacement: Equatable {
@@ -47,7 +47,7 @@ struct AnkyPresenceOverlay: View {
     var body: some View {
         GeometryReader { geometry in
             let size = presenceSize(for: geometry.size)
-            let point = resolvedPoint(in: geometry.size, presenceSize: size)
+            let point = resolvedPoint(in: geometry, presenceSize: size)
             let draggedPoint = clamp(
                 CGPoint(x: point.x + dragTranslation.width, y: point.y + dragTranslation.height),
                 in: geometry.size,
@@ -155,19 +155,20 @@ struct AnkyPresenceOverlay: View {
         isVisible && (!transformToSigil || revealsThreadingCompanion)
     }
 
-    private func resolvedPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        clamp(storedPoint ?? defaultPoint(in: containerSize, presenceSize: presenceSize), in: containerSize, presenceSize: presenceSize)
+    private func resolvedPoint(in geometry: GeometryProxy, presenceSize: CGFloat) -> CGPoint {
+        clamp(
+            storedPoint ?? defaultPoint(in: geometry, presenceSize: presenceSize),
+            in: geometry.size,
+            presenceSize: presenceSize
+        )
     }
 
-    private func defaultPoint(in containerSize: CGSize, presenceSize: CGFloat) -> CGPoint {
-        if placement == .writeRightLane {
-            let writeRingSize: CGFloat = 106
-            let visibleHeight = max(1, containerSize.height - keyboardHeight)
-            let bottomGap: CGFloat = keyboardHeight > 0 ? 8 : 0
-            let rightLaneCenterX = containerSize.width - writeRingSize / 2 - 8
+    private func defaultPoint(in geometry: GeometryProxy, presenceSize: CGFloat) -> CGPoint {
+        let containerSize = geometry.size
+        if placement == .topTrailing {
             return CGPoint(
-                x: rightLaneCenterX,
-                y: max(presenceSize / 2 + 8, (visibleHeight - bottomGap) / 2)
+                x: containerSize.width - presenceSize / 2 - 16,
+                y: geometry.safeAreaInsets.top + presenceSize / 2 + 10
             )
         }
 

@@ -79,7 +79,7 @@ struct AnkyWitnessView: View {
         .onAppear {
             breathing = true
         }
-        .accessibilityLabel("Anky witness")
+        .accessibilityLabel(AnkyLocalization.ui("Anky witness"))
     }
 
     private var borderColor: Color {
@@ -104,15 +104,15 @@ enum AnkyCompanionPromptState {
     var defaultMessage: String {
         switch self {
         case .importedReady:
-            return "I found the rhythm inside this. Mirror it?"
+            return AnkyLocalization.ui("I found the rhythm inside this. Mirror it?")
         case .mirrorLoading:
-            return "stay close.\ni’m listening for the shape underneath."
+            return AnkyLocalization.ui("stay close.\ni’m listening for the shape underneath.")
         case .mirrorReady:
-            return "Something came back."
+            return AnkyLocalization.ui("Something came back.")
         case .notice:
-            return "I am here."
+            return AnkyLocalization.ui("I am here.")
         case .error:
-            return "I could not find a .anky rhythm in that."
+            return AnkyLocalization.ui("I could not find a .anky rhythm in that.")
         }
     }
 
@@ -374,7 +374,7 @@ struct AnkyConversationPromptView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(AnkyTheme.gold.opacity(0.82))
-                .accessibilityLabel("Close Anky message")
+                .accessibilityLabel(AnkyLocalization.ui("Close Anky message"))
             }
             .padding(.horizontal, 8)
             .padding(.top, 5)
@@ -428,7 +428,7 @@ struct AnkyBubbleView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(AnkyTheme.gold.opacity(0.82))
-                .accessibilityLabel("Close Anky bubble")
+                .accessibilityLabel(AnkyLocalization.ui("Close Anky bubble"))
             }
             .padding(.horizontal, 8)
             .padding(.top, 5)
@@ -494,7 +494,7 @@ private struct AnkyDialoguePanel: View {
                             .controlSize(.mini)
                             .tint(AnkyTheme.goldBright)
                             .frame(width: 14, height: 14)
-                            .accessibilityLabel("Anky is thinking")
+                            .accessibilityLabel(AnkyLocalization.ui("Anky is thinking"))
                             .transition(.opacity.combined(with: .scale(scale: 0.88)))
 
                         AnkyThinkingGlyph()
@@ -505,7 +505,7 @@ private struct AnkyDialoguePanel: View {
             }
 
             if hasMessage {
-                Text(message)
+                Text(AnkyLocalization.ui(message))
                     .font(.system(size: 15, weight: .medium, design: .monospaced))
                     .lineSpacing(5)
                     .foregroundStyle(AnkyTheme.text.opacity(0.92))
@@ -515,7 +515,7 @@ private struct AnkyDialoguePanel: View {
             if !steps.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                        Text("\(index + 1). \(step.text)")
+                        Text("\(index + 1). \(AnkyLocalization.ui(step.text))")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .lineSpacing(3)
                             .foregroundStyle(AnkyTheme.goldBright.opacity(0.86))
@@ -579,7 +579,7 @@ private struct AnkyDialoguePanel: View {
     }
 
     private func displayText(_ text: String, preservesCase: Bool) -> String {
-        text
+        AnkyLocalization.ui(text)
     }
 
     private var dialogueBackground: some View {

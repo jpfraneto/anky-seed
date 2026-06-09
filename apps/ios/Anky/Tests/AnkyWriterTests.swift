@@ -17,7 +17,24 @@ final class AnkyWriterTests: XCTestCase {
 
         let parsed = try AnkyParser.parse(writer.text)
         XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "hi")
-        XCTAssertEqual(AnkyDuration.durationMs(parsed), 8042)
+        XCTAssertEqual(AnkyDuration.durationMs(parsed), 42)
+    }
+
+    func testGeneratedAnkyStoresSpacesAsCanonicalSpaceToken() throws {
+        var writer = AnkyWriter()
+
+        XCTAssertTrue(writer.accept("h", at: 1_770_000_000_000))
+        XCTAssertTrue(writer.accept(" ", at: 1_770_000_000_042))
+        XCTAssertTrue(writer.accept("i", at: 1_770_000_000_090))
+
+        XCTAssertEqual(writer.text, """
+        1770000000000 h
+        42 SPACE
+        48 i
+        """)
+
+        let parsed = try AnkyParser.parse(writer.text)
+        XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "h i")
     }
 
     func testRejectsCharactersThatCannotLiveInLineProtocol() {

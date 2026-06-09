@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import inc.anky.android.BuildConfig
 import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.credits.CreditsClient
+import inc.anky.android.core.credits.NoopReflectionCreditCache
+import inc.anky.android.core.credits.ReflectionCreditCache
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.MirrorClient
@@ -87,6 +89,7 @@ class RevealViewModel(
     private val identityProvider: () -> WriterIdentity,
     private val mirrorClientProvider: () -> MirrorClient,
     private val creditsClient: CreditsClient? = null,
+    private val reflectionCreditCache: ReflectionCreditCache = NoopReflectionCreditCache,
     private val hasClaimedFreeCreditsProvider: () -> Boolean = { false },
     private val markFreeCreditsClaimed: () -> Unit = {},
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -100,6 +103,7 @@ class RevealViewModel(
         identityStore: WriterIdentityStore,
         mirrorClientProvider: () -> MirrorClient,
         creditsClient: CreditsClient? = null,
+        reflectionCreditCache: ReflectionCreditCache = NoopReflectionCreditCache,
         hasClaimedFreeCreditsProvider: () -> Boolean = { false },
         markFreeCreditsClaimed: () -> Unit = {},
     ) : this(
@@ -111,6 +115,7 @@ class RevealViewModel(
         identityProvider = { identityStore.loadOrCreate() },
         mirrorClientProvider = mirrorClientProvider,
         creditsClient = creditsClient,
+        reflectionCreditCache = reflectionCreditCache,
         hasClaimedFreeCreditsProvider = hasClaimedFreeCreditsProvider,
         markFreeCreditsClaimed = markFreeCreditsClaimed,
     )
@@ -129,6 +134,7 @@ class RevealViewModel(
     fun load() {
         val artifact = runCatching { archive.load(hash) }.getOrNull()
         val reflection = artifact?.let { reflectionStore.load(it.hash) }
+        val cachedBalance = cachedCreditBalance()
         val canAskAnky = artifact != null && MirrorEligibility.canAsk(
             isComplete = artifact.isComplete,
             hasReflection = reflection != null,
@@ -141,6 +147,7 @@ class RevealViewModel(
             canAskAnky = canAskAnky,
             isAsking = isPending,
             reflectionStatusMessage = if (isPending) "i am waiting with the mirror." else "",
+            creditBalance = reflection?.creditsRemaining ?: cachedBalance,
             hasClaimedFreeCredits = hasClaimedFreeCreditsProvider() || reflectionStore.list().isNotEmpty(),
         )
         if (isPending) {
@@ -211,6 +218,7 @@ class RevealViewModel(
                 indexStore.updateReflection(payload.hash, payload.title, payload.tags)
                 requestStore?.clear(payload.hash)
                 if (payload.creditsRemaining != null) {
+                    reflectionCreditCache.storeBalance(payload.creditsRemaining, identity.accountId)
                     creditsClient?.invalidateCreditBalanceCache()
                 }
                 markFreeCreditsClaimed()
@@ -298,8 +306,9 @@ class RevealViewModel(
             runCatching {
                 val identity = identityProvider()
                 creditsClient.configure(identity.accountId)
-                creditsClient.refresh()
-            }.onSuccess { creditState ->
+                identity.accountId to creditsClient.refresh()
+            }.onSuccess { (accountId, creditState) ->
+                reflectionCreditCache.storeBalance(creditState.balance, accountId)
                 _state.update {
                     it.copy(
                         creditBalance = creditState.balance,
@@ -335,6 +344,7 @@ class RevealViewModel(
                 val identity = identityProvider()
                 creditsClient.configure(identity.accountId)
                 val refreshed = creditsClient.purchase(packageId, activity)
+                reflectionCreditCache.storeBalance(refreshed.balance, identity.accountId)
                 _state.update {
                     it.copy(
                         creditBalance = refreshed.balance,
@@ -399,6 +409,10 @@ class RevealViewModel(
 
         val savedReflection = reflectionStore.load(artifact.hash)
         if (savedReflection != null) {
+            savedReflection.creditsRemaining?.takeIf { reflectionCreditCache !== NoopReflectionCreditCache }?.let {
+                val accountId = runCatching { identityProvider().accountId }.getOrNull()
+                if (accountId != null) reflectionCreditCache.storeBalance(it, accountId)
+            }
             requestStore?.clear(artifact.hash)
             reflectionWatcherJob?.cancel()
             reflectionRetryJob?.cancel()
@@ -435,6 +449,13 @@ class RevealViewModel(
             }
         }
     }
+
+    private fun cachedCreditBalance(): Int? =
+        if (reflectionCreditCache === NoopReflectionCreditCache) {
+            null
+        } else {
+            runCatching { reflectionCreditCache.balance(identityProvider().accountId) }.getOrNull()
+        }
 
     private fun startPendingReflectionWatcher() {
         if (reflectionWatcherJob?.isActive == true) return

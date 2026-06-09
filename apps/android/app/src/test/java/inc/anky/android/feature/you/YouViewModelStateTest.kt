@@ -1,8 +1,11 @@
 package inc.anky.android.feature.you
 
 import inc.anky.android.core.credits.CreditState
+import inc.anky.android.core.credits.cachedCreditState
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.core.storage.SessionSummary
 import java.io.File
+import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -12,12 +15,14 @@ class YouViewModelStateTest {
     @Test
     fun mergeRefreshedStatePreservesTransientUiFields() {
         val exportedFile = File("anky-backup.zip")
+        val formattedWritingExportFile = File("anky-writings.md")
         val previous = YouState(
             accountId = "old-key",
             recoveryPhrase = "able about above absent",
             purchasingCreditPackageId = "inc.anky.credits.3",
             isRestoringPurchases = true,
             exportedFile = exportedFile,
+            formattedWritingExportFile = formattedWritingExportFile,
             statusMessage = "exported backup.",
             error = "previous error",
         )
@@ -29,6 +34,7 @@ class YouViewModelStateTest {
             totalWritingMinutes = 9,
             currentStreak = 3,
             reflectionCount = 1,
+            completeAnkySessions = listOf(summary(hash = "b".repeat(64), createdAt = Instant.EPOCH.plusSeconds(60))),
         )
 
         val merged = mergeRefreshedYouState(previous, refreshed)
@@ -40,10 +46,12 @@ class YouViewModelStateTest {
         assertEquals(9, merged.totalWritingMinutes)
         assertEquals(3, merged.currentStreak)
         assertEquals(1, merged.reflectionCount)
+        assertEquals(refreshed.completeAnkySessions, merged.completeAnkySessions)
         assertEquals(previous.recoveryPhrase, merged.recoveryPhrase)
         assertEquals(previous.purchasingCreditPackageId, merged.purchasingCreditPackageId)
         assertEquals(previous.isRestoringPurchases, merged.isRestoringPurchases)
         assertSame(exportedFile, merged.exportedFile)
+        assertSame(formattedWritingExportFile, merged.formattedWritingExportFile)
         assertEquals(previous.statusMessage, merged.statusMessage)
         assertEquals(previous.error, merged.error)
     }
@@ -97,6 +105,37 @@ class YouViewModelStateTest {
     }
 
     @Test
+    fun unspentGiftCreditPresentationMatchesIosGate() {
+        val giftState = YouState(
+            creditState = CreditState(isConfigured = true, balance = 9, message = "credits refreshed."),
+            hasClaimedFreeCredits = false,
+        )
+        val claimedState = giftState.copy(hasClaimedFreeCredits = true)
+
+        assertEquals(1, giftState.presentedCreditBalance)
+        assertEquals(true, giftState.hasUnspentGiftCredit)
+        assertEquals(false, giftState.canPurchaseCredits)
+        assertEquals("1", giftState.creditDetailTitle)
+        assertEquals("device gift", giftState.creditDetailCaption)
+        assertEquals(9, claimedState.presentedCreditBalance)
+        assertEquals(false, claimedState.hasUnspentGiftCredit)
+        assertEquals(true, claimedState.canPurchaseCredits)
+        assertEquals("9", claimedState.creditDetailTitle)
+        assertEquals("credits", claimedState.creditDetailCaption)
+    }
+
+    @Test
+    fun cachedCreditStateSeedsYouCreditBalanceLikeIos() {
+        val cached = cachedCreditState(5)
+
+        assertEquals(true, cached?.isConfigured)
+        assertEquals(5, cached?.balance)
+        assertEquals("credits refreshed.", cached?.message)
+        assertEquals(false, cached?.isLoading)
+        assertEquals(null, cachedCreditState(null))
+    }
+
+    @Test
     fun exportBackupActionMatchesIosPreparedFileState() {
         assertEquals(
             ExportBackupAction.Empty,
@@ -109,6 +148,30 @@ class YouViewModelStateTest {
     }
 
     @Test
+    fun formattedWritingExportActionMatchesIosPreparedFileState() {
+        assertEquals(
+            FormattedWritingExportAction.Empty,
+            formattedWritingExportAction(YouState(localAnkyFileCount = 3, formattedWritingExportFile = null)),
+        )
+        assertEquals(
+            FormattedWritingExportAction.Share,
+            formattedWritingExportAction(YouState(formattedWritingExportFile = File("anky-writings.md"))),
+        )
+    }
+
+    @Test
+    fun completeAnkySessionsAreSortedNewestFirstForYouHistory() {
+        val older = summary(hash = "a".repeat(64), createdAt = Instant.EPOCH.plusSeconds(1))
+        val newer = summary(hash = "b".repeat(64), createdAt = Instant.EPOCH.plusSeconds(2))
+        val state = YouState(
+            completeAnkyCount = 2,
+            completeAnkySessions = listOf(newer, older),
+        )
+
+        assertEquals(listOf(newer, older), state.completeAnkySessions)
+    }
+
+    @Test
     fun statusCopyMatchesIosSentenceCasing() {
         assertEquals("Identity recovered.", YouStatusCopy.RecoveryPhraseImported)
         assertEquals("Map index repaired.", YouStatusCopy.MapIndexRepaired)
@@ -117,12 +180,22 @@ class YouViewModelStateTest {
         assertEquals("Local writing data cleared.", YouStatusCopy.LocalWritingDataCleared)
         assertEquals("Local identity reset.", YouStatusCopy.LocalIdentityReset)
         assertEquals("Could not create a backup zip.", YouStatusCopy.CouldNotCreateBackupZip)
+        assertEquals("Could not create a writing export.", YouStatusCopy.CouldNotCreateWritingExport)
+        assertEquals("There is no writing to export yet.", YouStatusCopy.NoWritingToExportYet)
+        assertEquals("2 reflections - This device", YouStatusCopy.CreditGiftSummary)
+        assertEquals("device gift", YouStatusCopy.CreditGiftCaption)
+        assertEquals("This device has two free reflections from Anky. Use them before buying more credits.", YouStatusCopy.CreditGiftPrompt)
+        assertEquals("Credit packs unlock after this device spends its first two reflections", YouStatusCopy.CreditPacksLocked)
+        assertEquals("Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits.", YouStatusCopy.CreditGiftDetail)
+        assertEquals("Use this device's first two reflections before buying more credits.", YouStatusCopy.SpendGiftBeforeBuying)
         assertEquals("Could not load the local Base identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
         assertEquals("Could not load the recovery phrase.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
-        assertEquals("Anky identity backup saved to device secure storage. Anky cannot read or recover it.", YouStatusCopy.IdentityBackupSaved)
+        assertEquals("Recovery phrase saved to device secure storage. Use Data export for writing and reflection backups.", YouStatusCopy.IdentityBackupSaved)
         assertEquals("Could not back up Anky identity.", YouStatusCopy.CouldNotBackUpAnkyIdentity)
         assertEquals("Could not schedule the daily reminder.", YouStatusCopy.CouldNotScheduleDailyReminder)
         assertEquals("Could not load credits.", YouStatusCopy.CouldNotLoadCredits)
+        assertEquals("Account and data deleted from this device.", YouStatusCopy.AccountAndDataDeleted)
+        assertEquals("Could not delete all account data.", YouStatusCopy.CouldNotDeleteAllAccountData)
     }
 
     @Test
@@ -140,4 +213,17 @@ class YouViewModelStateTest {
             recoveryImportErrorMessage(IllegalArgumentException("boom")),
         )
     }
+
+    private fun summary(hash: String, createdAt: Instant): SessionSummary =
+        SessionSummary(
+            hash = hash,
+            createdAt = createdAt,
+            localFilePath = "/tmp/$hash.anky",
+            durationMs = 480_000,
+            isComplete = true,
+            preview = "hello world",
+            wordCount = 2,
+            hasReflection = true,
+            reflectionTitle = "quiet thread",
+        )
 }

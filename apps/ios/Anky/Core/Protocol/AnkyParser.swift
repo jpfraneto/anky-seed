@@ -59,6 +59,17 @@ public enum AnkyParser {
             throw AnkyParseError.missingCharacter
         }
 
+        if characterText == "SPACE" {
+            guard let time = Int64(timeText) else {
+                throw AnkyParseError.unsafeTime
+            }
+            return (time, " ")
+        }
+
+        if characterText == " " {
+            throw AnkyParseError.nonCanonicalSpace
+        }
+
         guard characterText.count == 1, let character = characterText.first else {
             throw AnkyParseError.multiCharacterEvent
         }

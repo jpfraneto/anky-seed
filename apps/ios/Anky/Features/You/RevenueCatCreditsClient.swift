@@ -228,7 +228,7 @@ enum RevenueCatCreditsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingOfferings:
-            return "RevenueCat did not return a credits offering."
+            return AnkyLocalization.ui("RevenueCat did not return a credits offering.")
         }
     }
 }

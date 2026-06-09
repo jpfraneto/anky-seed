@@ -18,8 +18,7 @@ final class ProtocolFixtureTests: XCTestCase {
     100000 l
     100000 l
     100000 o
-    72000 !
-    8000
+    80000 !
     """
 
     func testValidatesAndReconstructsFragmentFixture() throws {
@@ -41,7 +40,7 @@ final class ProtocolFixtureTests: XCTestCase {
         XCTAssertEqual(validation.kind, .complete)
         XCTAssertTrue(validation.isComplete)
         XCTAssertEqual(validation.durationMs, 480000)
-        XCTAssertEqual(AnkyDuration.writingDurationMs(try XCTUnwrap(validation.parsed)), 472000)
+        XCTAssertEqual(AnkyDuration.writingDurationMs(try XCTUnwrap(validation.parsed)), 480000)
 
         let parsed = try XCTUnwrap(validation.parsed)
         XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "hello!")

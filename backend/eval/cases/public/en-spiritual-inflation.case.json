@@ -1,0 +1,19 @@
+{
+  "id": "en-spiritual-inflation",
+  "source": "synthetic",
+  "expectedLanguage": "en",
+  "expectedRegister": "warm, precise, spiritually grounded without inflation",
+  "riskLevel": "none",
+  "summary": "Spiritual longing mixed with performance and specialness hunger.",
+  "shouldNotice": [
+    "sacred contact is being mixed with wanting to be seen as special",
+    "tweeting the insight reveals performance",
+    "washing the cup is the grounded movement"
+  ],
+  "mustNot": [
+    "call the writer enlightened",
+    "spiritual-influencer tone",
+    "mock the sacred",
+    "turn the insight into grandiosity"
+  ]
+}

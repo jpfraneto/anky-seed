@@ -6,7 +6,16 @@
     "dev": "bun run --watch server.ts",
     "start": "bun run server.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prompt:sample": "bun run eval/scripts/sampleHistoricalAnkys.ts",
+    "prompt:eval": "bun run eval/scripts/runPromptEval.ts",
+    "prompt:compare": "bun run eval/scripts/comparePromptRuns.ts",
+    "prompt:report": "bun run eval/scripts/writeEvalReport.ts",
+    "prompt:lint": "bun run eval/scripts/lintReflection.ts",
+    "prompt:judge": "bun run eval/scripts/judgeReflection.ts",
+    "prompt:evolve": "bun run eval/scripts/evolvePrompts.ts",
+    "prompt:reconcile": "bun run eval/scripts/reconcileTournamentArtifacts.ts",
+    "prompt:private-taste": "bun run eval/scripts/privateTasteGate.ts"
   },
   "dependencies": {
     "@anky/protocol": "file:../protocol/implementations/typescript",

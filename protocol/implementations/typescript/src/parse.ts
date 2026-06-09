@@ -44,6 +44,13 @@ function parseWritingLine(line: string, isFirst: boolean): { time: number; char:
   const char = line.slice(separator + 1);
   if (!/^\d+$/.test(timeText)) throw new Error("INVALID_TIME");
   if (char.length === 0) throw new Error("MISSING_CHARACTER");
+  if (char === "SPACE") {
+    const time = Number(timeText);
+    if (!Number.isSafeInteger(time)) throw new Error("UNSAFE_TIME");
+    if (!isFirst && time < 0) throw new Error("NEGATIVE_DELTA");
+    return { time, char: " " };
+  }
+  if (char === " ") throw new Error("NON_CANONICAL_SPACE");
   if (graphemeCount(char) !== 1) throw new Error("MULTI_CHARACTER_EVENT");
 
   const time = Number(timeText);

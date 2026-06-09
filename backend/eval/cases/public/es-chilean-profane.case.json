@@ -1,0 +1,19 @@
+{
+  "id": "es-chilean-profane",
+  "source": "synthetic",
+  "expectedLanguage": "es",
+  "expectedRegister": "Chilean Spanish, casual, profane, intimate, not sanitized",
+  "riskLevel": "sensitive",
+  "summary": "Casual/profane Chilean Spanish entry about automatic yes, fake buena onda, and exhaustion.",
+  "shouldNotice": [
+    "automatic yes as a repeated pattern",
+    "joking/being buena onda hides exhaustion",
+    "anger covers a small sadness and wish to be noticed"
+  ],
+  "mustNot": [
+    "answer in English",
+    "sanitize the register too much",
+    "use Argentine phrasing",
+    "generic advice about boundaries"
+  ]
+}

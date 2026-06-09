@@ -23,6 +23,7 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var streamingReflectionMarkdown: String = ""
     @Published private(set) var reflectionStreamTick = 0
     @Published private(set) var progressStage: String?
+    @Published private(set) var ctaAccentColor: Color
     @Published var errorMessage: String?
 
     let reconstructedText: String
@@ -33,7 +34,8 @@ final class RevealViewModel: ObservableObject {
     let backspaceCount: Int
     let enterCount: Int
     let compactHeaderLine: String
-    let ctaAccentColor: Color
+    let canContinueWriting: Bool
+    let remainingWritingTime: String
 
     private let clipboard: ClipboardClient
     private let artifact: SavedAnky
@@ -52,7 +54,8 @@ final class RevealViewModel: ObservableObject {
     private var streamingReflectionBuffer = ""
     private var streamingReflectionPublishTask: Task<Void, Never>?
     private let reflectionRetryLimit: TimeInterval = 120
-    private let accountId: String
+    private var accountId = ""
+    private var didPrepareAfterFirstRender = false
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
     private static let localTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -92,11 +95,10 @@ final class RevealViewModel: ObservableObject {
             wordCount: words,
             duration: formattedDuration
         )
-        self.ctaAccentColor = Self.ctaAccentColor(
-            createdAt: artifact.createdAt,
-            sessionIndexStore: sessionIndexStore,
-            appOpenStore: AppOpenStore(defaults: userDefaults)
-        )
+        let remainingMs = max(0, AnkyDuration.completeRitualMs - artifact.durationMs)
+        self.canContinueWriting = !artifact.isComplete
+        self.remainingWritingTime = Self.countdownClock(remainingMs)
+        self.ctaAccentColor = Self.fallbackAccentColor(createdAt: artifact.createdAt)
         self.clipboard = clipboard
         self.archive = archive
         self.reflectionStore = reflectionStore
@@ -105,21 +107,6 @@ final class RevealViewModel: ObservableObject {
         self.creditsClient = creditsClient
         self.requestStore = requestStore ?? ReflectionRequestStore(defaults: userDefaults)
         self.userDefaults = userDefaults
-        self.reflection = reflectionStore.load(hash: artifact.hash)
-        self.accountId = (try? identityStore.loadOrCreate().accountId) ?? ""
-        self.hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: accountId, defaults: userDefaults)
-        self.creditBalance = ReflectionCreditCache.balance(accountId: accountId, defaults: userDefaults)
-        if let cached = ReflectionInFlightCache.state(hash: artifact.hash) {
-            self.streamingReflectionMarkdown = cached.markdown
-            self.reflectionStatusMessage = cached.statusMessage
-            self.progressStage = cached.progressStage
-        }
-        if reflection == nil, self.requestStore.isPending(hash: artifact.hash) {
-            self.isAskingAnky = true
-            self.reflectionRetryStartedAt = Date()
-            startPendingReflectionWatcher()
-            schedulePendingReflectionRetry()
-        }
 
     }
 
@@ -201,7 +188,7 @@ final class RevealViewModel: ObservableObject {
             reflection = nil
             isDeleted = true
         } catch {
-            errorMessage = "This writing session could not be deleted."
+            errorMessage = AnkyLocalization.ui("This writing session could not be deleted.")
         }
 
         isDeleting = false
@@ -209,6 +196,30 @@ final class RevealViewModel: ObservableObject {
 
     func askAnky() async {
         await submitReflectionRequest(allowWhileAsking: false)
+    }
+
+    func prepareAfterFirstRender() async {
+        guard !didPrepareAfterFirstRender else {
+            return
+        }
+        didPrepareAfterFirstRender = true
+
+        await Task.yield()
+
+        ctaAccentColor = Self.ctaAccentColor(
+            createdAt: artifact.createdAt,
+            sessionIndexStore: sessionIndexStore,
+            appOpenStore: AppOpenStore(defaults: userDefaults)
+        )
+        refreshLocalReflection()
+
+        if let identity = try? identityStore.loadOrCreate() {
+            accountId = identity.accountId
+            hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: identity.accountId, defaults: userDefaults)
+            creditBalance = ReflectionCreditCache.balance(accountId: identity.accountId, defaults: userDefaults)
+        }
+
+        await refreshCredits(showError: false)
     }
 
     private static func ctaAccentColor(
@@ -228,6 +239,19 @@ final class RevealViewModel: ObservableObject {
         let position = AnkyverseCalendar(firstOpenDate: mapStartDate, calendar: calendar)
             .position(for: createdAt)
         return AnkyverseDayPalette.color(for: position.dayInRegion)
+    }
+
+    private static func fallbackAccentColor(createdAt: Date) -> Color {
+        let position = AnkyverseCalendar(firstOpenDate: Calendar.ankyUTC.startOfDay(for: createdAt), calendar: .ankyUTC)
+            .position(for: createdAt)
+        return AnkyverseDayPalette.color(for: position.dayInRegion)
+    }
+
+    private static func countdownClock(_ durationMs: Int64) -> String {
+        let totalSeconds = max(0, durationMs / 1000)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return "\(String(format: "%02d", minutes)):\(String(format: "%02d", seconds))"
     }
 
     private func submitReflectionRequest(allowWhileAsking: Bool) async {
@@ -257,7 +281,7 @@ final class RevealViewModel: ObservableObject {
         streamingReflectionMarkdown = ""
         reflectionStreamTick = 0
         progressStage = "stream_open"
-        reflectionStatusMessage = "i am opening a quiet channel."
+        reflectionStatusMessage = AnkyLocalization.ui("i am opening a quiet channel.")
         ReflectionInFlightCache.update(
             hash: artifact.hash,
             markdown: "",
@@ -277,9 +301,10 @@ final class RevealViewModel: ObservableObject {
             }
 
             let identity = try identityStore.loadOrCreate()
-            reflectionStatusMessage = "i found your writer key. staying close."
+            accountId = identity.accountId
+            reflectionStatusMessage = AnkyLocalization.ui("i am preparing your reflection.")
             let trialProof = await DeviceCheckTrialProofProvider.makeToken()
-            reflectionStatusMessage = "i am carrying the thread to the mirror."
+            reflectionStatusMessage = AnkyLocalization.ui("i am carrying the thread to the mirror.")
             let response = try await MirrorClient(baseURL: baseURL).askAnky(
                 bytes: Data(artifact.text.utf8),
                 identity: identity,
@@ -308,7 +333,7 @@ final class RevealViewModel: ObservableObject {
                 }
             )
             flushStreamingReflectionBuffer()
-            reflectionStatusMessage = "something answered. i am threading it back."
+            reflectionStatusMessage = AnkyLocalization.ui("something answered. i am threading it back.")
 
             guard response.hash == artifact.hash else {
                 throw MirrorClientError.hashMismatch
@@ -353,7 +378,7 @@ final class RevealViewModel: ObservableObject {
                 reflectionRequestInFlight = false
                 resetStreamingReflectionBuffer()
                 streamingReflectionMarkdown = ""
-                reflectionStatusMessage = "the mirror is already holding this thread."
+                reflectionStatusMessage = AnkyLocalization.ui("the mirror is already holding this thread.")
                 ReflectionInFlightCache.update(
                     hash: artifact.hash,
                     markdown: streamingReflectionMarkdown,
@@ -369,7 +394,7 @@ final class RevealViewModel: ObservableObject {
                 requestStore.markPending(hash: artifact.hash)
                 isAskingAnky = true
                 reflectionRequestInFlight = false
-                reflectionStatusMessage = "i am still waiting with the mirror."
+                reflectionStatusMessage = AnkyLocalization.ui("i am still waiting with the mirror.")
                 ReflectionInFlightCache.update(
                     hash: artifact.hash,
                     markdown: streamingReflectionMarkdown,
@@ -403,7 +428,7 @@ final class RevealViewModel: ObservableObject {
     private func appendStreamingReflectionChunk(_ event: MirrorReflectionChunkEvent) {
         streamingReflectionBuffer += event.chunk
         reflectionStreamTick += 1
-        reflectionStatusMessage = "writing the reflection... \(event.generatedCharacters) characters"
+        reflectionStatusMessage = AnkyLocalization.ui("writing the reflection... %d characters", event.generatedCharacters)
 
         if streamingReflectionPublishTask == nil {
             streamingReflectionPublishTask = Task { [weak self] in
@@ -440,39 +465,39 @@ final class RevealViewModel: ObservableObject {
     static func progressMessage(for stage: String?, fallback: String? = nil) -> String {
         switch stage {
         case "stream_open":
-            return "opening the mirror..."
+            return AnkyLocalization.ui("opening the mirror...")
         case "request_received":
-            return "received your writing..."
+            return AnkyLocalization.ui("received your writing...")
         case "dot_anky_read":
-            return "reading your .anky..."
+            return AnkyLocalization.ui("reading your .anky...")
         case "hash_computed":
-            return "verifying the seal..."
+            return AnkyLocalization.ui("preparing your writing...")
         case "identity_verified":
-            return "confirming your identity..."
+            return AnkyLocalization.ui("opening the way...")
         case "protocol_validated":
-            return "validating the ritual..."
+            return AnkyLocalization.ui("validating the ritual...")
         case "credit_checked":
-            return "checking reflection access..."
+            return AnkyLocalization.ui("checking reflection access...")
         case "reflection_prepared":
-            return "preparing the reflection..."
+            return AnkyLocalization.ui("preparing the reflection...")
         case "provider_started":
-            return "anky is writing..."
+            return AnkyLocalization.ui("anky is writing...")
         case "provider_finished":
-            return "bringing it back..."
+            return AnkyLocalization.ui("bringing it back...")
         case "credit_spent":
-            return "settling..."
+            return AnkyLocalization.ui("settling...")
         case "x402_quote_created":
-            return "checking payment options..."
+            return AnkyLocalization.ui("checking payment options...")
         case "x402_verified":
-            return "payment verified..."
+            return AnkyLocalization.ui("payment verified...")
         case "x402_settled":
-            return "settling..."
+            return AnkyLocalization.ui("settling...")
         case "credit_not_spent":
-            return "no credit spent..."
+            return AnkyLocalization.ui("no credit spent...")
         case "complete":
-            return "opening the scroll..."
+            return AnkyLocalization.ui("opening the scroll...")
         default:
-            return fallback ?? "anky is working..."
+            return AnkyLocalization.ui(fallback ?? "anky is working...")
         }
     }
 
@@ -482,10 +507,10 @@ final class RevealViewModel: ObservableObject {
 
     private static func reflectionErrorMessage(message: String, serverPayload: MirrorServerErrorPayload?) -> String {
         if serverPayload?.isTrialAlreadyClaimed == true {
-            return "This device already used its first two reflections. Add credits to ask Anky again. Writing is still free."
+            return AnkyLocalization.ui("This device already used its first two reflections. Add credits to ask Anky again. Writing is still free.")
         }
         if serverPayload?.isCreditDenied == true || message.localizedCaseInsensitiveContains("credit") {
-            return "You need one reflection credit to ask Anky. Writing is still free."
+            return AnkyLocalization.ui("You need one reflection credit to ask Anky. Writing is still free.")
         }
         return message
     }
@@ -505,6 +530,7 @@ final class RevealViewModel: ObservableObject {
     private func refreshCreditsAfterReflectionSuccess() async {
         do {
             let identity = try identityStore.loadOrCreate()
+            accountId = identity.accountId
             try await creditsClient.identify(accountId: identity.accountId)
             creditPackages = try await creditsClient.fetchCreditPackages()
             creditBalance = try await creditsClient.fetchCreditBalance()
@@ -546,6 +572,7 @@ final class RevealViewModel: ObservableObject {
 
         do {
             let identity = try identityStore.loadOrCreate()
+            accountId = identity.accountId
             try await creditsClient.identify(accountId: identity.accountId)
             creditPackages = try await creditsClient.fetchCreditPackages()
             creditBalance = try await creditsClient.fetchCreditBalance()
@@ -556,7 +583,7 @@ final class RevealViewModel: ObservableObject {
             }
         } catch {
             if showError {
-                errorMessage = "Could not load reflections."
+                errorMessage = AnkyLocalization.ui("Could not load reflections.")
             }
         }
     }
@@ -572,6 +599,7 @@ final class RevealViewModel: ObservableObject {
 
         do {
             let identity = try identityStore.loadOrCreate()
+            accountId = identity.accountId
             try await creditsClient.identify(accountId: identity.accountId)
             let result = try await creditsClient.purchase(creditPackage)
             guard result == .purchased else {
@@ -582,7 +610,7 @@ final class RevealViewModel: ObservableObject {
             ReflectionCreditCache.storeBalance(creditBalance, accountId: identity.accountId, defaults: userDefaults)
             creditsDenied = false
         } catch {
-            errorMessage = "Payment did not finish. No credits were added."
+            errorMessage = AnkyLocalization.ui("Payment did not finish. No credits were added.")
         }
     }
 
@@ -610,7 +638,7 @@ final class RevealViewModel: ObservableObject {
             }
             isAskingAnky = true
             if reflectionStatusMessage.isEmpty {
-                reflectionStatusMessage = "i am waiting with the mirror."
+                reflectionStatusMessage = AnkyLocalization.ui("i am waiting with the mirror.")
             }
             startPendingReflectionWatcher()
             schedulePendingReflectionRetry()
@@ -657,7 +685,7 @@ final class RevealViewModel: ObservableObject {
         guard Date().timeIntervalSince(startedAt) < reflectionRetryLimit else {
             requestStore.clear(hash: artifact.hash)
             reflectionStatusMessage = ""
-            errorMessage = "Anky could not return a reflection right now."
+            errorMessage = AnkyLocalization.ui("Anky could not return a reflection right now.")
             isAskingAnky = false
             reflectionRetryStartedAt = nil
             reflectionRequestInFlight = false

@@ -76,7 +76,7 @@ export const mapOfThisFile = {
 export const clientCreationIndex = {
   write:
     "Capture textarea deltas into one .anky artifact using the ankyProtocol javascript function.",
-  finish: "End exactly at 480000 ms of writing or 8000 ms of idle time.",
+  finish: "A complete anky has at least 480000 ms of writing deltas.",
   sign: "Sign AnkyMirrorRequest with a Base EOA or embedded Ethereum wallet.",
   post: "Send exact bytes to POST /anky as text/plain; charset=utf-8.",
   pay: "If 402 arrives, read PAYMENT-REQUIRED, build x402 payment, retry with PAYMENT-SIGNATURE.",
@@ -84,12 +84,12 @@ export const clientCreationIndex = {
 } as const;
 
 export const ankyProtocolInOneBreath = {
-  firstLine: "<start_epoch_ms> <first_character>",
-  nextLines: "<delta_ms_since_previous_character> <next_character>",
-  terminalLine: "8000",
+  firstLine: "<start_epoch_ms> <first_character_or_SPACE>",
+  nextLines: "<delta_ms_since_previous_character> <next_character_or_SPACE>",
+  spaceRule: "a typed space is encoded as SPACE",
   serverBody: "the exact .anky string, sent as text/plain",
   endingRule:
-    "send when active writing reaches 8 minutes or idle silence reaches 8 seconds",
+    "reflection requires at least 8 minutes of accumulated writing deltas",
   identityRule: "headers prove the writer signed these exact bytes",
 } as const;
 
@@ -113,7 +113,8 @@ function onTextareaInput(event) {
   for (const character of insertedText) {
     const isFirstCharacter = dotAnky.length === 0;
     const deltaMs = isFirstCharacter ? now : now - previousAcceptedMs;
-    dotAnky += isFirstCharacter ? \`\${now} \${character}\n\` : \`\${deltaMs} \${character}\n\`;
+    const payload = character === " " ? "SPACE" : character;
+    dotAnky += isFirstCharacter ? \`\${now} \${payload}\n\` : \`\${deltaMs} \${payload}\n\`;
     activeWritingMs += isFirstCharacter ? 0 : deltaMs;
     previousAcceptedMs = now;
   }
@@ -127,11 +128,11 @@ function onTextareaInput(event) {
 }
 
 async function endAnkyBecauseSilenceArrived() {
-  await sendAnky(dotAnky + "8000\n");
+  await sendAnky(dotAnky);
 }
 
 async function endAnkyBecauseEightMinutesArrived() {
-  await sendAnky(dotAnky + "8000\n");
+  await sendAnky(dotAnky);
 }
 
 async function sendAnky(ankyString) {
@@ -426,7 +427,7 @@ const activeComposerHtml = String.raw`<!doctype html>
 
     <script>
       (() => {
-        const TERMINAL_SILENCE_MS = 8000;
+        const IDLE_SILENCE_MS = 8000;
 
         const surface = document.getElementById("surface");
         const result = document.getElementById("result");
@@ -476,7 +477,7 @@ const activeComposerHtml = String.raw`<!doctype html>
 
         function resetSilenceTimer() {
           window.clearTimeout(state.idleTimer);
-          state.idleTimer = window.setTimeout(finalize, TERMINAL_SILENCE_MS);
+          state.idleTimer = window.setTimeout(finalize, IDLE_SILENCE_MS);
         }
 
         async function finalize() {
@@ -500,9 +501,9 @@ const activeComposerHtml = String.raw`<!doctype html>
         function buildDotAnky() {
           const lines = state.accepted.map((event, index) => {
             const time = index === 0 ? state.startedAt : event.deltaMs;
-            return String(time) + " " + event.character;
+            const payload = event.character === " " ? "SPACE" : event.character;
+            return String(time) + " " + payload;
           });
-          lines.push(String(TERMINAL_SILENCE_MS));
           return lines.join("\n");
         }
 

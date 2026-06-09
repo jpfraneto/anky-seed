@@ -14,6 +14,7 @@ import org.json.JSONObject
 
 interface BackupExporting {
     fun exportArchiveZip(): File?
+    fun exportFormattedWritings(): File?
 }
 
 class Exporter(
@@ -33,10 +34,33 @@ class Exporter(
         return exportFile
     }
 
+    override fun exportFormattedWritings(): File? {
+        val ankys = archive.list()
+        if (ankys.isEmpty()) return null
+
+        val createdAt = Instant.now()
+        val exportDirectory = File(context.cacheDir, "exports").also { it.mkdirs() }
+        val exportFile = File(exportDirectory, "anky-writings-${BackupDateFormatter.format(createdAt)}.md")
+        FormattedWritingExportWriter.write(exportFile, ankys)
+        return exportFile
+    }
+
     private companion object {
         val BackupDateFormatter: DateTimeFormatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
     }
+}
+
+internal object FormattedWritingExportWriter {
+    fun write(outputFile: File, ankys: List<SavedAnky>) {
+        val lines = ankys.joinToString(separator = "\n\n") { anky ->
+            "${FormattedWritingDateFormatter.format(anky.createdAt)}:${anky.reconstructedText}"
+        }
+        outputFile.writeText(lines, Charsets.UTF_8)
+    }
+
+    private val FormattedWritingDateFormatter: DateTimeFormatter =
+        DateTimeFormatterBuilder().appendInstant(3).toFormatter()
 }
 
 internal object BackupZipWriter {
