@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 data class UserSettings(
     val appLockEnabled: Boolean = false,
     val deviceLockPromptCompleted: Boolean = false,
+    val onboardingCompleted: Boolean = false,
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderMinutes: Int = 9 * 60,
     val mirrorBaseUrl: String = BuildConfig.DEFAULT_MIRROR_BASE_URL,
@@ -28,6 +29,7 @@ class UserSettingsStore(
             UserSettings(
                 appLockEnabled = preferences[AppLockEnabled] ?: false,
                 deviceLockPromptCompleted = preferences[DeviceLockPromptCompleted] ?: false,
+                onboardingCompleted = preferences[OnboardingCompleted] ?: false,
                 dailyReminderEnabled = preferences[DailyReminderEnabled] ?: false,
                 dailyReminderMinutes = preferences[DailyReminderMinutes] ?: 9 * 60,
                 mirrorBaseUrl = preferences[MirrorBaseUrl] ?: BuildConfig.DEFAULT_MIRROR_BASE_URL,
@@ -40,6 +42,10 @@ class UserSettingsStore(
 
     suspend fun setDeviceLockPromptCompleted(completed: Boolean) {
         context.ankySettings.edit { it[DeviceLockPromptCompleted] = completed }
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.ankySettings.edit { it[OnboardingCompleted] = completed }
     }
 
     suspend fun setDailyReminderEnabled(enabled: Boolean) {
@@ -61,6 +67,7 @@ class UserSettingsStore(
     companion object {
         private val AppLockEnabled = booleanPreferencesKey("app_lock_enabled")
         private val DeviceLockPromptCompleted = booleanPreferencesKey("device_lock_prompt_completed")
+        private val OnboardingCompleted = booleanPreferencesKey("onboarding_completed")
         private val DailyReminderEnabled = booleanPreferencesKey("daily_reminder_enabled")
         private val DailyReminderMinutes = intPreferencesKey("daily_reminder_minutes")
         private val MirrorBaseUrl = stringPreferencesKey("mirror_base_url")

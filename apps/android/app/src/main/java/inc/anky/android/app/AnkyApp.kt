@@ -6,22 +6,15 @@ import android.view.HapticFeedbackConstants
 import androidx.biometric.BiometricManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,9 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -104,22 +95,15 @@ fun AnkyApp(container: AppContainer) {
         val recoveryPhraseInput = remember { mutableStateOf("") }
         val recoveryError = remember { mutableStateOf<String?>(null) }
         val identityRecoveryNonce = remember { mutableIntStateOf(0) }
-        val rootCreditBalance = remember { mutableStateOf<Int?>(null) }
         val showsDeviceLockActivationPrompt = remember { mutableStateOf(false) }
         val skipNextAppLockAuthentication = remember { mutableStateOf(false) }
-
-        suspend fun refreshRootCreditBalance() {
-            val identity = runCatching { container.identityStore.loadOrCreate() }.getOrNull() ?: return
-            runCatching {
-                container.creditsClient.configure(identity.accountId)
-                rootCreditBalance.value = container.creditsClient.refresh().balance
-            }
-        }
 
         if (settings == null) {
             Box(modifier = Modifier.fillMaxSize())
             return@AnkyTheme
         }
+        val unlockDeviceLockReason = stringResource(R.string.unlock_device_lock_reason)
+        val protectDeviceLockReason = stringResource(R.string.protect_device_lock_reason)
 
         DisposableEffect(settings.appLockEnabled, lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
@@ -156,7 +140,7 @@ fun AnkyApp(container: AppContainer) {
                     lockState.value = LockState.Unlocked
                 } else {
                     lockState.value = LockState.Authenticating
-                    if (biometricGate.authenticate("Unlock ANKY.")) {
+                    if (biometricGate.authenticate(unlockDeviceLockReason)) {
                         failedAuthAttempts.intValue = 0
                         recoveryPhraseInput.value = ""
                         recoveryError.value = null
@@ -175,86 +159,22 @@ fun AnkyApp(container: AppContainer) {
         }
 
         if (settings.appLockEnabled && lockState.value != LockState.Unlocked) {
-            fun recoverIdentityFromPhrase() {
-                val normalized = normalizeRecoveryPhrase(recoveryPhraseInput.value)
-                if (normalized.split(" ").filter { it.isNotBlank() }.size != 12) {
-                    recoveryError.value = "enter the 12 word recovery phrase."
-                    return
-                }
-                runCatching {
-                    container.identityStore.importRecoveryPhrase(normalized)
-                }.onSuccess {
-                    failedAuthAttempts.intValue = 0
-                    recoveryPhraseInput.value = ""
-                    recoveryError.value = null
-                    identityRecoveryNonce.intValue += 1
-                    lockState.value = LockState.Unlocked
-                }.onFailure {
-                    recoveryError.value = "that recovery phrase did not open this identity."
-                }
-            }
-
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.White),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable(enabled = lockState.value == LockState.Failed) {
+                        recoveryError.value = null
+                        unlockAttempt.intValue += 1
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
                     painter = painterResource(R.drawable.tellmewhoyouare),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                 )
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    if (lockState.value == LockState.Locked || lockState.value == LockState.Authenticating) {
-                        CircularProgressIndicator(color = Color.White)
-                    } else {
-                        if (failedAuthAttempts.intValue >= 2) {
-                            OutlinedTextField(
-                                value = recoveryPhraseInput.value,
-                                onValueChange = { value ->
-                                    recoveryPhraseInput.value = value
-                                    recoveryError.value = null
-                                    if (normalizeRecoveryPhrase(value).split(" ").filter { it.isNotBlank() }.size == 12) {
-                                        recoverIdentityFromPhrase()
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("recovery phrase", color = Color.White.copy(alpha = 0.78f)) },
-                                textStyle = TextStyle(color = Color.White),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                                singleLine = false,
-                            )
-                            recoveryError.value?.let { message ->
-                                Text(
-                                    message,
-                                    color = Color.White.copy(alpha = 0.82f),
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                            Button(
-                                onClick = { recoverIdentityFromPhrase() },
-                                shape = RoundedCornerShape(14.dp),
-                            ) { Text("recover identity") }
-                        } else {
-                            Text(
-                                "face id didn't work. you should not be here",
-                                color = Color.White,
-                                textAlign = TextAlign.Center,
-                            )
-                            Button(
-                                onClick = {
-                                    recoveryError.value = null
-                                    unlockAttempt.intValue += 1
-                                },
-                                shape = RoundedCornerShape(14.dp),
-                            ) { Text("Try again") }
-                        }
-                    }
-                }
             }
             return@AnkyTheme
         }
@@ -262,7 +182,6 @@ fun AnkyApp(container: AppContainer) {
         LaunchedEffect(lockState.value) {
             if (lockState.value == LockState.Unlocked) {
                 runCatching { container.appOpenStore.loadOrCreate() }
-                refreshRootCreditBalance()
             }
         }
 
@@ -293,7 +212,7 @@ fun AnkyApp(container: AppContainer) {
         val mapCompanionNoteIndex = remember { mutableIntStateOf(0) }
         val youCompanionNoteIndex = remember { mutableIntStateOf(0) }
         val isShowingYouExperience = remember { mutableStateOf(false) }
-        val showsOnboarding = remember { mutableStateOf(true) }
+        val showsOnboarding = remember(settings.onboardingCompleted) { mutableStateOf(!settings.onboardingCompleted) }
         val importedCompletedHash = remember { mutableStateOf<String?>(null) }
         val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash
         val shouldShowOnboarding =
@@ -328,8 +247,17 @@ fun AnkyApp(container: AppContainer) {
             }
         }
         LaunchedEffect(postWriteCompletedHash, lockState.value) {
-            if (lockState.value == LockState.Unlocked && postWriteCompletedHash != null) {
-                refreshRootCreditBalance()
+            val hash = postWriteCompletedHash
+            if (lockState.value == LockState.Unlocked && hash != null) {
+                importedCompletedHash.value = null
+                writeViewModelWithCurrentMirror.consumeCompletedHash()
+                mapViewModel.refresh()
+                container.encryptedBackupStore.backUpIfEnabled()
+                navController.navigate(AnkyRoute.Map.route) {
+                    launchSingleTop = true
+                    popUpTo(AnkyRoute.Write.route)
+                }
+                navController.navigate(AnkyRoute.Reveal.route(hash))
             }
         }
         LaunchedEffect(currentRoute) {
@@ -380,6 +308,7 @@ fun AnkyApp(container: AppContainer) {
                             contentColor = AnkyColors.Paper,
                         ) {
                             tabs.forEach { tab ->
+                                val tabLabel = stringResource(tab.labelRes)
                                 NavigationBarItem(
                                     selected = tab.isSelectedForRoute(currentRoute),
                                     onClick = {
@@ -388,11 +317,11 @@ fun AnkyApp(container: AppContainer) {
                                             popUpTo(AnkyRoute.Write.route)
                                         }
                                     },
-                                    label = { Text(tab.label) },
+                                    label = { Text(tabLabel) },
                                     icon = {
                                         Icon(
                                             imageVector = tab.icon(),
-                                            contentDescription = tab.label,
+                                            contentDescription = tabLabel,
                                         )
                                     },
                                     colors = NavigationBarItemDefaults.colors(
@@ -463,6 +392,7 @@ fun AnkyApp(container: AppContainer) {
                                 requestStore = container.reflectionRequestStore,
                                 indexStore = container.sessionIndexStore,
                                 appOpenStore = container.appOpenStore,
+                                encryptedBackupStore = container.encryptedBackupStore,
                                 biometricGate = biometricGate,
                             )
                         }
@@ -473,12 +403,11 @@ fun AnkyApp(container: AppContainer) {
                             onAccountDeleted = {
                                 writeViewModelWithCurrentMirror.resetAfterAccountDeletion()
                                 mapViewModel.refresh()
-                                rootCreditBalance.value = null
                             },
                             onAppLockChange = { enabled ->
                                 rootScope.launch {
                                     if (enabled) {
-                                        val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                        val confirmed = biometricGate.authenticate(protectDeviceLockReason)
                                         container.settingsStore.setDeviceLockPromptCompleted(true)
                                         if (confirmed) {
                                             skipNextAppLockAuthentication.value = true
@@ -509,6 +438,7 @@ fun AnkyApp(container: AppContainer) {
                                 requestStore = container.reflectionRequestStore,
                                 indexStore = container.sessionIndexStore,
                                 appOpenStore = container.appOpenStore,
+                                encryptedBackupStore = container.encryptedBackupStore,
                                 biometricGate = biometricGate,
                             )
                         }
@@ -521,12 +451,11 @@ fun AnkyApp(container: AppContainer) {
                             onAccountDeleted = {
                                 writeViewModelWithCurrentMirror.resetAfterAccountDeletion()
                                 mapViewModel.refresh()
-                                rootCreditBalance.value = null
                             },
                             onAppLockChange = { enabled ->
                                 rootScope.launch {
                                     if (enabled) {
-                                        val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                        val confirmed = biometricGate.authenticate(protectDeviceLockReason)
                                         container.settingsStore.setDeviceLockPromptCompleted(true)
                                         if (confirmed) {
                                             skipNextAppLockAuthentication.value = true
@@ -628,6 +557,9 @@ fun AnkyApp(container: AppContainer) {
                         showsOnboarding.value = false
                         showsLaunchDialogue.value = false
                         companionNote.value = null
+                        rootScope.launch {
+                            container.settingsStore.setOnboardingCompleted(true)
+                        }
                         navController.navigate(AnkyRoute.Write.route) {
                             launchSingleTop = true
                             popUpTo(AnkyRoute.Write.route) { inclusive = false }
@@ -636,36 +568,6 @@ fun AnkyApp(container: AppContainer) {
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
-            } else if (
-                currentRoute == AnkyRoute.Write.route &&
-                postWriteCompletedHash != null
-            ) {
-                val postWriteCreditBadge = rootCreditBalance.value?.let(::creditBadge)
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    AnkyConversationPrompt(
-                        message = "you wrote an anky.\n\ndo you want me to reflect it?",
-                        actions = listOf(
-                            AnkyChatAction("reflect (1 credit)", badge = postWriteCreditBadge, isPrimary = true) {
-                                val hash = postWriteCompletedHash ?: return@AnkyChatAction
-                                importedCompletedHash.value = null
-                                writeViewModelWithCurrentMirror.consumeCompletedHash()
-                                navController.navigate(AnkyRoute.Reveal.route(hash, reflect = true))
-                            },
-                            AnkyChatAction("not now") {
-                                val hash = postWriteCompletedHash ?: return@AnkyChatAction
-                                importedCompletedHash.value = null
-                                writeViewModelWithCurrentMirror.consumeCompletedHash()
-                                navController.navigate(AnkyRoute.Map.route) {
-                                    launchSingleTop = true
-                                    popUpTo(AnkyRoute.Write.route)
-                                }
-                                navController.navigate(AnkyRoute.Reveal.route(hash))
-                            },
-                        ),
-                        modifier = Modifier
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
-                    )
-                }
             } else if (
                 currentRoute == AnkyRoute.Write.route &&
                 writeState.errorMessage != null
@@ -707,16 +609,25 @@ fun AnkyApp(container: AppContainer) {
                 !writeState.isClosing &&
                 writeState.errorMessage == null
             ) {
+                val launchMessage = if (writeState.todayAnkyCount > 0) {
+                    stringResource(R.string.launch_count_format, writeState.todayAnkyCount)
+                } else {
+                    stringResource(R.string.launch_empty)
+                }
+                val launchAction = if (writeState.todayAnkyCount > 0) {
+                    stringResource(R.string.write_again)
+                } else {
+                    stringResource(
+                        R.string.write_minutes_format,
+                        AnkyDuration.CompleteRitualMs / 60_000,
+                    )
+                }
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
-                        message = if (writeState.todayAnkyCount > 0) {
-                            "ankys today: ${writeState.todayAnkyCount}"
-                        } else {
-                            "the living .anky string is the state of this session."
-                        },
+                        message = launchMessage,
                         actions = listOf(
                             AnkyChatAction(
-                                if (writeState.todayAnkyCount > 0) "write again" else "write ${AnkyDuration.CompleteRitualMs / 60_000} minutes",
+                                launchAction,
                                 isPrimary = true,
                             ) {
                                 rootView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -725,9 +636,9 @@ fun AnkyApp(container: AppContainer) {
                             },
                         ),
                         steps = listOf(
-                            "write one character",
-                            "keep the thread alive",
-                            "let silence close it",
+                            stringResource(R.string.step_write_one_character),
+                            stringResource(R.string.step_keep_thread_alive),
+                            stringResource(R.string.step_let_silence_close_it),
                         ),
                         onClose = { showsLaunchDialogue.value = false },
                         modifier = Modifier
@@ -737,6 +648,8 @@ fun AnkyApp(container: AppContainer) {
             }
 
             if (showsDeviceLockActivationPrompt.value && !shouldShowOnboarding && !isShowingYouExperience.value) {
+                val deviceLockTitle = stringResource(R.string.activate_device_lock)
+                val deviceLockReason = stringResource(R.string.protect_device_lock_reason)
                 AlertDialog(
                     onDismissRequest = {
                         showsDeviceLockActivationPrompt.value = false
@@ -744,16 +657,16 @@ fun AnkyApp(container: AppContainer) {
                             container.settingsStore.setDeviceLockPromptCompleted(true)
                         }
                     },
-                    title = { Text("Activate Device Lock") },
+                    title = { Text(deviceLockTitle) },
                     text = {
-                        Text("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone.")
+                        Text(stringResource(R.string.device_lock_prompt))
                     },
                     confirmButton = {
                         TextButton(
                             onClick = {
                                 showsDeviceLockActivationPrompt.value = false
                                 rootScope.launch {
-                                    val confirmed = biometricGate.authenticate("Protect ANKY with your device lock.")
+                                    val confirmed = biometricGate.authenticate(deviceLockReason)
                                     container.settingsStore.setDeviceLockPromptCompleted(true)
                                     if (confirmed) {
                                         skipNextAppLockAuthentication.value = true
@@ -762,7 +675,7 @@ fun AnkyApp(container: AppContainer) {
                                 }
                             },
                         ) {
-                            Text("Activate Device Lock")
+                            Text(deviceLockTitle)
                         }
                     },
                     dismissButton = {
@@ -774,7 +687,7 @@ fun AnkyApp(container: AppContainer) {
                                 }
                             },
                         ) {
-                            Text("not now")
+                            Text(stringResource(R.string.not_now))
                         }
                     },
                 )
@@ -792,9 +705,6 @@ private enum class LockState {
 
 private fun normalizeRecoveryPhrase(text: String): String =
     text.lowercase().split(Regex("""\s+""")).filter { it.isNotBlank() }.joinToString(" ")
-
-private fun creditBadge(balance: Int): String =
-    "$balance ${if (balance == 1) "credit" else "credits"}"
 
 private fun presenceSequence(route: String?, writeRitualComplete: Boolean): AnkySequenceName =
     when (route) {

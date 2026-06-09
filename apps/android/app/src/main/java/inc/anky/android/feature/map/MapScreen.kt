@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -87,11 +88,12 @@ fun MapScreen(
     val selectedDay = selectedDayEpoch.value?.let { epoch ->
         state.days.firstOrNull { it.dayEpochMs == epoch }
     }
+    val labels = mapLabels()
 
     AnkyMapBackground(modifier = Modifier.testTag("map-screen")) {
         state.errorMessage?.let { error ->
             Text(
-                error,
+                labels.couldNotLoadMap,
                 style = AnkyType.Body.copy(color = AnkyColors.Paper),
                 textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -102,11 +104,13 @@ fun MapScreen(
         if (selectedDay == null) {
             TrailMap(
                 days = state.days,
+                labels = labels,
                 onOpenDay = { selectedDayEpoch.value = it.dayEpochMs },
             )
         } else {
             DayDetail(
                 day = selectedDay,
+                labels = labels,
                 onBack = { selectedDayEpoch.value = null },
                 onOpenReveal = onOpenReveal,
             )
@@ -115,7 +119,7 @@ fun MapScreen(
 }
 
 @Composable
-private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
+private fun TrailMap(days: List<SessionDay>, labels: MapLabels, onOpenDay: (SessionDay) -> Unit) {
     val displayDays = days.reversed()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -143,7 +147,7 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
             if (displayDays.isEmpty()) {
                 item {
                     Text(
-                        "no writing saved",
+                        labels.noWritingSaved,
                         style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
@@ -156,6 +160,7 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
                     index = index,
                     dayCount = displayDays.size,
                     rowHeight = rowHeight,
+                    labels = labels,
                     onOpenDay = onOpenDay,
                 )
             }
@@ -172,7 +177,7 @@ private fun TrailMap(days: List<SessionDay>, onOpenDay: (SessionDay) -> Unit) {
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.12f))
                     .semantics {
-                        contentDescription = "Go to current day"
+                        contentDescription = labels.goToCurrentDay
                     },
             ) {
                 Icon(
@@ -192,6 +197,7 @@ private fun TrailDayNode(
     index: Int,
     dayCount: Int,
     rowHeight: androidx.compose.ui.unit.Dp,
+    labels: MapLabels,
     onOpenDay: (SessionDay) -> Unit,
 ) {
     val today = isToday(day.dayEpochMs)
@@ -201,7 +207,7 @@ private fun TrailDayNode(
             .height(rowHeight)
             .clickable { onOpenDay(day) }
             .semantics {
-                contentDescription = dayAccessibilityLabel(day)
+                contentDescription = dayAccessibilityLabel(day, labels.today)
         },
         contentAlignment = Alignment.Center,
     ) {
@@ -259,15 +265,15 @@ private fun TrailDayNode(
                 DayCircle(day = day, size = 48.dp, fontSize = 16.sp)
             }
             if (day.showsTrailCompletionMarker) {
-                DayCompletionMarker(Modifier.offset(x = 56.dp))
+                DayCompletionMarker(labels.showedUp, Modifier.offset(x = 56.dp))
             }
         }
     }
 }
 
-internal fun dayAccessibilityLabel(day: SessionDay): String {
+internal fun dayAccessibilityLabel(day: SessionDay, todayLabel: String = "Today"): String {
     val date = if (isToday(day.dayEpochMs)) {
-        "Today"
+        todayLabel
     } else {
         Instant.ofEpochMilli(day.dayEpochMs).formattedForMapDay()
     }
@@ -330,9 +336,10 @@ private fun DayCircle(day: SessionDay, size: androidx.compose.ui.unit.Dp, fontSi
 
 @Composable
 private fun CurrentDayProgressRing(modifier: Modifier = Modifier) {
+    val label = stringResource(R.string.map_utc_day_progress)
     Canvas(
         modifier.semantics {
-            contentDescription = "UTC day progress"
+            contentDescription = label
         },
     ) {
         drawCircle(
@@ -350,7 +357,7 @@ private fun CurrentDayProgressRing(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DayCompletionMarker(modifier: Modifier = Modifier) {
+private fun DayCompletionMarker(contentDescription: String, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(8.dp)
@@ -358,13 +365,13 @@ private fun DayCompletionMarker(modifier: Modifier = Modifier) {
             .background(AnkyColors.Gold.copy(alpha = 0.88f))
             .border(3.dp, Color.Black.copy(alpha = 0.62f), CircleShape)
             .semantics {
-                contentDescription = "showed up"
+                this.contentDescription = contentDescription
             },
     )
 }
 
 @Composable
-private fun DayDetail(day: SessionDay, onBack: () -> Unit, onOpenReveal: (String) -> Unit) {
+private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, onOpenReveal: (String) -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.map_background),
@@ -391,7 +398,7 @@ private fun DayDetail(day: SessionDay, onBack: () -> Unit, onOpenReveal: (String
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.Filled.ChevronLeft,
-                        contentDescription = "Back",
+                        contentDescription = labels.back,
                         tint = AnkyColors.Gold,
                         modifier = Modifier.size(30.dp),
                     )
@@ -506,3 +513,25 @@ private fun isToday(epochMs: Long): Boolean {
     val today = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
     return epochMs == today
 }
+
+private data class MapLabels(
+    val noWritingSaved: String,
+    val goToCurrentDay: String,
+    val today: String,
+    val utcDayProgress: String,
+    val showedUp: String,
+    val back: String,
+    val couldNotLoadMap: String,
+)
+
+@Composable
+private fun mapLabels(): MapLabels =
+    MapLabels(
+        noWritingSaved = stringResource(R.string.map_no_writing_saved),
+        goToCurrentDay = stringResource(R.string.map_go_to_current_day),
+        today = stringResource(R.string.map_today),
+        utcDayProgress = stringResource(R.string.map_utc_day_progress),
+        showedUp = stringResource(R.string.map_showed_up),
+        back = stringResource(R.string.map_back),
+        couldNotLoadMap = stringResource(R.string.map_could_not_load),
+    )

@@ -112,10 +112,10 @@ class YouViewModelStateTest {
         )
         val claimedState = giftState.copy(hasClaimedFreeCredits = true)
 
-        assertEquals(1, giftState.presentedCreditBalance)
+        assertEquals(2, giftState.presentedCreditBalance)
         assertEquals(true, giftState.hasUnspentGiftCredit)
         assertEquals(false, giftState.canPurchaseCredits)
-        assertEquals("1", giftState.creditDetailTitle)
+        assertEquals("2", giftState.creditDetailTitle)
         assertEquals("device gift", giftState.creditDetailCaption)
         assertEquals(9, claimedState.presentedCreditBalance)
         assertEquals(false, claimedState.hasUnspentGiftCredit)
@@ -189,8 +189,8 @@ class YouViewModelStateTest {
         assertEquals("Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits.", YouStatusCopy.CreditGiftDetail)
         assertEquals("Use this device's first two reflections before buying more credits.", YouStatusCopy.SpendGiftBeforeBuying)
         assertEquals("Could not load the local Base identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
-        assertEquals("Could not load the recovery phrase.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
-        assertEquals("Recovery phrase saved to device secure storage. Use Data export for writing and reflection backups.", YouStatusCopy.IdentityBackupSaved)
+        assertEquals("Could not load the recovery words.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
+        assertEquals("Recovery words saved to device secure storage. Use Data export for writing and reflection backups.", YouStatusCopy.IdentityBackupSaved)
         assertEquals("Could not back up Anky identity.", YouStatusCopy.CouldNotBackUpAnkyIdentity)
         assertEquals("Could not schedule the daily reminder.", YouStatusCopy.CouldNotScheduleDailyReminder)
         assertEquals("Could not load credits.", YouStatusCopy.CouldNotLoadCredits)
@@ -201,11 +201,11 @@ class YouViewModelStateTest {
     @Test
     fun recoveryImportValidationCopyMatchesIosPhraseLanguage() {
         assertEquals(
-            "Recovery phrase must be 12 words.",
+            "Recovery words must be 12 words.",
             recoveryImportErrorMessage(IllegalArgumentException("Recovery phrase must contain 12 words.")),
         )
         assertEquals(
-            "Recovery phrase contains an unrecognized word.",
+            "Recovery words contain an unrecognized word.",
             recoveryImportErrorMessage(IllegalArgumentException("Recovery phrase contains an unsupported word.")),
         )
         assertEquals(

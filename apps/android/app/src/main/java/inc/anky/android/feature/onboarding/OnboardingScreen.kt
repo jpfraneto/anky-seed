@@ -1,6 +1,7 @@
 package inc.anky.android.feature.onboarding
 
 import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,12 +55,13 @@ fun AnkyOnboardingScreen(
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val page = pagerState.currentPage.coerceIn(OnboardingPages.indices)
+    val onboardingAccessibilityLabel = stringResource(R.string.onboarding_accessibility_label)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .semantics { contentDescription = "Anky onboarding" },
+            .semantics { contentDescription = onboardingAccessibilityLabel },
     ) {
         HorizontalPager(
             state = pagerState,
@@ -75,9 +78,9 @@ fun AnkyOnboardingScreen(
                 .padding(bottom = 34.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TextLine(OnboardingPages[page].line)
+            TextLine(stringResource(OnboardingPages[page].lineRes))
             Spacer(Modifier.height(28.dp))
-            OnboardingCta(OnboardingPages[page].cta) {
+            OnboardingCta(stringResource(OnboardingPages[page].ctaRes)) {
                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 if (page < OnboardingPages.lastIndex) {
                     scope.launch {
@@ -215,24 +218,24 @@ private fun OnboardingDots(currentIndex: Int, total: Int) {
 
 private data class OnboardingPage(
     val imageRes: Int,
-    val line: String,
-    val cta: String,
+    @StringRes val lineRes: Int,
+    @StringRes val ctaRes: Int,
 )
 
 private val OnboardingPages = listOf(
     OnboardingPage(
         imageRes = R.drawable.onboarding_1,
-        line = "You don't need another prompt.",
-        cta = "Be with what is here",
+        lineRes = R.string.onboarding_line_1,
+        ctaRes = R.string.onboarding_cta_1,
     ),
     OnboardingPage(
         imageRes = R.drawable.onboarding_2,
-        line = "Write forward. 8 seconds of silence ends it.",
-        cta = "No backspace. Just write.",
+        lineRes = R.string.onboarding_line_2,
+        ctaRes = R.string.onboarding_cta_2,
     ),
     OnboardingPage(
         imageRes = R.drawable.onboarding_3,
-        line = "Tell me who you are.",
-        cta = "Write 8 minutes",
+        lineRes = R.string.onboarding_line_3,
+        ctaRes = R.string.onboarding_cta_3,
     ),
 )

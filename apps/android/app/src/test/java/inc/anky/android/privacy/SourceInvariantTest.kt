@@ -42,9 +42,16 @@ class SourceInvariantTest {
         val androidRevealViewModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealViewModel.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
-        assertTrue(androidReveal.contains("copy writing"))
-        assertTrue(androidReveal.contains("copy reflection"))
+        assertTrue(androidReveal.contains("copyWriting = stringResource(R.string.copy_writing)"))
+        assertTrue(androidReveal.contains("label = labels.copyWriting.lowercase()"))
+        assertTrue(androidStrings.contains("Copy writing"))
+        assertTrue(androidReveal.contains("copyReflection = stringResource(R.string.copy_reflection)"))
+        assertTrue(androidReveal.contains("label = labels.copyReflection.lowercase()"))
+        assertTrue(androidStrings.contains("copy reflection"))
         assertTrue(androidRevealViewModel.contains("enum class RevealCopySection"))
         assertTrue(androidRevealViewModel.contains("fun textForCopy(section: RevealCopySection)"))
         assertTrue(!androidReveal.contains("""copyText("Anky mirror""""))
@@ -315,20 +322,52 @@ class SourceInvariantTest {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
+        val androidModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val androidStore = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/storage/AndroidEncryptedBackupStore.kt")
+            .readText()
+        val androidApp = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
+        val iosModel = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
+            .readText()
+        val iosBackupStore = repoRoot()
+            .resolve("apps/ios/Anky/Core/Storage/ICloudBackupStore.swift")
+            .readText()
 
-        assertTrue(iosYou.contains("""AnkyChatAction(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now", isPrimary: true)"""))
-        assertTrue(iosYou.contains("""AnkyChatAction("Export writings")"""))
+        assertTrue(iosYou.contains("""AnkyChatAction(AnkyLocalization.ui(viewModel.isICloudBackupWorking ? "Backing up" : "Back up now"), isPrimary: true)"""))
+        assertTrue(iosYou.contains("""AnkyChatAction(AnkyLocalization.ui("Export writings"))"""))
         assertTrue(iosYou.contains("viewModel.prepareFormattedWritingExport()"))
         assertTrue(iosYou.contains("if let exportURL = viewModel.formattedWritingExportURL"))
+        assertTrue(iosYou.contains("viewModel.isICloudBackupEnabled"))
+        assertTrue(iosModel.contains("func enableICloudBackup() async"))
+        assertTrue(iosModel.contains("func backUpToICloudNow() async"))
+        assertTrue(iosBackupStore.contains("AES-GCM-HKDF-SHA256"))
+        assertTrue(iosBackupStore.contains("backUpIfEnabled()"))
         assertTrue(!iosYou.contains("""AnkyChatAction("prepare backup""""))
 
-        assertTrue(androidYou.contains("""AnkyChatAction("Back up now", isPrimary = true)"""))
-        assertTrue(androidYou.contains("""AnkyChatAction("Export writings")"""))
+        assertTrue(androidYou.contains("backingUp = stringResource(R.string.backing_up)"))
+        assertTrue(androidYou.contains("backUpNow = stringResource(R.string.back_up_now)"))
+        assertTrue(androidYou.contains("exportWritings = stringResource(R.string.export_writings)"))
+        assertTrue(androidYou.contains("AnkyChatAction(if (state.isEncryptedBackupWorking) labels.backingUp else labels.backUpNow, isPrimary = true)"))
+        assertTrue(androidYou.contains("AnkyChatAction(labels.exportWritings)"))
         assertTrue(androidYou.contains("viewModel.prepareFormattedWritingExport()"))
         assertTrue(androidYou.contains("state.formattedWritingExportFile?.let"))
+        assertTrue(androidYou.contains("state.isEncryptedBackupEnabled"))
+        assertTrue(androidYou.contains("Encrypted backup is on"))
+        assertTrue(androidModel.contains("fun enableEncryptedBackup("))
+        assertTrue(androidModel.contains("fun backUpEncryptedNow()"))
+        assertTrue(androidModel.contains("fun restoreEncryptedBackup("))
+        assertTrue(androidStore.contains("AES-GCM-HKDF-SHA256"))
+        assertTrue(androidStore.contains("fun backUpIfEnabled()"))
+        assertTrue(androidStore.contains("backupImporter.importBackupBytes(zipBytes, \"anky-backup.zip\")"))
+        assertTrue(androidApp.contains("container.encryptedBackupStore.backUpIfEnabled()"))
         assertTrue(!androidYou.contains("""AnkyChatAction("prepare backup""""))
     }
 
@@ -346,6 +385,12 @@ class SourceInvariantTest {
         val androidYouModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
+        val androidSpanishStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values-es/strings.xml")
+            .readText()
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
@@ -353,19 +398,44 @@ class SourceInvariantTest {
         assertTrue(iosYou.contains("case .allAnkys:"))
         assertTrue(iosYou.contains("YouAllAnkysHistoryView("))
         assertTrue(iosYou.contains("viewModel.completeAnkySessions"))
-        assertTrue(iosYou.contains(".accessibilityLabel(\"Open all ankys\")"))
+        assertTrue(iosYou.contains(".accessibilityLabel(AnkyLocalization.ui(\"Open all ankys\"))"))
         assertTrue(iosYou.contains("NavigationLink(value: session)"))
-        assertTrue(iosYou.contains("Text(\"0 ankys\")"))
-        assertTrue(iosYou.contains("Text(\"WRITE \\(AnkyDuration.completeRitualMinutes) MINUTES\")"))
+        assertTrue(iosYou.contains("Text(AnkyLocalization.ui(\"0 ankys\"))"))
+        assertTrue(iosYou.contains("Text(AnkyLocalization.ui(\"WRITE %d MINUTES\", AnkyDuration.completeRitualMinutes))"))
         assertTrue(iosYouModel.contains("@Published private(set) var completeAnkySessions: [SessionSummary] = []"))
 
         assertTrue(androidYou.contains("YouPage.History"))
         assertTrue(androidYou.contains("YouHistoryPage("))
         assertTrue(androidYou.contains("state.completeAnkySessions"))
-        assertTrue(androidYou.contains("contentDescription = \"Open all ankys\""))
+        assertTrue(androidYou.contains("val openAllAnkysLabel = stringResource(R.string.open_all_ankys)"))
+        assertTrue(androidYou.contains("contentDescription = openAllAnkysLabel"))
+        assertTrue(androidYou.contains("stringResource(R.string.you_stat_ankys)"))
+        assertTrue(androidYou.contains("stringResource(R.string.you_stat_minutes)"))
+        assertTrue(androidYou.contains("stringResource(R.string.you_stat_streak)"))
         assertTrue(androidYou.contains("onOpenReveal(session.hash)"))
-        assertTrue(androidYou.contains("\"0 ankys\""))
-        assertTrue(androidYou.contains("\"WRITE ${'$'}{AnkyDuration.CompleteRitualMinutes} MINUTES\""))
+        assertTrue(androidYou.contains("contentDescription = backLabel"))
+        assertTrue(!androidYou.contains("contentDescription = \"Back\""))
+        assertTrue(androidYou.contains("historyTitle(sessions.size, oneAnkyFormat, ankysFormat)"))
+        assertTrue(androidYou.contains("stringResource(R.string.zero_ankys)"))
+        assertTrue(androidYou.contains("stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes)"))
+        assertTrue(androidYou.contains("stringResource(R.string.one_anky_count_format)"))
+        assertTrue(androidYou.contains("stringResource(R.string.ankys_count_format)"))
+        assertTrue(androidYou.contains("stringResource(R.string.word)"))
+        assertTrue(androidYou.contains("stringResource(R.string.words)"))
+        assertTrue(androidStrings.contains("""name="open_all_ankys">Open all ankys</string>"""))
+        assertTrue(androidStrings.contains("""name="you_stat_ankys">ankys</string>"""))
+        assertTrue(androidStrings.contains("""name="you_stat_minutes">minutes</string>"""))
+        assertTrue(androidStrings.contains("""name="you_stat_streak">streak</string>"""))
+        assertTrue(androidStrings.contains("""name="back">Back</string>"""))
+        assertTrue(androidStrings.contains("""name="zero_ankys">0 ankys</string>"""))
+        assertTrue(androidStrings.contains("""name="write_minutes_caps">WRITE %1${'$'}d MINUTES</string>"""))
+        assertTrue(androidStrings.contains("""name="one_anky_count_format">%1${'$'}d anky</string>"""))
+        assertTrue(androidStrings.contains("""name="ankys_count_format">%1${'$'}d ankys</string>"""))
+        assertTrue(androidStrings.contains("""name="word">word</string>"""))
+        assertTrue(androidStrings.contains("""name="words">words</string>"""))
+        assertTrue(androidSpanishStrings.contains("""name="open_all_ankys">Abrir todos los ankys</string>"""))
+        assertTrue(androidSpanishStrings.contains("""name="back">Atrás</string>"""))
+        assertTrue(androidSpanishStrings.contains("""name="zero_ankys">0 ankys</string>"""))
         assertTrue(!androidYou.contains("YouStats(state, onClick"))
         assertTrue(androidYouModel.contains("val completeAnkySessions: List<SessionSummary> = emptyList()"))
         assertTrue(androidYouModel.contains("completeSessions(sessions)"))
@@ -386,6 +456,9 @@ class SourceInvariantTest {
             .readText()
         val androidYouModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
@@ -412,8 +485,8 @@ class SourceInvariantTest {
         assertTrue(iosYou.contains("Image(systemName: \"exclamationmark\")"))
         assertTrue(iosYou.contains("\"Hide delete account action\" : \"Show delete account action\""))
         assertTrue(iosYou.contains("YouDestructiveMenuRow(title: \"DELETE ACCOUNT AND DATA\")"))
-        assertTrue(iosYou.contains(".alert(\"Delete Account and Data?\""))
-        assertTrue(iosYou.contains("Text(\"This deletes your Anky data from this device and iCloud. This cannot be undone.\")"))
+        assertTrue(iosYou.contains(".alert(AnkyLocalization.ui(\"Delete Account and Data?\""))
+        assertTrue(iosYou.contains("Text(AnkyLocalization.ui(\"This deletes your Anky data from this device and iCloud. This cannot be undone.\"))"))
         assertTrue(iosYou.contains("await viewModel.deleteAccountAndDataEverywhere()"))
         assertTrue(iosYouModel.contains("func deleteAccountAndDataEverywhere() async"))
         assertTrue(iosYouModel.contains("try archive.clear()"))
@@ -430,12 +503,19 @@ class SourceInvariantTest {
         assertTrue(androidYou.contains("val showsAccountDeletion = remember { mutableStateOf(false) }"))
         assertTrue(androidYou.contains("onToggleAccountDeletion = { showsAccountDeletion.value = !showsAccountDeletion.value }"))
         assertTrue(androidYou.contains("Icons.Filled.PriorityHigh"))
-        assertTrue(androidYou.contains("\"Hide delete account action\""))
-        assertTrue(androidYou.contains("\"Show delete account action\""))
-        assertTrue(androidYou.contains("DestructiveMenuRow(\"DELETE ACCOUNT AND DATA\", onClick = onDeleteAccountAndData)"))
-        assertTrue(androidYou.contains("\"Delete Account and Data?\""))
-        assertTrue(androidYou.contains("\"This deletes your Anky data from this device. This cannot be undone.\""))
-        assertTrue(androidYou.contains("\"DELETE ACCOUNT AND DATA\""))
+        assertTrue(androidYou.contains("stringResource(R.string.hide_delete_account_action)"))
+        assertTrue(androidYou.contains("stringResource(R.string.show_delete_account_action)"))
+        assertTrue(!androidYou.contains("\"Hide delete account action\""))
+        assertTrue(!androidYou.contains("\"Show delete account action\""))
+        assertTrue(androidYou.contains("DestructiveMenuRow(stringResource(R.string.you_delete_account_data_caps), onClick = onDeleteAccountAndData)"))
+        assertTrue(androidYou.contains("Text(stringResource(R.string.you_delete_account_data_question)"))
+        assertTrue(androidYou.contains("stringResource(R.string.you_delete_account_data_body)"))
+        assertTrue(androidYou.contains("stringResource(R.string.you_delete_account_data_caps)"))
+        assertTrue(androidStrings.contains("Delete Account and Data?"))
+        assertTrue(androidStrings.contains("This deletes your Anky data from this device. This cannot be undone."))
+        assertTrue(androidStrings.contains("DELETE ACCOUNT AND DATA"))
+        assertTrue(androidStrings.contains("Hide delete account action"))
+        assertTrue(androidStrings.contains("Show delete account action"))
         assertTrue(androidYou.contains("viewModel.deleteAccountAndDataEverywhere(onDeleted = onAccountDeleted)"))
         assertTrue(androidYouModel.contains("fun deleteAccountAndDataEverywhere(onDeleted: () -> Unit = {})"))
         assertTrue(androidYouModel.contains("archive.clear()"))
@@ -445,6 +525,7 @@ class SourceInvariantTest {
         assertTrue(androidYouModel.contains("activeDraftStore.clear()"))
         assertTrue(androidYouModel.contains("settingsStore.resetToDefaults()"))
         assertTrue(androidYouModel.contains("appOpenStore.clear()"))
+        assertTrue(androidYouModel.contains("encryptedBackupStore.deleteBackupAndDisable()"))
         assertTrue(androidYouModel.contains("identityStore.resetForDevelopment()"))
         assertTrue(androidYouModel.contains("creditsClient.logOutIfConfigured()"))
         assertTrue(androidYouModel.contains("reflectionCreditCache.clear()"))
@@ -452,8 +533,7 @@ class SourceInvariantTest {
         assertTrue(androidYouModel.contains("YouStatusCopy.CouldNotDeleteAllAccountData"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.resetAfterAccountDeletion()"))
         assertTrue(androidApp.contains("mapViewModel.refresh()"))
-        assertTrue(androidApp.contains("rootCreditBalance.value = null"))
-        assertTrue(!androidApp.contains("rootCreditBalance.value = null\n                                identityRecoveryNonce.intValue += 1"))
+        assertTrue(!androidApp.contains("rootCreditBalance.value = null"))
         assertTrue(androidWriteModel.contains("fun resetAfterAccountDeletion()"))
         assertTrue(androidSettingsStore.contains("suspend fun resetToDefaults()"))
         assertTrue(androidAppOpenStore.contains("fun clear()"))
@@ -470,6 +550,9 @@ class SourceInvariantTest {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosWitness = repoRoot()
             .resolve("apps/ios/Anky/Support/AnkyWitnessView.swift")
             .readText()
@@ -480,18 +563,31 @@ class SourceInvariantTest {
         assertTrue(iosWitness.contains("let subtitle: String?"))
         assertTrue(iosWitness.contains("let badge: String?"))
         assertTrue(iosWitness.contains("Array(actions.prefix(4))"))
+        assertTrue(iosWitness.contains("Image(systemName: \"xmark\")"))
+        assertTrue(iosWitness.contains("accessibilityLabel(AnkyLocalization.ui(\"Close Anky message\"))"))
         assertTrue(iosYou.contains("subtitle: creditPackage.price"))
-        assertTrue(iosYou.contains("""badge: isRecommended ? "recommended" : nil"""))
+        assertTrue(iosYou.contains("""badge: isRecommended ? AnkyLocalization.ui("recommended") : nil"""))
 
         assertTrue(androidPrompt.contains("val subtitle: String? = null"))
         assertTrue(androidPrompt.contains("val badge: String? = null"))
         assertTrue(androidPrompt.contains("actions.take(4)"))
+        assertTrue(androidPrompt.contains("Icons.Filled.Close"))
+        assertTrue(androidPrompt.contains("val closeAnkyMessageLabel = stringResource(R.string.close_anky_message)"))
+        assertTrue(androidPrompt.contains("contentDescription = closeAnkyMessageLabel"))
+        assertTrue(!androidPrompt.contains("""Text("x""""))
+        assertTrue(androidStrings.contains("""name="close_anky_message">Close Anky message</string>"""))
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            assertTrue(localizedStrings.contains("close_anky_message"))
+        }
         assertTrue(androidYou.contains("subtitle = creditPackage.price"))
         assertTrue(androidYou.contains("""badge = if (isRecommended) "recommended" else null"""))
     }
 
     @Test
-    fun postWriteReflectionPromptExposesIosNotNowAction() {
+    fun postWriteCompletionRoutesThroughMapIntoRevealLikeIos() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
@@ -501,31 +597,43 @@ class SourceInvariantTest {
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
             .readText()
+        val iosMap = repoRoot()
+            .resolve("apps/ios/Anky/Features/Map/MapView.swift")
+            .readText()
         val iosWriteModel = repoRoot()
             .resolve("apps/ios/Anky/Features/Write/WriteViewModel.swift")
             .readText()
 
         assertTrue(iosApp.contains("youViewModel.preloadCredits()"))
+        assertTrue(iosApp.contains("private func revealOnMap(_ artifact: SavedAnky)"))
+        assertTrue(iosApp.contains("revealAfterWriting = artifact"))
+        assertTrue(iosApp.contains("selectedTab = 1"))
+        assertTrue(iosApp.contains("backUpToICloudIfEnabled()"))
+        assertTrue(iosApp.contains("onCompleted: revealOnMap"))
+        assertTrue(iosMap.contains("private func openPendingRevealIfNeeded()"))
+        assertTrue(iosMap.contains("path = [.reveal(artifact)]"))
+        assertTrue(iosMap.contains("revealAfterWriting = nil"))
         assertTrue(iosWriteModel.contains("func importAnkyArtifact(_ text: String) -> Bool"))
         assertTrue(iosWriteModel.contains("completion?(saved)"))
-        assertTrue(androidApp.contains("suspend fun refreshRootCreditBalance()"))
-        assertTrue(androidApp.contains("rootCreditBalance.value = container.creditsClient.refresh().balance"))
+
         assertTrue(androidApp.contains("val importedCompletedHash = remember { mutableStateOf<String?>(null) }"))
         assertTrue(androidApp.contains("val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash"))
         assertTrue(androidApp.contains("LaunchedEffect(postWriteCompletedHash, lockState.value)"))
-        assertTrue(androidApp.contains("postWriteCompletedHash != null"))
-        assertTrue(androidApp.contains("refreshRootCreditBalance()"))
+        assertTrue(androidApp.contains("hash != null"))
         assertTrue(androidApp.contains("onImported = { hash ->"))
         assertTrue(androidWrite.contains("onImported: (String) -> Unit"))
         assertTrue(androidWrite.contains("onImported(saved.hash)"))
         assertTrue(androidWrite.contains("fun importAndOfferReflection"))
-        assertTrue(androidApp.contains("val postWriteCreditBadge = rootCreditBalance.value?.let(::creditBadge)"))
-        assertTrue(androidApp.contains("""AnkyChatAction("reflect (1 credit)", badge = postWriteCreditBadge, isPrimary = true)"""))
-        assertTrue(androidApp.contains("badge = postWriteCreditBadge"))
-        assertTrue(androidApp.contains("""AnkyChatAction("not now")"""))
-        assertTrue(androidApp.contains("val hash = postWriteCompletedHash ?: return@AnkyChatAction"))
+        assertTrue(androidApp.contains("val hash = postWriteCompletedHash"))
+        assertTrue(androidApp.contains("importedCompletedHash.value = null"))
+        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.consumeCompletedHash()"))
+        assertTrue(androidApp.contains("mapViewModel.refresh()"))
         assertTrue(androidApp.contains("navController.navigate(AnkyRoute.Map.route)"))
         assertTrue(androidApp.contains("navController.navigate(AnkyRoute.Reveal.route(hash))"))
+        assertTrue(!androidApp.contains("you wrote an anky."))
+        assertTrue(!androidApp.contains("""AnkyChatAction("reflect (1 credit)"""))
+        assertTrue(!androidApp.contains("""AnkyChatAction("not now")"""))
+        assertTrue(!androidApp.contains("rootCreditBalance"))
         assertTrue(!androidApp.contains("onReveal = { hash ->"))
         assertTrue(!androidWrite.contains("fun importAndReveal"))
     }
@@ -537,6 +645,9 @@ class SourceInvariantTest {
             .readText()
         val androidPrompt = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/ui/components/AnkyCompanionPrompt.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
@@ -552,10 +663,15 @@ class SourceInvariantTest {
         ).forEach { (key, androidStep) ->
             assertTrue(iosApp.contains("AnkyBubbleStep(AnkyLocalization.text($key))"))
             assertTrue(iosLocalization.contains(key))
-            assertTrue(androidApp.contains(""""$androidStep""""))
+            assertTrue(androidStrings.contains(androidStep.replaceFirstChar { it.uppercase() }))
         }
         assertTrue(iosLocalization.contains(".launchEmpty: \"The living .anky string is the state of this session.\""))
-        assertTrue(androidApp.contains("the living .anky string is the state of this session."))
+        assertTrue(androidStrings.contains("The living .anky string is the state of this session."))
+        assertTrue(androidApp.contains("stringResource(R.string.launch_empty)"))
+        assertTrue(androidApp.contains("R.string.write_minutes_format"))
+        assertTrue(androidApp.contains("R.string.step_write_one_character"))
+        assertTrue(androidApp.contains("R.string.step_keep_thread_alive"))
+        assertTrue(androidApp.contains("R.string.step_let_silence_close_it"))
         assertTrue(androidPrompt.contains("steps: List<String> = emptyList()"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
@@ -569,10 +685,46 @@ class SourceInvariantTest {
         val iosWrite = repoRoot()
             .resolve("apps/ios/Anky/Features/Write/WriteView.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
-        assertTrue(iosWrite.contains("accessibilityLabel(\"Writing time \\(AnkyDuration.clock(viewModel.elapsedMs))\")"))
+        assertTrue(iosWrite.contains("accessibilityLabel(AnkyLocalization.ui(\"Writing time %@\", AnkyDuration.clock(viewModel.elapsedMs)))"))
         assertTrue(androidWrite.contains("val clockText = AnkyDuration.clock(state.elapsedMs)"))
-        assertTrue(androidWrite.contains("contentDescription = \"Writing time ${'$'}clockText\""))
+        assertTrue(androidWrite.contains("val writingTimeLabel = stringResource(R.string.writing_time_format, clockText)"))
+        assertTrue(androidWrite.contains("contentDescription = writingTimeLabel"))
+        assertTrue(androidStrings.contains("""name="writing_time_format""""))
+        assertTrue(!androidWrite.contains("contentDescription = \"Writing time ${'$'}clockText\""))
+    }
+
+    @Test
+    fun writeTopChromeUsesResourceBackedIosAccessibilityLabels() {
+        val androidWrite = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteScreen.kt")
+            .readText()
+        val iosWrite = repoRoot()
+            .resolve("apps/ios/Anky/Features/Write/WriteView.swift")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
+
+        assertTrue(iosWrite.contains("accessibilityLabel(AnkyLocalization.ui(\"Open Map\"))"))
+        listOf(
+            "open_map",
+            "paste_anky_artifact",
+            "hold_dev_paste_anky_artifact",
+        ).forEach { key ->
+            assertTrue(androidWrite.contains("R.string.$key"))
+            assertTrue(androidStrings.contains("""name="$key""""))
+        }
+        assertTrue(androidWrite.contains("contentDescription = openMapLabel"))
+        assertTrue(androidWrite.contains("contentDescription = pasteArtifactLabel"))
+        assertTrue(androidWrite.contains("onClick(pasteArtifactLabel)"))
+        assertTrue(androidWrite.contains("onLongClick(devPasteArtifactLabel)"))
+        assertTrue(!androidWrite.contains("contentDescription = \"Open Map\""))
+        assertTrue(!androidWrite.contains("contentDescription = \"Paste .anky artifact\""))
+        assertTrue(!androidWrite.contains("onClick(\"Paste .anky artifact\")"))
     }
 
     @Test
@@ -582,6 +734,9 @@ class SourceInvariantTest {
             .readText()
         val androidWriteModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteViewModel.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val androidFixture = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/DevAnkyFixture.kt")
@@ -595,12 +750,13 @@ class SourceInvariantTest {
 
         assertTrue(!iosWrite.contains("WriteToolbarPasteButton("))
         assertTrue(!iosWrite.contains("LongPressGesture(minimumDuration: 5)"))
-        assertTrue(iosWriteModel.contains("var devSampleAnkyArtifact: String"))
+        assertTrue(iosWriteModel.contains("func importAnkyArtifact(_ text: String) -> Bool"))
 
         assertTrue(androidWrite.contains("DevPasteChromeButton("))
         assertTrue(androidWrite.contains("private const val WriteDevPasteHoldMs = 5_000L"))
         assertTrue(androidWrite.contains("withTimeoutOrNull(WriteDevPasteHoldMs)"))
-        assertTrue(androidWrite.contains("Hold for five seconds to paste the built-in dev .anky"))
+        assertTrue(androidWrite.contains("R.string.hold_dev_paste_anky_artifact"))
+        assertTrue(androidStrings.contains("Hold for five seconds to paste the built-in dev .anky"))
         assertTrue(androidWriteModel.contains("val devSampleAnkyArtifact: String"))
         assertTrue(androidWriteModel.contains("DevAnkyFixture.validArtifact"))
         assertTrue(androidFixture.contains("8000"))
@@ -614,24 +770,27 @@ class SourceInvariantTest {
         val androidReveal = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
             .readText()
         val iosReveal = repoRoot()
             .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
             .readText()
-
         assertTrue(iosApp.contains("private func beginRetryWriting()"))
         assertTrue(iosApp.contains("writeViewModel.clearCompletedSession()"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
-        assertTrue(iosReveal.contains("WRITE \\(AnkyDuration.completeRitualMinutes) MINUTES"))
+        assertTrue(iosReveal.contains("WRITE %d MINUTES\", AnkyDuration.completeRitualMinutes"))
         assertTrue(iosReveal.contains("onTryAgain()"))
 
         assertTrue(androidApp.contains("fun beginRetryWriting()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.consumeCompletedHash()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
         assertTrue(androidApp.contains("onTryAgain = { beginRetryWriting() }"))
-        assertTrue(androidReveal.contains("WRITE ${'$'}{AnkyDuration.CompleteRitualMinutes} MINUTES"))
+        assertTrue(androidReveal.contains("writeMinutes = stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes)"))
+        assertTrue(androidStrings.contains("""name="write_minutes_caps">WRITE %1${'$'}d MINUTES</string>"""))
         assertTrue(!androidReveal.contains("onTryAgain = onBack"))
     }
 
@@ -680,17 +839,27 @@ class SourceInvariantTest {
         val iosReveal = repoRoot()
             .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
-        assertTrue(iosReveal.contains("accessibilityLabel(\"Delete writing session\")"))
+        assertTrue(iosReveal.contains("accessibilityLabel(AnkyLocalization.ui(\"Delete writing session\"))") || iosReveal.contains("accessibilityLabel: \"Delete writing session\""))
         assertTrue(iosReveal.contains("Color.red.opacity(0.88)"))
         assertTrue(iosReveal.contains("Color.red.opacity(0.22)"))
 
-        assertTrue(androidReveal.contains("contentDescription = \"Delete writing session\""))
+        assertTrue(androidReveal.contains("deleteContentDescription = labels.deleteWritingSession"))
+        assertTrue(androidReveal.contains("contentDescription = deleteContentDescription"))
+        assertTrue(androidReveal.contains("val backLabel = stringResource(R.string.back)"))
+        assertTrue(androidReveal.contains("contentDescription = backLabel"))
+        assertTrue(!androidReveal.contains("contentDescription = \"Back\""))
         assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.88f)"))
         assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.22f)"))
-        assertTrue(androidReveal.contains("Delete forever?"))
-        assertTrue(androidReveal.contains("This permanently deletes this writing session. This cannot be undone."))
+        assertTrue(androidReveal.contains("title = { Text(labels.deleteWritingSessionQuestion) }"))
+        assertTrue(androidReveal.contains("Text(labels.deleteWritingSessionBody)"))
+        assertTrue(androidStrings.contains("Delete writing session?"))
+        assertTrue(androidStrings.contains("This permanently deletes this writing session. This cannot be undone."))
         assertTrue(!androidReveal.contains("contentDescription = \"delete forever\""))
+        assertTrue(!androidReveal.contains("Delete forever?"))
     }
 
     @Test
@@ -746,6 +915,7 @@ class SourceInvariantTest {
         assertTrue(!androidMap.contains(".padding(horizontal = 26.dp, vertical = 24.dp)"))
         assertTrue(!iosMap.contains("Text(\"no writing saved\")"))
         assertTrue(androidMap.contains("Spacer(Modifier.fillMaxWidth().height(180.dp))"))
+        assertTrue(androidMap.contains("labels.noWritingSaved"))
         assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
         assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Heading.copy(fontSize = 20.sp"))
         assertTrue(!androidMap.contains("style = AnkyType.Heading.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
@@ -802,9 +972,9 @@ class SourceInvariantTest {
         assertTrue(iosMap.contains("let date = day.isToday ? \"Today\" : formattedUTCDate(day.date, dateFormat: nil)"))
         assertTrue(iosMap.contains("return \"\\(date), \\(day.trailActivitySummary)\""))
 
-        assertTrue(androidMap.contains("contentDescription = dayAccessibilityLabel(day)"))
+        assertTrue(androidMap.contains("contentDescription = dayAccessibilityLabel(day, labels.today)"))
         assertTrue(androidMap.contains("internal fun dayAccessibilityLabel"))
-        assertTrue(androidMap.contains("\"Today\""))
+        assertTrue(androidMap.contains("today = stringResource(R.string.map_today)"))
         assertTrue(androidMap.contains("""return "${'$'}date, ${'$'}{day.trailActivitySummary}""""))
     }
 
@@ -817,11 +987,13 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Features/Map/MapView.swift")
             .readText()
 
-        assertTrue(iosMap.contains(".accessibilityLabel(\"UTC day progress\")"))
-        assertTrue(iosMap.contains(".accessibilityLabel(\"showed up\")"))
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"UTC day progress\"))"))
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"showed up\"))"))
 
-        assertTrue(androidMap.contains("contentDescription = \"UTC day progress\""))
-        assertTrue(androidMap.contains("contentDescription = \"showed up\""))
+        assertTrue(androidMap.contains("stringResource(R.string.map_utc_day_progress)"))
+        assertTrue(androidMap.contains("contentDescription = label"))
+        assertTrue(androidMap.contains("DayCompletionMarker(labels.showedUp"))
+        assertTrue(androidMap.contains("this.contentDescription = contentDescription"))
     }
 
     @Test
@@ -876,13 +1048,53 @@ class SourceInvariantTest {
 
         assertTrue(iosMap.contains(".frame(width: 48, height: 48)"))
         assertTrue(iosMap.contains(".background(.thinMaterial, in: Circle())"))
-        assertTrue(iosMap.contains(".accessibilityLabel(\"Go to current day\")"))
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"Go to current day\"))"))
 
         assertTrue(androidMap.contains(".size(48.dp)\n                    .clip(CircleShape)"))
         assertTrue(androidMap.contains(".background(Color.White.copy(alpha = 0.12f))"))
-        assertTrue(androidMap.contains("contentDescription = \"Go to current day\""))
+        assertTrue(androidMap.contains("contentDescription = labels.goToCurrentDay"))
         assertTrue(androidMap.contains("contentDescription = null"))
         assertTrue(!androidMap.contains(".background(Color.Black.copy(alpha = 0.28f))"))
+    }
+
+    @Test
+    fun mapVisibleLabelsUseResourceBackedIosLocalizedCopy() {
+        val androidMap = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/map/MapScreen.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
+        val iosMap = repoRoot()
+            .resolve("apps/ios/Anky/Features/Map/MapView.swift")
+            .readText()
+        val iosLocalization = repoRoot()
+            .resolve("apps/ios/Anky/en.lproj/Localizable.strings")
+            .readText()
+
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"Go to current day\"))"))
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"UTC day progress\"))"))
+        assertTrue(iosMap.contains(".accessibilityLabel(AnkyLocalization.ui(\"showed up\"))"))
+        assertTrue(iosLocalization.contains("\"Go to current day\" = \"Go to current day\";"))
+        assertTrue(iosLocalization.contains("\"UTC day progress\" = \"UTC day progress\";"))
+        assertTrue(iosLocalization.contains("\"showed up\" = \"showed up\";"))
+
+        listOf(
+            "map_no_writing_saved",
+            "map_go_to_current_day",
+            "map_today",
+            "map_utc_day_progress",
+            "map_showed_up",
+            "map_back",
+            "map_could_not_load",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+            assertTrue(androidMap.contains("R.string.$key"))
+        }
+        assertTrue(!androidMap.contains("contentDescription = \"Go to current day\""))
+        assertTrue(!androidMap.contains("contentDescription = \"UTC day progress\""))
+        assertTrue(!androidMap.contains("contentDescription = \"showed up\""))
+        assertTrue(!androidMap.contains("contentDescription = \"Back\""))
     }
 
     @Test
@@ -918,14 +1130,37 @@ class SourceInvariantTest {
         val iosReveal = repoRoot()
             .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
         assertTrue(iosTags.contains(".onAppear {"))
         assertTrue(iosTags.contains("sessions = sessionIndexStore.sessionsWithTag(tag)"))
         assertTrue(iosTags.contains("RevealBackgroundTexture()"))
         assertTrue(iosTags.contains("Text(tag)"))
+        assertTrue(iosTags.contains("""Text(AnkyLocalization.ui("no saved sessions with this tag."))"""))
+        assertTrue(iosTags.contains("""AnkyLocalization.ui(summary.wordCount == 1 ? "word" : "words")"""))
         assertTrue(androidTags.contains("fun refreshSessions()"))
         assertTrue(androidTags.contains("sessionIndexStore.sessionsWithTag(tag)"))
         assertTrue(androidTags.contains("RevealTagTexture()"))
+        assertTrue(androidTags.contains("val backLabel = stringResource(R.string.back)"))
+        assertTrue(androidTags.contains("contentDescription = backLabel"))
+        assertTrue(!androidTags.contains("contentDescription = \"Back\""))
+        assertTrue(androidStrings.contains("""name="tag_no_saved_sessions">no saved sessions with this tag.</string>"""))
+        assertTrue(androidTags.contains("val emptyTagSessionsLabel = stringResource(R.string.tag_no_saved_sessions)"))
+        assertTrue(androidTags.contains("emptyTagSessionsLabel,"))
+        assertTrue(androidTags.contains("val wordLabel = stringResource(if (summary.wordCount == 1) R.string.word else R.string.words)"))
+        assertTrue(androidTags.contains("""${'$'}{summary.wordCount} ${'$'}wordLabel"""))
+        assertTrue(!androidTags.contains(""""no saved sessions with this tag.","""))
+        assertTrue(!androidTags.contains("""if (summary.wordCount == 1) "word" else "words""""))
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            assertTrue(localizedStrings.contains("tag_no_saved_sessions"))
+            assertTrue(localizedStrings.contains("word"))
+            assertTrue(localizedStrings.contains("words"))
+        }
         assertTrue(androidTags.contains("AnkyColors.Violet.copy(alpha = alpha)"))
         assertTrue(androidTags.contains("Triple(1.34f, 360.dp.toPx(), 0.018f)"))
         assertTrue(androidTags.contains("Triple(1.20f, bloomHeight, 0.030f)"))
@@ -975,11 +1210,20 @@ class SourceInvariantTest {
         val iosArchive = repoRoot()
             .resolve("apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
         assertTrue(iosWriteModel.contains("i couldn't find a readable .anky in that."))
         assertTrue(iosWriteModel.contains("i couldn't open that .anky yet."))
-        assertTrue(androidWrite.contains("i couldn't find a readable .anky in that."))
-        assertTrue(androidWrite.contains("i couldn't open that .anky yet."))
+        assertTrue(androidWrite.contains("val importReadableError = stringResource(R.string.write_import_readable_error)"))
+        assertTrue(androidWrite.contains("val importOpenError = stringResource(R.string.write_import_open_error)"))
+        assertTrue(androidWrite.contains("importError = importReadableError"))
+        assertTrue(androidWrite.contains("importError = importOpenError"))
+        assertTrue(androidStrings.contains("""name="write_import_readable_error""""))
+        assertTrue(androidStrings.contains("""name="write_import_open_error""""))
+        assertTrue(!androidWrite.contains("importError = \"i couldn't find a readable .anky in that.\""))
+        assertTrue(!androidWrite.contains("importError = \"i couldn't open that .anky yet.\""))
         assertTrue(iosArchive.contains("func importArtifact(_ ankyText: String) throws -> SavedAnky"))
         assertTrue(iosArchive.contains("fencedCodeBlocks(in: prepared)"))
         assertTrue(iosArchive.contains("extractedProtocolBlock(from: prepared)"))
@@ -1005,9 +1249,56 @@ class SourceInvariantTest {
         val iosRevealModel = repoRoot()
             .resolve("apps/ios/Anky/Features/Reveal/RevealViewModel.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
-        listOf("copy writing", "copy reflection", "READ REFLECTION", "REFLECT THIS ANKY").forEach { copy ->
-            assertTrue(androidReveal.contains(copy))
+        listOf(
+            "copy_writing",
+            "read_reflection",
+            "reflect_this_anky",
+            "reflect_this_anky_left",
+            "reflect_this_anky_device_gift",
+            "receiving_reflection",
+            "get_more_credits",
+            "write_minutes_caps",
+            "copy_reflection",
+            "copied_reflection",
+            "copied_writing",
+            "reflection_left",
+            "reflections_left",
+            "reveal_toggle_privacy_message",
+            "reveal_mirror_forming",
+            "reveal_live",
+            "reveal_writing_reflection_characters",
+            "reveal_anky_drawing_thread",
+            "reveal_anky_reading",
+            "reveal_chat_staying_with_anky",
+            "reveal_chat_reading_slowly",
+            "reveal_chat_open_mirror",
+            "reveal_chat_write_again",
+            "reveal_chat_has_reflection",
+            "reveal_chat_read_reflection",
+            "reveal_chat_reflect_this_anky",
+            "reveal_chat_open_credits",
+            "reveal_sheet_mirror",
+            "reveal_sheet_tags",
+            "reveal_progress_complete",
+            "reveal_progress_receiving",
+            "reveal_progress_chars",
+            "reveal_invitation_checking_mirror",
+            "reveal_invitation_access_empty",
+            "reveal_invitation_mirror_may_be_open",
+            "reveal_invitation_ready",
+            "reveal_ready_to_mirror_artifact",
+            "reveal_short_keep_going",
+            "reveal_short_thread_opened",
+            "reveal_short_spark",
+            "reveal_short_whole_ritual",
+            "reveal_short_cross_mark",
+        ).forEach { key ->
+            assertTrue(androidReveal.contains("R.string.$key"))
+            assertTrue(androidStrings.contains("""name="$key""""))
         }
         assertTrue(!androidReveal.contains("i have reflected this anky."))
         assertTrue(!androidReveal.contains("i am holding the mirror open."))
@@ -1017,7 +1308,8 @@ class SourceInvariantTest {
         assertTrue(androidReveal.contains("state.canSubmitReflectionRequest"))
         assertTrue(androidReveal.contains("viewModel.askAnky()"))
         assertTrue(!androidReveal.contains("the reflection is not here yet."))
-        assertTrue(androidReveal.contains("\"writing reflection · ${'$'}generatedCharacters characters\""))
+        assertTrue(androidReveal.contains("labels.writingReflectionCharacters(generatedCharacters)"))
+        assertTrue(androidReveal.contains("labels.writingReflectionCharacters(state.streamingReflectionCharacterCount)"))
         assertTrue(androidReveal.contains("MarkdownishText(reflection.displayBody)"))
         assertTrue(androidReveal.contains("tags.forEach { tag ->"))
         assertTrue(!androidReveal.contains("tags.take(8).forEach"))
@@ -1028,11 +1320,41 @@ class SourceInvariantTest {
         assertTrue(androidReveal.contains("Column(modifier = Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp))"))
         assertTrue(!androidReveal.contains("displayBodyWithTitle"))
         assertTrue(androidReveal.contains("private fun ReflectionScrollGlyph(modifier: Modifier = Modifier)"))
-        assertTrue(androidReveal.contains("the mirror is forming"))
+        assertTrue(androidReveal.contains("mirrorForming = stringResource(R.string.reveal_mirror_forming)"))
+        assertTrue(androidReveal.contains("labels.mirrorForming"))
+        assertTrue(androidReveal.contains("chatStayingWithAnky = stringResource(R.string.reveal_chat_staying_with_anky)"))
+        assertTrue(androidReveal.contains("chatOpenMirror = stringResource(R.string.reveal_chat_open_mirror)"))
+        assertTrue(androidReveal.contains("shortSessionMessages = listOf("))
+        assertTrue(androidReveal.contains("message = reflectionInvitationMessage(state, labels)"))
+        assertTrue(androidReveal.contains("message = shortSessionMessage(state, labels)"))
+        assertTrue(androidReveal.contains("labels.progressChars(generatedCharacters)"))
+        assertTrue(androidReveal.contains("labels.sheetTags"))
+        assertTrue(!androidReveal.contains("\"the mirror is forming\""))
+        assertTrue(!androidReveal.contains("\"copied reflection\""))
+        assertTrue(!androidReveal.contains("\"copied writing\""))
+        assertTrue(!androidReveal.contains("\"copy reflection\""))
+        listOf(
+            "\"open mirror\"",
+            "\"write again\"",
+            "\"this anky has a reflection.\"",
+            "\"read reflection\"",
+            "\"reflect this anky\"",
+            "\"open credits\"",
+            "\"i am staying with this .anky.\"",
+            "\"i am reading slowly. not looking for a summary.\"",
+            "\"mirror\"",
+            "\"tags\"",
+            "\"complete\"",
+            "\"receiving\"",
+            "\"ready to mirror this artifact\"",
+        ).forEach { literal ->
+            assertTrue(!androidReveal.contains(literal))
+        }
+        assertTrue(!androidReveal.contains("\"${'$'}generatedCharacters chars\""))
         assertTrue(androidReveal.contains("inlineReflectionActive"))
         assertTrue(androidReveal.contains("ModalBottomSheet("))
         assertTrue(androidReveal.contains("RevealCreditPurchaseSheet("))
-        assertTrue(androidReveal.contains("\"GET MORE CREDITS\""))
+        assertTrue(androidReveal.contains("state.needsCreditsToReflect -> labels.getMoreCredits"))
         assertTrue(androidReveal.contains("private fun RevealEdgeBackSwipe("))
         assertTrue(androidReveal.contains(".width(32.dp)"))
         assertTrue(androidReveal.contains("detectDragGestures("))
@@ -1049,6 +1371,82 @@ class SourceInvariantTest {
         assertTrue(!androidReveal.contains("LinearProgressIndicator"))
         assertTrue(iosRevealModel.contains("""case "provider_started":"""))
         assertTrue(androidRevealModel.contains(""""provider_started" -> "anky is writing...""""))
+        assertTrue(iosRevealModel.contains("""case "hash_computed":"""))
+        assertTrue(iosRevealModel.contains("preparing your writing..."))
+        assertTrue(androidRevealModel.contains(""""hash_computed" -> "preparing your writing...""""))
+        assertTrue(iosRevealModel.contains("""case "identity_verified":"""))
+        assertTrue(iosRevealModel.contains("opening the way..."))
+        assertTrue(androidRevealModel.contains(""""identity_verified" -> "opening the way...""""))
+        assertTrue(!androidRevealModel.contains("verifying the seal..."))
+        assertTrue(!androidRevealModel.contains("confirming your identity..."))
+        listOf(
+            "reveal_status_opening_quiet_channel",
+            "reveal_status_preparing_reflection",
+            "reveal_status_carrying_thread",
+            "reveal_status_threading_back",
+            "reveal_status_already_holding_thread",
+            "reveal_status_waiting_with_mirror",
+            "reveal_status_writing_reflection",
+            "reveal_progress_opening_mirror",
+            "reveal_progress_received_writing",
+            "reveal_progress_reading_anky",
+            "reveal_progress_preparing_writing",
+            "reveal_progress_opening_way",
+            "reveal_progress_validating_ritual",
+            "reveal_progress_checking_access",
+            "reveal_progress_preparing_reflection",
+            "reveal_progress_anky_writing",
+            "reveal_progress_bringing_back",
+            "reveal_progress_settling",
+            "reveal_progress_checking_payment",
+            "reveal_progress_payment_verified",
+            "reveal_progress_no_credit_spent",
+            "reveal_progress_opening_scroll",
+            "reveal_error_load_reflections",
+            "reveal_error_return_reflection",
+            "reveal_progress_anky_working",
+            "reveal_chat_staying_with_anky",
+            "reveal_chat_reading_slowly",
+            "reveal_chat_open_mirror",
+            "reveal_chat_write_again",
+            "reveal_chat_has_reflection",
+            "reveal_chat_read_reflection",
+            "reveal_chat_reflect_this_anky",
+            "reveal_chat_open_credits",
+            "reveal_sheet_mirror",
+            "reveal_sheet_tags",
+            "reveal_progress_complete",
+            "reveal_progress_receiving",
+            "reveal_progress_chars",
+            "reveal_invitation_checking_mirror",
+            "reveal_invitation_access_empty",
+            "reveal_invitation_mirror_may_be_open",
+            "reveal_invitation_ready",
+            "reveal_ready_to_mirror_artifact",
+            "reveal_short_keep_going",
+            "reveal_short_thread_opened",
+            "reveal_short_spark",
+            "reveal_short_whole_ritual",
+            "reveal_short_cross_mark",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+        }
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            listOf(
+                "reveal_chat_open_mirror",
+                "reveal_chat_write_again",
+                "reveal_chat_read_reflection",
+                "reveal_chat_reflect_this_anky",
+                "reveal_chat_open_credits",
+                "reveal_invitation_ready",
+                "reveal_short_cross_mark",
+            ).forEach { key ->
+                assertTrue(localizedStrings.contains("""name="$key""""))
+            }
+        }
     }
 
     @Test
@@ -1062,10 +1460,13 @@ class SourceInvariantTest {
         val iosReveal = repoRoot()
             .resolve("apps/ios/Anky/Features/Reveal/RevealView.swift")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
         listOf(
             "Anky reflection credits",
-            "Your space to be seen, held, and mirrored.",
+            "Your private space to be witnessed.",
             "available\\ncredits",
             "Writing is free. One credit = one reflection.",
             "loading credit packs",
@@ -1079,13 +1480,27 @@ class SourceInvariantTest {
         assertTrue(iosCreditsSheet.contains("AnkyReflectionCreditsSheet("))
 
         listOf(
-            "Anky reflection credits",
-            "Your space to be seen, held, and mirrored.",
-            "available\\ncredits",
-            "Writing is free. One credit = one reflection.",
-            "loading credit packs",
-            "no credit packs available",
-            "best value",
+            "credits_sheet_title",
+            "credits_sheet_subtitle",
+            "refresh_reflection_credits",
+            "loading_credit_packs",
+            "no_credit_packs_available",
+            "writing_is_free_one_credit_reflection",
+            "available_credits",
+            "best_value",
+        ).forEach { key ->
+            assertTrue(androidReveal.contains("R.string.$key"))
+            assertTrue(androidStrings.contains("""name="$key""""))
+        }
+        listOf(
+            "labels.creditsSheetTitle",
+            "labels.creditsSheetSubtitle",
+            "labels.refreshReflectionCredits",
+            "labels.loadingCreditPacks",
+            "labels.noCreditPacksAvailable",
+            "labels.writingIsFreeOneCreditReflection",
+            "labels.availableCredits",
+            "bestValue",
             "R.drawable.credits_thread_background",
         ).forEach { copy ->
             assertTrue(androidReveal.contains(copy))
@@ -1093,6 +1508,13 @@ class SourceInvariantTest {
         assertTrue(androidReveal.contains("RevealCreditPurchaseSheet("))
         assertTrue(androidReveal.contains("Icons.Filled.Refresh"))
         assertTrue(androidReveal.contains("Icons.Filled.AutoAwesome"))
+        assertTrue(!androidReveal.contains("\"Anky reflection credits\""))
+        assertTrue(!androidReveal.contains("\"Your private space to be witnessed.\""))
+        assertTrue(!androidReveal.contains("\"available\\ncredits\""))
+        assertTrue(!androidReveal.contains("\"Writing is free. One credit = one reflection.\""))
+        assertTrue(!androidReveal.contains("\"loading credit packs\""))
+        assertTrue(!androidReveal.contains("\"no credit packs available\""))
+        assertTrue(!androidReveal.contains("\"best value\""))
         assertTrue(!androidReveal.contains("Text(\"↻\""))
         assertTrue(!androidReveal.contains("Text(\"✦\""))
         assertTrue(!androidReveal.contains("writing stays free. each reflection spends one credit."))
@@ -1219,10 +1641,15 @@ class SourceInvariantTest {
         assertTrue(androidPresence.contains("onDragStart = {"))
         assertTrue(androidPresence.contains("followsHomePosition = false"))
         assertTrue(androidPresence.contains("""testTag("anky-presence")"""))
-        listOf("Keep Anky here", "Hide Anky", "Show Anky", "Change motion", "Cancel").forEach { menuCopy ->
-            assertTrue(androidPresence.contains(menuCopy))
+        assertTrue(iosPresence.contains(".onTapGesture"))
+        assertTrue(!iosPresence.contains("contextMenu"))
+        assertTrue(!iosPresence.contains("Menu("))
+        assertTrue(!androidPresence.contains("DropdownMenu"))
+        assertTrue(!androidPresence.contains("onLongClick"))
+        assertTrue(!androidPresence.contains("HapticFeedbackType.LongPress"))
+        listOf("Keep Anky here", "Hide Anky", "Show Anky", "Change motion", "Text(\"Cancel\")", "anky stays beside the writing").forEach { menuCopy ->
+            assertTrue(!androidPresence.contains(menuCopy))
         }
-        assertTrue(androidPresence.contains("anky stays beside the writing"))
         assertTrue(!androidPresence.contains("drag anky anywhere"))
         assertTrue(!androidPresence.contains("Move Anky home"))
     }
@@ -1232,21 +1659,34 @@ class SourceInvariantTest {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
             .readText()
+        val iosStrings = repoRoot()
+            .resolve("apps/ios/Anky/en.lproj/Localizable.strings")
+            .readText()
 
-        assertTrue(iosApp.contains("allowsRecoveryPhrase: failedAuthAttempts >= 2"))
-        assertTrue(iosApp.contains("recoverIdentity(_ phraseText: String)"))
-        assertTrue(iosApp.contains("importRecoveryPhrase(phraseText)"))
+        assertTrue(iosApp.contains("private struct LockFailureView"))
+        assertTrue(iosApp.contains("Image(\"tellmewhoyouare\")"))
+        assertTrue(iosApp.contains(".onTapGesture"))
+        assertTrue(iosApp.contains("BiometricAuthClient().confirm(reason: AnkyLocalization.text(.unlockFaceIDReason))"))
+        assertTrue(iosStrings.contains("\"unlockFaceIDReason\" = \"Unlock ANKY.\";"))
+        assertTrue(!iosApp.contains("allowsRecoveryPhrase"))
 
-        assertTrue(androidApp.contains("failedAuthAttempts.intValue >= 2"))
-        assertTrue(androidApp.contains("fun recoverIdentityFromPhrase()"))
-        assertTrue(androidApp.contains("container.identityStore.importRecoveryPhrase(normalized)"))
-        assertTrue(androidApp.contains("identityRecoveryNonce.intValue += 1"))
+        assertTrue(androidApp.contains("painterResource(R.drawable.tellmewhoyouare)"))
+        assertTrue(androidApp.contains("contentScale = ContentScale.Fit"))
+        assertTrue(androidApp.contains("unlockAttempt.intValue += 1"))
+        assertTrue(androidStrings.contains("""name="unlock_device_lock_reason">Unlock ANKY.</string>"""))
+        assertTrue(androidApp.contains("val unlockDeviceLockReason = stringResource(R.string.unlock_device_lock_reason)"))
+        assertTrue(androidApp.contains("biometricGate.authenticate(unlockDeviceLockReason)"))
+        assertTrue(!androidApp.contains("""biometricGate.authenticate("Unlock ANKY.")"""))
         assertTrue(androidApp.contains("remember(identityVersion)"))
-        assertTrue(androidApp.contains("""Text("recovery phrase""""))
-        assertTrue(androidApp.contains("""Text("recover identity")"""))
+        assertTrue(!androidApp.contains("fun recoverIdentityFromPhrase()"))
+        assertTrue(!androidApp.contains("""Text("recovery phrase""""))
+        assertTrue(!androidApp.contains("""Text("face id didn't work. you should not be here""""))
     }
 
     @Test
@@ -1256,6 +1696,9 @@ class SourceInvariantTest {
             .readText()
         val androidSettings = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/UserSettingsStore.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val iosApp = repoRoot()
             .resolve("apps/ios/Anky/AppRoot.swift")
@@ -1281,10 +1724,17 @@ class SourceInvariantTest {
         assertTrue(androidApp.contains("container.sessionIndexStore.load().any { it.isComplete }"))
         assertTrue(androidApp.contains("canUseDeviceLock(context)"))
         assertTrue(androidApp.contains("AlertDialog("))
-        assertTrue(androidApp.contains("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone."))
-        assertTrue(androidApp.contains("Text(\"Activate Device Lock\")"))
-        assertTrue(androidApp.contains("Text(\"not now\")"))
-        assertTrue(androidApp.contains("biometricGate.authenticate(\"Protect ANKY with your device lock.\")"))
+        assertTrue(androidStrings.contains("Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone."))
+        assertTrue(androidStrings.contains("Activate Device Lock"))
+        assertTrue(androidStrings.contains("Not now"))
+        assertTrue(androidStrings.contains("Protect ANKY with your device lock."))
+        assertTrue(androidStrings.contains("Unlock ANKY."))
+        assertTrue(androidApp.contains("stringResource(R.string.device_lock_prompt)"))
+        assertTrue(androidApp.contains("stringResource(R.string.activate_device_lock)"))
+        assertTrue(androidApp.contains("stringResource(R.string.not_now)"))
+        assertTrue(androidApp.contains("val protectDeviceLockReason = stringResource(R.string.protect_device_lock_reason)"))
+        assertTrue(androidApp.contains("biometricGate.authenticate(deviceLockReason)"))
+        assertTrue(!androidApp.contains("""biometricGate.authenticate("Protect ANKY with your device lock.")"""))
         assertTrue(androidApp.contains("container.settingsStore.setAppLockEnabled(true)"))
         assertTrue(androidApp.contains("container.settingsStore.setDeviceLockPromptCompleted(true)"))
     }
@@ -1296,6 +1746,9 @@ class SourceInvariantTest {
             .readText()
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
@@ -1315,14 +1768,28 @@ class SourceInvariantTest {
         assertTrue(androidYou.contains("DeviceLockRow("))
         assertTrue(androidYou.contains("title = lockTitle"))
         assertTrue(androidYou.contains("checked = state.appLockEnabled"))
+        assertTrue(androidYou.contains("checkedText = stringResource(R.string.on)"))
+        assertTrue(androidYou.contains("uncheckedText = stringResource(R.string.off)"))
         assertTrue(androidYou.contains("onChecked = onAppLockChange"))
-        assertTrue(androidYou.contains("if (checked) \"On\" else \"Off\""))
+        assertTrue(androidYou.contains("if (checked) checkedText else uncheckedText"))
         assertTrue(androidYou.contains("private fun canUseDeviceLock(context: Context): Boolean"))
         assertTrue(androidYou.contains("BiometricManager.Authenticators.BIOMETRIC_WEAK or"))
         assertTrue(androidYou.contains("BiometricManager.Authenticators.DEVICE_CREDENTIAL"))
+        assertTrue(androidYou.contains("@Composable\nprivate fun deviceLockControlTitle(context: Context): String"))
         assertTrue(androidYou.contains("private fun deviceLockControlTitle(context: Context): String"))
+        assertTrue(androidYou.contains("\"fingerprint\" -> stringResource(R.string.fingerprint)"))
+        assertTrue(androidYou.contains("\"face\" -> stringResource(R.string.face_unlock)"))
+        assertTrue(androidYou.contains("\"iris\" -> stringResource(R.string.iris)"))
+        assertTrue(androidYou.contains("\"biometric\" -> stringResource(R.string.biometric_lock)"))
+        assertTrue(androidYou.contains("else -> stringResource(R.string.device_lock)"))
+        assertTrue(androidStrings.contains("""name="fingerprint">Fingerprint</string>"""))
+        assertTrue(androidStrings.contains("""name="face_unlock">Face unlock</string>"""))
+        assertTrue(androidStrings.contains("""name="iris">Iris</string>"""))
+        assertTrue(androidStrings.contains("""name="biometric_lock">Biometric lock</string>"""))
+        assertTrue(androidStrings.contains("""name="device_lock">Device lock</string>"""))
         assertTrue(androidApp.contains("onAppLockChange = { enabled ->"))
-        assertTrue(androidApp.contains("biometricGate.authenticate(\"Protect ANKY with your device lock.\")"))
+        assertTrue(androidApp.contains("val protectDeviceLockReason = stringResource(R.string.protect_device_lock_reason)"))
+        assertTrue(androidApp.contains("biometricGate.authenticate(protectDeviceLockReason)"))
         assertTrue(androidApp.contains("container.settingsStore.setDeviceLockPromptCompleted(true)"))
         assertTrue(androidApp.contains("skipNextAppLockAuthentication.value = true"))
         assertTrue(androidApp.contains("container.settingsStore.setAppLockEnabled(false)"))
@@ -1336,6 +1803,9 @@ class SourceInvariantTest {
         val androidModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
@@ -1344,14 +1814,16 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(iosYou.contains("case .privacy:\n            return []"))
-        assertTrue(iosYou.contains("""AnkyChatAction("Open email", isPrimary: true)"""))
-        assertTrue(iosYou.contains("Send support or feedback by email. Include only what you choose to write."))
+        assertTrue(iosYou.contains("""AnkyChatAction(AnkyLocalization.ui("Open email"), isPrimary: true)"""))
+        assertTrue(iosYou.contains("Send us an email! We want to evolve this app based on your feedback."))
         assertTrue(iosModel.contains("supportFeedbackEmailURL"))
 
         assertTrue(androidYou.contains("YouPrompt.Privacy -> emptyList()"))
-        assertTrue(androidYou.contains("""AnkyChatAction("Open email", isPrimary = true)"""))
-        assertTrue(androidYou.contains("Send support or feedback by email. Include only what you choose to write."))
-        assertTrue(androidYou.contains("Support / Feedback"))
+        assertTrue(androidYou.contains("openEmail = stringResource(R.string.open_email)"))
+        assertTrue(androidYou.contains("AnkyChatAction(labels.openEmail, isPrimary = true)"))
+        assertTrue(androidYou.contains("Send us an email! We want to evolve this app based on your feedback."))
+        assertTrue(androidYou.contains("stringResource(R.string.you_support_feedback)"))
+        assertTrue(androidStrings.contains("Support / Feedback"))
         assertTrue(androidModel.contains("supportFeedbackEmailUrl"))
         assertTrue(!androidYou.contains("support messages include your account id, not your writing."))
         assertTrue(!androidYou.contains("copy privacy email"))
@@ -1396,50 +1868,171 @@ class SourceInvariantTest {
         val androidModel = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt")
             .readText()
+        val androidReminderReceiver = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/notifications/DailyReminderReceiver.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
         val iosModel = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouViewModel.swift")
             .readText()
+        val iosNotificationScheduler = repoRoot()
+            .resolve("apps/ios/Anky/Core/Notifications/LocalNotificationScheduler.swift")
+            .readText()
 
         listOf(
-            "Anky created a Base account for this device.",
-            "This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.",
+            "Anky created a private local profile for this device.",
+            "These words restore your Anky access. Never share them. Anky cannot recover them for you.",
             "Your passcode or biometrics protect local access. They are not an Anky login.",
-            "This stores your recovery phrase in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.",
+            "This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.",
         ).forEach { copy ->
             assertTrue(iosYou.contains(copy))
         }
         listOf(
-            "Anky created a Base account for this device.",
-            "This phrase controls your Anky Base account. Never share it. Anky cannot recover it for you.",
-            "Your passcode or biometrics protect local access. They are not an Anky login.",
-            "This stores your recovery phrase in device secure storage. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.",
-            "Reveal recovery phrase",
-            "Copy recovery phrase",
-            "Back up recovery phrase to device secure storage",
-        ).forEach { copy ->
-            assertTrue(androidYou.contains(copy))
+            "you_private_access",
+            "you_private_profile",
+            "you_writing_access_stays",
+            "you_advanced_recovery",
+            "you_recovery_words_restore",
+            "you_recovery_words_gate",
+            "you_passcode_biometrics_note",
+            "you_reveal_recovery_words",
+            "you_copy_recovery_words",
+            "you_backup_recovery_words_secure_storage",
+            "you_secure_storage_note",
+            "you_ownership_note",
+            "you_ownership_body",
+            "you_export_data",
+            "you_archive_yours",
+            "you_readable_exports_note",
+            "you_no_writing_to_export",
+            "you_encrypted_backup",
+            "back_up_now",
+            "export_writings",
+            "device_lock_app_protection",
+            "anky_address",
+            "copy_account",
+            "daily_reminder",
+            "time",
+            "change_time",
+            "hour",
+            "minute",
+            "set",
+            "danger_zone",
+            "you_delete_account_data_question",
+            "you_delete_account_data_body",
+            "you_delete_account_data_detail_body",
+            "you_delete_account_data_caps",
+            "you_delete_local_writing_data_question",
+            "you_delete_local_data_body",
+            "you_delete_local_writing_data_action",
+            "you_local_files_reflections_format",
+            "export_backup_zip",
+            "share_backup_zip",
+            "no_local_data_to_back_up_yet",
+            "restore_backup",
+            "delete_local_data",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+            assertTrue(androidYou.contains("R.string.$key"))
         }
-        assertTrue(iosYou.contains("""YouActionButton("Back up recovery phrase to iCloud Keychain")"""))
-        assertTrue(androidYou.contains("""AnkyChatAction("Back up recovery phrase", isPrimary = true)"""))
+        assertTrue(iosNotificationScheduler.contains("content.title = \"ANKY\""))
+        assertTrue(iosNotificationScheduler.contains("content.body = \"write your anky today\""))
+        assertTrue(androidStrings.contains("""name="daily_reminder_notification_title" translatable="false">ANKY</string>"""))
+        assertTrue(androidStrings.contains("""name="daily_reminder_notification_body" translatable="false">write your anky today</string>"""))
+        assertTrue(androidReminderReceiver.contains("setContentTitle(context.getString(R.string.daily_reminder_notification_title))"))
+        assertTrue(androidReminderReceiver.contains("setContentText(context.getString(R.string.daily_reminder_notification_body))"))
+        assertTrue(!androidReminderReceiver.contains("""setContentTitle("ANKY")"""))
+        assertTrue(!androidReminderReceiver.contains("""setContentText("write your anky today")"""))
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            assertTrue(localizedStrings.contains("you_private_access"))
+            assertTrue(localizedStrings.contains("you_recovery_words_restore"))
+            assertTrue(localizedStrings.contains("you_readable_exports_note"))
+            assertTrue(localizedStrings.contains("you_delete_account_data_question"))
+            assertTrue(localizedStrings.contains("export_backup_zip"))
+            assertTrue(localizedStrings.contains("show_anky_recovery_words_reason"))
+            assertTrue(localizedStrings.contains("backup_anky_recovery_words_secure_storage_reason"))
+            assertTrue(localizedStrings.contains("recover_anky_access_reason"))
+            assertTrue(localizedStrings.contains("enable_encrypted_anky_backup_reason"))
+            assertTrue(localizedStrings.contains("restore_encrypted_anky_backup_reason"))
+            assertTrue(localizedStrings.contains("could_not_confirm_identity"))
+        }
+        assertTrue(iosYou.contains("""YouActionButton(AnkyLocalization.ui("Back up recovery words to iCloud Keychain"))"""))
+        assertTrue(androidYou.contains("backUpRecoveryWords = stringResource(R.string.you_backup_recovery_words)"))
+        assertTrue(androidYou.contains("AnkyChatAction(labels.backUpRecoveryWords, isPrimary = true)"))
+        listOf(
+            "you_recover_access_lower",
+            "you_recovery_words_label",
+            "you_recovery_replaces_access",
+            "recover",
+            "cancel",
+            "open_email",
+            "you_backup_recovery_words",
+            "show_anky_recovery_words_reason",
+            "backup_anky_recovery_words_secure_storage_reason",
+            "recover_anky_access_reason",
+            "enable_encrypted_anky_backup_reason",
+            "restore_encrypted_anky_backup_reason",
+            "could_not_confirm_identity",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+            assertTrue(androidYou.contains("R.string.$key") || key == "you_backup_recovery_words")
+        }
         assertTrue(iosYou.contains("viewModel.backUpIdentityToICloudKeychain()"))
-        assertTrue(androidYou.contains("viewModel.backUpIdentityToDeviceSecureStorage()"))
+        assertTrue(androidYou.contains("viewModel.backUpIdentityToDeviceSecureStorage("))
         assertTrue(iosModel.contains("func backUpIdentityToICloudKeychain() async"))
-        assertTrue(androidModel.contains("fun backUpIdentityToDeviceSecureStorage()"))
+        assertTrue(androidModel.contains("fun backUpIdentityToDeviceSecureStorage("))
         assertTrue(androidModel.contains("identityStore.backUpRecoveryPhraseToDeviceSecureStorage()"))
         assertTrue(!androidYou.contains("""AnkyChatAction("back up identity", isPrimary = true) { viewModel.revealRecoveryPhrase() }"""))
-        assertTrue(iosModel.contains("Show your ANKY recovery phrase."))
-        assertTrue(androidModel.contains("Show your ANKY recovery phrase."))
-        assertTrue(iosModel.contains("Could not load the recovery phrase."))
-        assertTrue(androidModel.contains("Could not load the recovery phrase."))
-        assertTrue(iosModel.contains("Could not load the local Base identity."))
+        listOf(
+            "SwitchRow(\"device lock app protection",
+            "Text(\"Anky address",
+            "AnkyActionButton(\"copy account",
+            "SwitchRow(\"daily reminder",
+            "DetailRow(\"time",
+            "AnkyActionButton(\"change time",
+            "Text(\"danger zone",
+            "Text(\"Delete Account and Data?",
+            "Text(\"This deletes your Anky data from this device. This cannot be undone.",
+            "AnkyActionButton(\"export backup zip",
+            "AnkyActionButton(\"share backup zip",
+            "DisabledRow(\"no local data to back up yet",
+            "AnkyActionButton(\"restore backup",
+            "AnkyActionButton(\"delete local data",
+        ).forEach { literal ->
+            assertTrue(!androidYou.contains(literal))
+        }
+        assertTrue(iosModel.contains("Show your Anky recovery words."))
+        assertTrue(androidStrings.contains("""name="show_anky_recovery_words_reason">Show your Anky recovery words.</string>"""))
+        assertTrue(androidStrings.contains("""name="recover_anky_access_reason">Recover your Anky access.</string>"""))
+        assertTrue(androidYou.contains("showRecoveryWordsReason = stringResource(R.string.show_anky_recovery_words_reason)"))
+        assertTrue(androidYou.contains("backupRecoveryWordsSecureStorageReason = stringResource(R.string.backup_anky_recovery_words_secure_storage_reason)"))
+        assertTrue(androidYou.contains("recoverAnkyAccessReason = stringResource(R.string.recover_anky_access_reason)"))
+        assertTrue(androidYou.contains("enableEncryptedBackupReason = stringResource(R.string.enable_encrypted_anky_backup_reason)"))
+        assertTrue(androidYou.contains("restoreEncryptedBackupReason = stringResource(R.string.restore_encrypted_anky_backup_reason)"))
+        assertTrue(androidYou.contains("couldNotConfirmIdentity = stringResource(R.string.could_not_confirm_identity)"))
+        assertTrue(androidModel.contains("authReason: String = YouStatusCopy.ShowRecoveryWordsReason"))
+        assertTrue(androidModel.contains("authReason: String = YouStatusCopy.RecoverAnkyAccessReason"))
+        assertTrue(androidModel.contains("authFailure: String = YouStatusCopy.CouldNotConfirmIdentity"))
+        assertTrue(androidModel.contains("biometricGate.authenticate(authReason)"))
+        assertTrue(!androidModel.contains("""biometricGate.authenticate("Show your Anky recovery words.")"""))
+        assertTrue(!androidModel.contains("""biometricGate.authenticate("Recover your ANKY local identity.")"""))
+        assertTrue(!androidModel.contains("""it.copy(error = "Could not confirm identity.")"""))
+        assertTrue(iosModel.contains("Could not load the recovery words."))
+        assertTrue(androidModel.contains("Could not load the recovery words."))
+        assertTrue(iosModel.contains("identityStatus = AnkyLocalization.ui(\"Private access\")"))
         assertTrue(androidModel.contains("Could not load the local Base identity."))
-        assertTrue(iosModel.contains("Recovery phrase must be 12 words."))
-        assertTrue(androidModel.contains("Recovery phrase must be 12 words."))
-        assertTrue(iosModel.contains("Recovery phrase contains an unrecognized word."))
-        assertTrue(androidModel.contains("Recovery phrase contains an unrecognized word."))
+        assertTrue(iosModel.contains("Recovery words must be 12 words."))
+        assertTrue(androidModel.contains("Recovery words must be 12 words."))
+        assertTrue(iosModel.contains("Recovery words contain an unrecognized word."))
+        assertTrue(androidModel.contains("Recovery words contain an unrecognized word."))
         assertTrue(androidYou.contains("local Base account, stores its recovery phrase in device secure storage"))
         assertTrue(!androidYou.contains("private identity"))
         assertTrue(!androidYou.contains("recovery key"))
@@ -1453,25 +2046,32 @@ class SourceInvariantTest {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
         val resetWarning = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting."
 
-        assertTrue(iosYou.contains(".confirmationDialog(\"reset local identity?\""))
-        assertTrue(iosYou.contains("Button(\"reset identity\", role: .destructive)"))
-        assertTrue(iosYou.contains(resetWarning))
+        assertTrue(!iosYou.contains(".confirmationDialog(\"reset local identity?\""))
+        assertTrue(!iosYou.contains("Button(\"reset identity\", role: .destructive)"))
 
         assertTrue(androidYou.contains("title = \"reset local identity?\""))
         assertTrue(androidYou.contains("action = \"reset identity\""))
         assertTrue(androidYou.contains("message = \"$resetWarning\""))
         assertTrue(androidYou.contains("text = message?.let"))
+        assertTrue(androidYou.contains("YouPage.Developer -> if (BuildConfig.DEBUG)"))
+        assertTrue(androidYou.contains("AnkyActionButton(\"reset local identity\", destructive = true"))
     }
 
     @Test
     fun youConversationPromptStartsHiddenLikeCurrentIos() {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
@@ -1497,6 +2097,9 @@ class SourceInvariantTest {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
@@ -1521,12 +2124,45 @@ class SourceInvariantTest {
         assertTrue(androidYou.contains("HiddenTextInput("))
         assertTrue(androidYou.contains("AnkyWriter()"))
         assertTrue(androidYou.contains("writer.value.closeWithTerminalSilence()"))
-        assertTrue(androidYou.contains("copy your .anky or copy your writing."))
-        assertTrue(androidYou.contains("AnkyChatAction(\"copy your .anky\", isPrimary = true)"))
-        assertTrue(androidYou.contains("AnkyChatAction(\"copy your writing\")"))
-        assertTrue(androidYou.contains("contentDescription = \"Anky experience time ${'$'}elapsedClock\""))
-        assertTrue(androidYou.contains("contentDescription = \"Close The Anky Experience\""))
-        assertTrue(androidYou.contains("contentDescription = \"Anky companion\""))
+        listOf(
+            "anky_experience_artifact_label",
+            "anky_experience_writing_label",
+            "anky_experience_open",
+            "anky_experience_complete",
+            "anky_experience_time_format",
+            "anky_experience_ring_accessibility",
+            "close_anky_experience",
+            "anky_companion",
+            "copy_your_anky_or_writing",
+            "copy_your_anky",
+            "copy_your_writing",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+            assertTrue(androidYou.contains("R.string.$key"))
+        }
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            assertTrue(localizedStrings.contains("anky_experience_time_format"))
+            assertTrue(localizedStrings.contains("copy_your_anky_or_writing"))
+            assertTrue(localizedStrings.contains("close_anky_experience"))
+        }
+        assertTrue(iosYou.contains("accessibilityLabel(AnkyLocalization.ui(\"Anky experience time %@\", viewModel.elapsedClockText))"))
+        assertTrue(iosYou.contains("accessibilityLabel(AnkyLocalization.ui(\"Close The Anky Experience\"))"))
+        assertTrue(iosYou.contains("accessibilityLabel(AnkyLocalization.ui(\"Anky companion\"))"))
+        assertTrue(iosYou.contains("message: AnkyLocalization.ui(\"copy your .anky or copy your writing.\")"))
+        assertTrue(iosYou.contains("AnkyChatAction(AnkyLocalization.ui(\"copy your .anky\"), isPrimary: true)"))
+        assertTrue(iosYou.contains("AnkyChatAction(AnkyLocalization.ui(\"copy your writing\"))"))
+        assertTrue(!androidYou.contains("copyText(\"Anky experience .anky\""))
+        assertTrue(!androidYou.contains("copyText(\"Anky experience writing\""))
+        assertTrue(!androidYou.contains("val subtitle = if (isFinished) \"the experience is complete\" else \"the experience is open\""))
+        assertTrue(!androidYou.contains("contentDescription = \"Anky experience time ${'$'}elapsedClock\""))
+        assertTrue(!androidYou.contains("contentDescription = \"Close The Anky Experience\""))
+        assertTrue(!androidYou.contains("contentDescription = \"Anky companion\""))
+        assertTrue(!androidYou.contains("message = \"copy your .anky or copy your writing.\""))
+        assertTrue(!androidYou.contains("AnkyChatAction(\"copy your .anky\", isPrimary = true)"))
+        assertTrue(!androidYou.contains("AnkyChatAction(\"copy your writing\")"))
 
         assertTrue(androidApp.contains("val isShowingYouExperience = remember { mutableStateOf(false) }"))
         assertTrue(androidApp.contains("onExperienceVisibilityChanged = { isShowingYouExperience.value = it }"))
@@ -1548,41 +2184,117 @@ class SourceInvariantTest {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
+        val iosEnglishStrings = repoRoot()
+            .resolve("apps/ios/Anky/en.lproj/Localizable.strings")
+            .readText()
 
         listOf(
             "onboarding-1",
             "onboarding-2",
             "onboarding-3",
-            "You don't need another prompt.",
-            "Write forward. 8 seconds of silence ends it.",
-            "Tell me who you are.",
+            "You don't need another place to perform.",
+            "Anky gives you 8 minutes to let out what you're carrying.",
+            "At the end, you see what was underneath.",
             "Be with what is here",
-            "No backspace. Just write.",
+            "Let it all out",
             "Write 8 minutes",
         ).forEach { expected ->
             assertTrue(iosOnboarding.contains(expected))
         }
+        assertTrue(iosApp.contains("@AppStorage(\"anky.onboardingCompleted\")"))
         assertTrue(iosApp.contains("if shouldShowOnboarding"))
         assertTrue(iosApp.contains("AnkyOnboardingView {"))
         assertTrue(iosApp.contains("completeOnboarding()"))
+        assertTrue(iosApp.contains("onboardingCompleted = true"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
 
         listOf(
             "R.drawable.onboarding_1",
             "R.drawable.onboarding_2",
             "R.drawable.onboarding_3",
-            "You don't need another prompt.",
-            "Write forward. 8 seconds of silence ends it.",
-            "Tell me who you are.",
-            "Be with what is here",
-            "No backspace. Just write.",
-            "Write 8 minutes",
+            "R.string.onboarding_line_1",
+            "R.string.onboarding_line_2",
+            "R.string.onboarding_line_3",
+            "R.string.onboarding_cta_1",
+            "R.string.onboarding_cta_2",
+            "R.string.onboarding_cta_3",
+            "R.string.onboarding_accessibility_label",
             "HorizontalPager(",
             "AnkyOnboardingScreen(",
         ).forEach { expected ->
             assertTrue(androidOnboarding.contains(expected) || androidApp.contains(expected))
         }
-        assertTrue(androidApp.contains("val showsOnboarding = remember { mutableStateOf(true) }"))
+        listOf(
+            "You don\\'t need another place to perform.",
+            "Anky gives you 8 minutes to let out what you\\'re carrying.",
+            "At the end, you see what was underneath.",
+            "Be with what is here",
+            "Let it all out",
+            "Write 8 minutes",
+        ).forEach { expected ->
+            assertTrue(androidStrings.contains(expected))
+        }
+        assertTrue(iosEnglishStrings.contains("\"writeEightMinutes\" = \"Write 8 minutes\";"))
+        assertTrue(androidStrings.contains("""name="onboarding_cta_1">Be with what is here</string>"""))
+        assertTrue(androidStrings.contains("""name="onboarding_cta_2">Let it all out</string>"""))
+        assertTrue(androidStrings.contains("""name="onboarding_cta_3">Write 8 minutes</string>"""))
+        assertTrue(androidStrings.contains("""name="onboarding_accessibility_label">Anky onboarding</string>"""))
+        assertTrue(!androidStrings.contains("""name="onboarding_cta_1" translatable="false""""))
+        assertTrue(!androidStrings.contains("""name="onboarding_cta_2" translatable="false""""))
+        assertTrue(!androidStrings.contains("""name="onboarding_cta_3" translatable="false""""))
+        assertTrue(androidOnboarding.contains("onboardingAccessibilityLabel = stringResource(R.string.onboarding_accessibility_label)"))
+        assertTrue(androidOnboarding.contains("contentDescription = onboardingAccessibilityLabel"))
+        assertTrue(!androidOnboarding.contains("""contentDescription = "Anky onboarding""""))
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            val iosLocaleDir = when (localeDir) {
+                "values-zh-rCN" -> "zh-Hans"
+                else -> localeDir.removePrefix("values-")
+            }
+            val iosLocalizedStrings = repoRoot()
+                .resolve("apps/ios/Anky/$iosLocaleDir.lproj/Localizable.strings")
+                .readText()
+            val expectedCta = when (localeDir) {
+                "values-es" -> "Escribir 8 minutos"
+                "values-fr" -> "Écrire 8 minutes"
+                "values-de" -> "8 Minuten schreiben"
+                "values-hi" -> "8 मिनट लिखें"
+                "values-zh-rCN" -> "书写 8 分钟"
+                else -> error("Unhandled locale $localeDir")
+            }
+            val expectedFirstCta = when (localeDir) {
+                "values-es" -> "Quédate con lo que está aquí"
+                "values-fr" -> "Restez avec ce qui est là"
+                "values-de" -> "Bleib bei dem, was hier ist"
+                "values-hi" -> "जो यहाँ है उसके साथ रहें"
+                "values-zh-rCN" -> "和此刻在这里的东西待在一起"
+                else -> error("Unhandled locale $localeDir")
+            }
+            val expectedSecondCta = when (localeDir) {
+                "values-es" -> "Déjalo salir todo"
+                "values-fr" -> "Laissez tout sortir"
+                "values-de" -> "Lass alles heraus"
+                "values-hi" -> "सब बाहर आने दें"
+                "values-zh-rCN" -> "把一切都释放出来"
+                else -> error("Unhandled locale $localeDir")
+            }
+            assertTrue(localizedStrings.contains("onboarding_line_1"))
+            assertTrue(localizedStrings.contains("""name="onboarding_cta_1">$expectedFirstCta</string>"""))
+            assertTrue(localizedStrings.contains("""name="onboarding_cta_2">$expectedSecondCta</string>"""))
+            assertTrue(localizedStrings.contains("""name="onboarding_cta_3">$expectedCta</string>"""))
+            assertTrue(localizedStrings.contains("onboarding_accessibility_label"))
+            assertTrue(iosLocalizedStrings.contains("\"writeEightMinutes\""))
+            assertTrue(iosLocalizedStrings.contains(expectedCta))
+            assertTrue(localizedStrings.contains("tab_write"))
+            assertTrue(localizedStrings.contains("device_lock_prompt"))
+        }
+        assertTrue(androidApp.contains("val showsOnboarding = remember(settings.onboardingCompleted) { mutableStateOf(!settings.onboardingCompleted) }"))
+        assertTrue(androidApp.contains("container.settingsStore.setOnboardingCompleted(true)"))
         assertTrue(androidApp.contains("val shouldShowOnboarding ="))
         assertTrue(androidApp.contains("!shouldShowOnboarding"))
         assertTrue(androidApp.contains("showsOnboarding.value = false"))
@@ -1600,40 +2312,112 @@ class SourceInvariantTest {
         val androidTokenIcon = repoRoot()
             .resolve("apps/android/app/src/main/res/drawable/you_icon_anky_token.xml")
             .readText()
+        val androidStrings = repoRoot()
+            .resolve("apps/android/app/src/main/res/values/strings.xml")
+            .readText()
 
         assertTrue(iosYou.contains("""promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)"""))
         assertTrue(iosYou.contains("private func openCreditsSheet()"))
         assertTrue(iosYou.contains("showsReflectionCreditsSheet = true"))
         assertTrue(iosYou.contains(".ankyReflectionCreditsSheet("))
         assertTrue(iosYou.contains("""promptButton(.support, icon: "you-icon-support", title: "Support / Feedback", subtitle: "Email support@anky.app")"""))
-        assertTrue(iosYou.contains("""promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy Policy", subtitle: "How your data is handled")"""))
+        assertTrue(iosYou.contains("""promptButton(.privacy, icon: "you-icon-privacy", title: "Privacy Policy", subtitle: "How your data is handled.")"""))
         assertTrue(iosYou.contains("""legalButton(icon: "you-icon-terms", title: "Terms & Conditions", subtitle: "The agreement for using Anky")"""))
+        assertTrue(iosYou.contains("Text(\"Writing and reflection agreement\")"))
+        assertTrue(iosYou.contains("YouRuleRow(AnkyLocalization.ui(\"1 credit = reflection\"))"))
+        assertTrue(iosYou.contains("YouRuleRow(AnkyLocalization.ui(\"ask anky spends one credit\"))"))
+        assertTrue(iosYou.contains("YouRuleRow(AnkyLocalization.ui(\"writing is always free\"))"))
+        assertTrue(iosYou.contains("YouActionButton(AnkyLocalization.ui(\"refresh credits\"))"))
+        assertTrue(iosYou.contains("YouActionButton(AnkyLocalization.ui(\"support / feedback\"))"))
+        assertTrue(iosYou.contains("Text(AnkyLocalization.ui(\"email support@anky.app. include only what you choose to write.\"))"))
         assertTrue(iosYou.contains("""YouMenuRow(
                 icon: "you-icon-anky-token",
-                title: "${'$'}ANKY on Base""""))
-        assertTrue(iosYou.contains(".navigationTitle(\"You\")"))
+                title: "${'$'}ANKY",
+                subtitle: "To be deployed""""))
+        assertTrue(iosYou.contains(".navigationTitle(AnkyLocalization.ui(\"You\"))"))
         assertTrue(iosYou.contains(".navigationBarTitleDisplayMode(.inline)"))
 
-        assertTrue(androidYou.contains("""Text(
-            "You","""))
+        assertTrue(androidYou.contains("stringResource(R.string.you_title)"))
         assertTrue(androidYou.contains(".align(Alignment.TopCenter)"))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_export, "Data", "Export writings or back up locally""""))
+        assertTrue(androidYou.contains("val dataSubtitle = if (state.isEncryptedBackupEnabled)"))
+        assertTrue(androidYou.contains("R.string.you_encrypted_backup_on"))
+        assertTrue(androidYou.contains("R.string.you_export_writings_or_enable_backup"))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_export, stringResource(R.string.you_data), dataSubtitle"""))
         assertTrue(androidYou.contains("val showsReflectionCreditsSheet = remember { mutableStateOf(false) }"))
         assertTrue(androidYou.contains("showsReflectionCreditsSheet.value = true"))
         assertTrue(androidYou.contains("ModalBottomSheet("))
         assertTrue(androidYou.contains("YouReflectionCreditsSheet("))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "Credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onOpenCreditsSheet() }"""))
+        assertTrue(androidYou.contains("val creditsSubtitle = creditsMenuSubtitle("))
+        assertTrue(androidYou.contains("R.string.you_loading_balance"))
+        assertTrue(androidYou.contains("R.string.you_reflection_balance"))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_credits, stringResource(R.string.you_credits), creditsSubtitle, activePrompt == YouPrompt.Credits) { onOpenCreditsSheet() }"""))
         assertTrue(!androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "Credits", creditsMenuSubtitle(state), activePrompt == YouPrompt.Credits) { onOpenPage(YouPage.Credits) }"""))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_support, "Support / Feedback", "Email support@anky.app""""))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_privacy, "Privacy Policy", "What leaves this phone""""))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_terms, "Terms & Conditions", "The agreement for using Anky""""))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_anky_token, "\${'$'}ANKY on Base""""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_support, stringResource(R.string.you_support_feedback), stringResource(R.string.you_email_support)"""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_privacy, stringResource(R.string.you_privacy_policy), stringResource(R.string.you_privacy_subtitle)"""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_terms, stringResource(R.string.you_terms_conditions), stringResource(R.string.you_terms_subtitle)"""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_anky_token, "\${'$'}ANKY", if (didCopyAnkyContract) stringResource(R.string.you_copied_to_clipboard) else stringResource(R.string.you_token_pending)"""))
+        listOf(
+            "you_title",
+            "you_data",
+            "you_credits",
+            "you_support_feedback",
+            "you_privacy_policy",
+            "you_terms_conditions",
+            "you_encrypted_backup_on",
+            "you_export_writings_or_enable_backup",
+            "privacy_page_heading",
+            "privacy_contact_caption",
+            "terms_reflection_agreement",
+            "credit_rule_one_reflection",
+            "credit_rule_ask_spends",
+            "credit_rule_writing_free",
+            "loading_credit_packs",
+            "no_credit_packs_available",
+            "refresh_credits",
+            "restoring_purchases",
+            "restore_purchases",
+            "support_feedback_lower",
+            "support_feedback_note",
+        ).forEach { key ->
+            assertTrue(androidStrings.contains("""name="$key""""))
+            assertTrue(androidYou.contains("R.string.$key"))
+        }
+        listOf("values-es", "values-fr", "values-de", "values-hi", "values-zh-rCN").forEach { localeDir ->
+            val localizedStrings = repoRoot()
+                .resolve("apps/android/app/src/main/res/$localeDir/strings.xml")
+                .readText()
+            assertTrue(localizedStrings.contains("you_title"))
+            assertTrue(localizedStrings.contains("you_privacy_policy"))
+            assertTrue(localizedStrings.contains("you_terms_conditions"))
+            assertTrue(localizedStrings.contains("privacy_page_heading"))
+            assertTrue(localizedStrings.contains("terms_reflection_agreement"))
+            assertTrue(localizedStrings.contains("credit_rule_one_reflection"))
+            assertTrue(localizedStrings.contains("refresh_credits"))
+            assertTrue(localizedStrings.contains("support_feedback_note"))
+        }
         assertTrue(androidYou.contains("painterResource(R.drawable.you_ankycoin)"))
         assertTrue(androidTokenIcon.contains("""android:viewportWidth="24""""))
         assertTrue(androidTokenIcon.contains("#D7BA73"))
         assertTrue(androidYou.contains("YouPage.Terms -> TermsPage()"))
         assertTrue(androidYou.contains("private val TermsCopy = listOf("))
         assertTrue(!androidYou.contains("""PromptRow(R.drawable.you_icon_credits, "support / feedback""""))
+        listOf(
+            """Text("privacy is the shape of anky, not a feature added later."""",
+            """Text("questions, deletion requests, and privacy reports"""",
+            """Text("Terms & Conditions"""",
+            """Text("Writing and reflection agreement"""",
+            """Rule("1 credit = reflection")""",
+            """Rule("ask anky spends one credit")""",
+            """Rule("writing is always free")""",
+            """DisabledRow("loading credit packs")""",
+            """DisabledRow("no credit packs available")""",
+            """AnkyActionButton("refresh credits"""",
+            """"restoring purchases" else "restore purchases"""",
+            """AnkyActionButton("support / feedback"""",
+            """Text("email support@anky.app. include only what you choose to write."""",
+        ).forEach { literal ->
+            assertTrue(!androidYou.contains(literal))
+        }
     }
 
     @Test

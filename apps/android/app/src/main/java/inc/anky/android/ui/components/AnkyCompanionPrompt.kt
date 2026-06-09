@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -164,6 +166,7 @@ fun AnkyConversationPrompt(
     isThinking: Boolean = false,
     onClose: (() -> Unit)? = null,
 ) {
+    val closeAnkyMessageLabel = stringResource(R.string.close_anky_message)
     Box(modifier = modifier.fillMaxWidth()) {
         DialoguePanel(
             message = message,
@@ -183,7 +186,12 @@ fun AnkyConversationPrompt(
                     .border(1.dp, AnkyColors.Gold.copy(alpha = 0.26f), CircleShape),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
             ) {
-                Text("x", style = AnkyType.Caption.copy(fontSize = 13.sp, color = AnkyColors.GoldSoft))
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = closeAnkyMessageLabel,
+                    tint = AnkyColors.GoldSoft,
+                    modifier = Modifier.size(14.dp),
+                )
             }
         }
     }

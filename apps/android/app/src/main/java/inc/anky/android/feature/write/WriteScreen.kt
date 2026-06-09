@@ -61,6 +61,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
@@ -77,6 +78,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import inc.anky.android.R
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.ui.theme.AnkyColors
@@ -102,6 +104,11 @@ fun WriteScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    val importReadableError = stringResource(R.string.write_import_readable_error)
+    val importOpenError = stringResource(R.string.write_import_open_error)
+    val openMapLabel = stringResource(R.string.open_map)
+    val pasteArtifactLabel = stringResource(R.string.paste_anky_artifact)
+    val devPasteArtifactLabel = stringResource(R.string.hold_dev_paste_anky_artifact)
     var importError by remember { mutableStateOf<String?>(null) }
     WriteSystemBarsHidden()
     WriteHaptics(state)
@@ -117,7 +124,7 @@ fun WriteScreen(
                     onImported(saved.hash)
                 }
                 .onFailure {
-                    importError = "i couldn't find a readable .anky in that."
+                    importError = importReadableError
                 }
         }
     }
@@ -136,7 +143,7 @@ fun WriteScreen(
                     importAndOfferReflection { onImportAnkyBytes(bytes) }
                 }
                 .onFailure {
-                    importError = "i couldn't open that .anky yet."
+                    importError = importOpenError
                 }
         }
     }
@@ -162,7 +169,7 @@ fun WriteScreen(
                     onImported(saved.hash)
                 }
                 .onFailure {
-                    importError = "i couldn't find a readable .anky in that."
+                    importError = importReadableError
                     launchDocumentFallback()
                 }
         }
@@ -225,6 +232,9 @@ fun WriteScreen(
                 },
                 onPaste = ::pasteOrOpenDocument,
                 onDevPaste = ::devPasteArtifact,
+                openMapLabel = openMapLabel,
+                pasteArtifactLabel = pasteArtifactLabel,
+                devPasteArtifactLabel = devPasteArtifactLabel,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 8.dp, start = 10.dp, end = 10.dp),
@@ -232,6 +242,7 @@ fun WriteScreen(
 
             if (state.hasReachedRitualMark) {
                 val clockText = AnkyDuration.clock(state.elapsedMs)
+                val writingTimeLabel = stringResource(R.string.writing_time_format, clockText)
                 Text(
                     clockText,
                     color = Color.Black.copy(alpha = 0.56f),
@@ -244,7 +255,7 @@ fun WriteScreen(
                         .background(Color.White.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
                         .border(1.dp, Color.Black.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
                         .semantics {
-                            contentDescription = "Writing time $clockText"
+                            contentDescription = writingTimeLabel
                         }
                         .padding(horizontal = 10.dp, vertical = 7.dp),
                 )
@@ -284,6 +295,9 @@ private fun WriteTopBar(
     onCloseToMap: () -> Unit,
     onPaste: () -> Unit,
     onDevPaste: () -> Unit,
+    openMapLabel: String,
+    pasteArtifactLabel: String,
+    devPasteArtifactLabel: String,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -291,7 +305,7 @@ private fun WriteTopBar(
             WriteChromeButton(onClick = onCloseToMap, enabled = true) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
-                    contentDescription = "Open Map",
+                    contentDescription = openMapLabel,
                     tint = Color.Black.copy(alpha = 0.74f),
                     modifier = Modifier.size(17.dp),
                 )
@@ -303,10 +317,12 @@ private fun WriteTopBar(
                 onPaste = onPaste,
                 onDevPaste = onDevPaste,
                 enabled = canPaste,
+                pasteArtifactLabel = pasteArtifactLabel,
+                devPasteArtifactLabel = devPasteArtifactLabel,
             ) {
                 Icon(
                     imageVector = Icons.Filled.ContentPaste,
-                    contentDescription = "Paste .anky artifact",
+                    contentDescription = pasteArtifactLabel,
                     tint = if (canPaste) AnkyColors.Gold.copy(alpha = 0.86f) else Color.Black.copy(alpha = 0.34f),
                     modifier = Modifier.size(16.dp),
                 )
@@ -320,6 +336,8 @@ private fun DevPasteChromeButton(
     onPaste: () -> Unit,
     onDevPaste: () -> Unit,
     enabled: Boolean,
+    pasteArtifactLabel: String,
+    devPasteArtifactLabel: String,
     content: @Composable () -> Unit,
 ) {
     Box(
@@ -329,11 +347,11 @@ private fun DevPasteChromeButton(
             .background(Color.White.copy(alpha = 0.62f), CircleShape)
             .border(BorderStroke(1.dp, AnkyColors.Gold.copy(alpha = 0.18f)), CircleShape)
             .semantics {
-                onClick("Paste .anky artifact") {
+                onClick(pasteArtifactLabel) {
                     if (enabled) onPaste()
                     enabled
                 }
-                onLongClick("Hold for five seconds to paste the built-in dev .anky") {
+                onLongClick(devPasteArtifactLabel) {
                     if (enabled) onDevPaste()
                     enabled
                 }

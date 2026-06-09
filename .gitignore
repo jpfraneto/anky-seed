@@ -41,3 +41,9 @@ tmp/
 # Local prompt evolution artifacts
 backend/eval/cases/private/
 backend/eval/runs/
+
+# Local prompt tester secrets and generated runs
+apps/prompt-tester/.env
+apps/prompt-tester/.env.*
+!apps/prompt-tester/.env.example
+apps/prompt-tester/data/*.json

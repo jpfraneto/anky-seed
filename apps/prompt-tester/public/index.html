@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anky Prompt Tester</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel prompts" aria-label="Prompt inputs">
+        <div class="field-block system-block">
+          <label for="systemPrompt">System prompt</label>
+          <textarea id="systemPrompt" spellcheck="true" placeholder="Set behavior, constraints, tone, and output format."></textarea>
+        </div>
+        <div class="field-block user-block">
+          <label for="userPrompt">User prompt</label>
+          <textarea id="userPrompt" spellcheck="true" placeholder="Write the message to send to the model."></textarea>
+        </div>
+      </section>
+
+      <section class="panel settings" aria-label="Run settings">
+        <div class="settings-top">
+          <h1>Prompt Tester</h1>
+          <p>OpenRouter chat experiments saved locally in <code>data/</code>.</p>
+        </div>
+
+        <label class="model-field" for="model">Model</label>
+        <input id="model" type="text" value="anthropic/claude-sonnet-4.6" autocomplete="off" />
+
+        <div class="toggle-row">
+          <span>Streaming</span>
+          <button id="streamToggle" class="toggle is-on" type="button" aria-pressed="true">
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            <span class="toggle-copy">On</span>
+          </button>
+        </div>
+
+        <button id="runButton" class="run-button" type="button">RUN PROMPT</button>
+
+        <div id="status" class="status" role="status" aria-live="polite">Ready</div>
+      </section>
+
+      <section class="panel output" aria-label="Model output">
+        <div class="output-header">
+          <h2>Output</h2>
+          <button id="clearButton" type="button">Clear</button>
+        </div>
+        <pre id="outputText"></pre>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

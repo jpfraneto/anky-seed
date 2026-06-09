@@ -18,6 +18,9 @@ import inc.anky.android.core.mirror.ReflectionCreditPresentation
 import inc.anky.android.core.notifications.DailyReminderScheduler
 import inc.anky.android.core.privacy.PrivacyMessages
 import inc.anky.android.core.storage.ActiveDraftStore
+import inc.anky.android.core.storage.AndroidEncryptedBackupError
+import inc.anky.android.core.storage.AndroidEncryptedBackupException
+import inc.anky.android.core.storage.AndroidEncryptedBackupStore
 import inc.anky.android.core.storage.AppOpenStore
 import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.BackupExporting
@@ -28,6 +31,7 @@ import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
 import java.io.File
 import java.net.URLEncoder
+import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -47,6 +51,9 @@ data class YouState(
     val isRestoringPurchases: Boolean = false,
     val exportedFile: File? = null,
     val formattedWritingExportFile: File? = null,
+    val isEncryptedBackupEnabled: Boolean = false,
+    val encryptedBackupLastDate: Instant? = null,
+    val isEncryptedBackupWorking: Boolean = false,
     val localAnkyFileCount: Int = 0,
     val completeAnkyCount: Int = 0,
     val totalWritingMinutes: Int = 0,
@@ -110,6 +117,7 @@ class YouViewModel(
     private val requestStore: ReflectionRequestStore,
     private val indexStore: SessionIndexStore,
     private val appOpenStore: AppOpenStore,
+    private val encryptedBackupStore: AndroidEncryptedBackupStore,
     private val biometricGate: BiometricGate,
 ) : ViewModel() {
     private val _state = MutableStateFlow(YouState())
@@ -129,6 +137,7 @@ class YouViewModel(
             cachedCreditState(reflectionCreditCache.balance(identity.accountId))?.let { creditState.value = it }
             combine(settingsStore.settings, creditState, accountIdState) { settings, credits, accountId ->
                 val sessions = indexStore.rebuild(archive, reflectionStore)
+                val encryptedBackupStatus = encryptedBackupStore.status()
                 YouState(
                     accountId = accountId,
                     appLockEnabled = settings.appLockEnabled,
@@ -137,6 +146,8 @@ class YouViewModel(
                     mirrorBaseUrl = settings.mirrorBaseUrl,
                     creditState = credits,
                     hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId),
+                    isEncryptedBackupEnabled = encryptedBackupStatus.isEnabled,
+                    encryptedBackupLastDate = encryptedBackupStatus.lastBackupDate,
                     localAnkyFileCount = sessions.size,
                     completeAnkyCount = sessions.count { it.isComplete },
                     totalWritingMinutes = totalWritingMinutes(sessions),
@@ -150,10 +161,13 @@ class YouViewModel(
         }
     }
 
-    fun revealRecoveryPhrase() {
+    fun revealRecoveryPhrase(
+        authReason: String = YouStatusCopy.ShowRecoveryWordsReason,
+        authFailure: String = YouStatusCopy.CouldNotConfirmIdentity,
+    ) {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Show your ANKY recovery phrase.")) {
-                _state.update { it.copy(error = "Could not confirm identity.") }
+            if (!biometricGate.authenticate(authReason)) {
+                _state.update { it.copy(error = authFailure) }
                 return@launch
             }
             runCatching {
@@ -175,10 +189,13 @@ class YouViewModel(
         _state.update { it.copy(recoveryPhrase = null) }
     }
 
-    fun backUpIdentityToDeviceSecureStorage() {
+    fun backUpIdentityToDeviceSecureStorage(
+        authReason: String = YouStatusCopy.BackUpRecoveryWordsReason,
+        authFailure: String = YouStatusCopy.CouldNotConfirmIdentity,
+    ) {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Back up your ANKY recovery phrase to device secure storage.")) {
-                _state.update { it.copy(error = "Could not confirm identity.") }
+            if (!biometricGate.authenticate(authReason)) {
+                _state.update { it.copy(error = authFailure) }
                 return@launch
             }
             runCatching {
@@ -196,10 +213,15 @@ class YouViewModel(
         }
     }
 
-    fun importRecoveryPhrase(text: String, onImported: () -> Unit = {}) {
+    fun importRecoveryPhrase(
+        text: String,
+        authReason: String = YouStatusCopy.RecoverAnkyAccessReason,
+        authFailure: String = YouStatusCopy.CouldNotConfirmIdentity,
+        onImported: () -> Unit = {},
+    ) {
         viewModelScope.launch {
-            if (!biometricGate.authenticate("Recover your ANKY local identity.")) {
-                _state.update { it.copy(error = "Could not confirm identity.") }
+            if (!biometricGate.authenticate(authReason)) {
+                _state.update { it.copy(error = authFailure) }
                 return@launch
             }
             runCatching {
@@ -365,6 +387,121 @@ class YouViewModel(
         }
     }
 
+    fun enableEncryptedBackup(
+        authReason: String = YouStatusCopy.EnableEncryptedBackupReason,
+        authFailure: String = YouStatusCopy.CouldNotConfirmIdentity,
+    ) {
+        viewModelScope.launch {
+            if (!biometricGate.authenticate(authReason)) {
+                _state.update { it.copy(error = authFailure) }
+                return@launch
+            }
+            _state.update { it.copy(isEncryptedBackupWorking = true, error = null, statusMessage = null) }
+            runCatching {
+                encryptedBackupStore.enableAndBackUpNow()
+            }.onSuccess {
+                refresh()
+                _state.update {
+                    it.copy(
+                        isEncryptedBackupWorking = false,
+                        statusMessage = YouStatusCopy.EncryptedBackupOn,
+                        error = null,
+                    )
+                }
+            }.onFailure { error ->
+                if ((error as? AndroidEncryptedBackupException)?.reason == AndroidEncryptedBackupError.NoLocalData) {
+                    encryptedBackupStore.setEnabled(true)
+                    refresh()
+                    _state.update {
+                        it.copy(
+                            isEncryptedBackupWorking = false,
+                            statusMessage = YouStatusCopy.EncryptedBackupOnAfterNextWriting,
+                            error = null,
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isEncryptedBackupWorking = false,
+                            error = encryptedBackupErrorMessage(error, YouStatusCopy.CouldNotEnableEncryptedBackup),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun disableEncryptedBackup() {
+        encryptedBackupStore.setEnabled(false)
+        refresh()
+        _state.update { it.copy(statusMessage = YouStatusCopy.EncryptedBackupOff, error = null) }
+    }
+
+    fun backUpEncryptedNow() {
+        viewModelScope.launch {
+            _state.update { it.copy(isEncryptedBackupWorking = true, error = null, statusMessage = null) }
+            runCatching {
+                encryptedBackupStore.backUpNow()
+            }.onSuccess {
+                refresh()
+                _state.update {
+                    it.copy(
+                        isEncryptedBackupWorking = false,
+                        statusMessage = YouStatusCopy.EncryptedBackupUpdated,
+                        error = null,
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isEncryptedBackupWorking = false,
+                        error = encryptedBackupErrorMessage(error, YouStatusCopy.CouldNotUpdateEncryptedBackup),
+                    )
+                }
+            }
+        }
+    }
+
+    fun restoreEncryptedBackup(
+        authReason: String = YouStatusCopy.RestoreEncryptedBackupReason,
+        authFailure: String = YouStatusCopy.CouldNotConfirmIdentity,
+    ) {
+        viewModelScope.launch {
+            if (!biometricGate.authenticate(authReason)) {
+                _state.update { it.copy(error = authFailure) }
+                return@launch
+            }
+            _state.update { it.copy(isEncryptedBackupWorking = true, error = null, statusMessage = null) }
+            runCatching {
+                encryptedBackupStore.restore()
+            }.onSuccess { result ->
+                val sessions = indexStore.load()
+                _state.update {
+                    it.copy(
+                        isEncryptedBackupWorking = false,
+                        isEncryptedBackupEnabled = true,
+                        encryptedBackupLastDate = encryptedBackupStore.status().lastBackupDate,
+                        localAnkyFileCount = sessions.size,
+                        completeAnkyCount = sessions.count { session -> session.isComplete },
+                        totalWritingMinutes = totalWritingMinutes(sessions),
+                        currentStreak = currentStreak(sessions.filter { session -> session.isComplete }.map { session -> session.createdAt }),
+                        reflectionCount = localReflectionCount(),
+                        completeAnkySessions = completeSessions(sessions),
+                        statusMessage = "Imported ${pluralize(result.ankyCount, ".anky file", ".anky files")} and ${pluralize(result.reflectionCount, "reflection", "reflections")}.",
+                        error = null,
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isEncryptedBackupWorking = false,
+                        error = encryptedBackupErrorMessage(error, "Anky could not restore from encrypted backup."),
+                    )
+                }
+            }
+        }
+    }
+
     fun prepareFormattedWritingExport() {
         viewModelScope.launch {
             runCatching {
@@ -420,11 +557,14 @@ class YouViewModel(
         }
         val cachedCredits = if (accountId.isBlank()) null else cachedCreditState(reflectionCreditCache.balance(accountId))
         val sessions = indexStore.rebuild(archive, reflectionStore)
+        val encryptedBackupStatus = encryptedBackupStore.status()
         _state.update {
             it.copy(
                 accountId = accountId.ifBlank { it.accountId },
                 creditState = cachedCredits ?: it.creditState,
                 hasClaimedFreeCredits = if (accountId.isBlank()) it.hasClaimedFreeCredits else reflectionCreditCache.hasClaimedFreeCredits(accountId),
+                isEncryptedBackupEnabled = encryptedBackupStatus.isEnabled,
+                encryptedBackupLastDate = encryptedBackupStatus.lastBackupDate,
                 completeAnkyCount = sessions.count { session -> session.isComplete },
                 localAnkyFileCount = sessions.size,
                 totalWritingMinutes = totalWritingMinutes(sessions),
@@ -549,6 +689,7 @@ class YouViewModel(
                 reminderScheduler.setEnabled(false, 9 * 60)
                 settingsStore.resetToDefaults()
                 appOpenStore.clear()
+                encryptedBackupStore.deleteBackupAndDisable()
                 identityStore.resetForDevelopment()
                 creditsClient.logOutIfConfigured()
                 reflectionCreditCache.clear()
@@ -569,6 +710,9 @@ class YouViewModel(
                         isRestoringPurchases = false,
                         exportedFile = null,
                         formattedWritingExportFile = null,
+                        isEncryptedBackupEnabled = false,
+                        encryptedBackupLastDate = null,
+                        isEncryptedBackupWorking = false,
                         localAnkyFileCount = 0,
                         completeAnkyCount = 0,
                         totalWritingMinutes = 0,
@@ -661,16 +805,20 @@ class YouViewModel(
 
 internal fun recoveryImportErrorMessage(error: Throwable): String =
     when (error.message) {
-        "Recovery phrase must contain 12 words." -> "Recovery phrase must be 12 words."
-        "Recovery phrase contains an unsupported word." -> "Recovery phrase contains an unrecognized word."
+        "Recovery phrase must contain 12 words." -> "Recovery words must be 12 words."
+        "Recovery phrase contains an unsupported word." -> "Recovery words contain an unrecognized word."
         else -> "Could not recover that identity."
     }
+
+internal fun encryptedBackupErrorMessage(error: Throwable, fallback: String): String =
+    (error as? AndroidEncryptedBackupException)?.reason?.copy ?: error.message ?: fallback
 
 internal fun mergeRefreshedYouState(previous: YouState, refreshed: YouState): YouState =
     refreshed.copy(
         recoveryPhrase = previous.recoveryPhrase,
         purchasingCreditPackageId = previous.purchasingCreditPackageId,
         isRestoringPurchases = previous.isRestoringPurchases,
+        isEncryptedBackupWorking = previous.isEncryptedBackupWorking,
         exportedFile = previous.exportedFile,
         formattedWritingExportFile = previous.formattedWritingExportFile,
         statusMessage = previous.statusMessage,
@@ -687,7 +835,13 @@ internal fun creditLoadFailureState(): CreditState =
     CreditState(false, null, YouStatusCopy.CouldNotLoadCredits)
 
 internal object YouStatusCopy {
-    const val IdentityBackupSaved = "Recovery phrase saved to device secure storage. Use Data export for writing and reflection backups."
+    const val ShowRecoveryWordsReason = "Show your Anky recovery words."
+    const val BackUpRecoveryWordsReason = "Back up your Anky recovery words to device secure storage."
+    const val RecoverAnkyAccessReason = "Recover your Anky access."
+    const val EnableEncryptedBackupReason = "Enable encrypted Anky backup."
+    const val RestoreEncryptedBackupReason = "Restore your encrypted Anky backup."
+    const val CouldNotConfirmIdentity = "Could not confirm identity."
+    const val IdentityBackupSaved = "Recovery words saved to device secure storage. Use Data export for writing and reflection backups."
     const val RecoveryPhraseImported = "Identity recovered."
     const val MapIndexRepaired = "Map index repaired."
     const val LocalReflectionsCleared = "Local reflections cleared."
@@ -706,8 +860,14 @@ internal object YouStatusCopy {
     const val CreditGiftDetail = "Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits."
     const val SpendGiftBeforeBuying = "Use this device's first two reflections before buying more credits."
     const val CouldNotLoadLocalWriterIdentity = "Could not load the local Base identity."
-    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery phrase."
+    const val CouldNotLoadRecoveryPhrase = "Could not load the recovery words."
     const val CouldNotBackUpAnkyIdentity = "Could not back up Anky identity."
     const val CouldNotScheduleDailyReminder = "Could not schedule the daily reminder."
     const val CouldNotLoadCredits = "Could not load credits."
+    const val EncryptedBackupOn = "Encrypted backup is on."
+    const val EncryptedBackupOff = "Encrypted backup is off."
+    const val EncryptedBackupUpdated = "Encrypted backup updated."
+    const val EncryptedBackupOnAfterNextWriting = "Encrypted backup is on. It will run after your next writing session."
+    const val CouldNotEnableEncryptedBackup = "Could not enable encrypted backup."
+    const val CouldNotUpdateEncryptedBackup = "Could not update encrypted backup."
 }

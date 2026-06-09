@@ -20,8 +20,8 @@ class DailyReminderReceiver : BroadcastReceiver() {
         }
         val notification = NotificationCompat.Builder(context, DailyReminderScheduler.ChannelId)
             .setSmallIcon(R.drawable.ic_anky_notification)
-            .setContentTitle("ANKY")
-            .setContentText("write your anky today")
+            .setContentTitle(context.getString(R.string.daily_reminder_notification_title))
+            .setContentText(context.getString(R.string.daily_reminder_notification_body))
             .setAutoCancel(true)
             .build()
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

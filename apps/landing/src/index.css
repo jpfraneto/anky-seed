@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #02030a;
+  --color-ink-900: #070913;
+  --color-ink-800: #101320;
+  --color-cream: #f8f0df;
+  --color-gold-100: #fff2c4;
+  --color-gold-200: #f5d98e;
+  --color-gold-300: #e2ac4a;
+  --color-gold-400: #a96f1f;
+  --font-serif: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  html {
+    background: #02030a;
+    color: #f8f0df;
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100svh;
+  }
+
+  button,
+  a {
+    letter-spacing: 0;
+  }
+
+  ::selection {
+    background: rgba(226, 172, 74, 0.32);
+    color: #fff2c4;
+  }
+}
+
+@layer utilities {
+  .anky-star-field {
+    background-image:
+      radial-gradient(circle at 18% 18%, rgba(255, 242, 196, 0.68) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 84% 24%, rgba(245, 217, 142, 0.48) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 30% 72%, rgba(255, 255, 255, 0.36) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 72% 78%, rgba(226, 172, 74, 0.34) 0 1px, transparent 1.5px),
+      linear-gradient(115deg, transparent 0 45%, rgba(226, 172, 74, 0.08) 45.2%, transparent 45.6% 100%);
+    background-size:
+      220px 220px,
+      280px 280px,
+      340px 340px,
+      260px 260px,
+      100% 100%;
+  }
+
+  .anky-ritual-ring-dim {
+    background:
+      conic-gradient(
+        from -90deg,
+        rgba(232, 51, 36, 0.20) 0deg 44deg,
+        rgba(242, 122, 26, 0.20) 45deg 89deg,
+        rgba(245, 207, 56, 0.20) 90deg 134deg,
+        rgba(56, 184, 66, 0.20) 135deg 179deg,
+        rgba(26, 99, 242, 0.20) 180deg 224deg,
+        rgba(77, 64, 204, 0.20) 225deg 269deg,
+        rgba(148, 61, 230, 0.20) 270deg 314deg,
+        rgba(245, 242, 222, 0.20) 315deg 360deg
+      );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 17px), black calc(100% - 16px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 17px), black calc(100% - 16px));
+  }
+
+  .anky-ritual-ring-active {
+    mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    filter: drop-shadow(0 0 10px rgba(226, 172, 74, 0.28));
+  }
+
+  .anky-ritual-ring-preview {
+    background:
+      conic-gradient(
+        from -90deg,
+        rgba(232, 51, 36, 0.88) 0deg 44deg,
+        rgba(242, 122, 26, 0.78) 45deg 68deg,
+        transparent 69deg 360deg
+      );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    filter: drop-shadow(0 0 10px rgba(232, 51, 36, 0.18));
+  }
+
+  .anky-ring-cuts {
+    background:
+      repeating-conic-gradient(
+        from -78.75deg,
+        rgba(0, 0, 0, 0.72) 0deg 2.8deg,
+        transparent 2.8deg 45deg
+      );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 28px), black calc(100% - 27px), black calc(100% - 1px), transparent 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 28px), black calc(100% - 27px), black calc(100% - 1px), transparent 100%);
+  }
+
+  .anky-companion-breathe {
+    animation: anky-companion-breathe 3.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes anky-companion-breathe {
+    0% {
+      transform: translateY(0) scale(0.99);
+    }
+    100% {
+      transform: translateY(-3px) scale(1.02);
+    }
+  }
+}

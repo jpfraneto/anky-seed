@@ -1,7 +1,11 @@
 package inc.anky.android.storage
 
 import inc.anky.android.core.storage.ActiveDraftStore
+import inc.anky.android.core.storage.AndroidEncryptedBackupError
+import inc.anky.android.core.storage.AndroidEncryptedBackupException
+import inc.anky.android.core.storage.AndroidEncryptedBackupStore
 import inc.anky.android.core.storage.BackupImportResult
+import inc.anky.android.core.storage.BackupExporting
 import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.BackupZipWriter
 import inc.anky.android.core.storage.FormattedWritingExportWriter
@@ -13,6 +17,7 @@ import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
 import inc.anky.android.core.storage.SingleAnkyImporter
 import inc.anky.android.core.storage.startOfLocalDay
+import inc.anky.android.core.identity.RecoveryPhrase
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -129,6 +134,108 @@ class StorageTest {
             fail("Expected invalid .anky rejection")
         } catch (_: Throwable) {
             assertEquals(0, directory.listFiles { file -> file.extension == "anky" }!!.size)
+        }
+    }
+
+    @Test
+    fun encryptedBackupStoreEncryptsAndRestoresBackupZipWithRecoveryPhrase() {
+        val sourceArchive = LocalAnkyArchive.forDirectory(temp.newFolder("source-ankys"))
+        val sourceReflections = ReflectionStore.forDirectory(temp.newFolder("source-reflections"))
+        val saved = sourceArchive.save("1770000000000 h\n0042 i\n8000")
+        sourceReflections.save(
+            LocalReflection(
+                hash = saved.hash,
+                title = "Small Thread",
+                reflection = "Here is what I saw.",
+                createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+                creditsRemaining = 2,
+                tags = listOf("truth"),
+            ),
+        )
+        val exportedZip = File(temp.newFolder("export"), "backup.zip")
+        BackupZipWriter.write(
+            exportedZip,
+            sourceArchive.list(),
+            sourceReflections.list(),
+            Instant.parse("2026-01-02T00:00:00Z"),
+        )
+
+        val targetArchive = LocalAnkyArchive.forDirectory(temp.newFolder("target-ankys"))
+        val targetReflections = ReflectionStore.forDirectory(temp.newFolder("target-reflections"))
+        val targetIndex = SessionIndexStore.forFile(File(temp.newFolder("target-index"), "session-index.json"))
+        val phrase = RecoveryPhrase.parse("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
+        val backupFile = File(temp.newFolder("encrypted"), "anky-private-backup.v1")
+        val statusFile = File(temp.newFolder("encrypted-status"), "status.json")
+        val store = AndroidEncryptedBackupStore(
+            backupExporter = StaticBackupExporter(exportedZip),
+            backupImporter = BackupImporter(
+                context = null,
+                archive = targetArchive,
+                reflectionStore = targetReflections,
+                indexStore = targetIndex,
+            ),
+            recoveryPhraseProvider = { phrase },
+            backupFile = backupFile,
+            statusFile = statusFile,
+            now = { Instant.parse("2026-01-03T00:00:00Z") },
+            randomBytes = { count -> ByteArray(count) { it.toByte() } },
+        )
+
+        store.enableAndBackUpNow()
+
+        assertTrue(store.status().isEnabled)
+        assertEquals(Instant.parse("2026-01-03T00:00:00Z"), store.status().lastBackupDate)
+        assertTrue(backupFile.readText(Charsets.UTF_8).contains("AES-GCM-HKDF-SHA256"))
+        assertFalse(backupFile.readText(Charsets.UTF_8).contains("1770000000000 h"))
+
+        val result = store.restore()
+
+        assertEquals(BackupImportResult(ankyCount = 1, reflectionCount = 1), result)
+        assertEquals("hi", targetArchive.list().single().reconstructedText)
+        assertEquals("Small Thread", targetReflections.load(targetArchive.list().single().hash)?.title)
+    }
+
+    @Test
+    fun encryptedBackupStoreRejectsWrongRecoveryPhrase() {
+        val exportedZip = File(temp.newFolder("export"), "backup.zip").apply {
+            writeBytes("not a real zip".toByteArray(Charsets.UTF_8))
+        }
+        val phrase = RecoveryPhrase.parse("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
+        val wrongPhrase = RecoveryPhrase.parse("able about above absent absorb abstract access accident account across action actual")
+        val directory = temp.newFolder("encrypted")
+        val store = AndroidEncryptedBackupStore(
+            backupExporter = StaticBackupExporter(exportedZip),
+            backupImporter = BackupImporter(
+                context = null,
+                archive = LocalAnkyArchive.forDirectory(temp.newFolder("target-ankys")),
+                reflectionStore = ReflectionStore.forDirectory(temp.newFolder("target-reflections")),
+                indexStore = SessionIndexStore.forFile(File(temp.newFolder("target-index"), "session-index.json")),
+            ),
+            recoveryPhraseProvider = { phrase },
+            backupFile = File(directory, "anky-private-backup.v1"),
+            statusFile = File(directory, "status.json"),
+            randomBytes = { count -> ByteArray(count) { it.toByte() } },
+        )
+        store.enableAndBackUpNow()
+        val wrongPhraseStore = AndroidEncryptedBackupStore(
+            backupExporter = StaticBackupExporter(exportedZip),
+            backupImporter = BackupImporter(
+                context = null,
+                archive = LocalAnkyArchive.forDirectory(temp.newFolder("wrong-target-ankys")),
+                reflectionStore = ReflectionStore.forDirectory(temp.newFolder("wrong-target-reflections")),
+                indexStore = SessionIndexStore.forFile(File(temp.newFolder("wrong-target-index"), "session-index.json")),
+            ),
+            recoveryPhraseProvider = { wrongPhrase },
+            backupFile = File(directory, "anky-private-backup.v1"),
+            statusFile = File(directory, "status.json"),
+            randomBytes = { count -> ByteArray(count) { it.toByte() } },
+        )
+
+        try {
+            wrongPhraseStore.restore()
+            fail("Expected wrong recovery phrase to fail decryption")
+        } catch (error: AndroidEncryptedBackupException) {
+            assertEquals(AndroidEncryptedBackupError.DecryptionFailed, error.reason)
         }
     }
 
@@ -749,5 +856,10 @@ class StorageTest {
         putNextEntry(ZipEntry(path))
         write(bytes)
         closeEntry()
+    }
+
+    private class StaticBackupExporter(private val file: File?) : BackupExporting {
+        override fun exportArchiveZip(): File? = file
+        override fun exportFormattedWritings(): File? = null
     }
 }

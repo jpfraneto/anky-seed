@@ -10,6 +10,7 @@ import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.notifications.DailyReminderScheduler
 import inc.anky.android.core.storage.ActiveDraftStore
+import inc.anky.android.core.storage.AndroidEncryptedBackupStore
 import inc.anky.android.core.storage.AppOpenStore
 import inc.anky.android.core.storage.BackupImporter
 import inc.anky.android.core.storage.Exporter
@@ -41,6 +42,12 @@ class AppContainer(
         reflectionStore,
         sessionIndexStore,
         recordEarlierFirstOpenDate = { appOpenStore.recordEarlierFirstOpenDate(it) },
+    )
+    val encryptedBackupStore = AndroidEncryptedBackupStore(
+        appContext,
+        identityStore,
+        exporter,
+        backupImporter,
     )
 
     fun mirrorClient(baseUrl: String): MirrorClient =

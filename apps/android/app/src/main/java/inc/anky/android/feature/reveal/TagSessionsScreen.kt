@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import inc.anky.android.R
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
@@ -61,6 +63,8 @@ fun TagSessionsScreen(
 ) {
     val sessions = remember { mutableStateOf<List<SessionSummary>>(emptyList()) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val backLabel = stringResource(R.string.back)
+    val emptyTagSessionsLabel = stringResource(R.string.tag_no_saved_sessions)
 
     fun refreshSessions() {
         sessions.value = sessionIndexStore.sessionsWithTag(tag)
@@ -99,7 +103,7 @@ fun TagSessionsScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.Filled.ChevronLeft,
-                        contentDescription = "Back",
+                        contentDescription = backLabel,
                         tint = AnkyColors.Gold,
                         modifier = Modifier.size(30.dp),
                     )
@@ -124,7 +128,7 @@ fun TagSessionsScreen(
                 if (sessions.value.isEmpty()) {
                     item {
                         Text(
-                            "no saved sessions with this tag.",
+                            emptyTagSessionsLabel,
                             style = AnkyType.Mono.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.68f)),
                             modifier = Modifier.padding(top = 8.dp),
                         )
@@ -143,6 +147,7 @@ fun TagSessionsScreen(
 
 @Composable
 private fun TagSessionRow(summary: SessionSummary, onOpenReveal: (String) -> Unit) {
+    val wordLabel = stringResource(if (summary.wordCount == 1) R.string.word else R.string.words)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -166,7 +171,7 @@ private fun TagSessionRow(summary: SessionSummary, onOpenReveal: (String) -> Uni
                 style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
             )
             Text(
-                "${summary.wordCount} ${if (summary.wordCount == 1) "word" else "words"}",
+                "${summary.wordCount} $wordLabel",
                 style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.48f)),
             )
         }

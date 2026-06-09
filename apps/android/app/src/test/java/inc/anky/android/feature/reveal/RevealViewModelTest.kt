@@ -54,6 +54,28 @@ class RevealViewModelTest {
     }
 
     @Test
+    fun progressMessagesMatchCurrentIosStages() {
+        assertEquals("opening the mirror...", progressMessage("stream_open"))
+        assertEquals("received your writing...", progressMessage("request_received"))
+        assertEquals("reading your .anky...", progressMessage("dot_anky_read"))
+        assertEquals("preparing your writing...", progressMessage("hash_computed"))
+        assertEquals("opening the way...", progressMessage("identity_verified"))
+        assertEquals("validating the ritual...", progressMessage("protocol_validated"))
+        assertEquals("checking reflection access...", progressMessage("credit_checked"))
+        assertEquals("preparing the reflection...", progressMessage("reflection_prepared"))
+        assertEquals("anky is writing...", progressMessage("provider_started"))
+        assertEquals("bringing it back...", progressMessage("provider_finished"))
+        assertEquals("settling...", progressMessage("credit_spent"))
+        assertEquals("checking payment options...", progressMessage("x402_quote_created"))
+        assertEquals("payment verified...", progressMessage("x402_verified"))
+        assertEquals("settling...", progressMessage("x402_settled"))
+        assertEquals("no credit spent...", progressMessage("credit_not_spent"))
+        assertEquals("opening the scroll...", progressMessage("complete"))
+        assertEquals("server fallback", progressMessage("unknown_stage", "server fallback"))
+        assertEquals("anky is working...", progressMessage("unknown_stage"))
+    }
+
+    @Test
     fun askAnkyDoesNotUploadWhenReflectionAlreadyExists() = runTest {
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())

@@ -74,6 +74,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -88,6 +89,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import inc.anky.android.R
 import inc.anky.android.core.credits.CreditPackage
+import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.ui.components.AnkyChatAction
@@ -124,6 +126,7 @@ fun RevealScreen(
     var didAutoStartReflection by remember { mutableStateOf(false) }
     var showCreditPurchaseSheet by remember { mutableStateOf(false) }
     val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val labels = revealLabels()
 
     fun scrollToReflection() {
         scope.launch {
@@ -208,6 +211,7 @@ fun RevealScreen(
                 onBack = onBack,
                 canDelete = artifact != null,
                 isDeleting = state.isDeleting,
+                deleteContentDescription = labels.deleteWritingSession,
                 onDelete = {
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     confirmDelete = true
@@ -240,18 +244,20 @@ fun RevealScreen(
                     )
                 }
                 RevealCopyButton(
-                    label = "copy writing",
+                    label = labels.copyWriting.lowercase(),
+                    copiedLabel = labels.writingCopied.lowercase(),
                     copied = state.copiedSection == RevealCopySection.Writing,
                     onClick = { copySection(RevealCopySection.Writing) },
                     modifier = Modifier.padding(top = 16.dp),
                 )
-                PrivacyDivider(Modifier.padding(top = 34.dp))
+                PrivacyDivider(labels.privacyNote, labels.togglePrivacyMessage, Modifier.padding(top = 34.dp))
 
                 when {
                     state.reflection != null -> {
                         SavedReflectionPanel(
                             reflection = state.reflection,
                             copied = state.copiedSection == RevealCopySection.Reflection,
+                            labels = labels,
                             onCopy = { copySection(RevealCopySection.Reflection) },
                             modifier = Modifier.padding(top = 36.dp),
                         )
@@ -261,12 +267,14 @@ fun RevealScreen(
                             markdown = state.streamingReflectionMarkdown,
                             status = state.reflectionStatusMessage,
                             generatedCharacters = state.streamingReflectionCharacterCount,
+                            labels = labels,
                             modifier = Modifier.padding(top = 36.dp),
                         )
                     }
                     inlineReflectionActive && state.error != null -> {
                         ReflectionErrorPanel(
                             message = state.error,
+                            title = labels.mirrorDidNotOpen,
                             modifier = Modifier.padding(top = 36.dp),
                         )
                     }
@@ -276,8 +284,8 @@ fun RevealScreen(
         if (copiedBurst != null) {
             Text(
                 when (copiedBurst) {
-                    RevealCopySection.Reflection -> "copied reflection"
-                    else -> "copied writing"
+                    RevealCopySection.Reflection -> labels.copiedReflection
+                    else -> labels.copiedWriting
                 },
                 style = AnkyType.Mono.copy(color = AnkyColors.Paper, fontWeight = FontWeight.Bold),
                 modifier = Modifier
@@ -292,7 +300,7 @@ fun RevealScreen(
         RevealEdgeBackSwipe(onBack = onBack, modifier = Modifier.align(Alignment.CenterStart))
         if (artifact != null) {
             RevealBottomActionButton(
-                title = bottomActionTitle(state),
+                title = bottomActionTitle(state, labels),
                 isLoading = state.isAsking,
                 isEnabled = bottomActionIsEnabled(state),
                 onClick = {
@@ -323,9 +331,9 @@ fun RevealScreen(
         if (confirmDelete) {
             AlertDialog(
                 onDismissRequest = { confirmDelete = false },
-                title = { Text("Delete forever?") },
+                title = { Text(labels.deleteWritingSessionQuestion) },
                 text = {
-                    Text("This permanently deletes this writing session. This cannot be undone.")
+                    Text(labels.deleteWritingSessionBody)
                 },
                 confirmButton = {
                     TextButton(
@@ -335,12 +343,12 @@ fun RevealScreen(
                             viewModel.deleteSession()
                         },
                     ) {
-                        Text("Delete")
+                        Text(labels.delete)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { confirmDelete = false }) {
-                        Text("Cancel")
+                        Text(labels.cancel)
                     }
                 },
                 containerColor = AnkyColors.Ink,
@@ -367,6 +375,133 @@ fun RevealScreen(
             }
         }
     }
+}
+
+private data class RevealLabels(
+    val privacyNote: String,
+    val writingCopied: String,
+    val copyWriting: String,
+    val deleteWritingSession: String,
+    val deleteWritingSessionQuestion: String,
+    val delete: String,
+    val cancel: String,
+    val deleteWritingSessionBody: String,
+    val togglePrivacyMessage: String,
+    val readReflection: String,
+    val reflectThisAnky: String,
+    val reflectThisAnkyLeft: (Int) -> String,
+    val reflectThisAnkyDeviceGift: String,
+    val copyReflection: String,
+    val copiedReflection: String,
+    val copiedWriting: String,
+    val reflectionLeft: (Int) -> String,
+    val receivingReflection: String,
+    val getMoreCredits: String,
+    val writeMinutes: String,
+    val loading: String,
+    val mirrorDidNotOpen: String,
+    val mirrorForming: String,
+    val writingReflectionCharacters: (Int) -> String,
+    val ankyDrawingThread: (Int) -> String,
+    val ankyReading: String,
+    val creditsSheetTitle: String,
+    val creditsSheetSubtitle: String,
+    val refreshReflectionCredits: String,
+    val loadingCreditPacks: String,
+    val noCreditPacksAvailable: String,
+    val writingIsFreeOneCreditReflection: String,
+    val availableCredits: String,
+    val bestValue: String,
+    val chatStayingWithAnky: String,
+    val chatReadingSlowly: String,
+    val chatOpenMirror: String,
+    val chatWriteAgain: String,
+    val chatHasReflection: String,
+    val chatReadReflection: String,
+    val chatReflectThisAnky: String,
+    val chatOpenCredits: String,
+    val sheetMirror: String,
+    val sheetTags: String,
+    val progressComplete: String,
+    val progressReceiving: String,
+    val progressChars: (Int) -> String,
+    val invitationCheckingMirror: String,
+    val invitationAccessEmpty: String,
+    val invitationMirrorMayBeOpen: String,
+    val invitationReady: String,
+    val readyToMirrorArtifact: String,
+    val shortSessionMessages: List<String>,
+)
+
+@Composable
+private fun revealLabels(): RevealLabels {
+    val context = LocalContext.current
+    return RevealLabels(
+        privacyNote = stringResource(R.string.reveal_privacy_note),
+        writingCopied = stringResource(R.string.writing_copied),
+        copyWriting = stringResource(R.string.copy_writing),
+        deleteWritingSession = stringResource(R.string.delete_writing_session),
+        deleteWritingSessionQuestion = stringResource(R.string.delete_writing_session_question),
+        delete = stringResource(R.string.delete),
+        cancel = stringResource(R.string.cancel_title),
+        deleteWritingSessionBody = stringResource(R.string.delete_writing_session_body),
+        togglePrivacyMessage = stringResource(R.string.reveal_toggle_privacy_message),
+        readReflection = stringResource(R.string.read_reflection),
+        reflectThisAnky = stringResource(R.string.reflect_this_anky),
+        reflectThisAnkyLeft = { count -> context.getString(R.string.reflect_this_anky_left, count) },
+        reflectThisAnkyDeviceGift = stringResource(R.string.reflect_this_anky_device_gift),
+        copyReflection = stringResource(R.string.copy_reflection),
+        copiedReflection = stringResource(R.string.copied_reflection),
+        copiedWriting = stringResource(R.string.copied_writing),
+        reflectionLeft = { count ->
+            context.getString(
+                if (count == 1) R.string.reflection_left else R.string.reflections_left,
+                count,
+            )
+        },
+        receivingReflection = stringResource(R.string.receiving_reflection),
+        getMoreCredits = stringResource(R.string.get_more_credits),
+        writeMinutes = stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes),
+        loading = stringResource(R.string.loading),
+        mirrorDidNotOpen = stringResource(R.string.mirror_did_not_open),
+        mirrorForming = stringResource(R.string.reveal_mirror_forming),
+        writingReflectionCharacters = { count -> context.getString(R.string.reveal_writing_reflection_characters, count) },
+        ankyDrawingThread = { count -> context.getString(R.string.reveal_anky_drawing_thread, count) },
+        ankyReading = stringResource(R.string.reveal_anky_reading),
+        creditsSheetTitle = stringResource(R.string.credits_sheet_title),
+        creditsSheetSubtitle = stringResource(R.string.credits_sheet_subtitle),
+        refreshReflectionCredits = stringResource(R.string.refresh_reflection_credits),
+        loadingCreditPacks = stringResource(R.string.loading_credit_packs),
+        noCreditPacksAvailable = stringResource(R.string.no_credit_packs_available),
+        writingIsFreeOneCreditReflection = stringResource(R.string.writing_is_free_one_credit_reflection),
+        availableCredits = stringResource(R.string.available_credits),
+        bestValue = stringResource(R.string.best_value),
+        chatStayingWithAnky = stringResource(R.string.reveal_chat_staying_with_anky),
+        chatReadingSlowly = stringResource(R.string.reveal_chat_reading_slowly),
+        chatOpenMirror = stringResource(R.string.reveal_chat_open_mirror),
+        chatWriteAgain = stringResource(R.string.reveal_chat_write_again),
+        chatHasReflection = stringResource(R.string.reveal_chat_has_reflection),
+        chatReadReflection = stringResource(R.string.reveal_chat_read_reflection),
+        chatReflectThisAnky = stringResource(R.string.reveal_chat_reflect_this_anky),
+        chatOpenCredits = stringResource(R.string.reveal_chat_open_credits),
+        sheetMirror = stringResource(R.string.reveal_sheet_mirror),
+        sheetTags = stringResource(R.string.reveal_sheet_tags),
+        progressComplete = stringResource(R.string.reveal_progress_complete),
+        progressReceiving = stringResource(R.string.reveal_progress_receiving),
+        progressChars = { count -> context.getString(R.string.reveal_progress_chars, count) },
+        invitationCheckingMirror = stringResource(R.string.reveal_invitation_checking_mirror),
+        invitationAccessEmpty = stringResource(R.string.reveal_invitation_access_empty),
+        invitationMirrorMayBeOpen = stringResource(R.string.reveal_invitation_mirror_may_be_open),
+        invitationReady = stringResource(R.string.reveal_invitation_ready),
+        readyToMirrorArtifact = stringResource(R.string.reveal_ready_to_mirror_artifact),
+        shortSessionMessages = listOf(
+            stringResource(R.string.reveal_short_keep_going, AnkyDuration.CompleteRitualMinutes),
+            stringResource(R.string.reveal_short_thread_opened, AnkyDuration.CompleteRitualMinutes),
+            stringResource(R.string.reveal_short_spark, AnkyDuration.CompleteRitualMinutes),
+            stringResource(R.string.reveal_short_whole_ritual, AnkyDuration.CompleteRitualMinutes),
+            stringResource(R.string.reveal_short_cross_mark, AnkyDuration.CompleteRitualMinutes),
+        ),
+    )
 }
 
 @Composable
@@ -406,8 +541,10 @@ private fun RevealHeader(
     onBack: () -> Unit,
     canDelete: Boolean,
     isDeleting: Boolean,
+    deleteContentDescription: String,
     onDelete: () -> Unit,
 ) {
+    val backLabel = stringResource(R.string.back)
     Column(Modifier.fillMaxWidth().background(AnkyColors.Ink.copy(alpha = 0.96f))) {
         Row(
             modifier = Modifier
@@ -421,7 +558,7 @@ private fun RevealHeader(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
-                    contentDescription = "Back",
+                    contentDescription = backLabel,
                     tint = AnkyColors.Paper,
                     modifier = Modifier.size(22.dp),
                 )
@@ -438,7 +575,7 @@ private fun RevealHeader(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "Delete writing session",
+                        contentDescription = deleteContentDescription,
                         tint = AnkyColors.Danger.copy(alpha = 0.88f),
                         modifier = Modifier.size(19.dp),
                     )
@@ -454,6 +591,7 @@ private fun RevealHeader(
 @Composable
 private fun RevealCopyButton(
     label: String,
+    copiedLabel: String = "copied",
     copied: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -465,7 +603,7 @@ private fun RevealCopyButton(
             .border(1.dp, AnkyColors.Gold.copy(alpha = if (copied) 0.62f else 0.26f), RoundedCornerShape(5.dp)),
     ) {
         Text(
-            if (copied) "copied" else label,
+            if (copied) copiedLabel else label,
             style = AnkyType.Mono.copy(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -479,6 +617,7 @@ private fun RevealCopyButton(
 private fun SavedReflectionPanel(
     reflection: LocalReflection,
     copied: Boolean,
+    labels: RevealLabels,
     onCopy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -491,13 +630,14 @@ private fun SavedReflectionPanel(
         MarkdownishText(reflection.displayBody)
         reflection.creditsRemaining?.let { remaining ->
             Text(
-                "$remaining ${if (remaining == 1) "reflection" else "reflections"} left",
+                labels.reflectionLeft(remaining),
                 style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Paper.copy(alpha = 0.58f)),
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
         RevealCopyButton(
-            label = "copy reflection",
+            label = labels.copyReflection.lowercase(),
+            copiedLabel = labels.copiedReflection.lowercase(),
             copied = copied,
             onClick = onCopy,
             modifier = Modifier.padding(top = 8.dp),
@@ -510,17 +650,18 @@ private fun StreamingReflectionPanel(
     markdown: String,
     status: String,
     generatedCharacters: Int,
+    labels: RevealLabels,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
-            "the mirror is forming",
+            labels.mirrorForming,
             style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
         )
-        MirrorProgress(status = status, generatedCharacters = generatedCharacters)
+        MirrorProgress(status = status, generatedCharacters = generatedCharacters, labels = labels)
         if (markdown.isNotBlank()) {
             Text(
-                "writing reflection · $generatedCharacters characters",
+                labels.writingReflectionCharacters(generatedCharacters),
                 style = AnkyType.Caption.copy(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -535,11 +676,12 @@ private fun StreamingReflectionPanel(
 @Composable
 private fun ReflectionErrorPanel(
     message: String?,
+    title: String,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "the mirror did not open",
+            title,
             style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
         )
         Text(
@@ -594,13 +736,21 @@ private fun RevealBottomActionButton(
     }
 }
 
-private fun bottomActionTitle(state: RevealState): String =
+private fun bottomActionTitle(state: RevealState, labels: RevealLabels): String =
     when {
-        state.isAsking -> "LOADING"
-        state.reflection != null -> "READ REFLECTION"
-        state.needsCreditsToReflect -> "GET MORE CREDITS"
-        state.artifact?.isComplete == true -> "REFLECT THIS ANKY"
-        else -> "WRITE ${AnkyDuration.CompleteRitualMinutes} MINUTES"
+        state.isAsking -> labels.receivingReflection
+        state.reflection != null -> labels.readReflection
+        state.needsCreditsToReflect -> labels.getMoreCredits
+        state.artifact?.isComplete == true -> reflectButtonTitle(state, labels)
+        else -> labels.writeMinutes
+    }
+
+private fun reflectButtonTitle(state: RevealState, labels: RevealLabels): String =
+    when (val promptState = state.creditPromptState) {
+        is ReflectionCreditPromptState.Available -> labels.reflectThisAnkyLeft(promptState.count)
+        is ReflectionCreditPromptState.FreeGift -> labels.reflectThisAnkyDeviceGift
+        ReflectionCreditPromptState.Unavailable -> labels.getMoreCredits
+        ReflectionCreditPromptState.Unknown -> labels.reflectThisAnky
     }
 
 private fun bottomActionIsEnabled(state: RevealState): Boolean =
@@ -619,6 +769,7 @@ private fun RevealCreditPurchaseSheet(
     onPurchase: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val labels = revealLabels()
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(
@@ -629,13 +780,13 @@ private fun RevealCreditPurchaseSheet(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Anky reflection credits",
+                    labels.creditsSheetTitle,
                     style = AnkyType.Heading.copy(fontSize = 29.sp, fontWeight = FontWeight.Medium),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "Your space to be seen, held, and mirrored.",
+                    labels.creditsSheetSubtitle,
                     style = AnkyType.Body.copy(fontSize = 15.sp, color = AnkyColors.Paper.copy(alpha = 0.68f)),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -651,7 +802,7 @@ private fun RevealCreditPurchaseSheet(
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Refresh,
-                        contentDescription = "Refresh reflection credits",
+                        contentDescription = labels.refreshReflectionCredits,
                         tint = AnkyColors.Gold,
                         modifier = Modifier.size(22.dp),
                     )
@@ -659,12 +810,12 @@ private fun RevealCreditPurchaseSheet(
             }
         }
 
-        RevealCreditBalancePanel(state.creditBalance)
+        RevealCreditBalancePanel(state.creditBalance, labels)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when {
-                state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow("loading credit packs")
-                state.creditPackages.isEmpty() -> RevealCreditDisabledRow("no credit packs available")
+                state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.loadingCreditPacks)
+                state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.noCreditPacksAvailable)
                 else -> {
                     state.creditPackages.take(3).forEach { creditPackage ->
                         RevealCreditPackageRow(
@@ -672,6 +823,7 @@ private fun RevealCreditPurchaseSheet(
                             isRecommended = creditPackage.title == "11 reflections" ||
                                 creditPackage.packageId.endsWith(".credits.11"),
                             isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
+                            bestValue = labels.bestValue,
                             onPurchase = onPurchase,
                         )
                     }
@@ -691,7 +843,7 @@ private fun RevealCreditPurchaseSheet(
                 modifier = Modifier.size(13.dp),
             )
             Text(
-                "Writing is free. One credit = one reflection.",
+                labels.writingIsFreeOneCreditReflection,
                 style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.68f)),
                 modifier = Modifier.padding(horizontal = 10.dp),
                 textAlign = TextAlign.Center,
@@ -714,7 +866,7 @@ private fun RevealCreditPurchaseSheet(
 }
 
 @Composable
-private fun RevealCreditBalancePanel(balance: Int?) {
+private fun RevealCreditBalancePanel(balance: Int?, labels: RevealLabels) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -757,7 +909,7 @@ private fun RevealCreditBalancePanel(balance: Int?) {
                 ),
             )
             Text(
-                "available\ncredits",
+                labels.availableCredits,
                 style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.78f)),
                 lineHeight = 28.sp,
             )
@@ -770,6 +922,7 @@ private fun RevealCreditPackageRow(
     creditPackage: CreditPackage,
     isRecommended: Boolean,
     isPurchasing: Boolean,
+    bestValue: String,
     onPurchase: (String) -> Unit,
 ) {
     Row(
@@ -822,7 +975,7 @@ private fun RevealCreditPackageRow(
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (isRecommended && !isPurchasing) {
                 Text(
-                    "best value",
+                    bestValue,
                     style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
@@ -893,7 +1046,7 @@ private fun RevealTexture(modifier: Modifier = Modifier.fillMaxSize()) {
 }
 
 @Composable
-private fun PrivacyDivider(modifier: Modifier = Modifier) {
+private fun PrivacyDivider(note: String, toggleContentDescription: String, modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = modifier,
@@ -915,7 +1068,7 @@ private fun PrivacyDivider(modifier: Modifier = Modifier) {
             ) {
                 Icon(
                     imageVector = Icons.Filled.Lock,
-                    contentDescription = if (expanded) "Hide privacy note" else "Show privacy note",
+                    contentDescription = toggleContentDescription,
                     tint = AnkyColors.GoldSoft,
                     modifier = Modifier.size(17.dp),
                 )
@@ -924,7 +1077,7 @@ private fun PrivacyDivider(modifier: Modifier = Modifier) {
         }
         if (expanded) {
             Text(
-                "your writing only leaves this device if you ask for a reflection. the mirror processes it transiently and does not keep a writing archive.",
+                note,
                 style = AnkyType.Caption.copy(color = AnkyColors.Paper.copy(alpha = 0.62f), fontWeight = FontWeight.Normal),
                 textAlign = TextAlign.Center,
             )
@@ -941,36 +1094,37 @@ private fun RevealAnkyReflectionChat(
     onTryAgain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val labels = revealLabels()
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (state.isAsking) {
-            val status = state.reflectionStatusMessage.ifBlank { "i am staying with this .anky." }
+            val status = state.reflectionStatusMessage.ifBlank { labels.chatStayingWithAnky }
             AnkyConversationPrompt(
-                message = "$status\n\ni am reading slowly. not looking for a summary.",
-                actions = listOf(AnkyChatAction("open mirror", isPrimary = true, action = onRead)),
+                message = "$status\n\n${labels.chatReadingSlowly}",
+                actions = listOf(AnkyChatAction(labels.chatOpenMirror, isPrimary = true, action = onRead)),
                 isThinking = true,
             )
         } else if (state.artifact?.isComplete == false) {
             AnkyConversationPrompt(
-                message = shortSessionMessage(state),
-                actions = listOf(AnkyChatAction("write again", isPrimary = true, action = onTryAgain)),
+                message = shortSessionMessage(state, labels),
+                actions = listOf(AnkyChatAction(labels.chatWriteAgain, isPrimary = true, action = onTryAgain)),
             )
         } else if (state.reflection != null) {
             AnkyConversationPrompt(
-                message = "this anky has a reflection.",
-                actions = listOf(AnkyChatAction("read reflection", isPrimary = true, action = onRead)),
+                message = labels.chatHasReflection,
+                actions = listOf(AnkyChatAction(labels.chatReadReflection, isPrimary = true, action = onRead)),
             )
         } else {
             AnkyConversationPrompt(
-                message = reflectionInvitationMessage(state),
+                message = reflectionInvitationMessage(state, labels),
                 actions = buildList {
                     if (state.canSubmitReflectionRequest) {
-                        add(AnkyChatAction("reflect this anky", isPrimary = true, action = onAsk))
+                        add(AnkyChatAction(labels.chatReflectThisAnky, isPrimary = true, action = onAsk))
                     }
                     if (state.shouldShowCreditsLink) {
-                        add(AnkyChatAction("open credits", action = onOpenCredits))
+                        add(AnkyChatAction(labels.chatOpenCredits, action = onOpenCredits))
                     }
                 },
                 isThinking = state.creditsLoading,
@@ -995,6 +1149,7 @@ private fun ReflectionBottomSheetContent(
     onAsk: () -> Unit,
 ) {
     var revealLiveText by remember { mutableStateOf(false) }
+    val labels = revealLabels()
     val reflection = state.reflection
     val isStreamingSheet = state.isAsking || state.streamingReflectionMarkdown.isNotBlank()
     val sheetTopPadding = when {
@@ -1027,12 +1182,13 @@ private fun ReflectionBottomSheetContent(
                 }
                 isStreamingSheet -> {
                     Text(
-                        "the mirror is forming",
+                        labels.mirrorForming,
                         style = AnkyType.Heading.copy(fontSize = 28.sp, color = AnkyColors.Gold),
                     )
                     MirrorProgress(
                         status = state.reflectionStatusMessage,
                         generatedCharacters = state.streamingReflectionCharacterCount,
+                        labels = labels,
                     )
                     if (state.streamingReflectionMarkdown.isNotBlank()) {
                         if (!revealLiveText) {
@@ -1054,7 +1210,7 @@ private fun ReflectionBottomSheetContent(
                                         modifier = Modifier.size(14.dp),
                                     )
                                     Text(
-                                        "reveal live",
+                                        stringResource(R.string.reveal_live),
                                         style = AnkyType.Caption.copy(fontWeight = FontWeight.Bold, color = AnkyColors.GoldSoft),
                                     )
                                     Spacer(Modifier.weight(1f))
@@ -1063,7 +1219,7 @@ private fun ReflectionBottomSheetContent(
                         }
                         if (revealLiveText) {
                             Text(
-                                "writing reflection · ${state.streamingReflectionCharacterCount} characters",
+                                labels.writingReflectionCharacters(state.streamingReflectionCharacterCount),
                                 style = AnkyType.Caption.copy(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -1076,7 +1232,7 @@ private fun ReflectionBottomSheetContent(
                 }
                 else -> {
                     Text(
-                        "mirror",
+                        labels.sheetMirror,
                         style = AnkyType.Heading.copy(fontSize = 24.sp, color = AnkyColors.Gold),
                     )
                     Text(
@@ -1107,7 +1263,7 @@ private fun ReflectionBottomSheetContent(
                                 modifier = Modifier.size(14.dp),
                             )
                             Text(
-                                "reflect this anky",
+                                labels.reflectThisAnky.lowercase(),
                                 style = AnkyType.Caption.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = if (state.canSubmitReflectionRequest) AnkyColors.Ink else AnkyColors.Ink.copy(alpha = 0.52f),
@@ -1172,12 +1328,12 @@ private fun ReflectionScrollGlyph(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MirrorProgress(status: String, generatedCharacters: Int) {
+private fun MirrorProgress(status: String, generatedCharacters: Int, labels: RevealLabels) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         val statusLine = if (generatedCharacters > 0) {
-            "anky is drawing a thread from the writing. $generatedCharacters characters have arrived."
+            labels.ankyDrawingThread(generatedCharacters)
         } else {
-            status.ifBlank { "anky is reading..." }
+            status.ifBlank { labels.ankyReading }
         }
         MirrorThreadProgress(
             progress = mirrorThreadProgress(generatedCharacters),
@@ -1192,6 +1348,7 @@ private fun MirrorProgress(status: String, generatedCharacters: Int) {
 
 @Composable
 private fun MirrorThreadProgress(progress: Float, generatedCharacters: Int, isComplete: Boolean = false) {
+    val labels = revealLabels()
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Box(
             modifier = Modifier
@@ -1219,12 +1376,12 @@ private fun MirrorThreadProgress(progress: Float, generatedCharacters: Int, isCo
         }
         Row(Modifier.fillMaxWidth()) {
             Text(
-                if (isComplete) "complete" else "receiving",
+                if (isComplete) labels.progressComplete else labels.progressReceiving,
                 style = AnkyType.Caption.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Paper.copy(alpha = 0.52f)),
             )
             Spacer(Modifier.weight(1f))
             Text(
-                "$generatedCharacters chars",
+                labels.progressChars(generatedCharacters),
                 style = AnkyType.Caption.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Paper.copy(alpha = 0.52f)),
             )
         }
@@ -1241,9 +1398,10 @@ internal fun mirrorThreadProgress(generatedCharacters: Int, isComplete: Boolean 
 private fun ReflectionTags(tags: List<String>, onOpenTag: (String) -> Unit) {
     if (tags.isEmpty()) return
     val tagScrollState = rememberScrollState()
+    val labels = revealLabels()
     Column(modifier = Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "tags",
+            labels.sheetTags,
             style = AnkyType.Mono.copy(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -1273,17 +1431,17 @@ private fun ReflectionTags(tags: List<String>, onOpenTag: (String) -> Unit) {
     }
 }
 
-private fun reflectionInvitationMessage(state: RevealState): String =
+private fun reflectionInvitationMessage(state: RevealState, labels: RevealLabels): String =
     when {
-        state.creditsLoading -> "i am checking whether the mirror is open.\n\nyour writing stays here unless you ask me to reflect it."
+        state.creditsLoading -> labels.invitationCheckingMirror
         state.creditPromptState == inc.anky.android.core.mirror.ReflectionCreditPromptState.Unavailable ->
-            "i want to reflect this with you, but reflection access is empty right now."
+            labels.invitationAccessEmpty
         state.creditPromptState == inc.anky.android.core.mirror.ReflectionCreditPromptState.Unknown ->
-            "the mirror may be open.\n\nyour writing only leaves this device if you ask me now."
-        else -> "i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now."
+            labels.invitationMirrorMayBeOpen
+        else -> labels.invitationReady
     }
 
-private fun shortSessionMessage(state: RevealState): String =
+private fun shortSessionMessage(state: RevealState, labels: RevealLabels): String =
     if (state.artifact?.isComplete == false) {
         stableShortSessionMessage(
             hash = state.artifact.hash,
@@ -1291,19 +1449,14 @@ private fun shortSessionMessage(state: RevealState): String =
                 .splitToSequence(Regex("\\s+"))
                 .filter { it.isNotBlank() }
                 .count(),
+            messages = labels.shortSessionMessages,
         )
     } else {
-        "ready to mirror this artifact"
+        labels.readyToMirrorArtifact
     }
 
-private fun stableShortSessionMessage(hash: String, wordCount: Int): String {
-    val messages = listOf(
-        "keep going until you get to ${AnkyDuration.CompleteRitualMinutes} minutes.",
-        "the thread opened, but it needs the full ${AnkyDuration.CompleteRitualMinutes} minutes.",
-        "that was a spark. stay with it until ${AnkyDuration.CompleteRitualMinutes} minutes.",
-        "anky needs the whole ritual. come back and write ${AnkyDuration.CompleteRitualMinutes} minutes.",
-        "you stopped too soon. try again and cross the ${AnkyDuration.CompleteRitualMinutes}-minute mark.",
-    )
+private fun stableShortSessionMessage(hash: String, wordCount: Int, messages: List<String>): String {
+    if (messages.isEmpty()) return ""
     val stableValue = hash.take(8).toLongOrNull(radix = 16) ?: wordCount.toLong()
     return messages[(stableValue % messages.size.toLong()).toInt()]
 }

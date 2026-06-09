@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -91,7 +88,6 @@ fun AnkyPresenceOverlay(
     }
     var sequence by remember { mutableStateOf(defaultSequence) }
     var visible by remember { mutableStateOf(true) }
-    var showMenu by remember { mutableStateOf(false) }
     var forceCompanion by remember { mutableStateOf(false) }
     var cursor by remember { mutableIntStateOf(0) }
     var breath by remember { mutableStateOf(false) }
@@ -184,15 +180,10 @@ fun AnkyPresenceOverlay(
                             visible = !visible
                         }
                     },
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showMenu = true
-                    },
                 )
                 .pointerInput(maxWidthPx, maxHeightPx, keyboardHeightPx, sizePx) {
                     detectDragGestures(
                         onDragStart = {
-                            showMenu = false
                             followsHomePosition = false
                         },
                         onDragEnd = {
@@ -223,47 +214,6 @@ fun AnkyPresenceOverlay(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(sizeDp),
             )
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text(if (visible) "anky stays beside the writing" else "tap the sigil to bring anky back") },
-                    enabled = false,
-                    onClick = {},
-                )
-                if (visible) {
-                    DropdownMenuItem(
-                        text = { Text("Keep Anky here") },
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            followsHomePosition = false
-                            preferences.edit()
-                                .putFloat("x", offsetX ?: homeX)
-                                .putFloat("y", offsetY ?: homeY)
-                                .apply()
-                            showMenu = false
-                        },
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(if (visible) "Hide Anky" else "Show Anky") },
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        visible = !visible
-                        showMenu = false
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Change motion") },
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        sequence = sequence.next()
-                        showMenu = false
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Cancel") },
-                    onClick = { showMenu = false },
-                )
-            }
         }
     }
 }
