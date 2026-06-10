@@ -40,11 +40,16 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.KeyboardReturn
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +74,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -92,6 +100,7 @@ import inc.anky.android.core.credits.CreditPackage
 import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.LocalReflection
+import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.theme.AnkyColors
@@ -112,7 +121,7 @@ fun RevealScreen(
     onOpenCredits: () -> Unit = {},
     onBack: () -> Unit,
     onDeleted: () -> Unit = {},
-    onTryAgain: () -> Unit = {},
+    onTryAgain: (SavedAnky) -> Unit = {},
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -125,6 +134,7 @@ fun RevealScreen(
     var inlineReflectionActive by remember { mutableStateOf(false) }
     var didAutoStartReflection by remember { mutableStateOf(false) }
     var showCreditPurchaseSheet by remember { mutableStateOf(false) }
+    var reflectionPromptGuidanceVisible by remember { mutableStateOf(false) }
     val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val labels = revealLabels()
 
@@ -140,11 +150,15 @@ fun RevealScreen(
         val label = when (section) {
             RevealCopySection.Writing -> "Anky writing"
             RevealCopySection.Reflection -> "Anky reflection"
+            RevealCopySection.ReflectionPrompt -> "Anky reflection prompt"
         }
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         context.copyText(label, text)
         viewModel.markCopied(section)
         copiedBurst = section
+        if (section == RevealCopySection.ReflectionPrompt) {
+            reflectionPromptGuidanceVisible = true
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -166,7 +180,7 @@ fun RevealScreen(
 
     LaunchedEffect(copiedBurst) {
         val section = copiedBurst ?: return@LaunchedEffect
-        delay(740)
+        delay(1_500)
         copiedBurst = null
         viewModel.clearCopied(section)
     }
@@ -202,16 +216,21 @@ fun RevealScreen(
     ) {
         RevealTexture()
         Column(Modifier.fillMaxSize()) {
-            RevealHeader(
-                date = artifact?.createdAt?.let {
-                    DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault()).withZone(ZoneId.systemDefault()).format(it)
+            RevealTopBar(
+                title = artifact?.createdAt?.let {
+                    DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()).withZone(ZoneId.systemDefault()).format(it)
                 }.orEmpty(),
-                time = artifact?.createdAt?.let { DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault()).format(it) }.orEmpty(),
-                metadata = artifact?.let { "${AnkyDuration.formatted(it.durationMs)} / ${wordCountText(it.reconstructedText)}" }.orEmpty(),
+                copied = state.copiedSection == RevealCopySection.Writing ||
+                    state.copiedSection == RevealCopySection.ReflectionPrompt,
+                canCopyReflectionPrompt = artifact?.isComplete == true,
                 onBack = onBack,
                 canDelete = artifact != null,
                 isDeleting = state.isDeleting,
+                copyWritingContentDescription = labels.copyWriting,
+                copyReflectionPromptHint = labels.copyReflectionPromptHint,
                 deleteContentDescription = labels.deleteWritingSession,
+                onCopyWriting = { copySection(RevealCopySection.Writing) },
+                onCopyReflectionPrompt = { copySection(RevealCopySection.ReflectionPrompt) },
                 onDelete = {
                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     confirmDelete = true
@@ -234,6 +253,13 @@ fun RevealScreen(
                     .padding(top = 20.dp, bottom = 138.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
+                WritingSessionStatsHeader(
+                    wordCount = wordCountNumber(artifact.reconstructedText),
+                    duration = AnkyDuration.formatted(artifact.durationMs),
+                    backspaceCount = 0,
+                    enterCount = artifact.reconstructedText.count { it == '\n' },
+                    modifier = Modifier.padding(bottom = 14.dp),
+                )
                 SelectionContainer {
                     Text(
                         text = artifact.reconstructedText,
@@ -243,13 +269,6 @@ fun RevealScreen(
                             .testTag("reconstructed-text"),
                     )
                 }
-                RevealCopyButton(
-                    label = labels.copyWriting.lowercase(),
-                    copiedLabel = labels.writingCopied.lowercase(),
-                    copied = state.copiedSection == RevealCopySection.Writing,
-                    onClick = { copySection(RevealCopySection.Writing) },
-                    modifier = Modifier.padding(top = 16.dp),
-                )
                 PrivacyDivider(labels.privacyNote, labels.togglePrivacyMessage, Modifier.padding(top = 34.dp))
 
                 when {
@@ -285,6 +304,7 @@ fun RevealScreen(
             Text(
                 when (copiedBurst) {
                     RevealCopySection.Reflection -> labels.copiedReflection
+                    RevealCopySection.ReflectionPrompt -> labels.reflectionPromptCopied
                     else -> labels.copiedWriting
                 },
                 style = AnkyType.Mono.copy(color = AnkyColors.Paper, fontWeight = FontWeight.Bold),
@@ -296,6 +316,15 @@ fun RevealScreen(
                     .border(1.dp, AnkyColors.Gold.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             )
+        }
+        if (reflectionPromptGuidanceVisible) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                AnkyConversationPrompt(
+                    message = labels.reflectionPromptClipboardGuidance,
+                    onClose = { reflectionPromptGuidanceVisible = false },
+                    modifier = Modifier.padding(start = 28.dp, end = 28.dp, bottom = 104.dp),
+                )
+            }
         }
         RevealEdgeBackSwipe(onBack = onBack, modifier = Modifier.align(Alignment.CenterStart))
         if (artifact != null) {
@@ -320,7 +349,7 @@ fun RevealScreen(
                             viewModel.askAnky()
                             scrollToReflection()
                         }
-                        else -> onTryAgain()
+                        else -> onTryAgain(artifact)
                     }
                 },
                 modifier = Modifier
@@ -360,8 +389,10 @@ fun RevealScreen(
             ModalBottomSheet(
                 onDismissRequest = { showCreditPurchaseSheet = false },
                 sheetState = creditPurchaseSheetState,
-                containerColor = AnkyColors.Ink,
+                shape = RoundedCornerShape(topStart = 38.dp, topEnd = 38.dp),
+                containerColor = CreditsPalette.AlmostBlack,
                 contentColor = AnkyColors.Paper,
+                dragHandle = null,
             ) {
                 RevealCreditPurchaseSheet(
                     state = state,
@@ -370,7 +401,7 @@ fun RevealScreen(
                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         viewModel.purchaseCredits(packageId, context.findActivity())
                     },
-                    modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 34.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -381,6 +412,9 @@ private data class RevealLabels(
     val privacyNote: String,
     val writingCopied: String,
     val copyWriting: String,
+    val copyReflectionPromptHint: String,
+    val reflectionPromptCopied: String,
+    val reflectionPromptClipboardGuidance: String,
     val deleteWritingSession: String,
     val deleteWritingSessionQuestion: String,
     val delete: String,
@@ -391,6 +425,7 @@ private data class RevealLabels(
     val reflectThisAnky: String,
     val reflectThisAnkyLeft: (Int) -> String,
     val reflectThisAnkyDeviceGift: String,
+    val continueWritingLeft: (String) -> String,
     val copyReflection: String,
     val copiedReflection: String,
     val copiedWriting: String,
@@ -410,6 +445,7 @@ private data class RevealLabels(
     val loadingCreditPacks: String,
     val noCreditPacksAvailable: String,
     val writingIsFreeOneCreditReflection: String,
+    val creditsSheetPromptCopyFallback: String,
     val availableCredits: String,
     val bestValue: String,
     val chatStayingWithAnky: String,
@@ -440,6 +476,9 @@ private fun revealLabels(): RevealLabels {
         privacyNote = stringResource(R.string.reveal_privacy_note),
         writingCopied = stringResource(R.string.writing_copied),
         copyWriting = stringResource(R.string.copy_writing),
+        copyReflectionPromptHint = stringResource(R.string.copy_reflection_prompt_hint),
+        reflectionPromptCopied = stringResource(R.string.reflection_prompt_copied),
+        reflectionPromptClipboardGuidance = stringResource(R.string.reflection_prompt_clipboard_guidance),
         deleteWritingSession = stringResource(R.string.delete_writing_session),
         deleteWritingSessionQuestion = stringResource(R.string.delete_writing_session_question),
         delete = stringResource(R.string.delete),
@@ -450,6 +489,7 @@ private fun revealLabels(): RevealLabels {
         reflectThisAnky = stringResource(R.string.reflect_this_anky),
         reflectThisAnkyLeft = { count -> context.getString(R.string.reflect_this_anky_left, count) },
         reflectThisAnkyDeviceGift = stringResource(R.string.reflect_this_anky_device_gift),
+        continueWritingLeft = { remaining -> context.getString(R.string.continue_writing_left, remaining) },
         copyReflection = stringResource(R.string.copy_reflection),
         copiedReflection = stringResource(R.string.copied_reflection),
         copiedWriting = stringResource(R.string.copied_writing),
@@ -474,6 +514,7 @@ private fun revealLabels(): RevealLabels {
         loadingCreditPacks = stringResource(R.string.loading_credit_packs),
         noCreditPacksAvailable = stringResource(R.string.no_credit_packs_available),
         writingIsFreeOneCreditReflection = stringResource(R.string.writing_is_free_one_credit_reflection),
+        creditsSheetPromptCopyFallback = stringResource(R.string.credits_sheet_prompt_copy_fallback),
         availableCredits = stringResource(R.string.available_credits),
         bestValue = stringResource(R.string.best_value),
         chatStayingWithAnky = stringResource(R.string.reveal_chat_staying_with_anky),
@@ -534,14 +575,18 @@ private fun RevealEdgeBackSwipe(onBack: () -> Unit, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun RevealHeader(
-    date: String,
-    time: String,
-    metadata: String,
+private fun RevealTopBar(
+    title: String,
+    copied: Boolean,
+    canCopyReflectionPrompt: Boolean,
     onBack: () -> Unit,
     canDelete: Boolean,
     isDeleting: Boolean,
+    copyWritingContentDescription: String,
+    copyReflectionPromptHint: String,
     deleteContentDescription: String,
+    onCopyWriting: () -> Unit,
+    onCopyReflectionPrompt: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val backLabel = stringResource(R.string.back)
@@ -549,42 +594,123 @@ private fun RevealHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .height(58.dp)
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.24f)).border(1.dp, AnkyColors.Gold.copy(alpha = 0.24f), CircleShape),
+                modifier = Modifier.size(44.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
                     contentDescription = backLabel,
                     tint = AnkyColors.Paper,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("$date / $time".lowercase(), style = AnkyType.Caption.copy(color = AnkyColors.Paper.copy(alpha = 0.78f)))
-                Text(metadata.lowercase(), style = AnkyType.Mono.copy(color = AnkyColors.Paper.copy(alpha = 0.54f)), textAlign = TextAlign.Center)
-            }
+            Text(
+                title,
+                style = AnkyType.Body.copy(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AnkyColors.Paper,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
+            Icon(
+                imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                contentDescription = "$copyWritingContentDescription. $copyReflectionPromptHint",
+                tint = if (copied) AnkyColors.Success else AnkyColors.Paper,
+                modifier = Modifier
+                    .size(44.dp)
+                    .padding(9.dp)
+                    .pointerInput(canCopyReflectionPrompt) {
+                        detectTapGestures(
+                            onTap = { onCopyWriting() },
+                            onLongPress = {
+                                if (canCopyReflectionPrompt) onCopyReflectionPrompt()
+                            },
+                        )
+                    },
+            )
             if (canDelete) {
                 IconButton(
                     onClick = onDelete,
                     enabled = !isDeleting,
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.24f)).border(1.dp, AnkyColors.Danger.copy(alpha = 0.22f), CircleShape),
+                    modifier = Modifier.size(44.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = deleteContentDescription,
-                        tint = AnkyColors.Danger.copy(alpha = 0.88f),
-                        modifier = Modifier.size(19.dp),
-                    )
+                    if (isDeleting) {
+                        CircularProgressIndicator(
+                            color = AnkyColors.Paper,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = deleteContentDescription,
+                            tint = AnkyColors.Danger.copy(alpha = 0.88f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             } else {
-                Spacer(Modifier.size(40.dp))
+                Spacer(Modifier.size(44.dp))
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.13f)))
+    }
+}
+
+@Composable
+private fun WritingSessionStatsHeader(
+    wordCount: Int,
+    duration: String,
+    backspaceCount: Int,
+    enterCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WritingSessionStat(Icons.Filled.TextFields, wordCount.toString())
+        WritingSessionStat(Icons.Filled.Timer, duration)
+        WritingSessionStat(Icons.Filled.Backspace, backspaceCount.toString())
+        WritingSessionStat(Icons.Filled.KeyboardReturn, enterCount.toString())
+    }
+}
+
+@Composable
+private fun WritingSessionStat(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = AnkyColors.Paper.copy(alpha = 0.44f),
+            modifier = Modifier.size(13.dp),
+        )
+        Text(
+            value,
+            style = AnkyType.Mono.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = AnkyColors.Paper.copy(alpha = 0.44f),
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -742,6 +868,7 @@ private fun bottomActionTitle(state: RevealState, labels: RevealLabels): String 
         state.reflection != null -> labels.readReflection
         state.needsCreditsToReflect -> labels.getMoreCredits
         state.artifact?.isComplete == true -> reflectButtonTitle(state, labels)
+        state.canContinueWriting -> labels.continueWritingLeft(state.remainingWritingTime)
         else -> labels.writeMinutes
     }
 
@@ -762,6 +889,14 @@ private fun bottomActionIsEnabled(state: RevealState): Boolean =
         else -> true
     }
 
+private object CreditsPalette {
+    val AlmostBlack = Color(0xFF05040B)
+    val PurpleDeep = Color(0xFF250834)
+    val Violet = Color(0xFF8F4DFF)
+    val Gold = Color(0xFFF4D374)
+    val Cream = Color(0xFFFFF2C6)
+}
+
 @Composable
 private fun RevealCreditPurchaseSheet(
     state: RevealState,
@@ -770,110 +905,167 @@ private fun RevealCreditPurchaseSheet(
     modifier: Modifier = Modifier,
 ) {
     val labels = revealLabels()
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(
-                imageVector = Icons.Filled.AutoAwesome,
-                contentDescription = null,
-                tint = AnkyColors.Gold,
-                modifier = Modifier.size(28.dp),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(CreditsPalette.AlmostBlack),
+    ) {
+        RevealCreditsSheetBackground(Modifier.matchParentSize())
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 34.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 10.dp, bottom = 14.dp)
+                    .size(width = 42.dp, height = 5.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.35f)),
             )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    labels.creditsSheetTitle,
-                    style = AnkyType.Heading.copy(fontSize = 29.sp, fontWeight = FontWeight.Medium),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+
+            Row(
+                modifier = Modifier.padding(horizontal = 22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = CreditsPalette.Gold,
+                    modifier = Modifier.size(28.dp),
                 )
-                Text(
-                    labels.creditsSheetSubtitle,
-                    style = AnkyType.Body.copy(fontSize = 15.sp, color = AnkyColors.Paper.copy(alpha = 0.68f)),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            IconButton(onClick = onRefresh, enabled = !state.creditsLoading) {
-                if (state.creditsLoading) {
-                    CircularProgressIndicator(
-                        color = AnkyColors.Gold,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(22.dp),
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        labels.creditsSheetTitle,
+                        style = AnkyType.Heading.copy(fontSize = 29.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = labels.refreshReflectionCredits,
-                        tint = AnkyColors.Gold,
-                        modifier = Modifier.size(22.dp),
+                    Text(
+                        labels.creditsSheetSubtitle,
+                        style = AnkyType.Body.copy(fontSize = 15.sp, color = CreditsPalette.Cream.copy(alpha = 0.68f)),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-        }
-
-        RevealCreditBalancePanel(state.creditBalance, labels)
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            when {
-                state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.loadingCreditPacks)
-                state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.noCreditPacksAvailable)
-                else -> {
-                    state.creditPackages.take(3).forEach { creditPackage ->
-                        RevealCreditPackageRow(
-                            creditPackage = creditPackage,
-                            isRecommended = creditPackage.title == "11 reflections" ||
-                                creditPackage.packageId.endsWith(".credits.11"),
-                            isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
-                            bestValue = labels.bestValue,
-                            onPurchase = onPurchase,
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(CreditsPalette.PurpleDeep.copy(alpha = 0.42f))
+                        .border(1.2.dp, CreditsPalette.Gold.copy(alpha = 0.42f), CircleShape)
+                        .clickable(
+                            enabled = !state.creditsLoading,
+                            onClickLabel = labels.refreshReflectionCredits,
+                            onClick = onRefresh,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (state.creditsLoading) {
+                        CircularProgressIndicator(
+                            color = CreditsPalette.Gold,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(22.dp),
                         )
+                    } else {
+                        RefreshGlyph(Modifier.size(22.dp))
                     }
                 }
             }
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.AutoAwesome,
-                contentDescription = null,
-                tint = AnkyColors.Gold.copy(alpha = 0.78f),
-                modifier = Modifier.size(13.dp),
+            RevealCreditBalancePanel(
+                balance = state.creditBalance,
+                labels = labels,
+                modifier = Modifier.padding(horizontal = 22.dp).padding(top = 18.dp),
             )
-            Text(
-                labels.writingIsFreeOneCreditReflection,
-                style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.68f)),
-                modifier = Modifier.padding(horizontal = 10.dp),
-                textAlign = TextAlign.Center,
-            )
-            Icon(
-                imageVector = Icons.Filled.AutoAwesome,
-                contentDescription = null,
-                tint = AnkyColors.Gold.copy(alpha = 0.78f),
-                modifier = Modifier.size(13.dp),
-            )
-        }
 
-        state.error?.let { error ->
-            Text(
-                error.lowercase(),
-                style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
-            )
+            Column(
+                modifier = Modifier.padding(horizontal = 22.dp).padding(top = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                when {
+                    state.creditsLoading && state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.loadingCreditPacks)
+                    state.creditPackages.isEmpty() -> RevealCreditDisabledRow(labels.noCreditPacksAvailable)
+                    else -> {
+                        state.creditPackages.take(3).forEach { creditPackage ->
+                            RevealCreditPackageRow(
+                                creditPackage = creditPackage,
+                                isRecommended = creditPackage.title == "11 reflections" ||
+                                    creditPackage.packageId == "inc.anky.credits.11" ||
+                                    creditPackage.packageId.endsWith(".credits.11"),
+                                isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
+                                bestValue = labels.bestValue,
+                                onPurchase = onPurchase,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(horizontal = 22.dp).padding(top = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = CreditsPalette.Gold.copy(alpha = 0.78f),
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        labels.writingIsFreeOneCreditReflection,
+                        style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.68f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 10.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = CreditsPalette.Gold.copy(alpha = 0.78f),
+                        modifier = Modifier.size(13.dp),
+                    )
+                }
+
+                Text(
+                    labels.creditsSheetPromptCopyFallback,
+                    style = AnkyType.Body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.58f)),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 19.sp,
+                )
+            }
+
+            state.error?.let { error ->
+                Text(
+                    error.lowercase(),
+                    style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
+                    modifier = Modifier.padding(horizontal = 22.dp).padding(top = 12.dp),
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun RevealCreditBalancePanel(balance: Int?, labels: RevealLabels) {
+private fun RevealCreditBalancePanel(balance: Int?, labels: RevealLabels, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(124.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(Color.Black.copy(alpha = 0.58f))
-            .border(1.dp, AnkyColors.Gold.copy(alpha = 0.34f), RoundedCornerShape(18.dp)),
+            .border(1.dp, CreditsPalette.Gold.copy(alpha = 0.34f), RoundedCornerShape(18.dp)),
         contentAlignment = Alignment.CenterStart,
     ) {
         Image(
@@ -905,12 +1097,13 @@ private fun RevealCreditBalancePanel(balance: Int?, labels: RevealLabels) {
                 style = AnkyType.Title.copy(
                     fontSize = 68.sp,
                     fontWeight = FontWeight.Bold,
-                    shadow = Shadow(color = AnkyColors.Gold.copy(alpha = 0.35f), blurRadius = 14f),
+                    color = CreditsPalette.Cream,
+                    shadow = Shadow(color = CreditsPalette.Gold.copy(alpha = 0.35f), blurRadius = 14f),
                 ),
             )
             Text(
                 labels.availableCredits,
-                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.78f)),
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.78f)),
                 lineHeight = 28.sp,
             )
         }
@@ -940,34 +1133,42 @@ private fun RevealCreditPackageRow(
             )
             .border(
                 if (isRecommended) 1.5.dp else 1.dp,
-                AnkyColors.Gold.copy(alpha = if (isRecommended) 0.52f else 0.28f),
+                CreditsPalette.Gold.copy(alpha = if (isRecommended) 0.95f else 0.32f),
                 RoundedCornerShape(16.dp),
             )
             .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
             .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .clip(CircleShape)
-                .background(AnkyColors.Gold.copy(alpha = 0.16f))
-                .border(1.dp, AnkyColors.Gold.copy(alpha = 0.24f), CircleShape),
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            CreditsPalette.Gold.copy(alpha = 0.24f),
+                            CreditsPalette.PurpleDeep.copy(alpha = 0.42f),
+                            CreditsPalette.AlmostBlack.copy(alpha = 0.50f),
+                        ),
+                    ),
+                )
+                .border(1.dp, CreditsPalette.Gold.copy(alpha = 0.24f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = CreditsPalette.Gold, modifier = Modifier.size(17.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 creditPackage.title,
-                style = AnkyType.Heading.copy(fontSize = 25.sp, fontWeight = FontWeight.SemiBold),
+                style = AnkyType.Heading.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Cream),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 creditPackage.subtitle,
-                style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                style = AnkyType.Body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.58f)),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -979,14 +1180,76 @@ private fun RevealCreditPackageRow(
                     style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(AnkyColors.Gold)
+                        .background(CreditsPalette.Gold)
                         .padding(horizontal = 10.dp, vertical = 5.dp),
                 )
             }
             Text(
                 if (isPurchasing) "..." else creditPackage.price,
-                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Gold),
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Gold),
                 maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RefreshGlyph(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val strokeWidth = 2.1.dp.toPx()
+        drawArc(
+            color = CreditsPalette.Gold,
+            startAngle = 38f,
+            sweepAngle = 286f,
+            useCenter = false,
+            topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
+            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+        )
+        val tip = Offset(size.width * 0.82f, size.height * 0.25f)
+        drawLine(
+            color = CreditsPalette.Gold,
+            start = tip,
+            end = Offset(size.width * 0.96f, size.height * 0.24f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = CreditsPalette.Gold,
+            start = tip,
+            end = Offset(size.width * 0.78f, size.height * 0.09f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+private fun RevealCreditsSheetBackground(modifier: Modifier = Modifier) {
+    Box(modifier.background(CreditsPalette.AlmostBlack)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF130A1F).copy(alpha = 0.98f),
+                            Color(0xFF080610).copy(alpha = 0.99f),
+                            CreditsPalette.AlmostBlack,
+                        ),
+                    ),
+                ),
+        )
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(
+                color = CreditsPalette.Violet.copy(alpha = 0.28f),
+                radius = 480.dp.toPx(),
+                center = Offset(0f, 0f),
+            )
+            drawCircle(
+                color = CreditsPalette.Gold.copy(alpha = 0.075f),
+                radius = 400.dp.toPx(),
+                center = Offset(size.width / 2f, size.height),
             )
         }
     }
@@ -1032,14 +1295,6 @@ private fun RevealTexture(modifier: Modifier = Modifier.fillMaxSize()) {
                     y = bloomCenterY - height / 2f,
                 ),
                 size = androidx.compose.ui.geometry.Size(width, height),
-            )
-        }
-        listOf(0.19f, 0.47f, 0.78f).forEach { y ->
-            drawLine(
-                color = AnkyColors.Gold.copy(alpha = 0.075f),
-                start = androidx.compose.ui.geometry.Offset(0f, size.height * y),
-                end = androidx.compose.ui.geometry.Offset(size.width, size.height * y),
-                strokeWidth = 1.dp.toPx(),
             )
         }
     }
@@ -1606,8 +1861,18 @@ private fun inlineMarkdown(text: String) = buildAnnotatedString {
 }
 
 private fun wordCountText(text: String): String {
-    val count = text.splitToSequence(Regex("\\s+")).filter { it.isNotBlank() }.count()
+    val count = wordCountNumber(text)
     return "$count ${if (count == 1) "word" else "words"}"
+}
+
+private fun wordCountNumber(text: String): Int =
+    text.splitToSequence(Regex("\\s+")).filter { it.isNotBlank() }.count()
+
+private fun countdownClock(durationMs: Long): String {
+    val totalSeconds = maxOf(0, durationMs / 1000)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 }
 
 private fun Context.copyText(label: String, text: String) {

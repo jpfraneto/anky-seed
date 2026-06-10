@@ -47,13 +47,23 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(androidReveal.contains("copyWriting = stringResource(R.string.copy_writing)"))
-        assertTrue(androidReveal.contains("label = labels.copyWriting.lowercase()"))
+        assertTrue(androidReveal.contains("copyReflectionPromptHint = stringResource(R.string.copy_reflection_prompt_hint)"))
+        assertTrue(androidReveal.contains("reflectionPromptCopied = stringResource(R.string.reflection_prompt_copied)"))
+        assertTrue(androidReveal.contains("reflectionPromptClipboardGuidance = stringResource(R.string.reflection_prompt_clipboard_guidance)"))
+        assertTrue(androidReveal.contains("RevealCopySection.ReflectionPrompt"))
+        assertTrue(androidReveal.contains("onLongPress = {"))
+        assertTrue(androidReveal.contains("copySection(RevealCopySection.ReflectionPrompt)"))
+        assertTrue(androidReveal.contains("reflectionPromptGuidanceVisible = true"))
+        assertTrue(androidReveal.contains("delay(1_500)"))
         assertTrue(androidStrings.contains("Copy writing"))
+        assertTrue(androidStrings.contains("Long press to copy the reflection prompt for your own AI tool."))
+        assertTrue(androidStrings.contains("The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it."))
         assertTrue(androidReveal.contains("copyReflection = stringResource(R.string.copy_reflection)"))
         assertTrue(androidReveal.contains("label = labels.copyReflection.lowercase()"))
         assertTrue(androidStrings.contains("copy reflection"))
         assertTrue(androidRevealViewModel.contains("enum class RevealCopySection"))
         assertTrue(androidRevealViewModel.contains("fun textForCopy(section: RevealCopySection)"))
+        assertTrue(androidRevealViewModel.contains("AnkyReflectionPrompt.build(it.reconstructedText)"))
         assertTrue(!androidReveal.contains("""copyText("Anky mirror""""))
     }
 
@@ -65,7 +75,31 @@ class SourceInvariantTest {
 
         assertTrue(hiddenInput.contains("next.isSingleProtocolGlyph() -> onGlyph(next)"))
         assertTrue(hiddenInput.contains("else -> onRejectedMutation()"))
+        assertTrue(hiddenInput.contains("autoCorrectEnabled = false"))
+        assertTrue(hiddenInput.contains("keyboardType = KeyboardType.Password"))
+        assertTrue(!hiddenInput.contains("keyboardType = KeyboardType.Text"))
         assertTrue(!hiddenInput.contains("protocolGlyphsOrNull"))
+    }
+
+    @Test
+    fun decorativeBackgroundHorizontalLinesStayRemoved() {
+        val reveal = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
+            .readText()
+        val tagSessions = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/TagSessionsScreen.kt")
+            .readText()
+        val map = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/map/MapScreen.kt")
+            .readText()
+        val you = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
+            .readText()
+
+        assertTrue(!reveal.contains("listOf(0.19f, 0.47f, 0.78f)"))
+        assertTrue(!tagSessions.contains("listOf(0.19f, 0.47f, 0.78f)"))
+        assertTrue(!map.contains("listOf(0.18f, 0.54f, 0.82f)"))
+        assertTrue(!you.contains("listOf(0.18f, 0.54f, 0.82f)"))
     }
 
     @Test
@@ -97,6 +131,7 @@ class SourceInvariantTest {
         assertTrue(manifest.contains("""android:allowBackup="false""""))
         assertTrue(manifest.contains("""android:fullBackupContent="@xml/backup_rules""""))
         assertTrue(manifest.contains("""android:dataExtractionRules="@xml/data_extraction_rules""""))
+        assertTrue(manifest.contains("""android:screenOrientation="portrait""""))
         listOf("root", "file", "database", "sharedpref", "external").forEach { domain ->
             assertTrue(backupRules.contains("""<exclude domain="$domain" path="." />"""))
             assertTrue(dataExtractionRules.contains("""<exclude domain="$domain" path="." />"""))
@@ -113,9 +148,9 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(buildScript.contains("""applicationId = "app.anky.mobile""""))
-        assertTrue(buildScript.contains("""applicationIdSuffix = ".debug""""))
+        assertTrue(buildScript.contains("""applicationIdSuffix = releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX")?.takeIf { it.isNotBlank() }"""))
         assertTrue(buildScript.contains("""println("releaseApplicationId=app.anky.mobile")"""))
-        assertTrue(buildScript.contains("""println("debugApplicationId=app.anky.mobile.debug")"""))
+        assertTrue(buildScript.contains("""println("debugApplicationId=app.anky.mobile${'$'}{releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX")?.takeIf { it.isNotBlank() }.orEmpty()}")"""))
     }
 
     @Test
@@ -272,6 +307,23 @@ class SourceInvariantTest {
     }
 
     @Test
+    fun revenueCatAndroidFallsBackToDirectCreditProductsLikeIos() {
+        val creditsClient = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/core/credits/RevenueCatCreditsClient.kt")
+            .readText()
+        val iosCreditsClient = repoRoot()
+            .resolve("apps/ios/Anky/Features/You/RevenueCatCreditsClient.swift")
+            .readText()
+
+        assertTrue(iosCreditsClient.contains("missingProductIds"))
+        assertTrue(iosCreditsClient.contains("Purchases.shared.products(missingProductIds)"))
+
+        assertTrue(creditsClient.contains("val missingProductIds = CreditCatalog.ProductOrder.filter { it !in packagedProductIds }"))
+        assertTrue(creditsClient.contains("purchases.awaitGetProducts(missingProductIds, ProductType.INAPP)"))
+        assertTrue(creditsClient.contains("PurchaseParams.Builder(activity, checkNotNull(productToPurchase)).build()"))
+    }
+
+    @Test
     fun mirrorUploadCodeOnlyLivesBehindExplicitRevealOrWriteNudgePaths() {
         val allowedRelativePaths = setOf(
             "apps/android/app/src/main/java/inc/anky/android/app/AppContainer.kt",
@@ -330,6 +382,9 @@ class SourceInvariantTest {
             .readText()
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+        val androidHiddenInput = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/HiddenTextInput.kt")
             .readText()
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
@@ -617,18 +672,35 @@ class SourceInvariantTest {
         assertTrue(iosWriteModel.contains("completion?(saved)"))
 
         assertTrue(androidApp.contains("val importedCompletedHash = remember { mutableStateOf<String?>(null) }"))
+        assertTrue(androidApp.contains("val pendingPostWriteRevealHash = remember { mutableStateOf<String?>(null) }"))
+        assertTrue(androidApp.contains("val handledPostWriteHashes = remember { mutableSetOf<String>() }"))
         assertTrue(androidApp.contains("val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash"))
-        assertTrue(androidApp.contains("LaunchedEffect(postWriteCompletedHash, lockState.value)"))
+        assertTrue(androidApp.contains("fun openPostWriteReveal(hash: String)"))
+        assertTrue(androidApp.contains("if (!handledPostWriteHashes.add(hash)) return"))
+        assertTrue(androidApp.contains("LaunchedEffect(postWriteCompletedHash)"))
+        assertTrue(androidApp.contains("LaunchedEffect(writeViewModelWithCurrentMirror)"))
+        assertTrue(androidApp.contains(".mapNotNull { it.completedHash }"))
+        assertTrue(androidApp.contains(".distinctUntilChanged()"))
+        assertTrue(androidApp.contains(".collect { hash -> openPostWriteReveal(hash) }"))
         assertTrue(androidApp.contains("hash != null"))
+        assertTrue(!androidApp.contains("if (lockState.value == LockState.Unlocked && hash != null)"))
         assertTrue(androidApp.contains("onImported = { hash ->"))
+        assertTrue(androidApp.contains("onCompleted = { hash -> openPostWriteReveal(hash) }"))
         assertTrue(androidWrite.contains("onImported: (String) -> Unit"))
+        assertTrue(androidWrite.contains("onCompleted: (String) -> Unit"))
+        assertTrue(androidWrite.contains("LaunchedEffect(state.completedHash)"))
+        assertTrue(androidWrite.contains("state.completedHash?.let(onCompleted)"))
         assertTrue(androidWrite.contains("onImported(saved.hash)"))
         assertTrue(androidWrite.contains("fun importAndOfferReflection"))
         assertTrue(androidApp.contains("val hash = postWriteCompletedHash"))
         assertTrue(androidApp.contains("importedCompletedHash.value = null"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.consumeCompletedHash()"))
         assertTrue(androidApp.contains("mapViewModel.refresh()"))
+        assertTrue(androidApp.contains("pendingPostWriteRevealHash.value = hash"))
         assertTrue(androidApp.contains("navController.navigate(AnkyRoute.Map.route)"))
+        assertTrue(androidApp.contains("LaunchedEffect(currentRoute, pendingPostWriteRevealHash.value)"))
+        assertTrue(androidApp.contains("if (currentRoute == AnkyRoute.Map.route)"))
+        assertTrue(androidApp.contains("pendingPostWriteRevealHash.value = null"))
         assertTrue(androidApp.contains("navController.navigate(AnkyRoute.Reveal.route(hash))"))
         assertTrue(!androidApp.contains("you wrote an anky."))
         assertTrue(!androidApp.contains("""AnkyChatAction("reflect (1 credit)"""))
@@ -639,12 +711,22 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun writeLaunchPromptIncludesIosRitualSteps() {
+    fun androidWritingSurfaceStaysWhiteOnBlackWithoutInnerRingGlow() {
+        val androidWrite = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteScreen.kt")
+            .readText()
+
+        assertTrue(androidWrite.contains(".background(Color.Black)"))
+        assertTrue(androidWrite.contains("SpanStyle(color = Color.White.copy(alpha = alpha))"))
+        assertTrue(androidWrite.contains("color = Color.White.copy(alpha = 0.94f)"))
+        assertTrue(!androidWrite.contains("private fun rhythmColor"))
+        assertTrue(!androidWrite.contains("drawCircle(Color.White.copy(alpha = 0.10f + pulse * 0.04f)"))
+    }
+
+    @Test
+    fun writeLaunchPromptIsNotPresentedOnAndroid() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
-            .readText()
-        val androidPrompt = repoRoot()
-            .resolve("apps/android/app/src/main/java/inc/anky/android/ui/components/AnkyCompanionPrompt.kt")
             .readText()
         val androidStrings = repoRoot()
             .resolve("apps/android/app/src/main/res/values/strings.xml")
@@ -656,23 +738,25 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Support/AnkyLocalization.swift")
             .readText()
 
-        mapOf(
-            ".stepWriteOneCharacter" to "write one character",
-            ".stepKeepThreadAlive" to "keep the thread alive",
-            ".stepLetSilenceCloseIt" to "let silence close it",
-        ).forEach { (key, androidStep) ->
+        listOf(".stepWriteOneCharacter", ".stepKeepThreadAlive", ".stepLetSilenceCloseIt").forEach { key ->
             assertTrue(iosApp.contains("AnkyBubbleStep(AnkyLocalization.text($key))"))
             assertTrue(iosLocalization.contains(key))
-            assertTrue(androidStrings.contains(androidStep.replaceFirstChar { it.uppercase() }))
         }
         assertTrue(iosLocalization.contains(".launchEmpty: \"The living .anky string is the state of this session.\""))
-        assertTrue(androidStrings.contains("The living .anky string is the state of this session."))
-        assertTrue(androidApp.contains("stringResource(R.string.launch_empty)"))
-        assertTrue(androidApp.contains("R.string.write_minutes_format"))
-        assertTrue(androidApp.contains("R.string.step_write_one_character"))
-        assertTrue(androidApp.contains("R.string.step_keep_thread_alive"))
-        assertTrue(androidApp.contains("R.string.step_let_silence_close_it"))
-        assertTrue(androidPrompt.contains("steps: List<String> = emptyList()"))
+        listOf(
+            "launch_empty",
+            "launch_count_format",
+            "write_again",
+            "write_minutes_format",
+            "step_write_one_character",
+            "step_keep_thread_alive",
+            "step_let_silence_close_it",
+        ).forEach { key ->
+            assertTrue(!androidApp.contains("R.string.$key"))
+            assertTrue(!androidStrings.contains("""name="$key""""))
+        }
+        assertTrue(!androidApp.contains("showsLaunchDialogue"))
+        assertTrue(!androidApp.contains("launchMessage"))
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
     }
@@ -710,18 +794,14 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(iosWrite.contains("accessibilityLabel(AnkyLocalization.ui(\"Open Map\"))"))
-        listOf(
-            "open_map",
-            "paste_anky_artifact",
-            "hold_dev_paste_anky_artifact",
-        ).forEach { key ->
+        listOf("open_map").forEach { key ->
             assertTrue(androidWrite.contains("R.string.$key"))
             assertTrue(androidStrings.contains("""name="$key""""))
         }
         assertTrue(androidWrite.contains("contentDescription = openMapLabel"))
-        assertTrue(androidWrite.contains("contentDescription = pasteArtifactLabel"))
-        assertTrue(androidWrite.contains("onClick(pasteArtifactLabel)"))
-        assertTrue(androidWrite.contains("onLongClick(devPasteArtifactLabel)"))
+        assertTrue(!androidWrite.contains("contentDescription = pasteArtifactLabel"))
+        assertTrue(!androidWrite.contains("onClick(pasteArtifactLabel)"))
+        assertTrue(!androidWrite.contains("onLongClick(devPasteArtifactLabel)"))
         assertTrue(!androidWrite.contains("contentDescription = \"Open Map\""))
         assertTrue(!androidWrite.contains("contentDescription = \"Paste .anky artifact\""))
         assertTrue(!androidWrite.contains("onClick(\"Paste .anky artifact\")"))
@@ -752,10 +832,8 @@ class SourceInvariantTest {
         assertTrue(!iosWrite.contains("LongPressGesture(minimumDuration: 5)"))
         assertTrue(iosWriteModel.contains("func importAnkyArtifact(_ text: String) -> Bool"))
 
-        assertTrue(androidWrite.contains("DevPasteChromeButton("))
-        assertTrue(androidWrite.contains("private const val WriteDevPasteHoldMs = 5_000L"))
-        assertTrue(androidWrite.contains("withTimeoutOrNull(WriteDevPasteHoldMs)"))
-        assertTrue(androidWrite.contains("R.string.hold_dev_paste_anky_artifact"))
+        assertTrue(!androidWrite.contains("DevPasteChromeButton("))
+        assertTrue(!androidWrite.contains("R.string.hold_dev_paste_anky_artifact"))
         assertTrue(androidStrings.contains("Hold for five seconds to paste the built-in dev .anky"))
         assertTrue(androidWriteModel.contains("val devSampleAnkyArtifact: String"))
         assertTrue(androidWriteModel.contains("DevAnkyFixture.validArtifact"))
@@ -769,6 +847,12 @@ class SourceInvariantTest {
             .readText()
         val androidReveal = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealScreen.kt")
+            .readText()
+        val androidRevealViewModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/reveal/RevealViewModel.kt")
+            .readText()
+        val androidWriteModel = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/WriteViewModel.kt")
             .readText()
         val androidStrings = repoRoot()
             .resolve("apps/android/app/src/main/res/values/strings.xml")
@@ -784,12 +868,27 @@ class SourceInvariantTest {
         assertTrue(iosApp.contains("writeViewModel.openWritingPortal()"))
         assertTrue(iosReveal.contains("WRITE %d MINUTES\", AnkyDuration.completeRitualMinutes"))
         assertTrue(iosReveal.contains("onTryAgain()"))
+        assertTrue(iosApp.contains("private func beginContinuingWriting(from artifact: SavedAnky)"))
+        assertTrue(iosApp.contains("writeViewModel.continueSession(from: artifact)"))
 
         assertTrue(androidApp.contains("fun beginRetryWriting()"))
+        assertTrue(androidApp.contains("fun beginContinuingWriting(artifact: SavedAnky)"))
+        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.clearCompletedSession()"))
+        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.continueSession(artifact)"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.consumeCompletedHash()"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
-        assertTrue(androidApp.contains("onTryAgain = { beginRetryWriting() }"))
+        assertTrue(androidWriteModel.contains("val continuationText = artifact.text.openContinuationText()"))
+        assertTrue(androidWriteModel.contains("isFrozenForContinuation = true"))
+        assertTrue(androidWriteModel.contains("continuedArtifactToReplace = artifact"))
+        assertTrue(androidWriteModel.contains("writer.prepareToResume(now)"))
+        assertTrue(androidWriteModel.contains("archive.delete(replacedArtifact.hash)"))
+        assertTrue(androidWriteModel.contains("indexStore.delete(replacedArtifact.hash)"))
+        assertTrue(androidApp.contains("onTryAgain = { artifact -> beginContinuingWriting(artifact) }"))
+        assertTrue(androidReveal.contains("state.canContinueWriting -> labels.continueWritingLeft(state.remainingWritingTime)"))
+        assertTrue(androidRevealViewModel.contains("val remainingWritingTime: String"))
+        assertTrue(androidRevealViewModel.contains("val canContinueWriting: Boolean"))
         assertTrue(androidReveal.contains("writeMinutes = stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes)"))
+        assertTrue(androidStrings.contains("""name="continue_writing_left">CONTINUE - %1${'$'}s LEFT</string>"""))
         assertTrue(androidStrings.contains("""name="write_minutes_caps">WRITE %1${'$'}d MINUTES</string>"""))
         assertTrue(!androidReveal.contains("onTryAgain = onBack"))
     }
@@ -847,13 +946,13 @@ class SourceInvariantTest {
         assertTrue(iosReveal.contains("Color.red.opacity(0.88)"))
         assertTrue(iosReveal.contains("Color.red.opacity(0.22)"))
 
+        assertTrue(androidReveal.contains("RevealTopBar("))
         assertTrue(androidReveal.contains("deleteContentDescription = labels.deleteWritingSession"))
         assertTrue(androidReveal.contains("contentDescription = deleteContentDescription"))
         assertTrue(androidReveal.contains("val backLabel = stringResource(R.string.back)"))
         assertTrue(androidReveal.contains("contentDescription = backLabel"))
         assertTrue(!androidReveal.contains("contentDescription = \"Back\""))
         assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.88f)"))
-        assertTrue(androidReveal.contains("AnkyColors.Danger.copy(alpha = 0.22f)"))
         assertTrue(androidReveal.contains("title = { Text(labels.deleteWritingSessionQuestion) }"))
         assertTrue(androidReveal.contains("Text(labels.deleteWritingSessionBody)"))
         assertTrue(androidStrings.contains("Delete writing session?"))
@@ -897,12 +996,23 @@ class SourceInvariantTest {
         assertTrue(iosMap.contains("reflectedTitle,\n            session.preview"))
         assertTrue(iosMap.contains(".overlay(alignment: .bottom)"))
         assertTrue(iosMap.contains(".frame(height: 1.5)"))
+        assertTrue(iosMap.contains("metadataHeader"))
+        assertTrue(iosMap.contains("session.createdAt.formatted(date: .omitted, time: .shortened)"))
+        assertTrue(iosMap.contains("displayTags"))
+        assertTrue(iosMap.contains("Self.hashtag"))
 
         assertTrue(androidMap.contains(".semantics(mergeDescendants = true)"))
         assertTrue(androidMap.contains("contentDescription = sessionAccessibilityLabel(session)"))
         assertTrue(androidMap.contains("internal fun sessionAccessibilityLabel"))
         assertTrue(androidMap.contains("session.reflectedTitle(),\n        session.preview"))
         assertTrue(!androidMap.contains("sessionMetadataText(session)"))
+        assertTrue(androidMap.contains("items(day.sessions.sortedByDescending { it.createdAt }, key = { it.hash })"))
+        assertTrue(androidMap.contains("session.createdAt.formattedForMapSessionTime()"))
+        assertTrue(androidMap.contains("val displayTags = session.displayTags()"))
+        assertTrue(androidMap.contains("private fun SessionSummary.displayTags(): List<String>"))
+        assertTrue(androidMap.contains("private fun String.asMapHashtag(): String?"))
+        assertTrue(androidMap.contains(".horizontalScroll(rememberScrollState())"))
+        assertTrue(androidMap.contains("fontSize = 13.sp,\n                        fontWeight = FontWeight.SemiBold,\n                        color = AnkyColors.Gold.copy(alpha = 0.82f)"))
         assertTrue(androidMap.contains(".align(Alignment.BottomStart)"))
         assertTrue(androidMap.contains(".height(1.5.dp)"))
         assertTrue(iosMap.contains("let contentWidth = max(0, viewportWidth * 0.87)"))
@@ -1263,8 +1373,11 @@ class SourceInvariantTest {
             "get_more_credits",
             "write_minutes_caps",
             "copy_reflection",
+            "copy_reflection_prompt_hint",
             "copied_reflection",
             "copied_writing",
+            "reflection_prompt_copied",
+            "reflection_prompt_clipboard_guidance",
             "reflection_left",
             "reflections_left",
             "reveal_toggle_privacy_message",
@@ -1486,6 +1599,7 @@ class SourceInvariantTest {
             "loading_credit_packs",
             "no_credit_packs_available",
             "writing_is_free_one_credit_reflection",
+            "credits_sheet_prompt_copy_fallback",
             "available_credits",
             "best_value",
         ).forEach { key ->
@@ -1499,6 +1613,7 @@ class SourceInvariantTest {
             "labels.loadingCreditPacks",
             "labels.noCreditPacksAvailable",
             "labels.writingIsFreeOneCreditReflection",
+            "labels.creditsSheetPromptCopyFallback",
             "labels.availableCredits",
             "bestValue",
             "R.drawable.credits_thread_background",
@@ -1506,8 +1621,16 @@ class SourceInvariantTest {
             assertTrue(androidReveal.contains(copy))
         }
         assertTrue(androidReveal.contains("RevealCreditPurchaseSheet("))
-        assertTrue(androidReveal.contains("Icons.Filled.Refresh"))
+        assertTrue(androidReveal.contains("shape = RoundedCornerShape(topStart = 38.dp, topEnd = 38.dp)"))
+        assertTrue(androidReveal.contains("containerColor = CreditsPalette.AlmostBlack"))
+        assertTrue(androidReveal.contains("dragHandle = null"))
+        assertTrue(androidReveal.contains("RevealCreditsSheetBackground(Modifier.matchParentSize())"))
+        assertTrue(androidReveal.contains(".verticalScroll(rememberScrollState())"))
+        assertTrue(androidReveal.contains("RefreshGlyph(Modifier.size(22.dp))"))
+        assertTrue(androidReveal.contains("private fun RefreshGlyph"))
+        assertTrue(!androidReveal.contains("Icons.Filled.Refresh"))
         assertTrue(androidReveal.contains("Icons.Filled.AutoAwesome"))
+        assertTrue(androidStrings.contains("Don\\'t want to pay? Long press the copy button on a finished Anky and then send what will be copied to your favorite AI tool"))
         assertTrue(!androidReveal.contains("\"Anky reflection credits\""))
         assertTrue(!androidReveal.contains("\"Your private space to be witnessed.\""))
         assertTrue(!androidReveal.contains("\"available\\ncredits\""))
@@ -1610,7 +1733,7 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun companionTapMessagesMatchCurrentIosTabs() {
+    fun companionTapOnlyTogglesPresenceLikeIos() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
@@ -1624,18 +1747,23 @@ class SourceInvariantTest {
             .resolve("apps/ios/Anky/Support/AnkyPresenceOverlay.swift")
             .readText()
 
-        listOf(
-            "you are here. this is the writing surface: one living thread, one character at a time.",
-            "you are here. deletion is blocked on purpose; keep moving forward without editing.",
-            "you are here. the map is your local trail; every day exists even when it is quiet.",
-            "you are here. tap a day to reopen its .ankys and saved reflections.",
-            "you are here. this page is for identity, privacy, exports, and reflection credits.",
-            "you are here. credits buy reflections; writing itself stays free.",
-        ).forEach { message ->
-            assertTrue(androidApp.contains(message))
-        }
-        assertTrue(androidApp.contains("fun showCompanionNote(): Boolean"))
-        assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.replayRecentPromptIfAvailable()"))
+        assertTrue(iosApp.contains("transformToSigil: selectedTab == 0 && writeViewModel.hasStarted && !writeViewModel.hasReachedRitualMark"))
+        assertTrue(iosPresence.contains("if transformToSigil {"))
+        assertTrue(iosPresence.contains("revealsThreadingCompanion.toggle()"))
+        assertTrue(iosPresence.contains("isVisible.toggle()"))
+        assertTrue(androidApp.contains("transformToSigil = currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark"))
+        assertTrue(!androidApp.contains("fun showCompanionNote"))
+        assertTrue(!androidApp.contains("companionMessages("))
+        assertTrue(!androidApp.contains("writeViewModelWithCurrentMirror.replayRecentPromptIfAvailable()"))
+        assertTrue(!androidApp.contains("writeViewModelWithCurrentMirror.startAnkyNudgeIfPossible()"))
+        assertTrue(!androidApp.contains("you are here."))
+        assertTrue(!androidPresence.contains("onTap: (() -> Boolean)?"))
+        assertTrue(!androidPresence.contains("onTap?.invoke()"))
+        assertTrue(androidPresence.contains("forceCompanion = false"))
+        assertTrue(androidPresence.contains("if (transformToSigil) visible = true"))
+        assertTrue(androidPresence.contains("if (transformToSigil && visible && !forceCompanion)"))
+        assertTrue(androidPresence.contains("forceCompanion = true"))
+        assertTrue(androidPresence.contains("visible = !visible"))
         assertTrue(iosPresence.contains("DragGesture(minimumDistance: 3)"))
         assertTrue(androidPresence.contains("detectDragGestures("))
         assertTrue(androidPresence.contains("onDragStart = {"))
@@ -1658,6 +1786,9 @@ class SourceInvariantTest {
     fun appLockRecoveryPhraseFallbackMatchesCurrentIos() {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
+            .readText()
+        val androidHiddenInput = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/HiddenTextInput.kt")
             .readText()
         val androidStrings = repoRoot()
             .resolve("apps/android/app/src/main/res/values/strings.xml")
@@ -2184,6 +2315,9 @@ class SourceInvariantTest {
         val androidApp = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/app/AnkyApp.kt")
             .readText()
+        val androidHiddenInput = repoRoot()
+            .resolve("apps/android/app/src/main/java/inc/anky/android/feature/write/HiddenTextInput.kt")
+            .readText()
         val androidStrings = repoRoot()
             .resolve("apps/android/app/src/main/res/values/strings.xml")
             .readText()
@@ -2297,6 +2431,9 @@ class SourceInvariantTest {
         assertTrue(androidApp.contains("container.settingsStore.setOnboardingCompleted(true)"))
         assertTrue(androidApp.contains("val shouldShowOnboarding ="))
         assertTrue(androidApp.contains("!shouldShowOnboarding"))
+        assertTrue(androidApp.contains("inputEnabled = !shouldShowOnboarding"))
+        assertTrue(androidHiddenInput.contains("inputEnabled: Boolean = true"))
+        assertTrue(androidHiddenInput.contains("if (!inputEnabled) return@LaunchedEffect"))
         assertTrue(androidApp.contains("showsOnboarding.value = false"))
         assertTrue(androidApp.contains("writeViewModelWithCurrentMirror.openWritingPortal()"))
     }
@@ -2330,10 +2467,9 @@ class SourceInvariantTest {
         assertTrue(iosYou.contains("YouActionButton(AnkyLocalization.ui(\"refresh credits\"))"))
         assertTrue(iosYou.contains("YouActionButton(AnkyLocalization.ui(\"support / feedback\"))"))
         assertTrue(iosYou.contains("Text(AnkyLocalization.ui(\"email support@anky.app. include only what you choose to write.\"))"))
-        assertTrue(iosYou.contains("""YouMenuRow(
-                icon: "you-icon-anky-token",
-                title: "${'$'}ANKY",
-                subtitle: "To be deployed""""))
+        assertTrue(iosYou.contains("""icon: "you-icon-anky-token""""))
+        assertTrue(iosYou.contains("""title: "${'$'}ANKY""""))
+        assertTrue(iosYou.contains("""subtitle: didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress"""))
         assertTrue(iosYou.contains(".navigationTitle(AnkyLocalization.ui(\"You\"))"))
         assertTrue(iosYou.contains(".navigationBarTitleDisplayMode(.inline)"))
 
@@ -2342,7 +2478,9 @@ class SourceInvariantTest {
         assertTrue(androidYou.contains("val dataSubtitle = if (state.isEncryptedBackupEnabled)"))
         assertTrue(androidYou.contains("R.string.you_encrypted_backup_on"))
         assertTrue(androidYou.contains("R.string.you_export_writings_or_enable_backup"))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_export, stringResource(R.string.you_data), dataSubtitle"""))
+        assertTrue(androidYou.contains("DataToggleRow("))
+        assertTrue(androidYou.contains("checked = state.isEncryptedBackupEnabled"))
+        assertTrue(androidYou.contains("onEncryptedBackupToggle = { enabled ->"))
         assertTrue(androidYou.contains("val showsReflectionCreditsSheet = remember { mutableStateOf(false) }"))
         assertTrue(androidYou.contains("showsReflectionCreditsSheet.value = true"))
         assertTrue(androidYou.contains("ModalBottomSheet("))
@@ -2355,7 +2493,7 @@ class SourceInvariantTest {
         assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_support, stringResource(R.string.you_support_feedback), stringResource(R.string.you_email_support)"""))
         assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_privacy, stringResource(R.string.you_privacy_policy), stringResource(R.string.you_privacy_subtitle)"""))
         assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_terms, stringResource(R.string.you_terms_conditions), stringResource(R.string.you_terms_subtitle)"""))
-        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_anky_token, "\${'$'}ANKY", if (didCopyAnkyContract) stringResource(R.string.you_copied_to_clipboard) else stringResource(R.string.you_token_pending)"""))
+        assertTrue(androidYou.contains("""PromptRow(R.drawable.you_icon_anky_token, "\${'$'}ANKY", if (didCopyAnkyContract) stringResource(R.string.you_copied_to_clipboard) else ankyContractDisplayAddress()"""))
         listOf(
             "you_title",
             "you_data",
@@ -2373,6 +2511,8 @@ class SourceInvariantTest {
             "credit_rule_writing_free",
             "loading_credit_packs",
             "no_credit_packs_available",
+            "credits_sheet_prompt_copy_fallback",
+            "refresh_reflection_credits",
             "refresh_credits",
             "restoring_purchases",
             "restore_purchases",
@@ -2396,6 +2536,12 @@ class SourceInvariantTest {
             assertTrue(localizedStrings.contains("support_feedback_note"))
         }
         assertTrue(androidYou.contains("painterResource(R.drawable.you_ankycoin)"))
+        assertTrue(androidYou.contains("stringResource(R.string.credits_sheet_prompt_copy_fallback)"))
+        assertTrue(androidYou.contains("Icons.Filled.Refresh"))
+        assertTrue(androidYou.contains(".size(46.dp)"))
+        assertTrue(androidYou.contains(".border(1.2.dp, AnkyColors.Gold.copy(alpha = 0.42f), CircleShape)"))
+        assertTrue(androidYou.contains("contentDescription = stringResource(R.string.refresh_reflection_credits)"))
+        assertTrue(!androidYou.contains("Text(stringResource(R.string.refresh_credits), style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Gold))"))
         assertTrue(androidTokenIcon.contains("""android:viewportWidth="24""""))
         assertTrue(androidTokenIcon.contains("#D7BA73"))
         assertTrue(androidYou.contains("YouPage.Terms -> TermsPage()"))
@@ -2427,10 +2573,7 @@ class SourceInvariantTest {
             .readText()
 
         assertTrue(youScreen.contains("YouPage.Developer -> if (BuildConfig.DEBUG)"))
-        assertTrue(
-            Regex("""if \(BuildConfig\.DEBUG\) \{[\s\S]*PromptRow\(R\.drawable\.you_icon_settings, "developer", "local repair tools"""")
-                .containsMatchIn(youScreen),
-        )
+        assertTrue(!youScreen.contains("""PromptRow(R.drawable.you_icon_settings, "developer", "local repair tools""""))
     }
 
     @Test

@@ -1,5 +1,51 @@
 # iOS Delta Parity Log
 
+## 2026-06-10 Write Terminal Silence Continuation Fix
+
+Baseline:
+
+- Product-critical flow: the Write page seals the current `.anky` after 8 seconds of silence, stores it locally, then hands the user through Map into Reveal. If the artifact is still under 8 minutes, Reveal's `CONTINUE` action must return directly to Write with that writing loaded.
+- iOS root flow uses `revealAfterWriting` as a pending Map-to-Reveal handoff and routes Reveal's continue action back through `beginContinuingWriting(from:)`.
+
+Migrated Android changes:
+
+- Android post-write completion now stores a pending reveal hash, navigates to Map first, then opens Reveal after the Map route is active, matching the iOS two-step handoff instead of firing Map and Reveal navigation back-to-back.
+- Android `WriteViewModel.continueSession()` now reopens incomplete terminal-silence artifacts by trimming the terminal silence for the active draft, rendering the existing writing in the Write surface, freezing silence until the next glyph, and focusing the hidden input.
+- Continued fragments now replace the previous fragment artifact/index entry when saved again, matching iOS' `continuedArtifactToReplace` intent and avoiding duplicate fragment rows on Map.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.write.WriteViewModelTest.terminalSilenceFragmentContinuesInWriteAndReplacesOldFragment` passed.
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.write.WriteViewModelTest --tests inc.anky.android.privacy.SourceInvariantTest.postWriteCompletionRoutesThroughMapIntoRevealLikeIos --tests inc.anky.android.privacy.SourceInvariantTest.shortSessionTryAgainRoutesThroughRootRetryWritingLikeIos` passed.
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug` passed.
+
+Known follow-up:
+
+- Device/emulator QA should still manually verify the visible Write -> Map -> Reveal transition after an 8-second silence and the Reveal `CONTINUE` button returning to the loaded Write page.
+
+## 2026-06-10 You Credits Sheet Footer Parity Pass
+
+Baseline:
+
+- Source of truth: current dirty iOS `Features/Credits/AnkyReflectionCreditsSheet.swift`, where the shared reflection credits sheet uses the shorter `Your private space to be witnessed.` subtitle, a native refresh symbol, and a second footer line explaining the long-press copy / external AI fallback.
+- Android target: keep the You-owned credits modal aligned with the shared iOS credits sheet, not only the Reveal-owned sheet.
+
+Migrated Android changes:
+
+- Replaced the You credits sheet text refresh affordance with `Icons.Filled.Refresh` and the same `Refresh reflection credits` accessibility copy used by the current credit sheet strings.
+- Added the shared `credits_sheet_prompt_copy_fallback` footer line to the You credits modal, matching the current iOS no-payment guidance.
+- Tightened source parity coverage so the You credits modal keeps the current footer and icon refresh treatment.
+
+Validation run:
+
+- `./gradlew :app:testDebugUnitTest --tests inc.anky.android.privacy.SourceInvariantTest.youHomeRowsMatchCurrentIosPromptAndLegalShape` passed.
+- `./gradlew :app:testDebugUnitTest :app:assembleDebug` passed.
+- `git diff --check -- android` passed.
+
+Known follow-up:
+
+- This pass was verified by source invariant and build checks. Manual side-by-side You credits sheet screenshot QA remains pending.
+
 ## 2026-06-08 Reveal Credit Sheet Icon Parity Pass
 
 Baseline:
@@ -661,7 +707,7 @@ Baseline:
 Migrated Android changes:
 
 - Reveal now uses the iOS-style bottom floating `ask anky` prompt that scrolls the user to the inline Ask Anky action.
-- Reveal Ask Anky inline action uses `1 free reflection included`.
+- Reveal Ask Anky inline action uses `2 free reflections included`.
 - Reveal copy is section-aware with `copy writing` / `copy reflection` and short copied-state feedback.
 - Saved reflections preserve local `creditsRemaining` for state/export parity, while the current saved-reflection sheet keeps that balance out of the rendered body like Swift.
 - Reveal has a local delete affordance and Android-native confirmation using `delete forever?`.
@@ -685,7 +731,7 @@ Validation run in this pass:
 - `assembleDebug` passed with `BUILD SUCCESSFUL in 3s`.
 - `adb devices` showed no attached devices, so `connectedDebugAndroidTest` was not run.
 - `git diff --check -- apps/android` passed.
-- Targeted parity search for `X-Anky-Trial-Proof|X-Anky-App-Version|creditsRemaining|8 free reflections included|copy writing|copy reflection|delete forever` was run from repo root.
+- Targeted parity search for `X-Anky-Trial-Proof|X-Anky-App-Version|creditsRemaining|2 free reflections included|copy writing|copy reflection|delete forever` was run from repo root.
 
 Privacy/protocol notes:
 

@@ -20,6 +20,7 @@ struct RevealView: View {
     @State private var privacyDisclosure = PrivacyLockDisclosure()
     @State private var isNavigationBarHidden = false
     @State private var lastScrollOffsetY: CGFloat = 0
+    @State private var hasObservedScrollOffset = false
     @State private var didCopyWriting = false
     private let onDeleted: () -> Void
     private let onTryAgain: () -> Void
@@ -128,6 +129,7 @@ struct RevealView: View {
                     }
                     .onChange(of: viewModel.reflection?.id) { _, reflectionID in
                         guard reflectionID != nil else { return }
+                        guard inlineReflectionActive else { return }
                         guard !didScrollToStreamingStart else { return }
                         scrollToReflection(with: scrollProxy, anchor: .top)
                     }
@@ -155,6 +157,12 @@ struct RevealView: View {
                     .onPreferenceChange(RevealScrollOffsetPreferenceKey.self) { offsetY in
                         updateNavigationVisibility(offsetY: offsetY)
                     }
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 8)
+                            .onChanged { value in
+                                updateNavigationVisibility(translation: value.translation)
+                            }
+                    )
                     .coordinateSpace(name: RevealCoordinateSpace.scroll)
                 }
             }
@@ -170,16 +178,20 @@ struct RevealView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 18) {
-                    Button {
-                        copyWriting()
-                    } label: {
-                        Image(systemName: didCopyWriting ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(didCopyWriting ? AnkyTheme.success : RevealPalette.paper)
-                            .frame(width: 34, height: 38)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(AnkyLocalization.ui(didCopyWriting ? "Writing copied" : "Copy writing"))
+                    Image(systemName: didCopyWriting ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(didCopyWriting ? AnkyTheme.success : RevealPalette.paper)
+                        .frame(width: 34, height: 38)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            copyWriting()
+                        }
+                        .onLongPressGesture(minimumDuration: 0.55) {
+                            copyReflectionPrompt()
+                        }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel(AnkyLocalization.ui(didCopyWriting ? "Writing copied" : "Copy writing"))
+                        .accessibilityHint(AnkyLocalization.ui("Long press to copy the reflection prompt for your own AI tool."))
 
                     Button {
                         AnkyHaptics.warning()
@@ -305,6 +317,12 @@ struct RevealView: View {
     }
 
     private func updateNavigationVisibility(offsetY: CGFloat) {
+        guard hasObservedScrollOffset else {
+            hasObservedScrollOffset = true
+            lastScrollOffsetY = offsetY
+            return
+        }
+
         let delta = offsetY - lastScrollOffsetY
         lastScrollOffsetY = offsetY
 
@@ -313,17 +331,32 @@ struct RevealView: View {
         }
 
         if delta < 0, offsetY < -36, !isNavigationBarHidden {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                isNavigationBarHidden = true
-            }
-            tabBarCTAController.setScrollHidden(true)
+            setNavigationChromeHidden(true)
         } else if delta > 0, isNavigationBarHidden {
-            withAnimation(.easeInOut(duration: 0.24)) {
-                isNavigationBarHidden = false
-            }
-            tabBarCTAController.setScrollHidden(false)
-        } else if delta > 0 {
-            tabBarCTAController.setScrollHidden(false)
+            setNavigationChromeHidden(false)
+        }
+    }
+
+    private func updateNavigationVisibility(translation: CGSize) {
+        guard abs(translation.height) > abs(translation.width), abs(translation.height) > 10 else {
+            return
+        }
+
+        if translation.height < 0 {
+            setNavigationChromeHidden(true)
+        } else {
+            setNavigationChromeHidden(false)
+        }
+    }
+
+    private func setNavigationChromeHidden(_ isHidden: Bool) {
+        guard isNavigationBarHidden != isHidden || tabBarCTAController.isScrollHidden != isHidden else {
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isNavigationBarHidden = isHidden
+            tabBarCTAController.setScrollHidden(isHidden)
         }
     }
 
@@ -333,6 +366,34 @@ struct RevealView: View {
         withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
             didCopyWriting = true
         }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            withAnimation(.easeInOut(duration: 0.18)) {
+                didCopyWriting = false
+            }
+        }
+    }
+
+    private func copyReflectionPrompt() {
+        guard viewModel.isComplete else {
+            return
+        }
+
+        viewModel.copy(.reflectionPrompt)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            didCopyWriting = true
+        }
+        ankyCompanion.witness(
+            mood: .guiding,
+            sequence: .waveFront,
+            bubble: AnkyBubble(
+                text: "The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it.",
+                close: {
+                    ankyCompanion.hideBubble()
+                }
+            )
+        )
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             withAnimation(.easeInOut(duration: 0.18)) {
@@ -667,7 +728,7 @@ private struct RevealHeader: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
                 .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
 
             RevealHeaderGlassButton(
                 systemName: "trash",

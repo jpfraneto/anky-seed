@@ -10,8 +10,11 @@
   --color-gold-300: #e2ac4a;
   --color-gold-400: #a96f1f;
   --font-serif: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-mono:
+    "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
 }
 
 @layer base {
@@ -45,11 +48,32 @@
 @layer utilities {
   .anky-star-field {
     background-image:
-      radial-gradient(circle at 18% 18%, rgba(255, 242, 196, 0.68) 0 1px, transparent 1.5px),
-      radial-gradient(circle at 84% 24%, rgba(245, 217, 142, 0.48) 0 1px, transparent 1.5px),
-      radial-gradient(circle at 30% 72%, rgba(255, 255, 255, 0.36) 0 1px, transparent 1.5px),
-      radial-gradient(circle at 72% 78%, rgba(226, 172, 74, 0.34) 0 1px, transparent 1.5px),
-      linear-gradient(115deg, transparent 0 45%, rgba(226, 172, 74, 0.08) 45.2%, transparent 45.6% 100%);
+      radial-gradient(
+        circle at 18% 18%,
+        rgba(255, 242, 196, 0.68) 0 1px,
+        transparent 1.5px
+      ),
+      radial-gradient(
+        circle at 84% 24%,
+        rgba(245, 217, 142, 0.48) 0 1px,
+        transparent 1.5px
+      ),
+      radial-gradient(
+        circle at 30% 72%,
+        rgba(255, 255, 255, 0.36) 0 1px,
+        transparent 1.5px
+      ),
+      radial-gradient(
+        circle at 72% 78%,
+        rgba(226, 172, 74, 0.34) 0 1px,
+        transparent 1.5px
+      ),
+      linear-gradient(
+        115deg,
+        transparent 0 45%,
+        rgba(226, 172, 74, 0.08) 45.2%,
+        transparent 45.6% 100%
+      );
     background-size:
       220px 220px,
       280px 280px,
@@ -59,54 +83,103 @@
   }
 
   .anky-ritual-ring-dim {
-    background:
-      conic-gradient(
-        from -90deg,
-        rgba(232, 51, 36, 0.20) 0deg 44deg,
-        rgba(242, 122, 26, 0.20) 45deg 89deg,
-        rgba(245, 207, 56, 0.20) 90deg 134deg,
-        rgba(56, 184, 66, 0.20) 135deg 179deg,
-        rgba(26, 99, 242, 0.20) 180deg 224deg,
-        rgba(77, 64, 204, 0.20) 225deg 269deg,
-        rgba(148, 61, 230, 0.20) 270deg 314deg,
-        rgba(245, 242, 222, 0.20) 315deg 360deg
-      );
-    mask: radial-gradient(farthest-side, transparent calc(100% - 17px), black calc(100% - 16px));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 17px), black calc(100% - 16px));
+    background: conic-gradient(
+      from 0deg,
+      rgba(232, 51, 36, 0.2) 0deg 44deg,
+      rgba(242, 122, 26, 0.2) 45deg 89deg,
+      rgba(245, 207, 56, 0.2) 90deg 134deg,
+      rgba(56, 184, 66, 0.2) 135deg 179deg,
+      rgba(26, 99, 242, 0.2) 180deg 224deg,
+      rgba(77, 64, 204, 0.2) 225deg 269deg,
+      rgba(148, 61, 230, 0.2) 270deg 314deg,
+      rgba(245, 242, 222, 0.2) 315deg 360deg
+    );
+    mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 17px),
+      black calc(100% - 16px)
+    );
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 17px),
+      black calc(100% - 16px)
+    );
   }
 
   .anky-ritual-ring-active {
-    mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 19px),
+      black calc(100% - 18px)
+    );
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 19px),
+      black calc(100% - 18px)
+    );
     filter: drop-shadow(0 0 10px rgba(226, 172, 74, 0.28));
   }
 
   .anky-ritual-ring-preview {
-    background:
-      conic-gradient(
-        from -90deg,
-        rgba(232, 51, 36, 0.88) 0deg 44deg,
-        rgba(242, 122, 26, 0.78) 45deg 68deg,
-        transparent 69deg 360deg
-      );
-    mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 19px), black calc(100% - 18px));
+    background: conic-gradient(
+      from 0deg,
+      rgba(232, 51, 36, 0.88) 0deg 44deg,
+      rgba(242, 122, 26, 0.78) 45deg 68deg,
+      transparent 69deg 360deg
+    );
+    mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 19px),
+      black calc(100% - 18px)
+    );
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 19px),
+      black calc(100% - 18px)
+    );
     filter: drop-shadow(0 0 10px rgba(232, 51, 36, 0.18));
   }
 
   .anky-ring-cuts {
-    background:
-      repeating-conic-gradient(
-        from -78.75deg,
-        rgba(0, 0, 0, 0.72) 0deg 2.8deg,
-        transparent 2.8deg 45deg
-      );
-    mask: radial-gradient(farthest-side, transparent calc(100% - 28px), black calc(100% - 27px), black calc(100% - 1px), transparent 100%);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 28px), black calc(100% - 27px), black calc(100% - 1px), transparent 100%);
+    background: repeating-conic-gradient(
+      from -1.4deg,
+      rgba(0, 0, 0, 0.72) 0deg 2.8deg,
+      transparent 2.8deg 45deg
+    );
+    mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 28px),
+      black calc(100% - 27px),
+      black calc(100% - 1px),
+      transparent 100%
+    );
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - 28px),
+      black calc(100% - 27px),
+      black calc(100% - 1px),
+      transparent 100%
+    );
   }
 
   .anky-companion-breathe {
     animation: anky-companion-breathe 3.2s ease-in-out infinite alternate;
+  }
+
+  .anky-center-cursor {
+    animation: anky-center-cursor-blink 1.05s steps(2, start) infinite;
+    display: inline-block;
+  }
+
+  @keyframes anky-center-cursor-blink {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    46%,
+    100% {
+      opacity: 0.18;
+    }
   }
 
   @keyframes anky-companion-breathe {

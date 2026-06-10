@@ -18,10 +18,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,8 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
@@ -57,14 +53,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -88,17 +81,16 @@ import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-
-private const val WriteDevPasteHoldMs = 5_000L
 
 @Composable
 fun WriteScreen(
     viewModel: WriteViewModel,
     onImported: (String) -> Unit,
+    onCompleted: (String) -> Unit,
     onCloseToMap: () -> Unit,
     onImportAnkyText: (String) -> SavedAnky,
     onImportAnkyBytes: (ByteArray) -> SavedAnky,
+    inputEnabled: Boolean = true,
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -107,8 +99,6 @@ fun WriteScreen(
     val importReadableError = stringResource(R.string.write_import_readable_error)
     val importOpenError = stringResource(R.string.write_import_open_error)
     val openMapLabel = stringResource(R.string.open_map)
-    val pasteArtifactLabel = stringResource(R.string.paste_anky_artifact)
-    val devPasteArtifactLabel = stringResource(R.string.hold_dev_paste_anky_artifact)
     var importError by remember { mutableStateOf<String?>(null) }
     WriteSystemBarsHidden()
     WriteHaptics(state)
@@ -175,11 +165,6 @@ fun WriteScreen(
         }
     }
 
-    fun devPasteArtifact() {
-        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        importAndOfferReflection { onImportAnkyText(viewModel.devSampleAnkyArtifact) }
-    }
-
     LaunchedEffect(state.isClosing, state.latestGlyph) {
         while (state.isClosing) {
             viewModel.refreshLiveState()
@@ -187,10 +172,14 @@ fun WriteScreen(
         }
     }
 
+    LaunchedEffect(state.completedHash) {
+        state.completedHash?.let(onCompleted)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(Color.Black)
             .testTag("write-screen"),
     ) {
         HiddenTextInput(
@@ -200,15 +189,18 @@ fun WriteScreen(
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 viewModel.ignoreBackspaceOrReplacement()
             },
+            inputEnabled = inputEnabled,
             focusRequestId = state.keyboardFocusRequestId,
             modifier = Modifier.fillMaxSize().testTag("write-input"),
         )
 
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding(),
         ) {
+            val ringSize = 190.dp
+            val ringTop = (maxHeight * 0.36f - ringSize / 2f).coerceAtLeast(24.dp)
             if (state.displayedText.isNotEmpty()) {
                 Text(
                     text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
@@ -219,22 +211,17 @@ fun WriteScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 128.dp, bottom = 14.dp),
+                        .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
                 )
             }
 
             WriteTopBar(
                 hasActiveDotAnky = state.acceptedGlyphCount > 0 || state.isClosing,
-                canPaste = state.acceptedGlyphCount == 0 && !state.isClosing,
                 onCloseToMap = {
                     viewModel.abandonIfEmpty()
                     onCloseToMap()
                 },
-                onPaste = ::pasteOrOpenDocument,
-                onDevPaste = ::devPasteArtifact,
                 openMapLabel = openMapLabel,
-                pasteArtifactLabel = pasteArtifactLabel,
-                devPasteArtifactLabel = devPasteArtifactLabel,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 8.dp, start = 10.dp, end = 10.dp),
@@ -269,7 +256,7 @@ fun WriteScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 58.dp)
-                        .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(14.dp))
+                        .background(Color.Black.copy(alpha = 0.92f), RoundedCornerShape(14.dp))
                         .padding(horizontal = 14.dp, vertical = 9.dp),
                 )
             }
@@ -280,8 +267,8 @@ fun WriteScreen(
                 latestGlyph = state.latestGlyph,
                 isRitualComplete = state.hasReachedRitualMark,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 8.dp, bottom = 8.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = ringTop)
                     .testTag("ritual-glyph"),
             )
         }
@@ -291,13 +278,8 @@ fun WriteScreen(
 @Composable
 private fun WriteTopBar(
     hasActiveDotAnky: Boolean,
-    canPaste: Boolean,
     onCloseToMap: () -> Unit,
-    onPaste: () -> Unit,
-    onDevPaste: () -> Unit,
     openMapLabel: String,
-    pasteArtifactLabel: String,
-    devPasteArtifactLabel: String,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -312,57 +294,6 @@ private fun WriteTopBar(
             }
         }
         Box(Modifier.weight(1f))
-        if (!hasActiveDotAnky) {
-            DevPasteChromeButton(
-                onPaste = onPaste,
-                onDevPaste = onDevPaste,
-                enabled = canPaste,
-                pasteArtifactLabel = pasteArtifactLabel,
-                devPasteArtifactLabel = devPasteArtifactLabel,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ContentPaste,
-                    contentDescription = pasteArtifactLabel,
-                    tint = if (canPaste) AnkyColors.Gold.copy(alpha = 0.86f) else Color.Black.copy(alpha = 0.34f),
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DevPasteChromeButton(
-    onPaste: () -> Unit,
-    onDevPaste: () -> Unit,
-    enabled: Boolean,
-    pasteArtifactLabel: String,
-    devPasteArtifactLabel: String,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(42.dp)
-            .background(Color.White.copy(alpha = 0.62f), CircleShape)
-            .border(BorderStroke(1.dp, AnkyColors.Gold.copy(alpha = 0.18f)), CircleShape)
-            .semantics {
-                onClick(pasteArtifactLabel) {
-                    if (enabled) onPaste()
-                    enabled
-                }
-                onLongClick(devPasteArtifactLabel) {
-                    if (enabled) onDevPaste()
-                    enabled
-                }
-            }
-            .fiveSecondHoldClickable(
-                enabled = enabled,
-                onTap = onPaste,
-                onHold = onDevPaste,
-            ),
-    ) {
-        content()
     }
 }
 
@@ -386,33 +317,6 @@ private fun WriteChromeButton(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
         content()
-    }
-}
-
-private fun Modifier.fiveSecondHoldClickable(
-    enabled: Boolean,
-    onTap: () -> Unit,
-    onHold: () -> Unit,
-): Modifier {
-    if (!enabled) return this
-    return pointerInput(onTap, onHold) {
-        awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
-            var cancelled = false
-            val up = withTimeoutOrNull(WriteDevPasteHoldMs) {
-                waitForUpOrCancellation().also { pointerUp ->
-                    if (pointerUp == null) cancelled = true
-                }
-            }
-            when {
-                up != null -> onTap()
-                cancelled -> Unit
-                else -> {
-                    onHold()
-                    waitForUpOrCancellation()
-                }
-            }
-        }
     }
 }
 
@@ -465,7 +369,6 @@ private fun RitualRings(
         label = "ritual-progress",
     )
     val silenceProgress = min(1f, ((silenceElapsedMs - 3000).toFloat() / 5000f).coerceAtLeast(0f))
-    val glyphColor = rhythmColor((silenceElapsedMs.toFloat() / AnkyDuration.TerminalSilenceMs).coerceIn(0f, 1f))
     val remainingSilenceSeconds = maxOf(
         0,
         ceil((AnkyDuration.TerminalSilenceMs - silenceElapsedMs).toDouble() / 1000.0).toInt(),
@@ -490,9 +393,9 @@ private fun RitualRings(
         Color(0xFFF5F2DE),
     )
 
-    Box(modifier = modifier.size(106.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.size(190.dp), contentAlignment = Alignment.Center) {
         if (isRitualComplete) {
-            Canvas(Modifier.size(106.dp)) {
+            Canvas(Modifier.size(190.dp)) {
                 drawCircle(
                     color = AnkyColors.Gold.copy(alpha = 0.24f + pulse * 0.36f),
                     radius = size.minDimension / 2f,
@@ -500,21 +403,21 @@ private fun RitualRings(
                 )
             }
         }
-        Canvas(Modifier.size(106.dp)) {
-            drawCircle(Color(0xFF090604).copy(alpha = 0.94f), radius = 50.dp.toPx())
-            drawCircle(AnkyColors.Gold.copy(alpha = 0.20f), radius = 48.dp.toPx(), style = Stroke(width = 1.dp.toPx()))
-            drawCircle(Color(0xFF100C09).copy(alpha = 0.98f), radius = 33.dp.toPx())
+        Canvas(Modifier.size(190.dp)) {
+            drawCircle(Color(0xFF090604).copy(alpha = 0.88f), radius = 91.dp.toPx())
+            drawCircle(AnkyColors.Gold.copy(alpha = 0.20f), radius = 88.dp.toPx(), style = Stroke(width = 1.dp.toPx()))
+            drawCircle(Color(0xFF100C09).copy(alpha = 0.90f), radius = 65.dp.toPx())
 
-            val diameter = 88.dp.toPx()
+            val diameter = 164.dp.toPx()
             val arcTopLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
             colors.forEachIndexed { index, color ->
                 val segmentProgress = ((ritualProgress * 8f) - index).coerceIn(0f, 1f)
                 val isPassed = segmentProgress >= 1f
                 val isActive = segmentProgress > 0f && segmentProgress < 1f
-                val passiveStroke = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Butt)
+                val passiveStroke = Stroke(width = 9.dp.toPx(), cap = StrokeCap.Butt)
                 val activeStroke = Stroke(
-                    width = ((if (isPassed) 13f else 11f) + if (isActive) pulse * 1.2f else 0f).dp.toPx(),
+                    width = ((if (isPassed) 18f else 15f) + if (isActive) pulse * 1.8f else 0f).dp.toPx(),
                     cap = StrokeCap.Butt,
                 )
                 val start = -90f + index * 45f + 2.2f
@@ -544,25 +447,24 @@ private fun RitualRings(
                 rotate(degrees = index * 45f + 22.5f, pivot = center) {
                     drawRoundRect(
                         color = Color.Black.copy(alpha = 0.56f),
-                        topLeft = Offset(size.width / 2f - 1.dp.toPx(), size.height / 2f - 44.dp.toPx()),
-                        size = Size(2.dp.toPx(), 15.dp.toPx()),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx(), 1.dp.toPx()),
+                        topLeft = Offset(size.width / 2f - 1.5.dp.toPx(), size.height / 2f - 82.dp.toPx()),
+                        size = Size(3.dp.toPx(), 27.dp.toPx()),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx()),
                     )
                 }
             }
-            drawCircle(AnkyColors.Gold.copy(alpha = 0.24f), radius = 32.5.dp.toPx(), style = Stroke(width = 1.5.dp.toPx()))
-            drawCircle(Color(0xFF050506).copy(alpha = 0.88f), radius = 29.dp.toPx())
-            drawCircle(Color.White.copy(alpha = 0.10f + pulse * 0.04f), radius = 18.dp.toPx(), center = Offset(size.width * 0.48f, size.height * 0.48f))
+            drawCircle(AnkyColors.Gold.copy(alpha = 0.24f), radius = 59.dp.toPx(), style = Stroke(width = 1.5.dp.toPx()))
+            drawCircle(Color(0xFF050506).copy(alpha = 0.88f), radius = 54.dp.toPx())
         }
-        if (silenceElapsedMs >= 3000) {
+        if (silenceElapsedMs >= 3000 && remainingSilenceSeconds > 0) {
             Text(
                 remainingSilenceSeconds.toString(),
-                fontSize = 25.sp,
+                fontSize = 42.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = FontFamily.Monospace,
                 color = AnkyColors.Gold.copy(alpha = 0.88f),
             )
-            Canvas(Modifier.size(58.dp)) {
+            Canvas(Modifier.size(108.dp)) {
                 drawArc(
                     color = Color.White.copy(alpha = 0.34f + pulse * 0.16f),
                     startAngle = -90f,
@@ -576,17 +478,17 @@ private fun RitualRings(
         } else if (latestGlyph.isBlank()) {
             Box(
                 Modifier
-                    .size(width = 2.dp, height = 25.dp)
+                    .size(width = 3.dp, height = 48.dp)
                     .offset(y = 0.dp)
                     .background(AnkyColors.Paper.copy(alpha = if (pulse > 0.5f) 0.58f else 0.20f), CircleShape),
             )
         } else {
             Text(
                 latestGlyph,
-                fontSize = 36.sp,
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.SansSerif,
-                color = glyphColor.copy(alpha = 0.94f),
+                color = Color.White.copy(alpha = 0.94f),
             )
         }
     }
@@ -598,18 +500,10 @@ private fun writingGlyphText(glyphs: List<WritingGlyph>, silenceElapsedMs: Long)
     glyphs.forEachIndexed { index, glyph ->
         val isLatest = index == latestIndex
         val alpha = if (isLatest) 0.96f else maxOf(0.28f, pageOpacity * 0.82f)
-        withStyle(SpanStyle(color = rhythmColor(glyph.silenceProgress).copy(alpha = alpha))) {
+        withStyle(SpanStyle(color = Color.White.copy(alpha = alpha))) {
             append(glyph.glyph)
         }
     }
-}
-
-private fun rhythmColor(progress: Float): Color {
-    val clamped = progress.coerceIn(0f, 1f)
-    val red = 0.94f + (1f - 0.94f) * clamped
-    val green = 0.12f + (1f - 0.12f) * clamped
-    val blue = 0.08f + (1f - 0.08f) * clamped
-    return Color(red, green, blue)
 }
 
 @Composable

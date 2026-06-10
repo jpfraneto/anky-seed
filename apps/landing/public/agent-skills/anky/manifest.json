@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "name": "anky",
+  "version": "7.2.0",
+  "description": "The mask any agent can wear. Spawn a localhost writing server, close the browser when done, reflect in the conversation, stay in anky mode.",
+  "homepage": "https://anky.app/skills",
+  "bundle_url": "https://anky.app/agent-skills/anky",
+  "entrypoint": "https://anky.app/agent-skills/anky/SKILL.md",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "url": "https://anky.app/agent-skills/anky/SKILL.md"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ fun HiddenTextInput(
     onGlyph: (String) -> Unit,
     onGlyphs: (List<String>) -> Unit,
     onRejectedMutation: () -> Unit,
+    inputEnabled: Boolean = true,
     focusRequestId: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -38,6 +39,7 @@ fun HiddenTextInput(
         BasicTextField(
             value = value.value,
             onValueChange = { next ->
+                if (!inputEnabled) return@BasicTextField
                 when {
                     next.isEmpty() -> onRejectedMutation()
                     next.isSingleProtocolGlyph() -> onGlyph(next)
@@ -46,17 +48,19 @@ fun HiddenTextInput(
                 value.value = ""
             },
             modifier = modifier.focusRequester(focusRequester),
+            enabled = inputEnabled,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 autoCorrectEnabled = false,
-                keyboardType = KeyboardType.Text,
+                keyboardType = KeyboardType.Password,
             ),
             textStyle = TextStyle(color = Color.Transparent),
             singleLine = true,
         )
     }
 
-    LaunchedEffect(focusRequestId) {
+    LaunchedEffect(inputEnabled, focusRequestId) {
+        if (!inputEnabled) return@LaunchedEffect
         focusRequester.requestFocus()
         keyboard?.show()
     }

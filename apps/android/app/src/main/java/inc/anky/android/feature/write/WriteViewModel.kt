@@ -18,6 +18,7 @@ import inc.anky.android.core.protocol.AnkyWriter
 import inc.anky.android.core.storage.ActiveDraftStore
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
+import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.SessionSummary
 import java.time.Instant
@@ -106,6 +107,8 @@ class WriteViewModel(
     private var visibleErrorMessage: String? = restoreErrorMessage
     private var recentErrorMessage: String? = null
     private var keyboardFocusRequestId = 0
+    private var isFrozenForContinuation = false
+    private var continuedArtifactToReplace: SavedAnky? = null
 
     private val _state = MutableStateFlow(deriveState())
     val state: StateFlow<WriteState> = _state
@@ -138,6 +141,7 @@ class WriteViewModel(
     }
 
     private fun acceptGlyphAt(glyph: String, now: Long) {
+        resumeIfFrozen(now)
         freezeLatestGlyph(now)
         if (!writer.isStarted) sessionStartMs = now
         if (!writer.accept(glyph, now)) return
@@ -210,6 +214,57 @@ class WriteViewModel(
         _state.update { it.copy(completedHash = null) }
     }
 
+    fun clearCompletedSession() {
+        closeJob?.cancel()
+        nudgeJob?.cancel()
+        nudgeClearJob?.cancel()
+        errorClearJob?.cancel()
+        writer = AnkyWriter()
+        sessionStartMs = null
+        displayedText = ""
+        displayedGlyphs = emptyList()
+        acceptedGlyphCount = 0
+        isFrozenForContinuation = false
+        continuedArtifactToReplace = null
+        nudgeMessage = null
+        isRequestingNudge = false
+        visibleErrorMessage = null
+        recentErrorMessage = null
+        activeDraftStore.clear()
+        keyboardFocusRequestId += 1
+        _state.value = deriveState()
+    }
+
+    fun continueSession(artifact: SavedAnky): Boolean {
+        if (artifact.isComplete) {
+            clearCompletedSession()
+            return false
+        }
+        return runCatching {
+            val continuationText = artifact.text.openContinuationText()
+            val restored = AnkyWriter.fromDraft(continuationText)
+            val parsed = AnkyParser.parse(continuationText)
+            closeJob?.cancel()
+            nudgeJob?.cancel()
+            nudgeClearJob?.cancel()
+            errorClearJob?.cancel()
+            writer = restored
+            sessionStartMs = parsed.startEpochMs
+            displayedText = AnkyReconstructor.reconstructText(parsed)
+            displayedGlyphs = displayedText.map { WritingGlyph(it.toString(), 1f) }
+            acceptedGlyphCount = parsed.events.size
+            nudgeMessage = null
+            isRequestingNudge = false
+            visibleErrorMessage = null
+            recentErrorMessage = null
+            isFrozenForContinuation = true
+            continuedArtifactToReplace = artifact
+            activeDraftStore.save(writer.text)
+            keyboardFocusRequestId += 1
+            _state.value = deriveState()
+        }.isSuccess
+    }
+
     fun refreshLiveState() {
         if (writer.isStarted) _state.value = deriveState(latestGlyph = _state.value.latestGlyph)
     }
@@ -224,6 +279,8 @@ class WriteViewModel(
         displayedText = ""
         displayedGlyphs = emptyList()
         acceptedGlyphCount = 0
+        isFrozenForContinuation = false
+        continuedArtifactToReplace = null
         nudgeMessage = null
         isRequestingNudge = false
         visibleErrorMessage = null
@@ -256,9 +313,16 @@ class WriteViewModel(
             indexStore.upsert(summary)
             artifact
         }.onSuccess { artifact ->
+            val replacedArtifact = continuedArtifactToReplace
+            if (replacedArtifact != null && replacedArtifact.hash != artifact.hash) {
+                runCatching { archive.delete(replacedArtifact.hash) }
+                runCatching { indexStore.delete(replacedArtifact.hash) }
+            }
+            continuedArtifactToReplace = null
             activeDraftStore.clear()
             visibleErrorMessage = null
             recentErrorMessage = null
+            isFrozenForContinuation = true
             _state.value = deriveState().copy(
                 completedHash = artifact.hash,
                 elapsedMs = maxOf(artifact.durationMs, AnkyDuration.CompleteRitualMs),
@@ -286,6 +350,8 @@ class WriteViewModel(
         val now = nowMs()
         val elapsed = if (writer.isClosed) {
             (validation as? AnkyValidation.Valid)?.durationMs ?: 0
+        } else if (isFrozenForContinuation) {
+            (validation as? AnkyValidation.Valid)?.durationMs ?: 0
         } else {
             sessionStartMs?.let { maxOf(0, now - it) }
                 ?: (validation as? AnkyValidation.Valid)?.durationMs
@@ -293,6 +359,8 @@ class WriteViewModel(
         }
         val silenceElapsed = if (writer.isClosed) {
             AnkyDuration.TerminalSilenceMs
+        } else if (isFrozenForContinuation) {
+            0
         } else {
             writer.lastAcceptedMs?.let { maxOf(0, now - it) } ?: 0
         }
@@ -305,7 +373,7 @@ class WriteViewModel(
             silenceElapsedMs = silenceElapsed,
             silenceRemainingMs = maxOf(0, AnkyDuration.TerminalSilenceMs - silenceElapsed),
             progress = (elapsed.toFloat() / AnkyDuration.CompleteRitualMs).coerceIn(0f, 1f),
-            isClosing = writer.isStarted && !writer.isClosed,
+            isClosing = writer.isStarted && !writer.isClosed && !isFrozenForContinuation,
             acceptedGlyphCount = acceptedGlyphCount,
             todayAnkyCount = todayAnkyCount(now),
             keyboardFocusRequestId = keyboardFocusRequestId,
@@ -313,6 +381,13 @@ class WriteViewModel(
             nudgeMessage = nudgeMessage,
             isRequestingNudge = isRequestingNudge,
         )
+    }
+
+    private fun resumeIfFrozen(now: Long) {
+        if (!isFrozenForContinuation) return
+        writer.prepareToResume(now)
+        isFrozenForContinuation = false
+        scheduleClose(afterMs = AnkyDuration.TerminalSilenceMs)
     }
 
     private fun todayAnkyCount(now: Long): Int {
@@ -418,6 +493,15 @@ class WriteViewModel(
 
     private fun restoredGlyphCount(): Int =
         runCatching { AnkyParser.parse(writer.text).events.size }.getOrDefault(0)
+}
+
+private fun String.openContinuationText(): String {
+    val normalized = replace("\r\n", "\n")
+    val lines = normalized
+        .split("\n")
+        .dropLastWhile { it.isEmpty() }
+    if (lines.lastOrNull() != AnkyDuration.TerminalSilenceMs.toString()) return normalized
+    return lines.dropLast(1).joinToString("\n")
 }
 
 private fun oneLineNudge(text: String): String {

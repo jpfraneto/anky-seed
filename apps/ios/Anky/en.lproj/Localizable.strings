@@ -35,6 +35,9 @@
 "Your writing is sacred. It stays on your phone and only leaves if you ask for a reflection. Anky mirrors it back and never stores it." = "Your writing is sacred. It stays on your phone and only leaves if you ask for a reflection. Anky mirrors it back and never stores it.";
 "Writing copied" = "Writing copied";
 "Copy writing" = "Copy writing";
+"Copied to clipboard" = "Copied to clipboard";
+"Long press to copy the reflection prompt for your own AI tool." = "Long press to copy the reflection prompt for your own AI tool.";
+"The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it." = "The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it.";
 "Delete writing session" = "Delete writing session";
 "Delete writing session?" = "Delete writing session?";
 "Delete" = "Delete";
@@ -54,7 +57,7 @@
 "Your private space to be witnessed." = "Your private space to be witnessed.";
 "Refresh reflection credits" = "Refresh reflection credits";
 "available\ncredits" = "available\ncredits";
-"Don't want to pay? Watch [this video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)" = "Don't want to pay? Watch [this video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)";
+"Don't want to pay? Long press the copy button on a finished Anky and then send what will be copied to your favorite AI tool" = "Don't want to pay? Long press the copy button on a finished Anky and then send what will be copied to your favorite AI tool";
 "Double tap to buy." = "Double tap to buy.";
 "Go to current day" = "Go to current day";
 "UTC day progress" = "UTC day progress";

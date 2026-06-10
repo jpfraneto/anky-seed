@@ -2,7 +2,6 @@ package inc.anky.android.app
 
 import android.content.Context
 import android.content.ContextWrapper
-import android.view.HapticFeedbackConstants
 import androidx.biometric.BiometricManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
@@ -35,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -52,7 +50,6 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import inc.anky.android.R
 import inc.anky.android.core.identity.DeviceBiometricGate
-import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.feature.map.MapScreen
 import inc.anky.android.feature.map.MapViewModel
 import inc.anky.android.feature.onboarding.AnkyOnboardingScreen
@@ -64,13 +61,15 @@ import inc.anky.android.feature.write.WriteViewModel
 import inc.anky.android.feature.you.YouInitialPage
 import inc.anky.android.feature.you.YouScreen
 import inc.anky.android.feature.you.YouViewModel
+import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.core.storage.SingleAnkyImporter
-import inc.anky.android.ui.components.AnkyChatAction
 import inc.anky.android.ui.components.AnkyPresenceOverlay
 import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.components.AnkySequenceName
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyTheme
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,7 +82,6 @@ fun AnkyApp(container: AppContainer) {
             initialValue = null,
         ).value
         val context = LocalContext.current
-        val rootView = LocalView.current
         val rootScope = rememberCoroutineScope()
         val biometricGate = remember(context) {
             DeviceBiometricGate { context.findFragmentActivity() }
@@ -206,20 +204,31 @@ fun AnkyApp(container: AppContainer) {
         }
         val writeViewModelWithCurrentMirror = writeViewModel
         val writeState = writeViewModelWithCurrentMirror.state.collectAsStateWithLifecycle().value
-        val showsLaunchDialogue = remember { mutableStateOf(true) }
-        val companionNote = remember { mutableStateOf<String?>(null) }
-        val writeCompanionNoteIndex = remember { mutableIntStateOf(0) }
-        val mapCompanionNoteIndex = remember { mutableIntStateOf(0) }
-        val youCompanionNoteIndex = remember { mutableIntStateOf(0) }
         val isShowingYouExperience = remember { mutableStateOf(false) }
         val showsOnboarding = remember(settings.onboardingCompleted) { mutableStateOf(!settings.onboardingCompleted) }
         val importedCompletedHash = remember { mutableStateOf<String?>(null) }
+        val pendingPostWriteRevealHash = remember { mutableStateOf<String?>(null) }
+        val handledPostWriteHashes = remember { mutableSetOf<String>() }
         val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash
         val shouldShowOnboarding =
             showsOnboarding.value &&
                 lockState.value == LockState.Unlocked &&
                 (currentRoute == AnkyRoute.Write.route || currentRoute == null) &&
                 !isShowingYouExperience.value
+
+        fun openPostWriteReveal(hash: String) {
+            if (!handledPostWriteHashes.add(hash)) return
+            importedCompletedHash.value = null
+            writeViewModelWithCurrentMirror.consumeCompletedHash()
+            showsOnboarding.value = false
+            mapViewModel.refresh()
+            container.encryptedBackupStore.backUpIfEnabled()
+            pendingPostWriteRevealHash.value = hash
+            navController.navigate(AnkyRoute.Map.route) {
+                launchSingleTop = true
+                popUpTo(AnkyRoute.Write.route)
+            }
+        }
 
         LaunchedEffect(
             settings.deviceLockPromptCompleted,
@@ -242,49 +251,52 @@ fun AnkyApp(container: AppContainer) {
 
         LaunchedEffect(writeState.acceptedGlyphCount) {
             if (writeState.acceptedGlyphCount > 0) {
-                showsLaunchDialogue.value = false
                 showsOnboarding.value = false
             }
         }
-        LaunchedEffect(postWriteCompletedHash, lockState.value) {
+        LaunchedEffect(postWriteCompletedHash) {
             val hash = postWriteCompletedHash
-            if (lockState.value == LockState.Unlocked && hash != null) {
-                importedCompletedHash.value = null
-                writeViewModelWithCurrentMirror.consumeCompletedHash()
-                mapViewModel.refresh()
-                container.encryptedBackupStore.backUpIfEnabled()
-                navController.navigate(AnkyRoute.Map.route) {
-                    launchSingleTop = true
-                    popUpTo(AnkyRoute.Write.route)
-                }
-                navController.navigate(AnkyRoute.Reveal.route(hash))
+            if (hash != null) {
+                openPostWriteReveal(hash)
             }
+        }
+        LaunchedEffect(writeViewModelWithCurrentMirror) {
+            writeViewModelWithCurrentMirror.state
+                .mapNotNull { it.completedHash }
+                .distinctUntilChanged()
+                .collect { hash -> openPostWriteReveal(hash) }
         }
         LaunchedEffect(currentRoute) {
-            companionNote.value = null
             isShowingYouExperience.value = false
         }
-
-        fun showCompanionNote(): Boolean {
-            showsLaunchDialogue.value = false
-            val messages = companionMessages(currentRoute, writeState.hasReachedRitualMark)
-            val indexState = when (currentRoute) {
-                AnkyRoute.Write.route, null -> writeCompanionNoteIndex
-                AnkyRoute.Map.route -> mapCompanionNoteIndex
-                AnkyRoute.You.route, AnkyRoute.YouCredits.route -> youCompanionNoteIndex
-                else -> null
+        LaunchedEffect(currentRoute, pendingPostWriteRevealHash.value) {
+            val hash = pendingPostWriteRevealHash.value ?: return@LaunchedEffect
+            if (currentRoute == AnkyRoute.Map.route) {
+                pendingPostWriteRevealHash.value = null
+                navController.navigate(AnkyRoute.Reveal.route(hash)) {
+                    launchSingleTop = true
+                }
             }
-            val index = indexState?.intValue ?: 0
-            companionNote.value = messages[index % messages.size]
-            indexState?.intValue = index + 1
-            return true
         }
 
         fun beginRetryWriting() {
-            showsLaunchDialogue.value = false
-            companionNote.value = null
             importedCompletedHash.value = null
             writeViewModelWithCurrentMirror.consumeCompletedHash()
+            writeViewModelWithCurrentMirror.clearCompletedSession()
+            navController.navigate(AnkyRoute.Write.route) {
+                launchSingleTop = true
+                popUpTo(AnkyRoute.Write.route) { inclusive = false }
+            }
+            writeViewModelWithCurrentMirror.openWritingPortal()
+        }
+
+        fun beginContinuingWriting(artifact: SavedAnky) {
+            importedCompletedHash.value = null
+            writeViewModelWithCurrentMirror.consumeCompletedHash()
+            if (!writeViewModelWithCurrentMirror.continueSession(artifact)) {
+                beginRetryWriting()
+                return
+            }
             navController.navigate(AnkyRoute.Write.route) {
                 launchSingleTop = true
                 popUpTo(AnkyRoute.Write.route) { inclusive = false }
@@ -347,9 +359,8 @@ fun AnkyApp(container: AppContainer) {
                             viewModel = writeViewModelWithCurrentMirror,
                             onImported = { hash ->
                                 importedCompletedHash.value = hash
-                                showsLaunchDialogue.value = false
-                                companionNote.value = null
                             },
+                            onCompleted = { hash -> openPostWriteReveal(hash) },
                             onCloseToMap = { navController.navigate(AnkyRoute.Map.route) },
                             onImportAnkyText = { text ->
                                 SingleAnkyImporter.importText(
@@ -367,6 +378,7 @@ fun AnkyApp(container: AppContainer) {
                                     indexStore = container.sessionIndexStore,
                                 )
                             },
+                            inputEnabled = !shouldShowOnboarding,
                         )
                     }
                     composable(AnkyRoute.Map.route) {
@@ -513,7 +525,7 @@ fun AnkyApp(container: AppContainer) {
                                 writeViewModelWithCurrentMirror.consumeCompletedHash()
                                 mapViewModel.refresh()
                             },
-                            onTryAgain = { beginRetryWriting() },
+                            onTryAgain = { artifact -> beginContinuingWriting(artifact) },
                             onBack = { navController.popBackStack() },
                         )
                     }
@@ -537,15 +549,6 @@ fun AnkyApp(container: AppContainer) {
                     defaultSequence = presenceSequence(currentRoute, writeState.hasReachedRitualMark),
                     goldenGlow = currentRoute == AnkyRoute.Write.route && writeState.hasReachedRitualMark,
                     transformToSigil = currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark,
-                    onTap = {
-                        if (currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark) {
-                            writeViewModelWithCurrentMirror.startAnkyNudgeIfPossible()
-                        } else if (currentRoute == AnkyRoute.Write.route && writeViewModelWithCurrentMirror.replayRecentPromptIfAvailable()) {
-                            true
-                        } else {
-                            showCompanionNote()
-                        }
-                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -555,8 +558,6 @@ fun AnkyApp(container: AppContainer) {
                 AnkyOnboardingScreen(
                     startWriting = {
                         showsOnboarding.value = false
-                        showsLaunchDialogue.value = false
-                        companionNote.value = null
                         rootScope.launch {
                             container.settingsStore.setOnboardingCompleted(true)
                         }
@@ -577,7 +578,7 @@ fun AnkyApp(container: AppContainer) {
                         message = writeState.errorMessage.orEmpty(),
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
                         modifier = Modifier
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
+                            .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
             } else if (
@@ -590,59 +591,7 @@ fun AnkyApp(container: AppContainer) {
                         message = writeState.nudgeDialogueMessage,
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
                         modifier = Modifier
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
-                    )
-                }
-            } else if (companionNote.value != null && !isShowingYouExperience.value) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    AnkyConversationPrompt(
-                        message = companionNote.value.orEmpty(),
-                        onClose = { companionNote.value = null },
-                        modifier = Modifier
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
-                    )
-                }
-            } else if (
-                currentRoute == AnkyRoute.Write.route &&
-                showsLaunchDialogue.value &&
-                writeState.acceptedGlyphCount == 0 &&
-                !writeState.isClosing &&
-                writeState.errorMessage == null
-            ) {
-                val launchMessage = if (writeState.todayAnkyCount > 0) {
-                    stringResource(R.string.launch_count_format, writeState.todayAnkyCount)
-                } else {
-                    stringResource(R.string.launch_empty)
-                }
-                val launchAction = if (writeState.todayAnkyCount > 0) {
-                    stringResource(R.string.write_again)
-                } else {
-                    stringResource(
-                        R.string.write_minutes_format,
-                        AnkyDuration.CompleteRitualMs / 60_000,
-                    )
-                }
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    AnkyConversationPrompt(
-                        message = launchMessage,
-                        actions = listOf(
-                            AnkyChatAction(
-                                launchAction,
-                                isPrimary = true,
-                            ) {
-                                rootView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                writeViewModelWithCurrentMirror.openWritingPortal()
-                                showsLaunchDialogue.value = false
-                            },
-                        ),
-                        steps = listOf(
-                            stringResource(R.string.step_write_one_character),
-                            stringResource(R.string.step_keep_thread_alive),
-                            stringResource(R.string.step_let_silence_close_it),
-                        ),
-                        onClose = { showsLaunchDialogue.value = false },
-                        modifier = Modifier
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
+                            .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
             }
@@ -712,37 +661,6 @@ private fun presenceSequence(route: String?, writeRitualComplete: Boolean): Anky
         AnkyRoute.Map.route -> AnkySequenceName.WalkRight
         AnkyRoute.You.route, AnkyRoute.YouCredits.route -> AnkySequenceName.WaveFront
         else -> AnkySequenceName.IdleFront
-    }
-
-private fun companionMessages(route: String?, writeRitualComplete: Boolean): List<String> =
-    when (route) {
-        AnkyRoute.Write.route, null -> if (writeRitualComplete) {
-            listOf(
-                "you are here. the ritual is complete; let the final silence close it.",
-                "you are here. this .anky is ready to become an artifact.",
-                "you are here. the thread crossed ${AnkyDuration.CompleteRitualMs / 60_000} minutes. stay quiet and let it seal.",
-            )
-        } else {
-            listOf(
-                "you are here. this is the writing surface: one living thread, one character at a time.",
-                "you are here. deletion is blocked on purpose; keep moving forward without editing.",
-                "you are here. writing stays local unless you export it or ask for a reflection.",
-                "you are here. ${AnkyDuration.CompleteRitualMs / 60_000} minutes turns a fragment into a complete .anky.",
-            )
-        }
-        AnkyRoute.Map.route -> listOf(
-            "you are here. the map is your local trail; every day exists even when it is quiet.",
-            "you are here. tap a day to reopen its .ankys and saved reflections.",
-            "you are here. the trail begins on the first day this app opened on this device.",
-            "you are here. fragments and complete ankys both stay in your local archive.",
-        )
-        AnkyRoute.You.route, AnkyRoute.YouCredits.route -> listOf(
-            "you are here. this page is for identity, privacy, exports, and reflection credits.",
-            "you are here. your identity unlocks reflections, backups, and credit balance.",
-            "you are here. data leaves this phone only when you choose export or reflection.",
-            "you are here. credits buy reflections; writing itself stays free.",
-        )
-        else -> listOf("you are here.")
     }
 
 private fun canUseDeviceLock(context: Context): Boolean =

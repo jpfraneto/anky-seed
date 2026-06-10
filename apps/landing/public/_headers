@@ -1,0 +1,32 @@
+/*.md
+  Content-Type: text/markdown; charset=utf-8
+
+/prompts/*.md
+  Content-Type: text/markdown; charset=utf-8
+
+/static/*.md
+  Content-Type: text/markdown; charset=utf-8
+
+/agent-skills/anky/references/*.md
+  Content-Type: text/markdown; charset=utf-8
+
+/PROMPT.md
+  Content-Type: text/markdown; charset=utf-8
+
+/SOUL.md
+  Content-Type: text/markdown; charset=utf-8
+
+/skills
+  Content-Type: text/plain; charset=utf-8
+
+/skill.md
+  Content-Type: text/markdown; charset=utf-8
+
+/agent-skills/anky/SKILL.md
+  Content-Type: text/markdown; charset=utf-8
+
+/agent-skills/anky/manifest.json
+  Content-Type: application/json; charset=utf-8
+
+/agent-skills/anky/scripts/*
+  Content-Type: text/plain; charset=utf-8

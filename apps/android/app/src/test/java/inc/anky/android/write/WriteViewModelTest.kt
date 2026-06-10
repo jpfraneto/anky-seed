@@ -201,6 +201,45 @@ class WriteViewModelTest {
     }
 
     @Test
+    fun terminalSilenceFragmentContinuesInWriteAndReplacesOldFragment() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        val oldFragment = stores.archive.save("$start h\n1000 i\n8000")
+        stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(oldFragment, null))
+        var now = start + 120_000
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = dispatcher,
+        )
+
+        assertEquals(true, viewModel.continueSession(oldFragment))
+
+        assertEquals("hi", viewModel.state.value.displayedText)
+        assertEquals(2, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(1000, viewModel.state.value.elapsedMs)
+        assertEquals(0, viewModel.state.value.silenceElapsedMs)
+        assertEquals(false, viewModel.state.value.isClosing)
+        assertEquals("$start h\n1000 i", stores.draft.load())
+
+        viewModel.acceptGlyph("!")
+        now += 8_000
+        advanceTimeBy(8_000)
+        runCurrent()
+
+        val continued = stores.archive.list().single()
+        assertEquals("$start h\n1000 i\n0 !\n8000", continued.text)
+        assertEquals("hi!", continued.reconstructedText)
+        assertEquals(listOf(continued.hash), stores.index.load().map { it.hash })
+        assertEquals(false, stores.archive.fileList().any { it.name == "${oldFragment.hash}.anky" })
+        assertNull(stores.draft.load())
+    }
+
+    @Test
     fun staleUtcDayDraftIsClearedOnLaunch() = runTest {
         val stores = stores()
         stores.draft.save("1770000000000 h")

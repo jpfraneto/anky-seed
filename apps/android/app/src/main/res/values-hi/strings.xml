@@ -10,19 +10,12 @@
     <string name="onboarding_cta_2">सब बाहर आने दें</string>
     <string name="onboarding_cta_3">8 मिनट लिखें</string>
     <string name="onboarding_accessibility_label">Anky onboarding</string>
-    <string name="launch_empty">जीवित .anky स्ट्रिंग इस सत्र की स्थिति है।</string>
-    <string name="launch_count_format">आज के Ankys: %1$d</string>
-    <string name="write_again">फिर लिखें</string>
-    <string name="write_minutes_format">%1$d मिनट लिखें</string>
     <string name="writing_time_format">लिखने का समय %1$s</string>
     <string name="open_map">Map खोलें</string>
     <string name="paste_anky_artifact">.anky artifact paste करें</string>
     <string name="hold_dev_paste_anky_artifact">built-in dev .anky paste करने के लिए पांच सेकंड hold करें</string>
     <string name="write_import_readable_error">मुझे इसमें readable .anky नहीं मिला।</string>
     <string name="write_import_open_error">मैं अभी वह .anky नहीं खोल सका।</string>
-    <string name="step_write_one_character">एक अक्षर लिखें</string>
-    <string name="step_keep_thread_alive">धागे को जीवित रखें</string>
-    <string name="step_let_silence_close_it">मौन को इसे बंद करने दें</string>
     <string name="device_lock_prompt">अपने डिवाइस लॉक से Anky को सुरक्षित रखें। आपकी लिखाई स्थानीय रहती है, और इससे इस फोन पर पहुंच निजी रहती है।</string>
     <string name="activate_device_lock">डिवाइस लॉक चालू करें</string>
     <string name="protect_device_lock_reason">डिवाइस लॉक से ANKY को सुरक्षित रखें।</string>
@@ -150,6 +143,9 @@
     <string name="writing_copied">लिखाई copy हुई</string>
     <string name="copied_writing">लिखाई copy हुई</string>
     <string name="copy_writing">लिखाई copy करें</string>
+    <string name="copy_reflection_prompt_hint">अपने AI tool के लिए reflection prompt copy करने के लिए long press करें।</string>
+    <string name="reflection_prompt_copied">reflection prompt copy हुआ</string>
+    <string name="reflection_prompt_clipboard_guidance">reflection prompt आपके clipboard पर है। इसे अपने पसंदीदा AI tool में ले जाएं और reflection पाएं।</string>
     <string name="copy_reflection">reflection copy करें</string>
     <string name="copied_reflection">reflection copy हुई</string>
     <string name="reflection_left">%1$d reflection बची</string>
@@ -163,6 +159,7 @@
     <string name="reflect_this_anky">इस ANKY को REFLECT करें</string>
     <string name="reflect_this_anky_left">इस ANKY को REFLECT करें - %1$d LEFT</string>
     <string name="reflect_this_anky_device_gift">इस ANKY को REFLECT करें - DEVICE GIFT</string>
+    <string name="continue_writing_left">CONTINUE - %1$s LEFT</string>
     <string name="receiving_reflection">reflection receive हो रही है...</string>
     <string name="get_more_credits">MORE CREDITS लें</string>
     <string name="write_minutes_caps">%1$d MINUTES लिखें</string>
@@ -180,6 +177,7 @@
     <string name="loading_credit_packs">credit packs load हो रहे हैं</string>
     <string name="no_credit_packs_available">कोई credit packs उपलब्ध नहीं</string>
     <string name="writing_is_free_one_credit_reflection">लिखना मुफ्त है। एक credit = एक reflection.</string>
+    <string name="credits_sheet_prompt_copy_fallback">Pay नहीं करना चाहते? finished Anky पर copy button long press करें और जो copy होगा उसे अपने पसंदीदा AI tool को भेजें</string>
     <string name="available_credits">available\ncredits</string>
     <string name="best_value">best value</string>
     <string name="reveal_payment_did_not_finish">Payment finish नहीं हुआ। कोई credits add नहीं हुए।</string>

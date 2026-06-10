@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -254,6 +255,13 @@ fun YouScreen(
                     onToggleAccountDeletion = { showsAccountDeletion.value = !showsAccountDeletion.value },
                     onDeleteAccountAndData = { confirmDeleteAccountAndData.value = true },
                     onAppLockChange = onAppLockChange,
+                    onEncryptedBackupToggle = { enabled ->
+                        if (enabled) {
+                            viewModel.enableEncryptedBackup(enableEncryptedBackupReason, couldNotConfirmIdentity)
+                        } else {
+                            viewModel.disableEncryptedBackup()
+                        }
+                    },
                     onPrompt = {
                         activePrompt.value = it
                         isShowingSystemPrompt.value = false
@@ -301,7 +309,7 @@ fun YouScreen(
                         isThinking = !isShowingSystemPrompt.value && isConversationThinking(activePrompt.value, state),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(start = 108.dp, end = 18.dp, bottom = 96.dp),
+                            .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
             } else if (page.value == YouPage.History) {
@@ -905,6 +913,7 @@ private fun YouHome(
     onToggleAccountDeletion: () -> Unit,
     onDeleteAccountAndData: () -> Unit,
     onAppLockChange: (Boolean) -> Unit,
+    onEncryptedBackupToggle: (Boolean) -> Unit,
     onPrompt: (YouPrompt) -> Unit,
 ) {
     val context = LocalContext.current
@@ -943,7 +952,13 @@ private fun YouHome(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-                PromptRow(R.drawable.you_icon_export, stringResource(R.string.you_data), dataSubtitle, activePrompt == YouPrompt.Export) { onPrompt(YouPrompt.Export) }
+                DataToggleRow(
+                    title = stringResource(R.string.you_data),
+                    subtitle = dataSubtitle,
+                    checked = state.isEncryptedBackupEnabled,
+                    onToggle = onEncryptedBackupToggle,
+                    onClick = { onPrompt(YouPrompt.Export) },
+                )
                 Divider()
                 PromptRow(R.drawable.you_icon_credits, stringResource(R.string.you_credits), creditsSubtitle, activePrompt == YouPrompt.Credits) { onOpenCreditsSheet() }
                 Divider()
@@ -962,17 +977,14 @@ private fun YouHome(
                         onChecked = onAppLockChange,
                     )
                 }
+                /*
                 Divider()
-                PromptRow(R.drawable.you_icon_anky_token, "\$ANKY", if (didCopyAnkyContract) stringResource(R.string.you_copied_to_clipboard) else stringResource(R.string.you_token_pending), selected = false) { onCopyAnkyContract() }
+                PromptRow(R.drawable.you_icon_anky_token, "\$ANKY", if (didCopyAnkyContract) stringResource(R.string.you_copied_to_clipboard) else ankyContractDisplayAddress(), selected = false) { onCopyAnkyContract() }
+                */
             }
             if (showsAccountDeletion) {
                 AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
                     DestructiveMenuRow(stringResource(R.string.you_delete_account_data_caps), onClick = onDeleteAccountAndData)
-                }
-            }
-            if (BuildConfig.DEBUG) {
-                AnkyPanel(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-                    PromptRow(R.drawable.you_icon_settings, "developer", "local repair tools", activePrompt == YouPrompt.Developer) { onPrompt(YouPrompt.Developer) }
                 }
             }
         }
@@ -1103,16 +1115,6 @@ private fun YouHistoryPage(
             modifier = Modifier.fillMaxSize(),
         )
         Box(Modifier.fillMaxSize().background(AnkyColors.Ink.copy(alpha = 0.76f)))
-        Canvas(Modifier.fillMaxSize()) {
-            listOf(0.18f, 0.54f, 0.82f).forEach { position ->
-                drawLine(
-                    color = AnkyColors.Gold.copy(alpha = 0.10f),
-                    start = Offset(0f, size.height * position),
-                    end = Offset(size.width, size.height * position),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
-        }
         Column(Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -1347,6 +1349,45 @@ private fun DeviceLockRow(
             )
         }
         Switch(checked = checked, onCheckedChange = onChecked)
+    }
+}
+
+@Composable
+private fun DataToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).clickable(onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(painterResource(R.drawable.you_icon_export), contentDescription = null, modifier = Modifier.size(30.dp))
+            Column(Modifier.padding(start = 13.dp)) {
+                Text(
+                    title,
+                    style = AnkyType.Body.copy(
+                        fontSize = 17.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = AnkyColors.Paper,
+                    ),
+                    maxLines = 1,
+                )
+                Text(
+                    subtitle,
+                    style = AnkyType.Caption.copy(fontSize = 12.sp, color = AnkyColors.PaperMuted),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onToggle)
     }
 }
 
@@ -1641,7 +1682,19 @@ private fun YouReflectionCreditsSheet(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = onRefresh, enabled = !state.creditState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(AnkyColors.Violet.copy(alpha = 0.20f))
+                    .border(1.2.dp, AnkyColors.Gold.copy(alpha = 0.42f), CircleShape)
+                    .clickable(
+                        enabled = !state.creditState.isLoading,
+                        onClickLabel = stringResource(R.string.refresh_reflection_credits),
+                        onClick = onRefresh,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
                 if (state.creditState.isLoading) {
                     CircularProgressIndicator(
                         color = AnkyColors.Gold,
@@ -1649,7 +1702,12 @@ private fun YouReflectionCreditsSheet(
                         modifier = Modifier.size(22.dp),
                     )
                 } else {
-                    Text(stringResource(R.string.refresh_credits), style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Gold))
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = stringResource(R.string.refresh_reflection_credits),
+                        tint = AnkyColors.Gold,
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             }
         }
@@ -1688,6 +1746,12 @@ private fun YouReflectionCreditsSheet(
             )
             Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold.copy(alpha = 0.78f), modifier = Modifier.size(13.dp))
         }
+        Text(
+            stringResource(R.string.credits_sheet_prompt_copy_fallback),
+            style = AnkyType.Body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
 
         state.error?.let { error ->
             Text(

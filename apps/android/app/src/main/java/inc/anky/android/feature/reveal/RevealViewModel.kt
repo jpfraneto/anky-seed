@@ -10,12 +10,14 @@ import inc.anky.android.core.credits.NoopReflectionCreditCache
 import inc.anky.android.core.credits.ReflectionCreditCache
 import inc.anky.android.core.identity.WriterIdentityStore
 import inc.anky.android.core.identity.WriterIdentity
+import inc.anky.android.core.mirror.AnkyReflectionPrompt
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.mirror.ReflectionCreditPresentation
 import inc.anky.android.core.mirror.ReflectionCreditPromptState
 import inc.anky.android.core.privacy.PrivacyMessages
+import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.LocalReflection
 import inc.anky.android.core.storage.ReflectionRequestStore
@@ -73,11 +75,18 @@ data class RevealState(
 
     val shouldShowCreditsLink: Boolean
         get() = creditPromptState == ReflectionCreditPromptState.Unavailable
+
+    val canContinueWriting: Boolean
+        get() = artifact?.isComplete == false
+
+    val remainingWritingTime: String
+        get() = countdownClock(maxOf(0, AnkyDuration.CompleteRitualMs - (artifact?.durationMs ?: 0L)))
 }
 
 enum class RevealCopySection {
     Writing,
     Reflection,
+    ReflectionPrompt,
 }
 
 class RevealViewModel(
@@ -283,6 +292,9 @@ class RevealViewModel(
             RevealCopySection.Reflection -> current.reflection?.let { reflection ->
                 "${reflection.title}\n\n${reflection.reflection}"
             }
+            RevealCopySection.ReflectionPrompt -> current.artifact
+                ?.takeIf { it.isComplete }
+                ?.let { AnkyReflectionPrompt.build(it.reconstructedText) }
         }?.takeIf { it.isNotBlank() }
     }
 
@@ -531,3 +543,10 @@ private fun mirrorFailureMessage(error: Throwable): String =
     }
 
 private const val GenericMirrorFailureMessage = "Anky could not return a reflection right now."
+
+private fun countdownClock(durationMs: Long): String {
+    val totalSeconds = maxOf(0, durationMs / 1000)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+}

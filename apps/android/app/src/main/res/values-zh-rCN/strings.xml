@@ -10,19 +10,12 @@
     <string name="onboarding_cta_2">把一切都释放出来</string>
     <string name="onboarding_cta_3">书写 8 分钟</string>
     <string name="onboarding_accessibility_label">Anky 引导页</string>
-    <string name="launch_empty">活着的 .anky 字符串就是本次会话的状态。</string>
-    <string name="launch_count_format">今日 Ankys：%1$d</string>
-    <string name="write_again">再次书写</string>
-    <string name="write_minutes_format">书写 %1$d 分钟</string>
     <string name="writing_time_format">书写时间 %1$s</string>
     <string name="open_map">打开地图</string>
     <string name="paste_anky_artifact">粘贴 .anky 作品</string>
     <string name="hold_dev_paste_anky_artifact">长按五秒粘贴内置开发 .anky</string>
     <string name="write_import_readable_error">我没有在其中找到可读取的 .anky。</string>
     <string name="write_import_open_error">我还无法打开这个 .anky。</string>
-    <string name="step_write_one_character">写下一个字符</string>
-    <string name="step_keep_thread_alive">让线索继续</string>
-    <string name="step_let_silence_close_it">让沉默结束它</string>
     <string name="device_lock_prompt">使用设备锁保护你的 Anky。你的书写保存在本机，这会让此手机上的访问保持私密。</string>
     <string name="activate_device_lock">启用设备锁</string>
     <string name="protect_device_lock_reason">使用设备锁保护 ANKY。</string>
@@ -150,6 +143,9 @@
     <string name="writing_copied">书写已复制</string>
     <string name="copied_writing">书写已复制</string>
     <string name="copy_writing">复制书写</string>
+    <string name="copy_reflection_prompt_hint">长按即可复制反思提示词，用在你自己的 AI 工具中。</string>
+    <string name="reflection_prompt_copied">反思提示词已复制</string>
+    <string name="reflection_prompt_clipboard_guidance">反思提示词已在剪贴板中。把它带到你喜欢的 AI 工具里，获得一份反思。</string>
     <string name="copy_reflection">复制反思</string>
     <string name="copied_reflection">反思已复制</string>
     <string name="reflection_left">剩余 %1$d 次反思</string>
@@ -163,6 +159,7 @@
     <string name="reflect_this_anky">映照这个 ANKY</string>
     <string name="reflect_this_anky_left">映照这个 ANKY - 剩余 %1$d</string>
     <string name="reflect_this_anky_device_gift">映照这个 ANKY - 设备赠礼</string>
+    <string name="continue_writing_left">继续 - 剩余 %1$s</string>
     <string name="receiving_reflection">正在接收反思...</string>
     <string name="get_more_credits">获取更多额度</string>
     <string name="write_minutes_caps">书写 %1$d 分钟</string>
@@ -180,6 +177,7 @@
     <string name="loading_credit_packs">正在加载额度包</string>
     <string name="no_credit_packs_available">没有可用额度包</string>
     <string name="writing_is_free_one_credit_reflection">书写免费。一个额度 = 一次反思。</string>
+    <string name="credits_sheet_prompt_copy_fallback">不想付费？在完成的 Anky 上长按复制按钮，然后把复制的内容发送给你喜欢的 AI 工具</string>
     <string name="available_credits">可用\n额度</string>
     <string name="best_value">最划算</string>
     <string name="reveal_payment_did_not_finish">付款未完成。未添加额度。</string>

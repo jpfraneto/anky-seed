@@ -10,19 +10,12 @@
     <string name="onboarding_cta_2">Laissez tout sortir</string>
     <string name="onboarding_cta_3">Écrire 8 minutes</string>
     <string name="onboarding_accessibility_label">Accueil Anky</string>
-    <string name="launch_empty">La chaîne .anky vivante est l\'état de cette session.</string>
-    <string name="launch_count_format">Ankys aujourd\'hui : %1$d</string>
-    <string name="write_again">Écrire encore</string>
-    <string name="write_minutes_format">Écrire %1$d minutes</string>
     <string name="writing_time_format">Temps d\'écriture %1$s</string>
     <string name="open_map">Ouvrir la carte</string>
     <string name="paste_anky_artifact">Coller l\'artefact .anky</string>
     <string name="hold_dev_paste_anky_artifact">Maintenir cinq secondes pour coller le .anky de développement intégré</string>
     <string name="write_import_readable_error">je n\'ai pas trouvé de .anky lisible là-dedans.</string>
     <string name="write_import_open_error">je n\'ai pas encore pu ouvrir ce .anky.</string>
-    <string name="step_write_one_character">Écrivez un caractère</string>
-    <string name="step_keep_thread_alive">Gardez le fil vivant</string>
-    <string name="step_let_silence_close_it">Laissez le silence le fermer</string>
     <string name="device_lock_prompt">Protégez votre Anky avec le verrouillage de votre appareil. Votre écriture reste locale, et cela garde l\'accès privé sur ce téléphone.</string>
     <string name="activate_device_lock">Activer le verrouillage</string>
     <string name="protect_device_lock_reason">Protéger ANKY avec le verrouillage de l\'appareil.</string>
@@ -150,6 +143,9 @@
     <string name="writing_copied">Écriture copiée</string>
     <string name="copied_writing">écriture copiée</string>
     <string name="copy_writing">Copier l\'écriture</string>
+    <string name="copy_reflection_prompt_hint">Appuyez longuement pour copier le prompt de réflexion pour votre propre outil d\'IA.</string>
+    <string name="reflection_prompt_copied">prompt de réflexion copié</string>
+    <string name="reflection_prompt_clipboard_guidance">Le prompt de réflexion est dans votre presse-papiers. Apportez-le à votre outil d\'IA préféré pour obtenir une réflexion.</string>
     <string name="copy_reflection">copier la réflexion</string>
     <string name="copied_reflection">réflexion copiée</string>
     <string name="reflection_left">%1$d réflexion restante</string>
@@ -163,6 +159,7 @@
     <string name="reflect_this_anky">REFLÉTER CET ANKY</string>
     <string name="reflect_this_anky_left">REFLÉTER CET ANKY - %1$d RESTANTS</string>
     <string name="reflect_this_anky_device_gift">REFLÉTER CET ANKY - CADEAU DE L\'APPAREIL</string>
+    <string name="continue_writing_left">CONTINUER - %1$s RESTANTES</string>
     <string name="receiving_reflection">Réflexion en réception...</string>
     <string name="get_more_credits">OBTENIR PLUS DE CRÉDITS</string>
     <string name="write_minutes_caps">ÉCRIRE %1$d MINUTES</string>
@@ -180,6 +177,7 @@
     <string name="loading_credit_packs">chargement des packs de crédits</string>
     <string name="no_credit_packs_available">aucun pack de crédits disponible</string>
     <string name="writing_is_free_one_credit_reflection">Écrire est gratuit. Un crédit = une réflexion.</string>
+    <string name="credits_sheet_prompt_copy_fallback">Vous ne voulez pas payer ? Appuyez longuement sur le bouton copier d\'un Anky terminé, puis envoyez ce qui sera copié à votre outil d\'IA préféré</string>
     <string name="available_credits">crédits\ndisponibles</string>
     <string name="best_value">meilleure valeur</string>
     <string name="reveal_payment_did_not_finish">Le paiement n\'a pas abouti. Aucun crédit n\'a été ajouté.</string>

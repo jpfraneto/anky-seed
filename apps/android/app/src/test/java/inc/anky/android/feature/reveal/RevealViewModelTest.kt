@@ -280,7 +280,7 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun claimedFreeCreditsWithoutBalanceKeepsPromptUnknownAndAllowsBackendCheck() = runTest {
+    fun claimedFreeCreditsWithoutBalanceBlocksReflectionUntilCreditsLoadLikeIos() = runTest {
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
         val viewModel = RevealViewModel(
@@ -296,9 +296,10 @@ class RevealViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(ReflectionCreditPromptState.Unknown, viewModel.state.value.creditPromptState)
-        assertEquals("Reflection balance updates after mirroring", viewModel.state.value.creditPromptMessage)
-        assertTrue(viewModel.state.value.canSubmitReflectionRequest)
+        assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+        assertEquals("No reflections left", viewModel.state.value.creditPromptMessage)
+        assertFalse(viewModel.state.value.canSubmitReflectionRequest)
+        assertTrue(viewModel.state.value.needsCreditsToReflect)
         viewModel.askAnky()
         advanceUntilIdle()
         assertFalse(viewModel.state.value.isAsking)
@@ -354,7 +355,7 @@ class RevealViewModelTest {
         viewModel.askAnky()
         advanceUntilIdle()
 
-        assertEquals(ReflectionCreditPromptState.Unknown, viewModel.state.value.creditPromptState)
+        assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
 
         val denied = viewModel.state.value.copy(creditBalance = 0, creditsDenied = true)
         assertFalse(denied.canSubmitReflectionRequest)
@@ -408,6 +409,9 @@ class RevealViewModelTest {
         )
         server.start()
         try {
+            val creditCache = FakeReflectionCreditCache().apply {
+                storeBalance(1, identity().accountId)
+            }
             val viewModel = RevealViewModel(
                 hash = artifact.hash,
                 archive = stores.archive,
@@ -415,6 +419,7 @@ class RevealViewModelTest {
                 indexStore = stores.index,
                 identityProvider = { identity() },
                 mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                reflectionCreditCache = creditCache,
                 hasClaimedFreeCreditsProvider = { true },
                 dispatcher = StandardTestDispatcher(testScheduler),
             )
@@ -510,6 +515,7 @@ class RevealViewModelTest {
 
         assertEquals("hello!", viewModel.textForCopy(RevealCopySection.Writing))
         assertEquals("Small Thread\n\nHere is what I saw.", viewModel.textForCopy(RevealCopySection.Reflection))
+        assertTrue(viewModel.textForCopy(RevealCopySection.ReflectionPrompt)?.contains("---\n\nhello!") == true)
 
         viewModel.markCopied(RevealCopySection.Writing)
         assertEquals(RevealCopySection.Writing, viewModel.state.value.copiedSection)

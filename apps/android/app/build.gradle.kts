@@ -82,7 +82,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX")?.takeIf { it.isNotBlank() }
             versionNameSuffix = "-debug"
         }
         release {
@@ -99,7 +99,7 @@ tasks.register("printReleaseSigningStatus") {
     description = "Prints whether release signing inputs are configured without exposing secrets."
     doLast {
         println("releaseApplicationId=app.anky.mobile")
-        println("debugApplicationId=app.anky.mobile.debug")
+        println("debugApplicationId=app.anky.mobile${releaseProperty("ANKY_ANDROID_DEBUG_APPLICATION_ID_SUFFIX")?.takeIf { it.isNotBlank() }.orEmpty()}")
         println("releaseSigningConfigured=$hasReleaseSigning")
         println("versionCode=${android.defaultConfig.versionCode}")
         println("versionName=${android.defaultConfig.versionName}")

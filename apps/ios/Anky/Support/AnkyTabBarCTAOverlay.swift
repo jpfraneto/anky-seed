@@ -320,7 +320,12 @@ struct AnkyTabBarFrameReader: UIViewControllerRepresentable {
                 return
             }
 
-            tabBar.alpha = controller?.isPresented == true || controller?.isScrollHidden == true ? 0 : 1
+            let targetAlpha: CGFloat = controller?.isPresented == true || controller?.isScrollHidden == true ? 0 : 1
+            if abs(tabBar.alpha - targetAlpha) > 0.01 {
+                UIView.animate(withDuration: 0.3, delay: 0, options: [.beginFromCurrentState, .curveEaseInOut]) {
+                    tabBar.alpha = targetAlpha
+                }
+            }
             let frame = visualFrame(for: tabBar, in: tabWindow)
             guard frame != controller?.tabBarFrame else {
                 return

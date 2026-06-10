@@ -282,7 +282,7 @@ Credits are payment for mirror compute.
 
 A new writer should be able to feel the mirror before needing to contact JP or pay.
 
-Official mobile clients may receive one automatic trial grant of 1 reflection credit.
+Official mobile clients may receive one automatic trial grant of 2 reflection credits.
 
 The automatic trial grant is:
 

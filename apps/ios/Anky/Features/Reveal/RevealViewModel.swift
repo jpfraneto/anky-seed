@@ -5,6 +5,7 @@ import UIKit
 enum RevealCopySection {
     case writing
     case reflection
+    case reflectionPrompt
 }
 
 @MainActor
@@ -170,6 +171,11 @@ final class RevealViewModel: ObservableObject {
                 return
             }
             clipboard.copy("\(reflection.title)\n\n\(reflection.reflection)")
+        case .reflectionPrompt:
+            guard isComplete else {
+                return
+            }
+            clipboard.copy(AnkyReflectionPrompt.build(from: reconstructedText))
         }
     }
 

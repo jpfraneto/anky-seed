@@ -7,18 +7,21 @@ import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Offering
 import com.revenuecat.purchases.Offerings
 import com.revenuecat.purchases.Package as RevenueCatPackage
+import com.revenuecat.purchases.ProductType
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
 import com.revenuecat.purchases.PurchasesError
 import com.revenuecat.purchases.PurchasesException
 import com.revenuecat.purchases.PurchasesTransactionException
+import com.revenuecat.purchases.awaitGetProducts
 import com.revenuecat.purchases.awaitGetVirtualCurrencies
 import com.revenuecat.purchases.awaitLogIn
 import com.revenuecat.purchases.awaitLogOut
 import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
 import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
+import com.revenuecat.purchases.models.StoreProduct
 import inc.anky.android.BuildConfig
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -57,6 +60,7 @@ class RevenueCatCreditsClient(
     private var configuredAppUserId: String? = null
     private var configureFailure: String? = null
     private val revenueCatPackages = mutableMapOf<String, RevenueCatPackage>()
+    private val revenueCatProducts = mutableMapOf<String, StoreProduct>()
 
     override suspend fun configure(appUserId: String) {
         val apiKey = BuildConfig.REVENUECAT_ANDROID_PUBLIC_KEY.trim()
@@ -65,6 +69,7 @@ class RevenueCatCreditsClient(
             configuredAppUserId = null
             configureFailure = null
             revenueCatPackages.clear()
+            revenueCatProducts.clear()
             return
         }
 
@@ -86,6 +91,7 @@ class RevenueCatCreditsClient(
             configuredAppUserId = null
             configureFailure = "Could not load credits."
             revenueCatPackages.clear()
+            revenueCatProducts.clear()
             return
         }
         configured = true
@@ -100,18 +106,18 @@ class RevenueCatCreditsClient(
             val purchases = Purchases.sharedInstance
             purchases.invalidateVirtualCurrenciesCache()
             val balance = purchases.awaitGetVirtualCurrencies()[CreditCatalog.CurrencyCode]?.balance
-            val packages = loadCreditPackages(purchases)
+            val products = loadCreditProducts(purchases)
             val message = when {
-                balance == null && packages.isEmpty() -> "no credit packs available"
+                balance == null && products.isEmpty() -> "no credit packs available"
                 balance == null -> "Could not load credits."
-                packages.isEmpty() -> "no credit packs available"
+                products.isEmpty() -> "no credit packs available"
                 else -> "credits refreshed."
             }
             CreditState(
                 isConfigured = true,
                 balance = balance,
                 message = message,
-                packages = packages.map { it.toCreditPackage() },
+                packages = products.map { it.toCreditPackage() },
             )
         }.getOrElse { error ->
             CreditState(
@@ -130,11 +136,20 @@ class RevenueCatCreditsClient(
         val packageToPurchase = revenueCatPackages[packageId] ?: run {
             val refreshed = refresh()
             revenueCatPackages[packageId]
-                ?: return refreshed.copy(message = "That credit package is not available.")
+        }
+        val productToPurchase = revenueCatProducts[packageId] ?: revenueCatProducts[packageToPurchase?.product?.id]
+
+        if (packageToPurchase == null && productToPurchase == null) {
+            return refresh().copy(message = "That credit package is not available.")
         }
 
         return runCatching {
-            Purchases.sharedInstance.awaitPurchase(PurchaseParams.Builder(activity, packageToPurchase).build())
+            val params = if (packageToPurchase != null) {
+                PurchaseParams.Builder(activity, packageToPurchase).build()
+            } else {
+                PurchaseParams.Builder(activity, checkNotNull(productToPurchase)).build()
+            }
+            Purchases.sharedInstance.awaitPurchase(params)
             Purchases.sharedInstance.invalidateVirtualCurrenciesCache()
             refresh().copy(message = "Credits updated.")
         }.getOrElse { error ->
@@ -167,28 +182,43 @@ class RevenueCatCreditsClient(
         configuredAppUserId = null
         configureFailure = null
         revenueCatPackages.clear()
+        revenueCatProducts.clear()
     }
 
-    private suspend fun loadCreditPackages(purchases: Purchases): List<RevenueCatPackage> {
+    private suspend fun loadCreditProducts(purchases: Purchases): List<StoreProduct> {
         val offering = CreditCatalog.selectOffering(purchases.awaitOfferings())
-            ?: return emptyList<RevenueCatPackage>().also { revenueCatPackages.clear() }
-        val packages = offering.availablePackages.sortedWith(compareBy({ CreditCatalog.productRank(it.product.id) }, { it.product.id }))
+        val packages = offering?.availablePackages.orEmpty()
+        val packageProducts = packages.map { it.product }
+        val packagedProductIds = packageProducts.map { it.id }.toSet()
+        val missingProductIds = CreditCatalog.ProductOrder.filter { it !in packagedProductIds }
+        val directProducts = if (missingProductIds.isEmpty()) {
+            emptyList()
+        } else {
+            purchases.awaitGetProducts(missingProductIds, ProductType.INAPP)
+        }
+        val products = (packageProducts + directProducts)
+            .distinctBy { it.id }
+            .sortedWith(compareBy({ CreditCatalog.productRank(it.id) }, { it.id }))
         revenueCatPackages.clear()
         packages.forEach { packageToCache ->
             revenueCatPackages[packageToCache.identifier] = packageToCache
             revenueCatPackages[packageToCache.product.id] = packageToCache
         }
-        return packages
+        revenueCatProducts.clear()
+        products.forEach { product ->
+            revenueCatProducts[product.id] = product
+        }
+        return products
     }
 
-    private fun RevenueCatPackage.toCreditPackage(): CreditPackage {
-        val productId = product.id
+    private fun StoreProduct.toCreditPackage(): CreditPackage {
+        val productId = id
         return CreditPackage(
             packageId = productId,
             productId = productId,
-            title = CreditCatalog.titleForProduct(productId) ?: product.title.ifBlank { product.name.ifBlank { identifier } },
-            subtitle = CreditCatalog.subtitleForProduct(productId) ?: product.title,
-            price = product.price.formatted,
+            title = CreditCatalog.titleForProduct(productId) ?: title.ifBlank { name.ifBlank { productId } },
+            subtitle = CreditCatalog.subtitleForProduct(productId) ?: title,
+            price = price.formatted,
         )
     }
 

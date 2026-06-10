@@ -1,0 +1,5 @@
+{
+  "domain": "anky-landing",
+  "buildCommand": "bun run build",
+  "buildDir": "dist"
+}

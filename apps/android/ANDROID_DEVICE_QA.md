@@ -347,7 +347,7 @@ Use one fragment and one complete session.
 5. Confirm copied-state feedback appears briefly as `copied writing` or `copied reflection`.
 6. Verify duration/hash/status are visible.
 7. For the fragment, confirm the privacy reminder says fragments are local and cannot Ask Anky.
-8. For the complete session before reflection, confirm the bottom floating `ask anky` prompt appears, tapping it scrolls to the inline Ask Anky action, and the inline badge says `1 free reflection included`.
+8. For the complete session before reflection, confirm the bottom floating `ask anky` prompt appears, tapping it scrolls to the inline Ask Anky action, and the inline badge says `2 free reflections included`.
 9. For a saved reflection with local `creditsRemaining`, confirm `N reflection(s) left` appears under the reflection.
 10. Tap the Reveal delete control, confirm the dialog says `delete forever?`, cancel once, then repeat and confirm deletion removes the local session from Reveal/Map.
 

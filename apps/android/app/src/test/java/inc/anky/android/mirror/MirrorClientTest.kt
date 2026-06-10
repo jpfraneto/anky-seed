@@ -7,6 +7,7 @@ import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorClientError
 import inc.anky.android.core.mirror.MirrorConfiguration
 import inc.anky.android.core.mirror.MirrorEligibility
+import inc.anky.android.core.mirror.AnkyReflectionPrompt
 import inc.anky.android.core.mirror.MirrorErrorCode
 import inc.anky.android.core.mirror.MirrorIntent
 import inc.anky.android.core.mirror.ReflectionCreditPresentation
@@ -47,6 +48,15 @@ class MirrorClientTest {
     }
 
     @Test
+    fun reflectionPromptCopiesMasterPromptWithReconstructedWriting() {
+        val prompt = AnkyReflectionPrompt.build("dear diary")
+
+        assertTrue(prompt.startsWith("Take a look at this stream-of-consciousness journal entry."))
+        assertTrue(prompt.contains("Reply with pure markdown"))
+        assertTrue(prompt.contains("---\n\ndear diary"))
+    }
+
+    @Test
     fun creditPromptShowsBalanceAndUnavailableState() {
         val available = ReflectionCreditPresentation.state(
             creditsRemaining = 2,
@@ -59,6 +69,17 @@ class MirrorClientTest {
 
         assertEquals(ReflectionCreditPromptState.Available(2), available)
         assertEquals("You have 2 reflections left", ReflectionCreditPresentation.messageFor(available))
+        assertEquals(ReflectionCreditPromptState.Unavailable, unavailable)
+        assertEquals("No reflections left", ReflectionCreditPresentation.messageFor(unavailable))
+    }
+
+    @Test
+    fun claimedFreeCreditWithoutLoadedBalanceStartsUnavailableLikeIos() {
+        val unavailable = ReflectionCreditPresentation.state(
+            creditsRemaining = null,
+            hasClaimedFreeCredits = true,
+        )
+
         assertEquals(ReflectionCreditPromptState.Unavailable, unavailable)
         assertEquals("No reflections left", ReflectionCreditPresentation.messageFor(unavailable))
     }

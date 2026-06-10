@@ -79,9 +79,11 @@ struct YouView: View {
                             )
                         }
 
+                        /*
                         YouDivider()
 
                         ankyContractRow
+                        */
                     }
 
                     if showsAccountDeletion {
@@ -570,12 +572,12 @@ struct YouView: View {
     }
 
     private var ankyContractAddress: String {
-        "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703"
+        "To be deployed"
     }
 
     private var ankyContractDisplayAddress: String {
-        let prefix = ankyContractAddress.prefix(5)
-        let suffix = ankyContractAddress.suffix(5)
+        let prefix = ankyContractAddress.prefix(6)
+        let suffix = ankyContractAddress.suffix(6)
         return "\(prefix)...\(suffix)"
     }
 
@@ -596,8 +598,7 @@ struct YouView: View {
             YouMenuRow(
                 icon: "you-icon-anky-token",
                 title: "$ANKY",
-                subtitle: "To be deployed",
-                // subtitle: "" didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
+                subtitle: didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
                 showsDisclosure: false
             )
         }

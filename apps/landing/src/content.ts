@@ -1,25 +1,23 @@
 export const legalLinks = [
-  { label: 'Protocol', href: '/protocol' },
-  { label: 'Privacy', href: '/privacy' },
-  { label: 'Terms', href: '/terms' },
-] as const
+  { label: "Protocol", href: "/protocol" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+] as const;
 
 export const featureCards = [
   {
-    eyebrow: 'Ritual',
-    title: 'A private writing ritual.',
-    body: 'Anky gives you 8 minutes to write forward. No deleting, no editing, no overthinking. You don’t fix yourself here. You hear yourself.',
+    eyebrow: "Constraint",
+    title: "No backspace.",
+    body: "You can’t delete. You can’t edit. No new lines. The constraint is the point.",
   },
   {
-    eyebrow: 'Trail',
-    title: 'EVERY DAY COUNTS.',
-    body: 'The days you don’t want to write matter most.',
-    support: 'Each session becomes part of your trail. Not a streak. A path back to yourself.',
+    eyebrow: "Duration",
+    title: "Eight minutes.",
+    body: "Long enough for the clever part to run out. Short enough to actually do it consistently.",
   },
   {
-    eyebrow: 'Mirror',
-    title: 'SEE WHAT’S UNDERNEATH.',
-    body: 'Anky reflects you back.',
-    support: 'Sometimes you don’t know what you wrote until the mirror shows it back to you.',
+    eyebrow: "Mirror",
+    title: "A witness.",
+    body: "After, Anky reflects what it saw. Not advice. Not analysis. Just what was there.",
   },
-] as const
+] as const;

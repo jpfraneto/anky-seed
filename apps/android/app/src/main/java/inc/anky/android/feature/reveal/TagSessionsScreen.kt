@@ -217,13 +217,5 @@ private fun RevealTagTexture() {
                 size = Size(width, height),
             )
         }
-        listOf(0.19f, 0.47f, 0.78f).forEach { y ->
-            drawLine(
-                color = AnkyColors.Gold.copy(alpha = 0.075f),
-                start = Offset(0f, size.height * y),
-                end = Offset(size.width, size.height * y),
-                strokeWidth = 1.dp.toPx(),
-            )
-        }
     }
 }

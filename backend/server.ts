@@ -676,7 +676,7 @@ const errorMessages: Record<ErrorCode, string> = {
   INSUFFICIENT_CREDITS:
     "You need one credit to ask Anky for a reflection. Writing is still free.",
   TRIAL_ALREADY_CLAIMED:
-    "This device already used its free Anky reflections. Buy credits to reflect more writing.",
+    "This device already used its first two reflections. Buy credits to reflect more writing.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
   DUPLICATE_SUCCEEDED:
     "This anky has already been reflected for this Anky address.",

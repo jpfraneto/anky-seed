@@ -10,19 +10,12 @@
     <string name="onboarding_cta_2">Lass alles heraus</string>
     <string name="onboarding_cta_3">8 Minuten schreiben</string>
     <string name="onboarding_accessibility_label">Anky-Onboarding</string>
-    <string name="launch_empty">Der lebendige .anky-String ist der Zustand dieser Sitzung.</string>
-    <string name="launch_count_format">Ankys heute: %1$d</string>
-    <string name="write_again">Noch einmal schreiben</string>
-    <string name="write_minutes_format">%1$d Minuten schreiben</string>
     <string name="writing_time_format">Schreibzeit %1$s</string>
     <string name="open_map">Karte öffnen</string>
     <string name="paste_anky_artifact">.anky-Artefakt einfügen</string>
     <string name="hold_dev_paste_anky_artifact">Fünf Sekunden halten, um das eingebaute Entwickler-.anky einzufügen</string>
     <string name="write_import_readable_error">ich konnte darin kein lesbares .anky finden.</string>
     <string name="write_import_open_error">ich konnte dieses .anky noch nicht öffnen.</string>
-    <string name="step_write_one_character">Schreibe ein Zeichen</string>
-    <string name="step_keep_thread_alive">Halte den Faden lebendig</string>
-    <string name="step_let_silence_close_it">Lass die Stille ihn schließen</string>
     <string name="device_lock_prompt">Schütze dein Anky mit der Gerätesperre. Dein Schreiben bleibt lokal, und der Zugriff auf diesem Telefon bleibt privat.</string>
     <string name="activate_device_lock">Gerätesperre aktivieren</string>
     <string name="protect_device_lock_reason">ANKY mit der Gerätesperre schützen.</string>
@@ -150,6 +143,9 @@
     <string name="writing_copied">Schreiben kopiert</string>
     <string name="copied_writing">Schreiben kopiert</string>
     <string name="copy_writing">Schreiben kopieren</string>
+    <string name="copy_reflection_prompt_hint">Lange drücken, um den Reflexions-Prompt für dein eigenes KI-Tool zu kopieren.</string>
+    <string name="reflection_prompt_copied">Reflexions-Prompt kopiert</string>
+    <string name="reflection_prompt_clipboard_guidance">Der Reflexions-Prompt ist in deiner Zwischenablage. Nimm ihn zu deinem bevorzugten KI-Tool mit und erhalte eine Reflexion.</string>
     <string name="copy_reflection">Reflexion kopieren</string>
     <string name="copied_reflection">Reflexion kopiert</string>
     <string name="reflection_left">%1$d Reflexion übrig</string>
@@ -163,6 +159,7 @@
     <string name="reflect_this_anky">DIESES ANKY REFLEKTIEREN</string>
     <string name="reflect_this_anky_left">DIESES ANKY REFLEKTIEREN - %1$d ÜBRIG</string>
     <string name="reflect_this_anky_device_gift">DIESES ANKY REFLEKTIEREN - GERÄTEGESCHENK</string>
+    <string name="continue_writing_left">WEITER - %1$s ÜBRIG</string>
     <string name="receiving_reflection">Reflexion wird empfangen...</string>
     <string name="get_more_credits">MEHR GUTHABEN HOLEN</string>
     <string name="write_minutes_caps">%1$d MINUTEN SCHREIBEN</string>
@@ -180,6 +177,7 @@
     <string name="loading_credit_packs">Guthabenpakete werden geladen</string>
     <string name="no_credit_packs_available">keine Guthabenpakete verfügbar</string>
     <string name="writing_is_free_one_credit_reflection">Schreiben ist kostenlos. Ein Guthaben = eine Reflexion.</string>
+    <string name="credits_sheet_prompt_copy_fallback">Du willst nicht zahlen? Drücke lange auf den Kopierbutton eines fertigen Anky und sende das Kopierte an dein bevorzugtes KI-Tool</string>
     <string name="available_credits">verfügbare\nGuthaben</string>
     <string name="best_value">bester Wert</string>
     <string name="reveal_payment_did_not_finish">Zahlung wurde nicht abgeschlossen. Es wurde kein Guthaben hinzugefügt.</string>

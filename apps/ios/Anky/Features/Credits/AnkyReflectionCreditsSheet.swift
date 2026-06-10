@@ -199,7 +199,7 @@ struct AnkyReflectionCreditsSheet: View {
                     .foregroundStyle(AnkyReflectionCreditsPalette.gold.opacity(0.78))
             }
 
-            Text(.init(AnkyLocalization.ui("Don't want to pay? Watch [this video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)")))
+            Text(AnkyLocalization.ui("Don't want to pay? Long press the copy button on a finished Anky and then send what will be copied to your favorite AI tool"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AnkyReflectionCreditsPalette.cream.opacity(0.58))
                 .tint(AnkyReflectionCreditsPalette.gold)

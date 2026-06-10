@@ -14,6 +14,14 @@ final class RevealRulesTests: XCTestCase {
         XCTAssertFalse(MirrorEligibility.canAskAnky(isComplete: true, hasReflection: true))
     }
 
+    func testReflectionPromptCopiesMasterPromptWithReconstructedWriting() {
+        let prompt = AnkyReflectionPrompt.build(from: "dear diary")
+
+        XCTAssertTrue(prompt.hasPrefix("Take a look at this stream-of-consciousness journal entry."))
+        XCTAssertTrue(prompt.contains("Reply with pure markdown"))
+        XCTAssertTrue(prompt.contains("---\n\ndear diary"))
+    }
+
     func testFirstFreeCreditStateShowsGiftUntilClaimed() {
         let state = ReflectionCreditPresentation.state(
             creditsRemaining: nil,
