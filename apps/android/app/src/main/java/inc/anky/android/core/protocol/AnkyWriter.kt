@@ -4,8 +4,9 @@ class AnkyWriter private constructor(
     private val lines: MutableList<String>,
     private var lastAcceptedEpochMs: Long?,
     var isClosed: Boolean,
+    var writingElapsedMs: Long,
 ) {
-    constructor() : this(mutableListOf(), null, false)
+    constructor() : this(mutableListOf(), null, false, 0)
 
     val text: String
         get() = lines.joinToString(separator = "\n")
@@ -19,12 +20,14 @@ class AnkyWriter private constructor(
     fun accept(glyph: String, epochMs: Long): Boolean {
         if (isClosed || !glyph.isSingleProtocolGlyph()) return false
         val protocolGlyph = glyph.protocolGlyphText()
+        val deltaMs = lastAcceptedEpochMs?.let { maxOf(0, epochMs - it) }
         val line = if (lastAcceptedEpochMs == null) {
             "$epochMs $protocolGlyph"
         } else {
-            "${maxOf(0, epochMs - lastAcceptedEpochMs!!)} $protocolGlyph"
+            "$deltaMs $protocolGlyph"
         }
         lines += line
+        writingElapsedMs += deltaMs ?: 0
         lastAcceptedEpochMs = epochMs
         return true
     }
@@ -53,6 +56,7 @@ class AnkyWriter private constructor(
                 lines = lines,
                 lastAcceptedEpochMs = parsed.startEpochMs + elapsedWithoutTerminal,
                 isClosed = parsed.terminalSilenceMs == AnkyDuration.TerminalSilenceMs,
+                writingElapsedMs = elapsedWithoutTerminal,
             )
         }
     }

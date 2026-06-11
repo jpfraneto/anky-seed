@@ -171,6 +171,14 @@
     display: inline-block;
   }
 
+  .anky-gallery-spinner-segment {
+    animation: anky-gallery-spinner-segment 1.04s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px currentColor);
+    opacity: 0.22;
+    transform: translate(-50%, -50%) rotate(var(--anky-spinner-rotation))
+      translateY(-43px) scaleY(0.82);
+  }
+
   @keyframes anky-center-cursor-blink {
     0%,
     45% {
@@ -179,6 +187,21 @@
     46%,
     100% {
       opacity: 0.18;
+    }
+  }
+
+  @keyframes anky-gallery-spinner-segment {
+    0%,
+    12% {
+      opacity: 1;
+      transform: translate(-50%, -50%) rotate(var(--anky-spinner-rotation))
+        translateY(-43px) scaleY(1.18);
+    }
+    32%,
+    100% {
+      opacity: 0.22;
+      transform: translate(-50%, -50%) rotate(var(--anky-spinner-rotation))
+        translateY(-43px) scaleY(0.82);
     }
   }
 

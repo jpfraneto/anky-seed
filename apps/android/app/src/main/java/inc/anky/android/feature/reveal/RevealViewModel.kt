@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import inc.anky.android.BuildConfig
 import inc.anky.android.core.credits.CreditPackage
+import inc.anky.android.core.credits.CreditState
 import inc.anky.android.core.credits.CreditsClient
 import inc.anky.android.core.credits.NoopReflectionCreditCache
 import inc.anky.android.core.credits.ReflectionCreditCache
@@ -72,7 +73,10 @@ data class RevealState(
         get() = canAskAnky && !isAsking && creditPromptState != ReflectionCreditPromptState.Unavailable
 
     val needsCreditsToReflect: Boolean
-        get() = canAskAnky && !isAsking && creditPromptState == ReflectionCreditPromptState.Unavailable
+        get() = artifact?.isComplete == true &&
+            reflection == null &&
+            !isAsking &&
+            creditPromptState == ReflectionCreditPromptState.Unavailable
 
     val shouldShowCreditsLink: Boolean
         get() = creditPromptState == ReflectionCreditPromptState.Unavailable
@@ -243,7 +247,7 @@ class RevealViewModel(
                         canAskAnky = false,
                         isAsking = false,
                         reflectionStatusMessage = "",
-                        streamingReflectionMarkdown = reflection.reflection,
+                        streamingReflectionMarkdown = "",
                         progressStage = null,
                         creditBalance = reflection.creditsRemaining ?: it.creditBalance,
                         hasClaimedFreeCredits = true,
@@ -272,6 +276,7 @@ class RevealViewModel(
                 reflectionWatcherJob?.cancel()
                 reflectionRetryJob?.cancel()
                 reflectionRetryStartedAtMs = null
+                if (creditDenied) markCreditAccessDenied()
                 _state.update {
                     it.copy(
                         isAsking = false,
@@ -284,7 +289,6 @@ class RevealViewModel(
                         error = message,
                     )
                 }
-                if (creditDenied) markFreeCreditsClaimed()
             }
         }
     }
@@ -323,13 +327,19 @@ class RevealViewModel(
                 val identity = identityProvider()
                 creditsClient.configure(identity.accountId)
                 identity.accountId to creditsClient.refresh()
-            }.onSuccess { (accountId, creditState) ->
+            }.onSuccess { (accountId, refreshedCreditState) ->
+                val creditState = refreshedCreditState.afterDeviceGiftDenialGate(
+                    cachedBalance = reflectionCreditCache.balance(accountId),
+                    hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId),
+                )
                 reflectionCreditCache.storeBalance(creditState.balance, accountId)
                 _state.update {
                     it.copy(
                         creditBalance = creditState.balance,
                         creditPackages = creditState.packages,
-                        creditsDenied = false,
+                        hasClaimedFreeCredits = it.hasClaimedFreeCredits ||
+                            reflectionCreditCache.hasClaimedFreeCredits(accountId),
+                        creditsDenied = it.creditsDenied && creditState.balance == 0,
                         creditsLoading = false,
                         error = if (showError) null else it.error,
                     )
@@ -360,12 +370,18 @@ class RevealViewModel(
                 val identity = identityProvider()
                 creditsClient.configure(identity.accountId)
                 val refreshed = creditsClient.purchase(packageId, activity)
-                reflectionCreditCache.storeBalance(refreshed.balance, identity.accountId)
+                val normalizedCreditState = refreshed.afterDeviceGiftDenialGate(
+                    cachedBalance = reflectionCreditCache.balance(identity.accountId),
+                    hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(identity.accountId),
+                )
+                reflectionCreditCache.storeBalance(normalizedCreditState.balance, identity.accountId)
                 _state.update {
                     it.copy(
-                        creditBalance = refreshed.balance,
-                        creditPackages = refreshed.packages,
-                        creditsDenied = false,
+                        creditBalance = normalizedCreditState.balance,
+                        creditPackages = normalizedCreditState.packages,
+                        hasClaimedFreeCredits = it.hasClaimedFreeCredits ||
+                            reflectionCreditCache.hasClaimedFreeCredits(identity.accountId),
+                        creditsDenied = it.creditsDenied && normalizedCreditState.balance == 0,
                         creditsLoading = false,
                         purchasingCreditPackageId = null,
                         error = if (refreshed.message == "Could not complete that credit purchase.") refreshed.message else null,
@@ -473,6 +489,15 @@ class RevealViewModel(
             runCatching { reflectionCreditCache.balance(identityProvider().accountId) }.getOrNull()
         }
 
+    private fun markCreditAccessDenied() {
+        val accountId = runCatching { identityProvider().accountId }.getOrNull()
+        if (accountId != null && reflectionCreditCache !== NoopReflectionCreditCache) {
+            reflectionCreditCache.markFreeCreditsClaimed(accountId)
+            reflectionCreditCache.storeBalance(0, accountId)
+        }
+        markFreeCreditsClaimed()
+    }
+
     private fun startPendingReflectionWatcher() {
         if (reflectionWatcherJob?.isActive == true) return
         reflectionWatcherJob = viewModelScope.launch(dispatcher) {
@@ -562,6 +587,20 @@ private fun isCreditDenied(error: Throwable, message: String): Boolean {
 }
 
 private const val GenericMirrorFailureMessage = "Anky could not return a reflection right now."
+
+internal fun CreditState.afterDeviceGiftDenialGate(
+    cachedBalance: Int?,
+    hasClaimedFreeCredits: Boolean,
+): CreditState =
+    if (
+        hasClaimedFreeCredits &&
+        cachedBalance == 0 &&
+        balance == ReflectionCreditPresentation.FirstGiftCount
+    ) {
+        copy(balance = 0)
+    } else {
+        this
+    }
 
 private fun countdownClock(durationMs: Long): String {
     val totalSeconds = maxOf(0, durationMs / 1000)

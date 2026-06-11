@@ -6,11 +6,13 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -61,6 +63,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,10 +71,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -108,7 +114,9 @@ import inc.anky.android.ui.theme.AnkyType
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -137,6 +145,16 @@ fun RevealScreen(
     var reflectionPromptGuidanceVisible by remember { mutableStateOf(false) }
     val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val labels = revealLabels()
+    val isReadingSavedReflection by remember(state.reflection?.hash, scrollState) {
+        derivedStateOf {
+            state.reflection != null &&
+                scrollState.maxValue > 0 &&
+                scrollState.value >= scrollState.maxValue - 220
+        }
+    }
+    val shouldShowBottomAction = artifact != null &&
+        state.streamingReflectionMarkdown.isBlank() &&
+        !isReadingSavedReflection
 
     fun scrollToReflection() {
         scope.launch {
@@ -185,12 +203,8 @@ fun RevealScreen(
         viewModel.clearCopied(section)
     }
 
-    LaunchedEffect(state.reflection?.hash, state.streamingReflectionMarkdown, state.error) {
-        if (
-            state.reflection != null ||
-            state.streamingReflectionMarkdown.isNotBlank() ||
-            (inlineReflectionActive && state.error != null)
-        ) {
+    LaunchedEffect(state.error) {
+        if (inlineReflectionActive && state.error != null) {
             scrollToReflection()
         }
     }
@@ -273,13 +287,7 @@ fun RevealScreen(
 
                 when {
                     state.reflection != null -> {
-                        SavedReflectionPanel(
-                            reflection = state.reflection,
-                            copied = state.copiedSection == RevealCopySection.Reflection,
-                            labels = labels,
-                            onCopy = { copySection(RevealCopySection.Reflection) },
-                            modifier = Modifier.padding(top = 36.dp),
-                        )
+                        SavedReflectionPanel(reflection = state.reflection, labels = labels, modifier = Modifier.padding(top = 36.dp))
                     }
                     state.streamingReflectionMarkdown.isNotBlank() -> {
                         StreamingReflectionPanel(
@@ -300,7 +308,7 @@ fun RevealScreen(
         if (copiedBurst != null) {
             Text(
                 when (copiedBurst) {
-                    RevealCopySection.Reflection -> labels.copiedReflection
+                    RevealCopySection.Reflection -> stringResource(R.string.copied_reflection)
                     RevealCopySection.ReflectionPrompt -> labels.reflectionPromptCopied
                     else -> labels.copiedWriting
                 },
@@ -324,9 +332,10 @@ fun RevealScreen(
             }
         }
         RevealEdgeBackSwipe(onBack = onBack, modifier = Modifier.align(Alignment.CenterStart))
-        if (artifact != null) {
+        if (shouldShowBottomAction) {
             RevealBottomActionButton(
                 title = bottomActionTitle(state, labels),
+                subtitle = bottomActionSubtitle(state, labels),
                 isLoading = state.isAsking,
                 isEnabled = bottomActionIsEnabled(state),
                 onClick = {
@@ -420,11 +429,7 @@ private data class RevealLabels(
     val togglePrivacyMessage: String,
     val readReflection: String,
     val reflectThisAnky: String,
-    val reflectThisAnkyLeft: (Int) -> String,
-    val reflectThisAnkyDeviceGift: String,
     val continueWritingLeft: (String) -> String,
-    val copyReflection: String,
-    val copiedReflection: String,
     val copiedWriting: String,
     val reflectionLeft: (Int) -> String,
     val receivingReflection: String,
@@ -484,11 +489,7 @@ private fun revealLabels(): RevealLabels {
         togglePrivacyMessage = stringResource(R.string.reveal_toggle_privacy_message),
         readReflection = stringResource(R.string.read_reflection),
         reflectThisAnky = stringResource(R.string.reflect_this_anky),
-        reflectThisAnkyLeft = { count -> context.getString(R.string.reflect_this_anky_left, count) },
-        reflectThisAnkyDeviceGift = stringResource(R.string.reflect_this_anky_device_gift),
         continueWritingLeft = { remaining -> context.getString(R.string.continue_writing_left, remaining) },
-        copyReflection = stringResource(R.string.copy_reflection),
-        copiedReflection = stringResource(R.string.copied_reflection),
         copiedWriting = stringResource(R.string.copied_writing),
         reflectionLeft = { count ->
             context.getString(
@@ -712,45 +713,20 @@ private fun WritingSessionStat(
 }
 
 @Composable
-private fun RevealCopyButton(
-    label: String,
-    copiedLabel: String = "copied",
-    copied: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier
-            .clip(RoundedCornerShape(5.dp))
-            .border(1.dp, AnkyColors.Gold.copy(alpha = if (copied) 0.62f else 0.26f), RoundedCornerShape(5.dp)),
-    ) {
-        Text(
-            if (copied) copiedLabel else label,
-            style = AnkyType.Mono.copy(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = AnkyColors.GoldSoft,
-            ),
-        )
-    }
-}
-
-@Composable
 private fun SavedReflectionPanel(
     reflection: LocalReflection,
-    copied: Boolean,
     labels: RevealLabels,
-    onCopy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            reflection.title.lowercase(),
+            reflection.title,
             style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
             modifier = Modifier.testTag("saved-reflection-title"),
         )
-        MarkdownishText(reflection.displayBody)
+        SelectionContainer {
+            MarkdownishText(reflection.displayBody)
+        }
         reflection.creditsRemaining?.let { remaining ->
             Text(
                 labels.reflectionLeft(remaining),
@@ -758,13 +734,6 @@ private fun SavedReflectionPanel(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        RevealCopyButton(
-            label = labels.copyReflection.lowercase(),
-            copiedLabel = labels.copiedReflection.lowercase(),
-            copied = copied,
-            onClick = onCopy,
-            modifier = Modifier.padding(top = 8.dp),
-        )
     }
 }
 
@@ -778,11 +747,13 @@ private fun StreamingReflectionPanel(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (!title.isNullOrBlank()) {
             Text(
-                title.lowercase(),
+                title,
                 style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
             )
         }
-        MarkdownishText(body)
+        SelectionContainer {
+            MarkdownishText(body)
+        }
     }
 }
 
@@ -798,7 +769,7 @@ private fun ReflectionErrorPanel(
             style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
         )
         Text(
-            message.orEmpty().lowercase(),
+            message.orEmpty(),
             style = AnkyType.Mono.copy(fontSize = 13.sp, lineHeight = 18.sp, color = Color.Red.copy(alpha = 0.82f)),
         )
     }
@@ -807,46 +778,192 @@ private fun ReflectionErrorPanel(
 @Composable
 private fun RevealBottomActionButton(
     title: String,
+    subtitle: String?,
     isLoading: Boolean,
     isEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val transition = rememberInfiniteTransition(label = "reveal-cta")
+    val breath by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "reveal-cta-breath",
+    )
+    val sweepProgress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1650, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "reveal-cta-sweep",
+    )
+    val enabledOrLoading = isEnabled || isLoading
+    val shape = RoundedCornerShape(percent = 50)
+    val scale = if (enabledOrLoading) 1f + breath * 0.005f else 1f
+    val glowAlpha = when {
+        isLoading -> 0.38f
+        breath > 0.5f -> 0.35f
+        else -> 0.18f
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(62.dp)
-            .clip(RoundedCornerShape(7.dp))
-            .background(AnkyColors.Gold)
-            .border(1.dp, Color.White.copy(alpha = 0.48f), RoundedCornerShape(7.dp))
+            .height(if (subtitle == null) 74.dp else 82.dp)
+            .scale(scale)
+            .alpha(if (enabledOrLoading) 1f else 0.52f)
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        RevealCTAPalette.PurpleTop.copy(alpha = 0.95f),
+                        RevealCTAPalette.PurpleBottom.copy(alpha = 0.98f),
+                    ),
+                ),
+            )
+            .border(
+                BorderStroke(
+                    width = if (isLoading) 2.2.dp else 1.8.dp,
+                    brush = Brush.linearGradient(
+                        listOf(
+                            RevealCTAPalette.BorderGold,
+                            RevealCTAPalette.BorderViolet,
+                            RevealCTAPalette.BorderGoldDeep,
+                        ),
+                    ),
+                ),
+                shape,
+            )
             .clickable(enabled = isEnabled, onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = 22.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        Canvas(Modifier.matchParentSize()) {
+            drawCircle(
+                color = RevealCTAPalette.VioletGlow.copy(alpha = if (isLoading) 0.36f else 0.25f),
+                radius = size.width * 0.38f,
+                center = Offset(size.width / 2f, -size.height * 0.18f),
+            )
+            drawRoundRect(
+                color = RevealCTAPalette.GlowGold.copy(alpha = glowAlpha * 0.42f),
+                size = size,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f),
+                style = Stroke(width = if (isLoading) 5.5.dp.toPx() else 3.5.dp.toPx()),
+            )
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.12f),
+                size = size,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f),
+                style = Stroke(width = 0.8.dp.toPx()),
+            )
+        }
+        if (isLoading) {
+            AnkyThreadSweep(
+                progress = sweepProgress,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (isLoading) {
                 CircularProgressIndicator(
-                    color = AnkyColors.Ink,
+                    color = RevealCTAPalette.PaperBright,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(18.dp),
                 )
             }
-            Text(
-                title,
-                style = AnkyType.Mono.copy(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AnkyColors.Ink.copy(alpha = if (isEnabled || isLoading) 1f else 0.52f),
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    title,
+                    style = AnkyType.Heading.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = RevealCTAPalette.PaperBright,
+                        shadow = Shadow(
+                            color = RevealCTAPalette.GlowGold.copy(alpha = if (isLoading) 0.65f else 0.45f),
+                            blurRadius = if (isLoading) 12f else 8f,
+                        ),
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = AnkyType.Caption.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = RevealCTAPalette.PaperBright.copy(alpha = 0.72f),
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun AnkyThreadSweep(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val centerX = progress * (size.width + 180.dp.toPx()) - 90.dp.toPx()
+        val midY = size.height * 0.52f
+        val waveHeight = size.height * 0.09f
+        val startX = maxOf(0f, centerX - 120.dp.toPx())
+        val endX = minOf(size.width, centerX + 120.dp.toPx())
+        if (endX <= startX) return@Canvas
+
+        val path = Path().apply {
+            moveTo(startX, midY)
+            var x = startX
+            while (x <= endX) {
+                val local = (x - centerX) / 120.dp.toPx()
+                val y = midY + sin(local * PI.toFloat() * 3.2f) * waveHeight
+                lineTo(x, y)
+                x += 4.dp.toPx()
+            }
+        }
+        drawPath(
+            path = path,
+            brush = Brush.linearGradient(
+                listOf(
+                    Color.Transparent,
+                    RevealCTAPalette.BorderGold.copy(alpha = 0.9f),
+                    RevealCTAPalette.GlowGold,
+                    Color.Transparent,
+                ),
+                start = Offset(startX, midY),
+                end = Offset(endX, midY),
+            ),
+            style = Stroke(width = 3.2.dp.toPx(), cap = StrokeCap.Round),
+        )
+        drawCircle(
+            color = RevealCTAPalette.PaperBright.copy(alpha = 0.95f),
+            radius = 5.dp.toPx(),
+            center = Offset(centerX, midY),
+        )
+    }
+}
+
+private object RevealCTAPalette {
+    val PurpleTop = Color(0xFF4A176A)
+    val PurpleBottom = Color(0xFF250834)
+    val VioletGlow = Color(0xFF9C5CFF)
+    val GlowGold = Color(0xFFFFB84D)
+    val BorderGold = Color(0xFFFFE7A3)
+    val BorderViolet = Color(0xFFB668FF)
+    val BorderGoldDeep = Color(0xFFFFCA64)
+    val PaperBright = Color(0xFFFFF6D5)
 }
 
 private fun bottomActionTitle(state: RevealState, labels: RevealLabels): String =
@@ -854,17 +971,15 @@ private fun bottomActionTitle(state: RevealState, labels: RevealLabels): String 
         state.isAsking -> labels.receivingReflection
         state.reflection != null -> labels.readReflection
         state.needsCreditsToReflect -> labels.getMoreCredits
-        state.artifact?.isComplete == true -> reflectButtonTitle(state, labels)
+        state.artifact?.isComplete == true -> labels.reflectThisAnky
         state.canContinueWriting -> labels.continueWritingLeft(state.remainingWritingTime)
         else -> labels.writeMinutes
     }
 
-private fun reflectButtonTitle(state: RevealState, labels: RevealLabels): String =
+private fun bottomActionSubtitle(state: RevealState, labels: RevealLabels): String? =
     when (val promptState = state.creditPromptState) {
-        is ReflectionCreditPromptState.Available -> labels.reflectThisAnkyLeft(promptState.count)
-        is ReflectionCreditPromptState.FreeGift -> labels.reflectThisAnkyDeviceGift
-        ReflectionCreditPromptState.Unavailable -> labels.getMoreCredits
-        ReflectionCreditPromptState.Unknown -> labels.reflectThisAnky
+        is ReflectionCreditPromptState.Available -> labels.reflectionLeft(promptState.count)
+        else -> null
     }
 
 private fun bottomActionIsEnabled(state: RevealState): Boolean =
@@ -1035,7 +1150,7 @@ private fun RevealCreditPurchaseSheet(
 
             state.error?.let { error ->
                 Text(
-                    error.lowercase(),
+                    error,
                     style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
                     modifier = Modifier.padding(horizontal = 22.dp).padding(top = 12.dp),
                 )
@@ -1108,7 +1223,7 @@ private fun RevealCreditPackageRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(86.dp)
+            .height(94.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.linearGradient(
@@ -1124,7 +1239,7 @@ private fun RevealCreditPackageRow(
                 RoundedCornerShape(16.dp),
             )
             .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1146,17 +1261,17 @@ private fun RevealCreditPackageRow(
         ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = CreditsPalette.Gold, modifier = Modifier.size(17.dp))
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(
                 creditPackage.title,
-                style = AnkyType.Heading.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Cream),
+                style = AnkyType.Heading.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Cream),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 creditPackage.subtitle,
-                style = AnkyType.Body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.58f)),
-                maxLines = 1,
+                style = AnkyType.Body.copy(fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = CreditsPalette.Cream.copy(alpha = 0.58f)),
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -1164,7 +1279,7 @@ private fun RevealCreditPackageRow(
             if (isRecommended && !isPurchasing) {
                 Text(
                     bestValue,
-                    style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
+                    style = AnkyType.Mono.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
                         .background(CreditsPalette.Gold)
@@ -1173,7 +1288,7 @@ private fun RevealCreditPackageRow(
             }
             Text(
                 if (isPurchasing) "..." else creditPackage.price,
-                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Gold),
+                style = AnkyType.Heading.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = CreditsPalette.Gold),
                 maxLines = 1,
             )
         }
@@ -1375,7 +1490,7 @@ private fun RevealAnkyReflectionChat(
 
         state.error?.let { errorMessage ->
             Text(
-                errorMessage.lowercase(),
+                errorMessage,
                 style = AnkyType.Mono.copy(fontSize = 12.sp, lineHeight = 16.sp, color = Color.Red.copy(alpha = 0.82f)),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1478,7 +1593,7 @@ private fun ReflectionBottomSheetContent(
                         style = AnkyType.Heading.copy(fontSize = 24.sp, color = AnkyColors.Gold),
                     )
                     Text(
-                        state.creditPromptMessage.lowercase(),
+                        state.creditPromptMessage,
                         style = AnkyType.Mono.copy(fontSize = 13.sp, lineHeight = 18.sp, color = AnkyColors.Paper.copy(alpha = 0.72f)),
                     )
                     TextButton(
@@ -1505,7 +1620,7 @@ private fun ReflectionBottomSheetContent(
                                 modifier = Modifier.size(14.dp),
                             )
                             Text(
-                                labels.reflectThisAnky.lowercase(),
+                                labels.reflectThisAnky,
                                 style = AnkyType.Caption.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = if (state.canSubmitReflectionRequest) AnkyColors.Ink else AnkyColors.Ink.copy(alpha = 0.52f),
@@ -1811,7 +1926,7 @@ private fun inlineMarkdown(text: String) = buildAnnotatedString {
                     withStyle(
                         SpanStyle(
                             color = AnkyColors.Paper.copy(alpha = 0.82f),
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = FontFamily.Default,
                             fontSize = 15.sp,
                         ),
                     ) {

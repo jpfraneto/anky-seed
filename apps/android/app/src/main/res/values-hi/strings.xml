@@ -157,8 +157,6 @@
     <string name="delete_writing_session_body">यह writing session हमेशा के लिए हटाता है। इसे वापस नहीं किया जा सकता।</string>
     <string name="read_reflection">REFLECTION पढ़ें</string>
     <string name="reflect_this_anky">इस ANKY को REFLECT करें</string>
-    <string name="reflect_this_anky_left">इस ANKY को REFLECT करें - %1$d LEFT</string>
-    <string name="reflect_this_anky_device_gift">इस ANKY को REFLECT करें - DEVICE GIFT</string>
     <string name="continue_writing_left">CONTINUE - %1$s LEFT</string>
     <string name="receiving_reflection">reflection receive हो रही है...</string>
     <string name="get_more_credits">MORE CREDITS लें</string>

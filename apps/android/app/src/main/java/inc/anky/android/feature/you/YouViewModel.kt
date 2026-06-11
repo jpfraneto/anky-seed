@@ -81,23 +81,19 @@ data class YouState(
         }
 
     val presentedCreditBalance: Int?
-        get() = if (hasClaimedFreeCredits) creditState.balance else ReflectionCreditPresentation.FirstGiftCount
+        get() = creditState.balance
 
     val hasUnspentGiftCredit: Boolean
-        get() = !hasClaimedFreeCredits
+        get() = false
 
     val canPurchaseCredits: Boolean
-        get() = hasClaimedFreeCredits
+        get() = true
 
     val creditDetailTitle: String
-        get() = if (hasUnspentGiftCredit) {
-            ReflectionCreditPresentation.FirstGiftCount.toString()
-        } else {
-            creditState.balance?.toString() ?: "..."
-        }
+        get() = creditState.balance?.toString() ?: "..."
 
     val creditDetailCaption: String
-        get() = if (hasUnspentGiftCredit) YouStatusCopy.CreditGiftCaption else "credits"
+        get() = "credits"
 }
 
 private fun mailtoQueryValue(value: String): String =
@@ -306,9 +302,16 @@ class YouViewModel(
             } else {
                 _state.value.accountId.also { creditsClient.configure(it) }
             }
-            val refreshed = creditsClient.refresh()
+            val rawRefreshed = creditsClient.refresh()
+            val refreshed = rawRefreshed.afterDeviceGiftDenialGate(
+                cachedBalance = reflectionCreditCache.balance(accountId),
+                hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId),
+            )
             reflectionCreditCache.storeBalance(refreshed.balance, accountId)
             creditState.value = refreshed
+            _state.update {
+                it.copy(hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId))
+            }
             if (refreshed.message == YouStatusCopy.CouldNotLoadCredits) {
                 _state.update { it.copy(error = YouStatusCopy.CouldNotLoadCredits) }
             } else {
@@ -319,19 +322,24 @@ class YouViewModel(
 
     fun purchaseCredits(packageId: String, activity: Activity?) {
         viewModelScope.launch {
-            if (!_state.value.canPurchaseCredits) {
-                _state.update { it.copy(statusMessage = YouStatusCopy.SpendGiftBeforeBuying, error = null) }
-                return@launch
+            val accountId = _state.value.accountId.ifBlank {
+                configureCreditsForCurrentIdentity() ?: return@launch
             }
+            val hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId)
+            _state.update { it.copy(hasClaimedFreeCredits = hasClaimedFreeCredits) }
             if (_state.value.purchasingCreditPackageId != null) return@launch
             _state.update { it.copy(purchasingCreditPackageId = packageId) }
             try {
                 creditState.value = creditState.value.copy(message = "loading credit packs", isLoading = true)
-                val accountId = configureCreditsForCurrentIdentity() ?: return@launch
+                creditsClient.configure(accountId)
                 val refreshed = creditsClient.purchase(packageId, activity)
-                reflectionCreditCache.storeBalance(refreshed.balance, accountId)
-                creditState.value = refreshed
-                when (refreshed.message) {
+                val normalized = refreshed.afterDeviceGiftDenialGate(
+                    cachedBalance = reflectionCreditCache.balance(accountId),
+                    hasClaimedFreeCredits = reflectionCreditCache.hasClaimedFreeCredits(accountId),
+                )
+                reflectionCreditCache.storeBalance(normalized.balance, accountId)
+                creditState.value = normalized
+                when (normalized.message) {
                     "Could not complete that credit purchase." -> _state.update { it.copy(error = "Could not complete that credit purchase.") }
                     "Credits updated." -> _state.update { it.copy(statusMessage = "Credits updated.", error = null) }
                 }
@@ -834,6 +842,20 @@ internal fun localIdentityLoadFailureState(previous: YouState): YouState =
 internal fun creditLoadFailureState(): CreditState =
     CreditState(false, null, YouStatusCopy.CouldNotLoadCredits)
 
+internal fun CreditState.afterDeviceGiftDenialGate(
+    cachedBalance: Int?,
+    hasClaimedFreeCredits: Boolean,
+): CreditState =
+    if (
+        hasClaimedFreeCredits &&
+        cachedBalance == 0 &&
+        balance == ReflectionCreditPresentation.FirstGiftCount
+    ) {
+        copy(balance = 0)
+    } else {
+        this
+    }
+
 internal object YouStatusCopy {
     const val ShowRecoveryWordsReason = "Show your Anky recovery words."
     const val BackUpRecoveryWordsReason = "Back up your Anky recovery words to device secure storage."
@@ -853,12 +875,6 @@ internal object YouStatusCopy {
     const val CouldNotCreateBackupZip = "Could not create a backup zip."
     const val CouldNotCreateWritingExport = "Could not create a writing export."
     const val NoWritingToExportYet = "There is no writing to export yet."
-    const val CreditGiftSummary = "2 reflections - This device"
-    const val CreditGiftCaption = "device gift"
-    const val CreditGiftPrompt = "This device has two free reflections from Anky. Use them before buying more credits."
-    const val CreditPacksLocked = "Credit packs unlock after this device spends its first two reflections"
-    const val CreditGiftDetail = "Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits."
-    const val SpendGiftBeforeBuying = "Use this device's first two reflections before buying more credits."
     const val CouldNotLoadLocalWriterIdentity = "Could not load the local Base identity."
     const val CouldNotLoadRecoveryPhrase = "Could not load the recovery words."
     const val CouldNotBackUpAnkyIdentity = "Could not back up Anky identity."

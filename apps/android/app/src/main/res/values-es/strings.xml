@@ -157,8 +157,6 @@
     <string name="delete_writing_session_body">Esto elimina permanentemente esta sesión de escritura. No se puede deshacer.</string>
     <string name="read_reflection">LEER REFLEXIÓN</string>
     <string name="reflect_this_anky">REFLEJAR ESTE ANKY</string>
-    <string name="reflect_this_anky_left">REFLEJAR ESTE ANKY - QUEDAN %1$d</string>
-    <string name="reflect_this_anky_device_gift">REFLEJAR ESTE ANKY - REGALO DEL DISPOSITIVO</string>
     <string name="continue_writing_left">CONTINÚA - QUEDA %1$s</string>
     <string name="receiving_reflection">Recibiendo reflexión...</string>
     <string name="get_more_credits">OBTENER MÁS CRÉDITOS</string>

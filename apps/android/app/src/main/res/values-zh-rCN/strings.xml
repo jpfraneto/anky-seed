@@ -157,8 +157,6 @@
     <string name="delete_writing_session_body">这会永久删除此书写会话，且无法撤销。</string>
     <string name="read_reflection">阅读反思</string>
     <string name="reflect_this_anky">映照这个 ANKY</string>
-    <string name="reflect_this_anky_left">映照这个 ANKY - 剩余 %1$d</string>
-    <string name="reflect_this_anky_device_gift">映照这个 ANKY - 设备赠礼</string>
     <string name="continue_writing_left">继续 - 剩余 %1$s</string>
     <string name="receiving_reflection">正在接收反思...</string>
     <string name="get_more_credits">获取更多额度</string>

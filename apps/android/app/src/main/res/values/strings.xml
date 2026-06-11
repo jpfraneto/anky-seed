@@ -134,6 +134,7 @@
     <string name="you_stat_streak">streak</string>
     <string name="back">Back</string>
     <string name="zero_ankys">0 ankys</string>
+    <string name="all_ankys_empty_message">An Anky is a 8 minute writing session. Do your first one!</string>
     <string name="one_anky_count_format">%1$d anky</string>
     <string name="ankys_count_format">%1$d ankys</string>
     <string name="word">word</string>
@@ -156,6 +157,7 @@
     <string name="map_showed_up">showed up</string>
     <string name="map_back">Back</string>
     <string name="map_could_not_load">Could not load the map.</string>
+    <string name="day_empty_message">No writing sessions today.</string>
     <string name="reveal_privacy_note">Your writing is sacred. It stays on your phone and only leaves if you ask for a reflection. Anky mirrors it back and never stores it.</string>
     <string name="writing_copied">Writing copied</string>
     <string name="copied_writing">copied writing</string>
@@ -163,8 +165,8 @@
     <string name="copy_reflection_prompt_hint">Long press to copy the reflection prompt for your own AI tool.</string>
     <string name="reflection_prompt_copied">reflection prompt copied</string>
     <string name="reflection_prompt_clipboard_guidance">The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it.</string>
-    <string name="copy_reflection">copy reflection</string>
-    <string name="copied_reflection">copied reflection</string>
+    <string name="copy_reflection">Copy Reflection</string>
+    <string name="copied_reflection">Copied Reflection</string>
     <string name="reflection_left">%1$d reflection left</string>
     <string name="reflections_left">%1$d reflections left</string>
     <string name="delete_writing_session">Delete writing session</string>
@@ -172,13 +174,11 @@
     <string name="delete">Delete</string>
     <string name="cancel_title">Cancel</string>
     <string name="delete_writing_session_body">This permanently deletes this writing session. This cannot be undone.</string>
-    <string name="read_reflection">READ REFLECTION</string>
-    <string name="reflect_this_anky">REFLECT THIS ANKY</string>
-    <string name="reflect_this_anky_left">REFLECT THIS ANKY - %1$d LEFT</string>
-    <string name="reflect_this_anky_device_gift">REFLECT THIS ANKY - DEVICE GIFT</string>
-    <string name="continue_writing_left">CONTINUE - %1$s LEFT</string>
-    <string name="receiving_reflection">Receiving reflection...</string>
-    <string name="get_more_credits">GET MORE CREDITS</string>
+    <string name="read_reflection">Read Reflection</string>
+    <string name="reflect_this_anky">Reflect this Anky</string>
+    <string name="continue_writing_left">Continue - %1$s left</string>
+    <string name="receiving_reflection">Receiving Reflection...</string>
+    <string name="get_more_credits">Get Credits</string>
     <string name="write_minutes_caps">WRITE %1$d MINUTES</string>
     <string name="loading">LOADING</string>
     <string name="mirror_did_not_open">the mirror did not open</string>
@@ -188,15 +188,15 @@
     <string name="reveal_writing_reflection_characters">writing reflection · %1$d characters</string>
     <string name="reveal_anky_drawing_thread">anky is drawing a thread from the writing. %1$d characters have arrived.</string>
     <string name="reveal_anky_reading">anky is reading...</string>
-    <string name="credits_sheet_title">Anky reflection credits</string>
+    <string name="credits_sheet_title">Anky Reflections</string>
     <string name="credits_sheet_subtitle">Your private space to be witnessed.</string>
     <string name="refresh_reflection_credits">Refresh reflection credits</string>
     <string name="loading_credit_packs">loading credit packs</string>
     <string name="no_credit_packs_available">no credit packs available</string>
     <string name="writing_is_free_one_credit_reflection">Writing is free. One credit = one reflection.</string>
     <string name="credits_sheet_prompt_copy_fallback">Don\'t want to pay? Long press the copy button on a finished Anky and then send what will be copied to your favorite AI tool</string>
-    <string name="available_credits">available\ncredits</string>
-    <string name="best_value">best value</string>
+    <string name="available_credits">Available\nCredits</string>
+    <string name="best_value">Best Value</string>
     <string name="reveal_payment_did_not_finish">Payment did not finish. No credits were added.</string>
     <string name="reveal_delete_session_failed">This writing session could not be deleted.</string>
     <string name="reveal_status_opening_quiet_channel">i am opening a quiet channel.</string>
@@ -230,9 +230,9 @@
     <string name="reveal_chat_open_mirror">open mirror</string>
     <string name="reveal_chat_write_again">write again</string>
     <string name="reveal_chat_has_reflection">this anky has a reflection.</string>
-    <string name="reveal_chat_read_reflection">read reflection</string>
-    <string name="reveal_chat_reflect_this_anky">reflect this anky</string>
-    <string name="reveal_chat_open_credits">open credits</string>
+    <string name="reveal_chat_read_reflection">Read Reflection</string>
+    <string name="reveal_chat_reflect_this_anky">Reflect this Anky</string>
+    <string name="reveal_chat_open_credits">Open Credits</string>
     <string name="reveal_sheet_mirror">mirror</string>
     <string name="reveal_sheet_tags">tags</string>
     <string name="reveal_progress_complete">complete</string>

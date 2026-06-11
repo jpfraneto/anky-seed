@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -568,7 +569,7 @@ fun AnkyApp(container: AppContainer) {
                     defaultSequence = presenceSequence(currentRoute, writeState.hasReachedRitualMark),
                     goldenGlow = currentRoute == AnkyRoute.Write.route && writeState.hasReachedRitualMark,
                     transformToSigil = currentRoute == AnkyRoute.Write.route && writeState.acceptedGlyphCount > 0 && !writeState.hasReachedRitualMark,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().zIndex(90f),
                 )
             }
             if (
@@ -592,7 +593,7 @@ fun AnkyApp(container: AppContainer) {
                 currentRoute == AnkyRoute.Write.route &&
                 writeState.errorMessage != null
             ) {
-                Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.fillMaxSize().imePadding().zIndex(220f), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
                         message = writeState.errorMessage.orEmpty(),
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
@@ -605,7 +606,7 @@ fun AnkyApp(container: AppContainer) {
                 writeState.shouldShowNudgeDialogue &&
                 writeState.nudgeDialogueMessage.isNotBlank()
             ) {
-                Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.fillMaxSize().imePadding().zIndex(220f), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
                         message = writeState.nudgeDialogueMessage,
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,

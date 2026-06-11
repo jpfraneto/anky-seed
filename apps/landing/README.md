@@ -42,6 +42,7 @@ The legal/protocol documents are rendered inside the Vite app at:
 - `/privacy`
 - `/terms`
 - `/memes`
+- `/gallery`
 
 Their markdown source lives in `src/legal/`.
 
@@ -64,3 +65,16 @@ VITE_MEMES_INDEX_URL=https://your-worker.example.workers.dev/memes.json
 
 If the remote index is unavailable, the page falls back to
 `public/memes/index.json`.
+
+## Gallery
+
+The gallery route reads its image list from:
+
+```txt
+https://anky-gallery.fairchat.workers.dev/gallery.json
+```
+
+That Worker lists the Cloudflare R2 bucket named `anky-gallery`. Upload images
+into that bucket from the Cloudflare dashboard and refresh `/gallery`.
+When both original and `.webp` variants exist for the same basename, the Worker
+serves the `.webp` entry to the frontend.

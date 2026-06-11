@@ -327,6 +327,44 @@ class WriteViewModelTest {
     }
 
     @Test
+    fun continuedSessionProgressUsesProtocolDurationNotPausedWallClock() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        val oldFragment = stores.archive.save("$start h\n457000 i")
+        stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(oldFragment, null))
+        var now = start + 900_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertEquals(true, viewModel.continueSession(oldFragment))
+        assertEquals(457000, viewModel.state.value.elapsedMs)
+        assertEquals(false, viewModel.state.value.hasReachedRitualMark)
+
+        viewModel.acceptGlyph("!")
+        now += 22_000
+        viewModel.refreshLiveState()
+
+        assertEquals(457000, viewModel.state.value.elapsedMs)
+        assertEquals(false, viewModel.state.value.hasReachedRitualMark)
+
+        viewModel.acceptGlyph("?")
+        assertEquals(479000, viewModel.state.value.elapsedMs)
+        assertEquals(false, viewModel.state.value.hasReachedRitualMark)
+
+        now += 1_000
+        viewModel.acceptGlyph(".")
+
+        assertEquals(480000, viewModel.state.value.elapsedMs)
+        assertEquals(true, viewModel.state.value.hasReachedRitualMark)
+    }
+
+    @Test
     fun terminalMarkedFragmentIsNotMadeContinuableByStrippingTerminalSilence() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000

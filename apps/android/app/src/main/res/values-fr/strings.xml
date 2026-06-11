@@ -157,8 +157,6 @@
     <string name="delete_writing_session_body">Cela supprime définitivement cette session d\'écriture. Cette action est irréversible.</string>
     <string name="read_reflection">LIRE LA RÉFLEXION</string>
     <string name="reflect_this_anky">REFLÉTER CET ANKY</string>
-    <string name="reflect_this_anky_left">REFLÉTER CET ANKY - %1$d RESTANTS</string>
-    <string name="reflect_this_anky_device_gift">REFLÉTER CET ANKY - CADEAU DE L\'APPAREIL</string>
     <string name="continue_writing_left">CONTINUER - %1$s RESTANTES</string>
     <string name="receiving_reflection">Réflexion en réception...</string>
     <string name="get_more_credits">OBTENIR PLUS DE CRÉDITS</string>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AnkyCompanion from "./components/AnkyCompanion";
 import AnkyCoinPage from "./components/AnkyCoinPage";
 import AnkyMode from "./components/AnkyMode";
@@ -6,6 +6,7 @@ import ComingSoonPage from "./components/ComingSoonPage";
 import ContactPage from "./components/ContactPage";
 import FeatureCard from "./components/FeatureCard";
 import Footer from "./components/Footer";
+import GalleryPage from "./components/GalleryPage";
 import Hero from "./components/Hero";
 import LegalPage, { type LegalRoute } from "./components/LegalPage";
 import MemesPage from "./components/MemesPage";
@@ -36,11 +37,31 @@ function App() {
   const [initialCharacter, setInitialCharacter] = useState<
     string | undefined
   >();
+  const [useMobileAnkyInput, setUseMobileAnkyInput] = useState(false);
   const [path, setPath] = useState(() => window.location.pathname);
+  const [mobileAnkyInput, setMobileAnkyInput] =
+    useState<HTMLTextAreaElement | null>(null);
 
-  function startAnkyMode(character?: string) {
+  const handleMobileInputMount = useCallback(
+    (input: HTMLTextAreaElement | null) => {
+      setMobileAnkyInput(input);
+    },
+    [],
+  );
+
+  function startAnkyMode(character?: string, useMobileInput = false) {
     setInitialCharacter(character);
+    setUseMobileAnkyInput(useMobileInput);
     setAnkyModeOpen(true);
+  }
+
+  function closeAnkyMode() {
+    setAnkyModeOpen(false);
+    setInitialCharacter(undefined);
+    setUseMobileAnkyInput(false);
+    if (mobileAnkyInput) {
+      mobileAnkyInput.blur();
+    }
   }
 
   function navigate(href: string) {
@@ -70,7 +91,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (ankyModeOpen || path !== "/") {
+    if (ankyModeOpen) {
       return;
     }
 
@@ -85,9 +106,17 @@ function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [ankyModeOpen, path]);
+  }, [ankyModeOpen]);
 
   const legalRoute = path.slice(1) as LegalRoute;
+
+  const ankyModeLayer = ankyModeOpen ? (
+    <AnkyMode
+      externalInput={useMobileAnkyInput ? mobileAnkyInput : undefined}
+      initialCharacter={initialCharacter}
+      onClose={closeAnkyMode}
+    />
+  ) : null;
 
   if (
     legalRoute === "protocol" ||
@@ -95,29 +124,59 @@ function App() {
     legalRoute === "terms"
   ) {
     return (
-      <LegalPage currentPath={path} route={legalRoute} onNavigate={navigate} />
+      <>
+        <LegalPage currentPath={path} route={legalRoute} onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
     );
   }
 
   if (path === "/ankycoin") {
-    return <AnkyCoinPage currentPath={path} onNavigate={navigate} />;
+    return (
+      <>
+        <AnkyCoinPage currentPath={path} onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
+    );
   }
 
   if (path === "/contact") {
-    return <ContactPage currentPath={path} onNavigate={navigate} />;
+    return (
+      <>
+        <ContactPage currentPath={path} onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
+    );
   }
 
   if (path === "/memes") {
-    return <MemesPage currentPath={path} onNavigate={navigate} />;
+    return (
+      <>
+        <MemesPage currentPath={path} onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
+    );
+  }
+
+  if (path === "/gallery") {
+    return (
+      <>
+        <GalleryPage currentPath={path} onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
+    );
   }
 
   if (path === "/docs" || path === "/blog") {
     return (
-      <ComingSoonPage
-        currentPath={path}
-        title={path === "/docs" ? "Docs" : "Blog"}
-        onNavigate={navigate}
-      />
+      <>
+        <ComingSoonPage
+          currentPath={path}
+          title={path === "/docs" ? "Docs" : "Blog"}
+          onNavigate={navigate}
+        />
+        {ankyModeLayer}
+      </>
     );
   }
 
@@ -136,7 +195,11 @@ function App() {
         <SiteNav currentPath={path} onNavigate={navigate} />
 
         <main className="relative z-10">
-          <Hero onStartMode={startAnkyMode} />
+          <Hero
+            mobileInput={mobileAnkyInput}
+            onMobileInputMount={handleMobileInputMount}
+            onStartMode={startAnkyMode}
+          />
 
           <section className="px-4 py-12 sm:px-8 sm:py-16 lg:px-10">
             <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
@@ -209,12 +272,7 @@ function App() {
         <AnkyCompanion />
       </div>
 
-      {ankyModeOpen ? (
-        <AnkyMode
-          initialCharacter={initialCharacter}
-          onClose={() => setAnkyModeOpen(false)}
-        />
-      ) : null}
+      {ankyModeLayer}
     </div>
   );
 }

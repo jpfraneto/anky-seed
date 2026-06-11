@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anky-gallery",
+  "main": "./gallery-r2-worker.js",
+  "compatibility_date": "2026-06-11",
+  "r2_buckets": [
+    {
+      "binding": "GALLERY_BUCKET",
+      "bucket_name": "anky-gallery"
+    }
+  ]
+}

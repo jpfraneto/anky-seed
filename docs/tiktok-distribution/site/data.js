@@ -3,7 +3,7 @@ window.ANKY_TIKTOK_STATS = {
   "ringCount": 4,
   "pillarCount": 8,
   "sourceCsv": "../watchlist.csv",
-  "generatedAt": "2026-06-05T16:48:04.394Z"
+  "generatedAt": "2026-06-11T14:00:24.347Z"
 };
 window.ANKY_TIKTOK_VIDEOS = [
   {

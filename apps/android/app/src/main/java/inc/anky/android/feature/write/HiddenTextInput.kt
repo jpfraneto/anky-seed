@@ -1,6 +1,7 @@
 package inc.anky.android.feature.write
 
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
@@ -47,7 +49,15 @@ fun HiddenTextInput(
                 }
                 value.value = ""
             },
-            modifier = modifier.focusRequester(focusRequester),
+            modifier = modifier
+                .focusRequester(focusRequester)
+                .pointerInput(inputEnabled) {
+                    detectTapGestures {
+                        if (!inputEnabled) return@detectTapGestures
+                        focusRequester.requestFocus()
+                        keyboard?.show()
+                    }
+                },
             enabled = inputEnabled,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,

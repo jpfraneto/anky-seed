@@ -5,6 +5,8 @@ type StoreBadgeProps = {
 };
 
 const iosAppStoreUrl = "https://apps.apple.com/us/app/anky-app/id6760663033";
+const androidPlayStoreUrl =
+  "https://play.google.com/store/apps/details?id=app.anky.mobile";
 
 function AppleIcon() {
   return (
@@ -68,7 +70,7 @@ function StoreBadge({ store, href, compact = false }: StoreBadgeProps) {
       <button
         className={className}
         type="button"
-        onClick={() => window.alert("coming very soon. stay tuned")}
+        onClick={() => window.open(androidPlayStoreUrl, "_blank")}
       >
         {content}
       </button>

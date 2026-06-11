@@ -8,8 +8,8 @@ type SiteNavProps = {
 const navLinks = [
   { label: "Home", href: "/" },
   { label: "Memes", href: "/memes" },
+  { label: "Gallery", href: "/gallery" },
   { label: "Contact", href: "/contact" },
-  { label: "$ANKY", href: "/ankycoin" },
   { label: "Download", href: "#download" },
 ] as const;
 

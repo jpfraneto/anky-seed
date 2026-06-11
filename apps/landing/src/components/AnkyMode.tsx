@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import StoreBadges from "./StoreBadges";
 
 type AnkyModeProps = {
+  externalInput?: HTMLTextAreaElement | null;
   initialCharacter?: string;
   onClose: () => void;
 };
@@ -78,8 +84,13 @@ function formatClock(ms: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+function AnkyMode({
+  externalInput,
+  initialCharacter,
+  onClose,
+}: AnkyModeProps) {
+  const [localInput, setLocalInput] = useState<HTMLTextAreaElement | null>(null);
+  const input = externalInput ?? localInput;
   const [text, setText] = useState(() => initialCharacter ?? "");
   const [lastCharacter, setLastCharacter] = useState(
     initialCharacter?.trim() ? initialCharacter : "",
@@ -117,12 +128,12 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    window.setTimeout(() => inputRef.current?.focus(), 0);
+    input?.focus({ preventScroll: true });
 
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, []);
+  }, [input]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -164,13 +175,15 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
       setStartedAt((current) => current ?? now);
       setLastTypedAt(now);
       setSilenceMs(0);
-      inputRef.current?.focus();
+      input?.focus({ preventScroll: true });
     },
-    [isEnded],
+    [input, isEnded],
   );
 
   useEffect(() => {
-    const input = inputRef.current;
+    if (!input) {
+      return;
+    }
 
     function handleBeforeInput(event: InputEvent) {
       if (event.target !== input) {
@@ -191,15 +204,27 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
       flashBlockedInput();
     }
 
-    input?.addEventListener("beforeinput", handleBeforeInput);
-    return () => input?.removeEventListener("beforeinput", handleBeforeInput);
-  }, [appendCharacter, flashBlockedInput, isEnded]);
+    input.addEventListener("beforeinput", handleBeforeInput);
+    return () => input.removeEventListener("beforeinput", handleBeforeInput);
+  }, [appendCharacter, flashBlockedInput, input, isEnded]);
 
   useEffect(() => {
     function focusRitualInput() {
       if (!isEnded) {
-        inputRef.current?.focus();
+        input?.focus({ preventScroll: true });
       }
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest("[data-anky-close]")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      focusRitualInput();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -209,7 +234,7 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
         return;
       }
 
-      const isRitualInput = event.target === inputRef.current;
+      const isRitualInput = event.target === input;
 
       if (!isRitualInput && isInteractiveTarget(event.target)) {
         return;
@@ -249,16 +274,16 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
       flashBlockedInput();
     }
 
-    window.addEventListener("pointerdown", focusRitualInput);
+    window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("paste", handlePaste);
 
     return () => {
-      window.removeEventListener("pointerdown", focusRitualInput);
+      window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("paste", handlePaste);
     };
-  }, [appendCharacter, flashBlockedInput, isEnded, onClose]);
+  }, [appendCharacter, flashBlockedInput, input, isEnded, onClose]);
 
   return (
     <section
@@ -273,6 +298,7 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
       <div className="pointer-events-none absolute inset-0 anky-star-field opacity-70" />
 
       <button
+        data-anky-close
         className="absolute right-5 top-5 z-20 grid h-11 w-11 place-items-center rounded-full border border-gold-200/20 bg-black/45 text-xl text-cream/72 backdrop-blur transition hover:border-gold-200/50 hover:text-cream focus:outline-none focus:ring-2 focus:ring-gold-300/70"
         type="button"
         aria-label="Close Anky mode"
@@ -281,19 +307,21 @@ function AnkyMode({ initialCharacter, onClose }: AnkyModeProps) {
         ×
       </button>
 
-      <textarea
-        ref={inputRef}
-        aria-label="Anky writing input"
-        autoCapitalize="sentences"
-        autoComplete="off"
-        autoCorrect="on"
-        className="sr-only"
-        inputMode="text"
-        value=""
-        onChange={() => {
-          inputRef.current?.focus();
-        }}
-      />
+      {externalInput ? null : (
+        <textarea
+          ref={setLocalInput}
+          aria-label="Anky writing input"
+          autoCapitalize="sentences"
+          autoComplete="off"
+          autoCorrect="on"
+          className="sr-only"
+          inputMode="text"
+          value=""
+          onChange={() => {
+            localInput?.focus({ preventScroll: true });
+          }}
+        />
+      )}
 
       <div className="relative z-10 min-h-svh px-4 py-14 sm:px-5 sm:py-16">
         <div

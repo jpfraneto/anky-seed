@@ -157,8 +157,6 @@
     <string name="delete_writing_session_body">Dies löscht diese Schreibsitzung dauerhaft. Das kann nicht rückgängig gemacht werden.</string>
     <string name="read_reflection">REFLEXION LESEN</string>
     <string name="reflect_this_anky">DIESES ANKY REFLEKTIEREN</string>
-    <string name="reflect_this_anky_left">DIESES ANKY REFLEKTIEREN - %1$d ÜBRIG</string>
-    <string name="reflect_this_anky_device_gift">DIESES ANKY REFLEKTIEREN - GERÄTEGESCHENK</string>
     <string name="continue_writing_left">WEITER - %1$s ÜBRIG</string>
     <string name="receiving_reflection">Reflexion wird empfangen...</string>
     <string name="get_more_credits">MEHR GUTHABEN HOLEN</string>

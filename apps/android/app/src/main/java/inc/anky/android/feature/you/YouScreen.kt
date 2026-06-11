@@ -94,6 +94,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -309,6 +310,7 @@ fun YouScreen(
                         isThinking = !isShowingSystemPrompt.value && isConversationThinking(activePrompt.value, state),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
+                            .zIndex(220f)
                             .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
                     )
                 }
@@ -549,7 +551,7 @@ fun YouScreen(
         DestructiveConfirmDialog(
             title = "reset local identity?",
             action = "reset identity",
-            message = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting.",
+            message = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery words before resetting.",
             onDismiss = { confirmResetIdentity.value = false },
             onConfirm = {
                 confirmResetIdentity.value = false
@@ -788,6 +790,7 @@ private fun AnkyExperienceOverlay(
                 onClose = { showCopyPrompt.value = false },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .zIndex(220f)
                     .padding(start = 18.dp, end = 18.dp, bottom = 76.dp),
             )
         }
@@ -1016,7 +1019,7 @@ private fun YouStatusMessages(state: YouState) {
     state.error?.let { message ->
         AnkyPanel {
             Text(
-                message.lowercase(),
+                message,
                 style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Danger),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1025,7 +1028,7 @@ private fun YouStatusMessages(state: YouState) {
     state.statusMessage?.let { message ->
         AnkyPanel {
             Text(
-                message.lowercase(),
+                message,
                 style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1160,6 +1163,11 @@ private fun YouHistoryPage(
                             style = AnkyType.Title.copy(fontSize = 36.sp, color = AnkyColors.Gold),
                             textAlign = TextAlign.Center,
                         )
+                        Text(
+                            stringResource(R.string.all_ankys_empty_message),
+                            style = AnkyType.Body.copy(fontSize = 17.sp, color = AnkyColors.PaperMuted),
+                            textAlign = TextAlign.Center,
+                        )
                         AnkyActionButton(
                             stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes),
                             onClick = onWriteRequested,
@@ -1209,7 +1217,7 @@ private fun YouHistorySessionRow(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                session.title.lowercase(),
+                session.title,
                 style = AnkyType.Mono.copy(
                     fontSize = 15.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -1518,10 +1526,6 @@ private fun AccountPage(
 private fun PrivacyPage() {
     Text(stringResource(R.string.privacy_page_heading), style = AnkyType.Heading.copy(fontSize = 19.sp, color = AnkyColors.Paper), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     PrivacyCopy.forEach { ArticleLine(it) }
-    AnkyPanel {
-        Text(stringResource(R.string.privacy_contact_caption), style = AnkyType.Caption)
-        Text("jp@anky.app", style = AnkyType.Mono.copy(color = AnkyColors.Paper))
-    }
 }
 
 @Composable
@@ -1623,10 +1627,6 @@ private fun CreditsPage(
     }
     AnkyPanel {
         when {
-            state.hasUnspentGiftCredit -> {
-                DisabledRow(YouStatusCopy.CreditPacksLocked)
-                Text(YouStatusCopy.CreditGiftDetail, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
-            }
             state.creditState.isLoading && state.creditState.packages.isEmpty() -> DisabledRow(stringResource(R.string.loading_credit_packs))
             state.creditState.packages.isEmpty() -> DisabledRow(stringResource(R.string.no_credit_packs_available))
             else -> {
@@ -1755,7 +1755,7 @@ private fun YouReflectionCreditsSheet(
 
         state.error?.let { error ->
             Text(
-                error.lowercase(),
+                error,
                 style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
             )
         }
@@ -1824,7 +1824,7 @@ private fun YouCreditPackageRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(86.dp)
+            .height(94.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.linearGradient(
@@ -1840,7 +1840,7 @@ private fun YouCreditPackageRow(
                 RoundedCornerShape(16.dp),
             )
             .clickable(enabled = !isPurchasing) { onPurchase(creditPackage.packageId) }
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1854,17 +1854,17 @@ private fun YouCreditPackageRow(
         ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = AnkyColors.Gold, modifier = Modifier.size(18.dp))
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(
                 creditPackage.title,
-                style = AnkyType.Heading.copy(fontSize = 25.sp, fontWeight = FontWeight.SemiBold),
+                style = AnkyType.Heading.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 creditPackage.subtitle,
-                style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
-                maxLines = 1,
+                style = AnkyType.Body.copy(fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -1872,7 +1872,7 @@ private fun YouCreditPackageRow(
             if (isRecommended && !isPurchasing) {
                 Text(
                     stringResource(R.string.best_value),
-                    style = AnkyType.Mono.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
+                    style = AnkyType.Mono.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Ink),
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
                         .background(AnkyColors.Gold)
@@ -1881,7 +1881,7 @@ private fun YouCreditPackageRow(
             }
             Text(
                 if (isPurchasing) "..." else creditPackage.price,
-                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Gold),
+                style = AnkyType.Heading.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Gold),
                 maxLines = 1,
             )
         }
@@ -2056,6 +2056,7 @@ private fun ArticleLine(item: ArticleItem) {
             MarkdownArticleText(item.text)
         }
         is ArticleItem.Heading -> Text(item.text, style = AnkyType.Heading.copy(fontSize = 21.sp), modifier = Modifier.padding(top = 4.dp))
+        is ArticleItem.Subheading -> Text(item.text, style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.GoldSoft), modifier = Modifier.padding(top = 2.dp))
         is ArticleItem.Paragraph -> MarkdownArticleText(item.text)
         is ArticleItem.Bullets -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item.items.forEach { Rule(it) }
@@ -2111,39 +2112,178 @@ private sealed interface ArticleItem {
     data class Caption(val text: String) : ArticleItem
     data class Callout(val text: String) : ArticleItem
     data class Heading(val text: String) : ArticleItem
+    data class Subheading(val text: String) : ArticleItem
     data class Paragraph(val text: String) : ArticleItem
     data class Bullets(val items: List<String>) : ArticleItem
 }
 
 private val PrivacyCopy = listOf(
-    ArticleItem.Caption("last updated: 2026-05-14"),
-    ArticleItem.Paragraph("anky is a local-first writing app. the core artifact is the `.anky` file on your device. the app should let you write, save, revisit, export, import, and delete your writing without making a server the owner of your interior life."),
-    ArticleItem.Heading("the private artifact"),
-    ArticleItem.Paragraph("your `.anky` writing is stored on your device by default. a saved `.anky` file contains the accepted writing stream and timing data for a session."),
-    ArticleItem.Paragraph("anky computes a SHA-256 hash of the exact `.anky` bytes. the hash is for integrity. it is not encryption. if someone has the same `.anky` bytes, they can compute the same hash."),
-    ArticleItem.Paragraph("the source is direct: [local archive](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/storage/LocalAnkyArchive.kt), [protocol](https://github.com/jpfraneto/anky-seed/tree/main/apps/android/app/src/main/java/inc/anky/android/core/protocol)."),
-    ArticleItem.Heading("local identity"),
-    ArticleItem.Paragraph("anky creates a local Base account, stores its recovery phrase in device secure storage, and derives the Anky address locally. the recovery phrase is not sent to anky."),
-    ArticleItem.Paragraph("the relevant code is [writer identity](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/identity/WriterIdentityStore.kt) and [android keystore storage](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/identity/WriterIdentityStore.kt)."),
-    ArticleItem.Heading("when plaintext leaves"),
-    ArticleItem.Paragraph("writing, saving, hashing, reading the map, and keeping local backups do not require plaintext to leave your device."),
-    ArticleItem.Paragraph("plaintext can leave when you choose an action that sends it somewhere: asking anky for a reflection, exporting or sharing files, importing a backup from a place you chose, or contacting support with text you provide."),
-    ArticleItem.Paragraph("the processing and backup paths are [reflection client](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt), [backup importer](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/core/storage/BackupImporter.kt), and [you page model](https://github.com/jpfraneto/anky-seed/blob/main/apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt)."),
-    ArticleItem.Heading("reflections"),
-    ArticleItem.Paragraph("when you ask for a reflection, the app sends the saved `.anky` bytes to the configured mirror service. the mirror checks the hash, reconstructs readable text for processing, and returns a reflection."),
-    ArticleItem.Paragraph("the local app stores the returned reflection as a local sidecar. reflections are optional. writing is free and does not depend on reflections."),
-    ArticleItem.Heading("backups and deletion"),
-    ArticleItem.Paragraph("exports and backups can contain plaintext writing, reflections, and related local metadata. keep them somewhere private."),
-    ArticleItem.Paragraph("deleting local writing data removes local `.anky` files, local reflections, and the local session index from this app's storage area. it does not automatically delete backend records already created by optional processing."),
-    ArticleItem.Heading("what this does not claim"),
-    ArticleItem.Paragraph("anky does not claim that hashes encrypt writing. anky does not claim anonymity. timing, identity identifiers, processing requests, purchases, and support requests can be linkable."),
-    ArticleItem.Paragraph("anky does not claim optional processing is local-only. if you ask for a reflection, plaintext writing is sent for processing."),
-    ArticleItem.Paragraph("anky does claim the default direction of the app is local-first: the `.anky` file belongs first to the person who wrote it."),
+    ArticleItem.Caption("Anky, Inc. - Effective June 7, 2026"),
+    ArticleItem.Callout("The short version: Anky is local-first. Your writing stays on your device unless you choose to export it, back it up, contact support, or ask Anky for a reflection. When you ask for a reflection, your writing is sent to Anky's mirror service and AI providers so a reflection can be generated. We use providers that don't store your writing. We do not sell your data, use it for advertising, or use your writing to train our own models."),
+    ArticleItem.Heading("1. Who We Are"),
+    ArticleItem.Paragraph("Anky is operated by **Anky, Inc.**, a Delaware corporation."),
+    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
+    ArticleItem.Paragraph("This Privacy Policy explains how Anky handles information when you use the Anky mobile app, website, mirror service, purchases, support, and related services."),
+    ArticleItem.Heading("2. What Anky Is"),
+    ArticleItem.Paragraph("Anky is a local-first writing and reflection app."),
+    ArticleItem.Paragraph("The core artifact is the `.anky` file: a forward-only writing session created under constraint. The app lets you write, save, revisit, export, import, delete, and optionally reflect on that writing."),
+    ArticleItem.Paragraph("Anky is not a therapist, medical service, crisis service, financial advisor, legal advisor, or spiritual authority."),
+    ArticleItem.Heading("3. What Stays On Your Device By Default"),
+    ArticleItem.Paragraph("The following data is stored locally on your device unless you choose to export it, back it up, recover it elsewhere, contact support, or request a reflection:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Your `.anky` writing files",
+            "Active writing drafts",
+            "Reconstructed readable writing",
+            "Local reflections returned by Anky",
+            "Session history and Map data",
+            "Local app settings",
+            "Daily reminder settings",
+            "Local Anky access information",
+            "Private recovery material stored in secure device storage",
+            "Local credit balance cache",
+            "Local export/import files you create",
+        ),
+    ),
+    ArticleItem.Paragraph("Writing, saving, revealing, copying, browsing Map, and viewing local history do not require sending your writing to Anky's server."),
+    ArticleItem.Heading("4. What Leaves Your Device"),
+    ArticleItem.Paragraph("Data leaves your device in these situations:"),
+    ArticleItem.Subheading("Asking Anky for a reflection or writing nudge"),
+    ArticleItem.Paragraph("When you tap **Ask Anky** or request a writing nudge, the app sends the exact `.anky` file bytes to Anky's mirror service."),
+    ArticleItem.Paragraph("The mirror service:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Verifies the request",
+            "Verifies the `.anky` format and hash",
+            "Reconstructs readable text from the `.anky`",
+            "Sends the reconstructed writing and prompt to AI service providers",
+            "Receives the generated reflection or nudge",
+            "Returns the result to your device",
+            "Checks credits for reflections and spends one reflection credit after a successful reflection",
+        ),
+    ),
+    ArticleItem.Paragraph("The returned reflection is stored locally on your device."),
+    ArticleItem.Subheading("Purchases and credits"),
+    ArticleItem.Paragraph("If you buy reflection credits, purchases are processed by Google Play and managed through RevenueCat. We do not receive or store your credit card number."),
+    ArticleItem.Paragraph("Anky uses purchase-related records, credit balances, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Google Play and RevenueCat to grant and manage reflection credits."),
+    ArticleItem.Subheading("Local access and request safety"),
+    ArticleItem.Paragraph("Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and return credits to the right profile."),
+    ArticleItem.Paragraph("Credit operations identify your RevenueCat customer with your Anky profile so credits can be loaded, purchased, and spent correctly."),
+    ArticleItem.Paragraph("Your private recovery material is not sent to Anky."),
+    ArticleItem.Subheading("Device trial and abuse prevention"),
+    ArticleItem.Paragraph("For free trials, abuse prevention, fraud prevention, and request safety, the app may ask Android platform integrity or device attestation services for a token when supported. Reflection and nudge requests send that token to the mirror service as trial proof. The mirror service also uses timestamps, hashes, app version, platform/client, and request intent."),
+    ArticleItem.Subheading("Backup, export, and import"),
+    ArticleItem.Paragraph("When you enable backup, recovery, or export features, the selected writing, reflections, recovery information, or related files are stored using Android device storage, Android backup services when enabled by your device settings, or the destination you choose through the share sheet or file picker."),
+    ArticleItem.Paragraph("Anky cannot control the privacy of files after you export or share them."),
+    ArticleItem.Subheading("Support"),
+    ArticleItem.Paragraph("If you contact support, you choose what to send. Support messages include the email address you send from and any Anky support ID, platform, app version, text, screenshots, files, or context you include."),
+    ArticleItem.Heading("5. What We Do Not Collect"),
+    ArticleItem.Paragraph("Anky does not require:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Your legal name",
+            "Your phone number",
+            "Your contacts",
+            "Your precise location",
+            "Your camera",
+            "Your microphone",
+            "Your photos",
+            "Your social accounts",
+            "A traditional username/password login",
+        ),
+    ),
+    ArticleItem.Paragraph("Anky does not sell personal data."),
+    ArticleItem.Paragraph("Anky does not use your writing for advertising."),
+    ArticleItem.Paragraph("Anky does not use your writing to train Anky-owned AI models."),
+    ArticleItem.Heading("6. Third-Party Services"),
+    ArticleItem.Paragraph("Anky uses the following third-party services for the app features described in this policy:"),
+    ArticleItem.Bullets(
+        listOf(
+            "**Google** - Google Play purchases, refunds, device services, Android backup services when enabled, notifications, device attestation, and platform services.",
+            "**RevenueCat** - purchase management, credit balances, entitlements, and transaction-related records.",
+            "**OpenRouter** - routing reflection requests to AI model providers.",
+            "**AI model providers** - generating reflections from the text you choose to send.",
+            "**Cloud hosting / infrastructure providers** - operating Anky's mirror service, logs, security, and reliability.",
+            "**Email/support providers** - receiving and responding to support requests.",
+        ),
+    ),
+    ArticleItem.Paragraph("These providers process data according to their own terms and privacy policies."),
+    ArticleItem.Heading("7. AI Processing"),
+    ArticleItem.Paragraph("When you ask for a reflection, your writing is processed by AI systems."),
+    ArticleItem.Paragraph("AI-generated reflections can be inaccurate, incomplete, unexpected, emotionally intense, or not useful. Reflections are generated automatically and should not be treated as professional advice."),
+    ArticleItem.Paragraph("We design Anky's mirror service to avoid permanently storing raw `.anky` writing, reconstructed writing, or reflection text unless needed for a user-requested support/debugging flow, security, abuse prevention, legal compliance, or another clearly stated purpose."),
+    ArticleItem.Paragraph("AI providers process requests according to their own data-handling policies. We use privacy-protective settings where available, but we cannot promise that every downstream provider has identical retention practices."),
+    ArticleItem.Heading("8. Operational Metadata"),
+    ArticleItem.Paragraph("To operate Anky, we collect and process limited metadata, such as:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Anky support ID or app user identifier",
+            "Request timestamps",
+            "Request hashes",
+            "App version",
+            "Platform",
+            "Credit balance and credit transaction records",
+            "Purchase product identifiers",
+            "Error states",
+            "Provider usage metadata",
+            "Security and abuse-prevention signals",
+            "Support request metadata",
+        ),
+    ),
+    ArticleItem.Paragraph("We use this data to provide reflections, manage credits, prevent abuse, debug issues, respond to support, comply with law, and operate the service."),
+    ArticleItem.Heading("9. Payments"),
+    ArticleItem.Paragraph("Payments are handled by Google Play and managed with RevenueCat."),
+    ArticleItem.Paragraph("We do not receive your full payment card details."),
+    ArticleItem.Paragraph("Refunds, billing disputes, and purchase history are handled according to Google Play policies."),
+    ArticleItem.Heading("10. Tokens And Public References"),
+    ArticleItem.Paragraph("Anky may display token or public-reference information when those features are available."),
+    ArticleItem.Paragraph("Your private recovery material remains on your device unless you export, reveal, back up, or otherwise share it."),
+    ArticleItem.Paragraph("Never share your recovery words. If you lose them, Anky cannot restore access without a backup you control."),
+    ArticleItem.Paragraph("Some token, transaction, and public-reference information can be public by nature. Anky cannot delete information written to public networks."),
+    ArticleItem.Heading("11. Data Retention"),
+    ArticleItem.Paragraph("Local data remains on your device until you delete it, delete the app, reset the app, or remove backups."),
+    ArticleItem.Paragraph("Reflection-related operational metadata is retained as long as needed to operate the service, manage credits, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security."),
+    ArticleItem.Paragraph("Purchase records are retained by Google Play, RevenueCat, and Anky as needed for billing, accounting, fraud prevention, tax, legal, and support purposes."),
+    ArticleItem.Paragraph("Support emails are retained as long as needed to respond to you, keep records, and protect Anky."),
+    ArticleItem.Heading("12. Deletion"),
+    ArticleItem.Paragraph("You can delete local writing, local reflections, private access, and local app data from inside the app where deletion tools are available, or by deleting the app from your device."),
+    ArticleItem.Paragraph("Deleting the app does not delete data outside the app, including:"),
+    ArticleItem.Bullets(
+        listOf(
+            "Files you exported or shared",
+            "Android backups or device backups controlled by your device settings",
+            "Google Play purchase records",
+            "RevenueCat purchase records",
+            "Support emails you sent",
+            "Backend metadata needed for security, credit accounting, fraud prevention, legal compliance, or dispute resolution",
+            "Public network data",
+        ),
+    ),
+    ArticleItem.Paragraph("To request deletion of data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
+    ArticleItem.Heading("13. Children"),
+    ArticleItem.Paragraph("Anky is not intended for children under 13."),
+    ArticleItem.Paragraph("If you are under 18, use Anky only with permission from a parent or guardian."),
+    ArticleItem.Paragraph("We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information, contact **[support@anky.app](mailto:support@anky.app)**."),
+    ArticleItem.Heading("14. Your Rights"),
+    ArticleItem.Paragraph("Depending on where you live, your rights can include access, correction, deletion, export, restriction, or objection to certain uses of your personal data."),
+    ArticleItem.Paragraph("Because Anky is local-first, much of your data is only on your device and can be managed by you directly."),
+    ArticleItem.Paragraph("For requests about data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
+    ArticleItem.Heading("15. Security"),
+    ArticleItem.Paragraph("We use reasonable technical and organizational measures to protect data we process."),
+    ArticleItem.Paragraph("No system is perfectly secure. You are responsible for protecting your device, passcode, recovery words, exported files, Android account, and any place where you store or share your writing."),
+    ArticleItem.Heading("16. International Users"),
+    ArticleItem.Paragraph("Anky, Inc. is based in the United States. Data sent to Anky or its service providers is processed in the United States or other countries where those providers operate."),
+    ArticleItem.Heading("17. Changes"),
+    ArticleItem.Paragraph("We update this Privacy Policy when the policy changes."),
+    ArticleItem.Paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated policy."),
+    ArticleItem.Heading("18. Contact"),
+    ArticleItem.Paragraph("**Anky, Inc.**"),
+    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
 )
 
 private val TermsCopy = listOf(
     ArticleItem.Caption("Anky, Inc. - Effective June 7, 2026"),
-    ArticleItem.Callout("Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery phrase, your purchases, and how you use AI-generated reflections."),
+    ArticleItem.Callout("Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery words, your purchases, and how you use AI-generated reflections."),
     ArticleItem.Heading("1. Acceptance"),
     ArticleItem.Paragraph("These Terms and Conditions are an agreement between you and **Anky, Inc.**, a Delaware corporation."),
     ArticleItem.Paragraph("By downloading, accessing, or using Anky, you agree to these Terms."),
@@ -2156,7 +2296,7 @@ private val TermsCopy = listOf(
             "Save writing locally",
             "Revisit local writing history",
             "Export or import writing files",
-            "Manage a local Anky identity",
+            "Manage private Anky access",
             "Buy or use reflection credits",
             "Ask Anky for AI-generated reflections",
             "Use related features we provide over time",
@@ -2181,14 +2321,14 @@ private val TermsCopy = listOf(
     ArticleItem.Heading("6. Local-First Design"),
     ArticleItem.Paragraph("Anky is designed to be local-first."),
     ArticleItem.Paragraph("Your writing normally stays on your device."),
-    ArticleItem.Paragraph("When you ask for a reflection, you understand that your `.anky` writing is sent to Anky's mirror service and AI service providers to generate the reflection."),
+    ArticleItem.Paragraph("When you ask for a reflection, you understand that your writing is sent to Anky's mirror service and AI service providers to generate the reflection. We use providers that don't store your writing."),
     ArticleItem.Paragraph("When you export, share, back up, or contact support, you are choosing to send or store data outside the app."),
-    ArticleItem.Heading("7. Local Identity and Recovery Phrase"),
-    ArticleItem.Paragraph("Anky may create a local account/identity for your device."),
-    ArticleItem.Paragraph("You are responsible for protecting your recovery phrase, private key, device passcode, biometric access, account backups, and exported files."),
-    ArticleItem.Paragraph("Never share your recovery phrase."),
-    ArticleItem.Paragraph("If you lose your recovery phrase, Anky may not be able to recover your identity, credits, account state, or related data."),
-    ArticleItem.Paragraph("Anky is not responsible for losses caused by lost recovery phrases, compromised devices, shared credentials, or unauthorized access to your device or accounts."),
+    ArticleItem.Heading("7. Private Access And Recovery"),
+    ArticleItem.Paragraph("Anky may create private local access for your device."),
+    ArticleItem.Paragraph("You are responsible for protecting your recovery words, device passcode, biometric access, account backups, and exported files."),
+    ArticleItem.Paragraph("Never share your recovery words."),
+    ArticleItem.Paragraph("If you lose your recovery words, Anky may not be able to restore your credits, profile state, or related data."),
+    ArticleItem.Paragraph("Anky is not responsible for losses caused by lost recovery words, compromised devices, shared credentials, or unauthorized access to your device or accounts."),
     ArticleItem.Heading("8. Purchases, Credits, and Refunds"),
     ArticleItem.Paragraph("Writing in Anky is free."),
     ArticleItem.Paragraph("Reflections may require credits."),
@@ -2213,13 +2353,13 @@ private val TermsCopy = listOf(
     ),
     ArticleItem.Paragraph("You remain responsible for interpreting and using any reflection."),
     ArticleItem.Paragraph("Anky, Inc. is not responsible for decisions you make based on AI-generated content."),
-    ArticleItem.Heading("10. Blockchain and Token References"),
-    ArticleItem.Paragraph("Anky may display blockchain addresses, token references, contract addresses, or related information."),
+    ArticleItem.Heading("10. Token References"),
+    ArticleItem.Paragraph("Anky may display token references, public references, or related information."),
     ArticleItem.Paragraph("These references are informational only."),
     ArticleItem.Paragraph("Nothing in Anky is financial advice, investment advice, tax advice, legal advice, or an offer to buy or sell any token, security, or asset."),
     ArticleItem.Paragraph("Using Anky does not require buying, holding, or trading any token."),
-    ArticleItem.Paragraph("Blockchain transactions may be public, irreversible, volatile, risky, and outside Anky's control."),
-    ArticleItem.Paragraph("You are responsible for your own wallets, keys, transactions, taxes, and financial decisions."),
+    ArticleItem.Paragraph("Public-network transactions may be public, irreversible, volatile, risky, and outside Anky's control."),
+    ArticleItem.Paragraph("You are responsible for your own purchases, transactions, taxes, and financial decisions."),
     ArticleItem.Heading("11. User Conduct"),
     ArticleItem.Paragraph("You agree not to:"),
     ArticleItem.Bullets(
@@ -2227,10 +2367,10 @@ private val TermsCopy = listOf(
             "Use Anky if you do not meet the age requirements",
             "Use Anky for illegal activity",
             "Abuse, attack, disrupt, or overload Anky's systems",
-            "Circumvent credits, paywalls, trials, signatures, app attestation, or security controls",
-            "Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, keys, or backend systems",
+            "Circumvent credits, paywalls, trials, app attestation, or security controls",
+            "Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, or backend systems",
             "Use bots, scripts, or automation to abuse the app",
-            "Attempt to access another person's data, identity, recovery phrase, or account",
+            "Attempt to access another person's data, recovery words, private access, or account",
             "Upload or share content that violates another person's rights",
             "Use Anky to generate instructions for harming yourself or others",
             "Misrepresent Anky, Anky, Inc., or any affiliation with us",
@@ -2245,7 +2385,7 @@ private val TermsCopy = listOf(
     ArticleItem.Paragraph("If you send us feedback, ideas, suggestions, bug reports, or feature requests, you give Anky, Inc. permission to use them without restriction or compensation."),
     ArticleItem.Paragraph("This does not give us ownership of your private writing."),
     ArticleItem.Heading("14. Third-Party Services"),
-    ArticleItem.Paragraph("Anky depends on third-party services, which may include Google, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and blockchain networks."),
+    ArticleItem.Paragraph("Anky depends on third-party services, which may include Google, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and public networks."),
     ArticleItem.Paragraph("We are not responsible for third-party services, terms, outages, policies, prices, decisions, or data practices."),
     ArticleItem.Paragraph("Your use of third-party services may be subject to their terms and privacy policies."),
     ArticleItem.Heading("15. App Store Terms"),
@@ -2264,7 +2404,7 @@ private val TermsCopy = listOf(
     ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RELIABILITY."),
     ArticleItem.Paragraph("YOUR USE OF ANKY IS AT YOUR OWN RISK."),
     ArticleItem.Heading("19. Limitation of Liability"),
-    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST KEYS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT."),
+    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT."),
     ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.'S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:"),
     ArticleItem.Paragraph("(A) THE AMOUNT YOU PAID TO ANKY, INC. THROUGH THE APP IN THE 12 MONTHS BEFORE THE CLAIM, OR"),
     ArticleItem.Paragraph("(B) $50 USD."),
@@ -2279,7 +2419,7 @@ private val TermsCopy = listOf(
             "Your violation of law",
             "Your violation of another person's rights",
             "Your misuse of AI-generated reflections",
-            "Your blockchain, wallet, token, or recovery phrase activity",
+            "Your token, transaction, or recovery activity",
         ),
     ),
     ArticleItem.Heading("21. Governing Law"),
@@ -2363,8 +2503,8 @@ private fun youConversationMessage(
         val purchasingPackage = state.purchasingCreditPackageId
             ?.let { packageId -> state.creditState.packages.firstOrNull { it.packageId == packageId } }
         when {
-            purchasingPackage != null -> "anky is opening the ${purchasingPackage.title.lowercase()} pack."
-            state.creditState.isLoading -> "anky is checking the credit gate."
+            purchasingPackage != null -> "Anky is opening the ${purchasingPackage.title} pack."
+            state.creditState.isLoading -> "Anky is checking the credit gate."
             else -> creditsPromptMessage(state)
         }
     } else if (activePrompt == YouPrompt.Export) {
@@ -2409,21 +2549,18 @@ private fun creditsMenuSubtitle(
     creditPlural: String = "credits",
 ): String =
     when {
-        state.hasUnspentGiftCredit -> YouStatusCopy.CreditGiftSummary
         state.creditState.isLoading && state.creditState.balance == null -> loadingBalance
         state.creditState.balance != null -> "${state.creditState.balance} ${if (state.creditState.balance == 1) creditSingular else creditPlural}"
         else -> reflectionBalance
     }
 
 private fun creditsPromptMessage(state: YouState): String {
-    if (state.hasUnspentGiftCredit) return YouStatusCopy.CreditGiftPrompt
-
     val balance = when {
         state.creditState.isLoading && state.creditState.balance == null -> "loading..."
         state.creditState.balance != null -> state.creditState.balance.toString()
         else -> "unknown"
     }
-    return "you have $balance reflection ${if (balance == "1") "credit" else "credits"}. choose a pack to add more."
+    return "You have $balance reflection ${if (balance == "1") "credit" else "credits"}. Choose a pack to add more."
 }
 
 private fun ankyContractDisplayAddress(): String {
@@ -2489,9 +2626,7 @@ private fun youPromptActions(
         }
         YouPrompt.Credits -> {
             val packages = state.creditState.packages.take(3)
-            if (state.hasUnspentGiftCredit) {
-                emptyList()
-            } else if (packages.isEmpty()) {
+            if (packages.isEmpty()) {
                 listOf(
                     AnkyChatAction(if (state.creditState.isLoading) "loading packs" else "refresh credits", isPrimary = true) {
                         viewModel.refreshCredits()

@@ -207,8 +207,10 @@ fun WriteScreen(
         ) {
             val writingScrollState = rememberScrollState()
             LaunchedEffect(state.displayedGlyphs.size, state.keyboardFocusRequestId) {
-                delay(16)
-                writingScrollState.scrollTo(writingScrollState.maxValue)
+                repeat(4) {
+                    delay(16)
+                    writingScrollState.scrollTo(writingScrollState.maxValue)
+                }
             }
             if (state.displayedText.isNotEmpty()) {
                 Box(
@@ -223,7 +225,7 @@ fun WriteScreen(
                         text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
                         fontSize = 20.sp,
                         lineHeight = 28.sp,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = FontFamily.Default,
                         textAlign = TextAlign.End,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -257,7 +259,7 @@ fun WriteScreen(
                     color = Color.Black.copy(alpha = 0.56f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = FontFamily.Default,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 13.dp)
@@ -511,7 +513,7 @@ private fun RitualRings(
                 remainingSilenceSeconds.toString(),
                 fontSize = 42.sp,
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = FontFamily.Default,
                 color = AnkyColors.Gold.copy(alpha = 0.88f),
             )
             Canvas(Modifier.size(108.dp)) {
@@ -537,7 +539,7 @@ private fun RitualRings(
                 latestGlyph,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Medium,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = FontFamily.Default,
                 color = Color.White.copy(alpha = 0.94f),
             )
         }

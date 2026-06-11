@@ -248,7 +248,7 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun askAnkyStreamsProgressAndKeepsFinalStreamAfterSaveLikeIos() = runTest {
+    fun askAnkyStreamsProgressAndClearsStreamingBufferAfterSave() = runTest {
         val server = MockWebServer()
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
@@ -270,7 +270,7 @@ class RevealViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isAsking)
-            assertEquals(viewModel.state.value.reflection?.reflection, viewModel.state.value.streamingReflectionMarkdown)
+            assertEquals("", viewModel.state.value.streamingReflectionMarkdown)
             assertEquals(null, viewModel.state.value.progressStage)
             assertEquals("Small Thread", viewModel.state.value.reflection?.title)
             assertEquals(listOf("truth", "body"), viewModel.state.value.reflection?.tags)
@@ -475,6 +475,50 @@ class RevealViewModelTest {
                 "This device already used its first two reflections. Add credits to ask Anky again. Writing is still free.",
                 viewModel.state.value.error,
             )
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun trialAlreadyClaimedRefreshDoesNotRestoreDeviceGiftState() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(402)
+                .setBody("""{"error":{"code":"TRIAL_ALREADY_CLAIMED","message":"Trial already claimed."}}"""),
+        )
+        server.start()
+        try {
+            val creditCache = FakeReflectionCreditCache()
+            val credits = FakeCreditsClient(balance = 2)
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                creditsClient = credits,
+                reflectionCreditCache = creditCache,
+                hasClaimedFreeCreditsProvider = { creditCache.hasClaimedFreeCredits(identity().accountId) },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+            viewModel.refreshCredits()
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.state.value.creditBalance)
+            assertTrue(viewModel.state.value.hasClaimedFreeCredits)
+            assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+            assertTrue(viewModel.state.value.needsCreditsToReflect)
+            assertFalse(viewModel.state.value.canSubmitReflectionRequest)
+            assertEquals(0, creditCache.balance(identity().accountId))
+            assertTrue(creditCache.hasClaimedFreeCredits(identity().accountId))
         } finally {
             server.shutdown()
         }

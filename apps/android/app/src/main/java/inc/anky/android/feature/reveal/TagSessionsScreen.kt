@@ -161,7 +161,7 @@ private fun TagSessionRow(summary: SessionSummary, onOpenReveal: (String) -> Uni
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                summary.title.lowercase(),
+                summary.title,
                 style = AnkyType.Mono.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold.copy(alpha = 0.9f)),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

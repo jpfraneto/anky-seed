@@ -1,9 +1,9 @@
 import type { MouseEvent } from "react";
 import {
-  siDiscord,
   siFarcaster,
   siGithub,
   siHuggingface,
+  siTiktok,
   siTelegram,
   siX,
 } from "simple-icons";
@@ -17,7 +17,7 @@ const navLinks = [
   { label: "Docs", href: "/docs" },
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
-  { label: "$ANKY on Base", href: "/ankycoin" },
+  { label: "Anky on Base", href: "/ankycoin" },
 ] as const;
 
 const socialLinks = [
@@ -26,7 +26,7 @@ const socialLinks = [
     href: "https://github.com/ankytheapp/monorepo",
     icon: siGithub,
   },
-  { label: "Discord", href: "#discord", icon: siDiscord },
+  { label: "TikTok", href: "https://www.tiktok.com/@ankyapp", icon: siTiktok },
   { label: "Telegram", href: "https://t.me/ankytheapp", icon: siTelegram },
   { label: "X", href: "https://x.com/ankytheapp", icon: siX },
   { label: "Farcaster", href: "https://farcaster.xyz/anky", icon: siFarcaster },

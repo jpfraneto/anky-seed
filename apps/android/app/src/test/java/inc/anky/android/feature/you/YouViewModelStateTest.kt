@@ -112,16 +112,30 @@ class YouViewModelStateTest {
         )
         val claimedState = giftState.copy(hasClaimedFreeCredits = true)
 
-        assertEquals(2, giftState.presentedCreditBalance)
-        assertEquals(true, giftState.hasUnspentGiftCredit)
-        assertEquals(false, giftState.canPurchaseCredits)
-        assertEquals("2", giftState.creditDetailTitle)
-        assertEquals("device gift", giftState.creditDetailCaption)
+        assertEquals(9, giftState.presentedCreditBalance)
+        assertEquals(false, giftState.hasUnspentGiftCredit)
+        assertEquals(true, giftState.canPurchaseCredits)
+        assertEquals("9", giftState.creditDetailTitle)
+        assertEquals("credits", giftState.creditDetailCaption)
         assertEquals(9, claimedState.presentedCreditBalance)
         assertEquals(false, claimedState.hasUnspentGiftCredit)
         assertEquals(true, claimedState.canPurchaseCredits)
         assertEquals("9", claimedState.creditDetailTitle)
         assertEquals("credits", claimedState.creditDetailCaption)
+    }
+
+    @Test
+    fun deniedDeviceGiftDoesNotResurrectStaleFirstGiftBalance() {
+        val refreshed = CreditState(isConfigured = true, balance = 2, message = "credits refreshed.")
+
+        val normalized = refreshed.afterDeviceGiftDenialGate(
+            cachedBalance = 0,
+            hasClaimedFreeCredits = true,
+        )
+
+        assertEquals(0, normalized.balance)
+        assertEquals(2, refreshed.afterDeviceGiftDenialGate(cachedBalance = 2, hasClaimedFreeCredits = true).balance)
+        assertEquals(2, refreshed.afterDeviceGiftDenialGate(cachedBalance = 0, hasClaimedFreeCredits = false).balance)
     }
 
     @Test
@@ -182,12 +196,6 @@ class YouViewModelStateTest {
         assertEquals("Could not create a backup zip.", YouStatusCopy.CouldNotCreateBackupZip)
         assertEquals("Could not create a writing export.", YouStatusCopy.CouldNotCreateWritingExport)
         assertEquals("There is no writing to export yet.", YouStatusCopy.NoWritingToExportYet)
-        assertEquals("2 reflections - This device", YouStatusCopy.CreditGiftSummary)
-        assertEquals("device gift", YouStatusCopy.CreditGiftCaption)
-        assertEquals("This device has two free reflections from Anky. Use them before buying more credits.", YouStatusCopy.CreditGiftPrompt)
-        assertEquals("Credit packs unlock after this device spends its first two reflections", YouStatusCopy.CreditPacksLocked)
-        assertEquals("Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits.", YouStatusCopy.CreditGiftDetail)
-        assertEquals("Use this device's first two reflections before buying more credits.", YouStatusCopy.SpendGiftBeforeBuying)
         assertEquals("Could not load the local Base identity.", YouStatusCopy.CouldNotLoadLocalWriterIdentity)
         assertEquals("Could not load the recovery words.", YouStatusCopy.CouldNotLoadRecoveryPhrase)
         assertEquals("Recovery words saved to device secure storage. Use Data export for writing and reflection backups.", YouStatusCopy.IdentityBackupSaved)

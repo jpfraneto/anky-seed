@@ -58,9 +58,9 @@ class SourceInvariantTest {
         assertTrue(androidStrings.contains("Copy writing"))
         assertTrue(androidStrings.contains("Long press to copy the reflection prompt for your own AI tool."))
         assertTrue(androidStrings.contains("The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it."))
-        assertTrue(androidReveal.contains("copyReflection = stringResource(R.string.copy_reflection)"))
-        assertTrue(androidReveal.contains("label = labels.copyReflection.lowercase()"))
-        assertTrue(androidStrings.contains("copy reflection"))
+        assertTrue(!androidReveal.contains("RevealCopyButton("))
+        assertTrue(!androidReveal.contains("label = labels.copyReflection.lowercase()"))
+        assertTrue(androidStrings.contains("Copy Reflection"))
         assertTrue(androidRevealViewModel.contains("enum class RevealCopySection"))
         assertTrue(androidRevealViewModel.contains("fun textForCopy(section: RevealCopySection)"))
         assertTrue(androidRevealViewModel.contains("AnkyReflectionPrompt.build(it.reconstructedText)"))
@@ -911,7 +911,7 @@ class SourceInvariantTest {
         assertTrue(androidRevealViewModel.contains("val remainingWritingTime: String"))
         assertTrue(androidRevealViewModel.contains("val canContinueWriting: Boolean"))
         assertTrue(androidReveal.contains("writeMinutes = stringResource(R.string.write_minutes_caps, AnkyDuration.CompleteRitualMinutes)"))
-        assertTrue(androidStrings.contains("""name="continue_writing_left">CONTINUE - %1${'$'}s LEFT</string>"""))
+        assertTrue(androidStrings.contains("""name="continue_writing_left">Continue - %1${'$'}s left</string>"""))
         assertTrue(androidStrings.contains("""name="write_minutes_caps">WRITE %1${'$'}d MINUTES</string>"""))
         assertTrue(!androidReveal.contains("onTryAgain = onBack"))
     }
@@ -1055,8 +1055,9 @@ class SourceInvariantTest {
         assertTrue(iosMap.contains(".padding(.bottom, bottomNavigationReserve)"))
         assertTrue(!androidMap.contains(".padding(horizontal = 26.dp, vertical = 24.dp)"))
         assertTrue(!iosMap.contains("Text(\"no writing saved\")"))
-        assertTrue(androidMap.contains("Spacer(Modifier.fillMaxWidth().height(180.dp))"))
-        assertTrue(androidMap.contains("labels.noWritingSaved"))
+        assertTrue(androidMap.contains("emptyMessage = stringResource(R.string.all_ankys_empty_message)"))
+        assertTrue(androidMap.contains("emptyMessage = stringResource(R.string.day_empty_message)"))
+        assertTrue(androidMap.contains("Text(\n                            emptyMessage,"))
         assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
         assertTrue(!androidMap.contains("Text(\"no writing saved\", style = AnkyType.Heading.copy(fontSize = 20.sp"))
         assertTrue(!androidMap.contains("style = AnkyType.Heading.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted)"))
@@ -1457,8 +1458,6 @@ class SourceInvariantTest {
             "copy_writing",
             "read_reflection",
             "reflect_this_anky",
-            "reflect_this_anky_left",
-            "reflect_this_anky_device_gift",
             "receiving_reflection",
             "get_more_credits",
             "write_minutes_caps",
@@ -1503,6 +1502,9 @@ class SourceInvariantTest {
             assertTrue(androidReveal.contains("R.string.$key"))
             assertTrue(androidStrings.contains("""name="$key""""))
         }
+        assertTrue(!androidReveal.contains("reflectThisAnkyDeviceGift"))
+        assertTrue(!androidReveal.contains("R.string.reflect_this_anky_device_gift"))
+        assertTrue(!androidStrings.contains("""name="reflect_this_anky_device_gift""""))
         assertTrue(!androidReveal.contains("i have reflected this anky."))
         assertTrue(!androidReveal.contains("i am holding the mirror open."))
         assertTrue(androidReveal.contains("StreamingReflectionPanel("))
@@ -1788,13 +1790,8 @@ class SourceInvariantTest {
         assertTrue(iosYou.contains("creditBalance = ReflectionCreditCache.balance(accountId: accountId"))
         assertTrue(iosYou.contains("ReflectionCreditCache.storeBalance(balance, accountId: accountId"))
         assertTrue(iosYouView.contains(".onAppear {\n            viewModel.refresh()"))
-        assertTrue(iosYou.contains("guard canPurchaseCredits else"))
-        assertTrue(iosYou.contains("statusMessage = AnkyLocalization.text(.spendGiftBeforeBuying)"))
         assertTrue(iosYou.contains("var presentedCreditBalance: Int?"))
         assertTrue(iosYou.contains("var hasUnspentGiftCredit: Bool"))
-        assertTrue(iosLocalization.contains("This device has two free reflections from Anky. Use them before buying more credits."))
-        assertTrue(iosLocalization.contains("Credit packs unlock after this device spends its first two reflections"))
-        assertTrue(iosLocalization.contains("Use this device's first two reflections before buying more credits."))
 
         assertTrue(androidCache.contains("interface ReflectionCreditCache"))
         assertTrue(androidCache.contains("const val ClaimedKey = \"anky.hasClaimedFreeReflections\""))
@@ -1817,11 +1814,12 @@ class SourceInvariantTest {
         assertTrue(androidYouScreen.contains("viewModel.refresh()"))
         assertTrue(androidYou.contains("val presentedCreditBalance: Int?"))
         assertTrue(androidYou.contains("val hasUnspentGiftCredit: Boolean"))
-        assertTrue(androidYou.contains("if (!_state.value.canPurchaseCredits)"))
-        assertTrue(androidYou.contains("YouStatusCopy.SpendGiftBeforeBuying"))
-        assertTrue(androidYouScreen.contains("state.hasUnspentGiftCredit"))
-        assertTrue(androidYouScreen.contains("YouStatusCopy.CreditPacksLocked"))
-        assertTrue(androidYouScreen.contains("YouStatusCopy.CreditGiftPrompt"))
+        assertTrue(androidYou.contains("val canPurchaseCredits: Boolean"))
+        assertTrue(androidYou.contains("get() = true"))
+        assertTrue(!androidYou.contains("if (!_state.value.canPurchaseCredits)"))
+        assertTrue(!androidYou.contains("SpendGiftBeforeBuying"))
+        assertTrue(!androidYouScreen.contains("YouStatusCopy.CreditPacksLocked"))
+        assertTrue(!androidYouScreen.contains("YouStatusCopy.CreditGiftPrompt"))
     }
 
     @Test
@@ -2054,23 +2052,25 @@ class SourceInvariantTest {
     }
 
     @Test
-    fun androidPrivacyPolicyLinksPointToAndroidSourceFiles() {
+    fun androidPrivacyPolicyUsesCurrentSupportContactAndAndroidPlatformTerms() {
         val androidYou = repoRoot()
             .resolve("apps/android/app/src/main/java/inc/anky/android/feature/you/YouScreen.kt")
             .readText()
 
         listOf(
-            "apps/android/app/src/main/java/inc/anky/android/core/storage/LocalAnkyArchive.kt",
-            "apps/android/app/src/main/java/inc/anky/android/core/protocol",
-            "apps/android/app/src/main/java/inc/anky/android/core/identity/WriterIdentityStore.kt",
-            "apps/android/app/src/main/java/inc/anky/android/core/mirror/MirrorClient.kt",
-            "apps/android/app/src/main/java/inc/anky/android/core/storage/BackupImporter.kt",
-            "apps/android/app/src/main/java/inc/anky/android/feature/you/YouViewModel.kt",
-        ).forEach { sourcePath ->
-            assertTrue(androidYou.contains(sourcePath))
+            "Anky, Inc. - Effective June 7, 2026",
+            "Contact: **[support@anky.app](mailto:support@anky.app)**",
+            "If you buy reflection credits, purchases are processed by Google Play and managed through RevenueCat.",
+            "For free trials, abuse prevention, fraud prevention, and request safety, the app may ask Android platform integrity or device attestation services for a token when supported.",
+            "**Google** - Google Play purchases, refunds, device services, Android backup services when enabled, notifications, device attestation, and platform services.",
+            "Payments are handled by Google Play and managed with RevenueCat.",
+        ).forEach { expected ->
+            assertTrue(androidYou.contains(expected))
         }
 
         listOf(
+            "jp@anky.app",
+            "last updated: 2026-05-14",
             "apps/ios/Anky/Core/Storage/LocalAnkyArchive.swift",
             "apps/ios/Anky/Core/Protocol",
             "apps/ios/Anky/Core/Identity/WriterIdentityStore.swift",
@@ -2256,8 +2256,10 @@ class SourceInvariantTest {
         assertTrue(androidModel.contains("Recovery words must be 12 words."))
         assertTrue(iosModel.contains("Recovery words contain an unrecognized word."))
         assertTrue(androidModel.contains("Recovery words contain an unrecognized word."))
-        assertTrue(androidYou.contains("local Base account, stores its recovery phrase in device secure storage"))
+        assertTrue(androidYou.contains("Anky may create private local access for your device."))
+        assertTrue(androidYou.contains("You are responsible for protecting your recovery words, device passcode, biometric access, account backups, and exported files."))
         assertTrue(!androidYou.contains("private identity"))
+        assertTrue(!androidYou.contains("recovery phrase"))
         assertTrue(!androidYou.contains("recovery key"))
         assertTrue(!androidModel.contains("Recovery key"))
         assertTrue(!androidModel.contains("Could not load the local identity."))
@@ -2275,7 +2277,7 @@ class SourceInvariantTest {
         val iosYou = repoRoot()
             .resolve("apps/ios/Anky/Features/You/YouView.swift")
             .readText()
-        val resetWarning = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery phrase before resetting."
+        val resetWarning = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery words before resetting."
 
         assertTrue(!iosYou.contains(".confirmationDialog(\"reset local identity?\""))
         assertTrue(!iosYou.contains("Button(\"reset identity\", role: .destructive)"))
@@ -2596,7 +2598,6 @@ class SourceInvariantTest {
             "you_encrypted_backup_on",
             "you_export_writings_or_enable_backup",
             "privacy_page_heading",
-            "privacy_contact_caption",
             "terms_reflection_agreement",
             "credit_rule_one_reflection",
             "credit_rule_ask_spends",

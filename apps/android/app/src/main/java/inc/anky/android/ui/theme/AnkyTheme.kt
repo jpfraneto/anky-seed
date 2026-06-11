@@ -50,31 +50,31 @@ object AnkyColors {
 
 object AnkyType {
     val Title = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 34.sp,
         color = AnkyColors.Gold,
     )
     val Heading = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
         color = AnkyColors.Gold,
     )
     val Body = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Default,
         fontSize = 16.sp,
         lineHeight = 23.sp,
         color = AnkyColors.Paper,
     )
     val Caption = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp,
         color = AnkyColors.GoldSoft,
     )
     val Mono = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = FontFamily.Default,
         fontSize = 12.sp,
         lineHeight = 18.sp,
         color = AnkyColors.PaperMuted,
@@ -171,7 +171,7 @@ fun AnkyActionButton(
         contentPadding = PaddingValues(vertical = 12.dp, horizontal = 14.dp),
         modifier = modifier.fillMaxWidth().border(1.dp, color.copy(alpha = 0.38f), RoundedCornerShape(14.dp)),
     ) {
-        Text(text.lowercase(), style = AnkyType.Caption.copy(fontSize = 15.sp, color = color))
+        Text(text, style = AnkyType.Caption.copy(fontSize = 15.sp, color = color))
     }
 }
 

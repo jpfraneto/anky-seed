@@ -1,0 +1,19 @@
+{
+  "images": [
+    {
+      "id": "anky-avatar",
+      "title": "Anky Avatar",
+      "src": "/anky-assets/anky-avatar.png"
+    },
+    {
+      "id": "anky-sigil",
+      "title": "Anky Sigil",
+      "src": "/anky-assets/anky-sigil.png"
+    },
+    {
+      "id": "cosmos",
+      "title": "Cosmos",
+      "src": "/anky-assets/cosmos.png"
+    }
+  ]
+}

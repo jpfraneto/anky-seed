@@ -131,6 +131,10 @@ class WriteViewModel(
     fun acceptGlyphs(glyphs: List<String>) {
         if (glyphs.isEmpty()) return
         val now = nowMs()
+        if (isFrozenForContinuation) {
+            glyphs.forEach { glyph -> acceptGlyphAt(glyph, now) }
+            return
+        }
         val previousAcceptedMs = writer.lastAcceptedMs
         if (previousAcceptedMs == null) {
             glyphs.forEach { glyph -> acceptGlyphAt(glyph, now) }
@@ -379,11 +383,9 @@ class WriteViewModel(
         val elapsed = if (writer.isClosed) {
             (validation as? AnkyValidation.Valid)?.durationMs ?: 0
         } else if (isFrozenForContinuation) {
-            (validation as? AnkyValidation.Valid)?.durationMs ?: 0
+            writer.writingElapsedMs
         } else {
-            sessionStartMs?.let { maxOf(0, now - it) }
-                ?: (validation as? AnkyValidation.Valid)?.durationMs
-                ?: 0
+            writer.writingElapsedMs
         }
         val silenceElapsed = if (writer.isClosed) {
             AnkyDuration.TerminalSilenceMs

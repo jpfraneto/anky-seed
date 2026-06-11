@@ -151,6 +151,7 @@ fun MapAllAnkysScreen(
     MapSessionListScreen(
         title = title,
         sessions = sessions,
+        emptyMessage = stringResource(R.string.all_ankys_empty_message),
         labels = labels,
         onBack = onBack,
         onOpenReveal = onOpenReveal,
@@ -508,6 +509,7 @@ private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, on
             .format(Instant.ofEpochMilli(day.dayEpochMs))
             .lowercase(),
         sessions = day.sessions.sortedByDescending { it.createdAt },
+        emptyMessage = stringResource(R.string.day_empty_message),
         labels = labels,
         onBack = onBack,
         onOpenReveal = onOpenReveal,
@@ -518,6 +520,7 @@ private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, on
 private fun MapSessionListScreen(
     title: String,
     sessions: List<SessionSummary>,
+    emptyMessage: String,
     labels: MapLabels,
     onBack: () -> Unit,
     onOpenReveal: (String) -> Unit,
@@ -543,7 +546,14 @@ private fun MapSessionListScreen(
                         .padding(top = 34.dp, bottom = 104.dp),
                 ) {
                     if (sessions.isEmpty()) item {
-                        Spacer(Modifier.fillMaxWidth().height(180.dp))
+                        Text(
+                            emptyMessage,
+                            style = AnkyType.Body.copy(fontSize = 17.sp, color = AnkyColors.PaperMuted),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 22.dp),
+                        )
                     }
                     items(sessions, key = { it.hash }) { SessionRow(it, onOpenReveal, showsDayInHeader) }
                 }

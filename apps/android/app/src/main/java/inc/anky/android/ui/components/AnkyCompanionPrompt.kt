@@ -111,7 +111,7 @@ fun AnkyCompanionPrompt(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                title.lowercase(),
+                title,
                 style = AnkyType.Body.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.Paper),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -232,14 +232,14 @@ private fun DialoguePanel(
             }
         }
         Text(
-            message.lowercase(),
+            message,
             style = AnkyType.Mono.copy(fontSize = 15.sp, lineHeight = 20.sp, color = AnkyColors.Paper.copy(alpha = 0.92f)),
         )
         if (steps.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 steps.forEachIndexed { index, step ->
                     Text(
-                        "${index + 1}. ${step.lowercase()}",
+                        "${index + 1}. $step",
                         style = AnkyType.Caption.copy(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -269,7 +269,7 @@ private fun DialoguePanel(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             chatAction.badge?.let { badge ->
                                 Text(
-                                    badge.lowercase(),
+                                    badge,
                                     style = AnkyType.Caption.copy(
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
@@ -280,7 +280,7 @@ private fun DialoguePanel(
                                 )
                             }
                             Text(
-                                chatAction.title.lowercase(),
+                                chatAction.title,
                                 style = AnkyType.Caption.copy(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
@@ -291,7 +291,7 @@ private fun DialoguePanel(
                             )
                             chatAction.subtitle?.let { subtitle ->
                                 Text(
-                                    subtitle.lowercase(),
+                                    subtitle,
                                     style = AnkyType.Caption.copy(
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.SemiBold,
