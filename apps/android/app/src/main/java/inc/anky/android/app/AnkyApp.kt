@@ -3,11 +3,16 @@ package inc.anky.android.app
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.biometric.BiometricManager
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -50,6 +55,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import inc.anky.android.R
 import inc.anky.android.core.identity.DeviceBiometricGate
+import inc.anky.android.feature.map.MapAllAnkysScreen
 import inc.anky.android.feature.map.MapScreen
 import inc.anky.android.feature.map.MapViewModel
 import inc.anky.android.feature.onboarding.AnkyOnboardingScreen
@@ -207,7 +213,6 @@ fun AnkyApp(container: AppContainer) {
         val isShowingYouExperience = remember { mutableStateOf(false) }
         val showsOnboarding = remember(settings.onboardingCompleted) { mutableStateOf(!settings.onboardingCompleted) }
         val importedCompletedHash = remember { mutableStateOf<String?>(null) }
-        val pendingPostWriteRevealHash = remember { mutableStateOf<String?>(null) }
         val handledPostWriteHashes = remember { mutableSetOf<String>() }
         val postWriteCompletedHash = importedCompletedHash.value ?: writeState.completedHash
         val shouldShowOnboarding =
@@ -223,10 +228,9 @@ fun AnkyApp(container: AppContainer) {
             showsOnboarding.value = false
             mapViewModel.refresh()
             container.encryptedBackupStore.backUpIfEnabled()
-            pendingPostWriteRevealHash.value = hash
-            navController.navigate(AnkyRoute.Map.route) {
+            navController.navigate(AnkyRoute.Reveal.route(hash)) {
                 launchSingleTop = true
-                popUpTo(AnkyRoute.Write.route)
+                popUpTo(AnkyRoute.Write.route) { inclusive = true }
             }
         }
 
@@ -269,16 +273,6 @@ fun AnkyApp(container: AppContainer) {
         LaunchedEffect(currentRoute) {
             isShowingYouExperience.value = false
         }
-        LaunchedEffect(currentRoute, pendingPostWriteRevealHash.value) {
-            val hash = pendingPostWriteRevealHash.value ?: return@LaunchedEffect
-            if (currentRoute == AnkyRoute.Map.route) {
-                pendingPostWriteRevealHash.value = null
-                navController.navigate(AnkyRoute.Reveal.route(hash)) {
-                    launchSingleTop = true
-                }
-            }
-        }
-
         fun beginRetryWriting() {
             importedCompletedHash.value = null
             writeViewModelWithCurrentMirror.consumeCompletedHash()
@@ -299,9 +293,16 @@ fun AnkyApp(container: AppContainer) {
             }
             navController.navigate(AnkyRoute.Write.route) {
                 launchSingleTop = true
-                popUpTo(AnkyRoute.Write.route) { inclusive = false }
             }
             writeViewModelWithCurrentMirror.openWritingPortal()
+        }
+
+        fun navigateBackFromReveal() {
+            if (!navController.popBackStack()) {
+                navController.navigate(AnkyRoute.Map.route) {
+                    launchSingleTop = true
+                }
+            }
         }
 
         Box(Modifier.fillMaxSize()) {
@@ -318,6 +319,7 @@ fun AnkyApp(container: AppContainer) {
                         NavigationBar(
                             containerColor = AnkyColors.Ink.copy(alpha = 0.96f),
                             contentColor = AnkyColors.Paper,
+                            windowInsets = WindowInsets(0.dp),
                         ) {
                             tabs.forEach { tab ->
                                 val tabLabel = stringResource(tab.labelRes)
@@ -348,11 +350,15 @@ fun AnkyApp(container: AppContainer) {
                         }
                     }
                 },
-            ) { padding ->
+            ) {
                 NavHost(
                     navController = navController,
                     startDestination = AnkyRoute.Write.route,
-                    modifier = Modifier.padding(padding),
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = { fadeIn(animationSpec = tween(160)) },
+                    exitTransition = { fadeOut(animationSpec = tween(100)) },
+                    popEnterTransition = { fadeIn(animationSpec = tween(160)) },
+                    popExitTransition = { fadeOut(animationSpec = tween(100)) },
                 ) {
                     composable(AnkyRoute.Write.route) {
                         WriteScreen(
@@ -362,6 +368,11 @@ fun AnkyApp(container: AppContainer) {
                             },
                             onCompleted = { hash -> openPostWriteReveal(hash) },
                             onCloseToMap = { navController.navigate(AnkyRoute.Map.route) },
+                            onBackFromContinuation = {
+                                if (!navController.popBackStack()) {
+                                    navController.navigate(AnkyRoute.Map.route)
+                                }
+                            },
                             onImportAnkyText = { text ->
                                 SingleAnkyImporter.importText(
                                     rawText = text,
@@ -384,6 +395,14 @@ fun AnkyApp(container: AppContainer) {
                     composable(AnkyRoute.Map.route) {
                         MapScreen(
                             viewModel = mapViewModel,
+                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
+                            onOpenAllAnkys = { navController.navigate(AnkyRoute.MapAllAnkys.route) },
+                        )
+                    }
+                    composable(AnkyRoute.MapAllAnkys.route) {
+                        MapAllAnkysScreen(
+                            viewModel = mapViewModel,
+                            onBack = { navController.popBackStack() },
                             onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
                         )
                     }
@@ -526,7 +545,7 @@ fun AnkyApp(container: AppContainer) {
                                 mapViewModel.refresh()
                             },
                             onTryAgain = { artifact -> beginContinuingWriting(artifact) },
-                            onBack = { navController.popBackStack() },
+                            onBack = { navigateBackFromReveal() },
                         )
                     }
                     composable(
@@ -573,7 +592,7 @@ fun AnkyApp(container: AppContainer) {
                 currentRoute == AnkyRoute.Write.route &&
                 writeState.errorMessage != null
             ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
                         message = writeState.errorMessage.orEmpty(),
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
@@ -586,7 +605,7 @@ fun AnkyApp(container: AppContainer) {
                 writeState.shouldShowNudgeDialogue &&
                 writeState.nudgeDialogueMessage.isNotBlank()
             ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
                         message = writeState.nudgeDialogueMessage,
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
@@ -658,7 +677,7 @@ private fun normalizeRecoveryPhrase(text: String): String =
 private fun presenceSequence(route: String?, writeRitualComplete: Boolean): AnkySequenceName =
     when (route) {
         AnkyRoute.Write.route, null -> if (writeRitualComplete) AnkySequenceName.Celebrate else AnkySequenceName.FindingThread
-        AnkyRoute.Map.route -> AnkySequenceName.WalkRight
+        AnkyRoute.Map.route, AnkyRoute.MapAllAnkys.route -> AnkySequenceName.WalkRight
         AnkyRoute.You.route, AnkyRoute.YouCredits.route -> AnkySequenceName.WaveFront
         else -> AnkySequenceName.IdleFront
     }
@@ -672,7 +691,7 @@ private fun canUseDeviceLock(context: Context): Boolean =
 private fun AnkyRoute.icon() =
     when (this) {
         AnkyRoute.Write -> Icons.Outlined.Edit
-        AnkyRoute.Map -> Icons.Outlined.Map
+        AnkyRoute.Map, AnkyRoute.MapAllAnkys -> Icons.Outlined.Map
         AnkyRoute.You -> Icons.Outlined.AccountCircle
         AnkyRoute.YouCredits -> Icons.Outlined.AccountCircle
         AnkyRoute.Reveal -> Icons.Outlined.Edit
@@ -682,6 +701,7 @@ private fun AnkyRoute.icon() =
 private fun AnkyRoute.isSelectedForRoute(currentRoute: String?): Boolean =
     when (this) {
         AnkyRoute.You -> currentRoute == AnkyRoute.You.route || currentRoute == AnkyRoute.YouCredits.route
+        AnkyRoute.Map -> currentRoute == AnkyRoute.Map.route || currentRoute == AnkyRoute.MapAllAnkys.route
         else -> currentRoute == route
     }
 

@@ -134,7 +134,7 @@ private fun normalizedProtocolLine(rawLine: String): String? {
     val trimmedCharacterText = characterText.trim()
 
     return when {
-        trimmedCharacterText == "SPACE" -> "$timeText  "
+        trimmedCharacterText == "SPACE" || characterText == " " -> "$timeText SPACE"
         characterText.protocolGlyphsOrNull(maxGlyphs = 1)?.size == 1 -> "$timeText $characterText"
         trimmedCharacterText.protocolGlyphsOrNull(maxGlyphs = 1)?.size == 1 -> "$timeText $trimmedCharacterText"
         else -> null

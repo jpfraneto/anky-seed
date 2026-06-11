@@ -40,11 +40,13 @@ object AnkyParser {
         if (separator < 1) throw AnkyParseException("MALFORMED_LINE")
 
         val timeText = line.substring(0, separator)
-        val glyph = line.substring(separator + 1)
+        val rawGlyph = line.substring(separator + 1)
         if (timeText.isEmpty() || !timeText.all { it in '0'..'9' }) {
             throw AnkyParseException("INVALID_TIME")
         }
-        if (glyph.isEmpty()) throw AnkyParseException("MISSING_CHARACTER")
+        if (rawGlyph.isEmpty()) throw AnkyParseException("MISSING_CHARACTER")
+        if (rawGlyph == " ") throw AnkyParseException("NON_CANONICAL_SPACE")
+        val glyph = if (rawGlyph == "SPACE") " " else rawGlyph
         if (!glyph.isSingleProtocolGlyph()) throw AnkyParseException("MULTI_CHARACTER_EVENT")
 
         val time = timeText.toLongOrNull() ?: throw AnkyParseException("UNSAFE_TIME")

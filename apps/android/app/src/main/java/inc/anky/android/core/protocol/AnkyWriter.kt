@@ -18,10 +18,11 @@ class AnkyWriter private constructor(
 
     fun accept(glyph: String, epochMs: Long): Boolean {
         if (isClosed || !glyph.isSingleProtocolGlyph()) return false
+        val protocolGlyph = glyph.protocolGlyphText()
         val line = if (lastAcceptedEpochMs == null) {
-            "$epochMs $glyph"
+            "$epochMs $protocolGlyph"
         } else {
-            "${maxOf(0, epochMs - lastAcceptedEpochMs!!)} $glyph"
+            "${maxOf(0, epochMs - lastAcceptedEpochMs!!)} $protocolGlyph"
         }
         lines += line
         lastAcceptedEpochMs = epochMs
@@ -56,3 +57,6 @@ class AnkyWriter private constructor(
         }
     }
 }
+
+private fun String.protocolGlyphText(): String =
+    if (this == " ") "SPACE" else this

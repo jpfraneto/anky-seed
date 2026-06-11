@@ -41,5 +41,26 @@ The legal/protocol documents are rendered inside the Vite app at:
 - `/protocol`
 - `/privacy`
 - `/terms`
+- `/memes`
 
 Their markdown source lives in `src/legal/`.
+
+## Memes
+
+The memes route reads its image list from:
+
+```txt
+https://anky-memes.fairchat.workers.dev/memes.json
+```
+
+That Worker lists the Cloudflare R2 bucket named `anky-memes`. Upload new meme
+images into that bucket from the Cloudflare dashboard and refresh `/memes`.
+
+To point the frontend at another index URL, set:
+
+```sh
+VITE_MEMES_INDEX_URL=https://your-worker.example.workers.dev/memes.json
+```
+
+If the remote index is unavailable, the page falls back to
+`public/memes/index.json`.

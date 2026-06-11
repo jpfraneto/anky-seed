@@ -753,7 +753,7 @@ class StorageTest {
 
         val saved = SingleAnkyImporter.importText(pasted, archive, reflections, index)
 
-        assertEquals("1770000000000 h\n240000  \n240000 i\n8000", saved.text)
+        assertEquals("1770000000000 h\n240000 SPACE\n240000 i\n8000", saved.text)
         assertEquals("h i", saved.reconstructedText)
     }
 

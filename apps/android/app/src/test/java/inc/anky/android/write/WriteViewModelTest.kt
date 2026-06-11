@@ -34,7 +34,7 @@ class WriteViewModelTest {
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n471000 e")
 
-        WriteViewModel(
+        val viewModel = WriteViewModel(
             activeDraftStore = stores.draft,
             archive = stores.archive,
             reflectionStore = stores.reflections,
@@ -45,10 +45,11 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         val saved = stores.archive.list().single()
-        assertEquals("$start h\n471000 e\n8000", saved.text)
+        assertEquals("$start h\n471000 e", saved.text)
         assertEquals(471000, saved.durationMs)
         assertEquals(false, saved.isComplete)
-        assertNull(stores.draft.load())
+        assertEquals("$start h\n471000 e", stores.draft.load())
+        assertEquals(saved.hash, viewModel.state.value.completedHash)
         assertEquals(saved.hash, stores.index.load().single().hash)
     }
 
@@ -119,7 +120,7 @@ class WriteViewModelTest {
     }
 
     @Test
-    fun completedSessionFreezesWriteStateLikeIos() = runTest {
+    fun completedSessionNavigatesAndClearsDraftLikeIos() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
         stores.draft.save("$start h\n480000 e")
@@ -134,11 +135,14 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         val completedHash = viewModel.state.value.completedHash
+        val saved = stores.archive.list().single()
 
-        assertEquals(stores.archive.list().single().hash, completedHash)
-        assertEquals("he", viewModel.state.value.displayedText)
+        assertEquals("$start h\n480000 e", saved.text)
+        assertEquals(AnkyHasher.sha256Hex("$start h\n480000 e".toByteArray(Charsets.UTF_8)), saved.hash)
+        assertEquals(saved.hash, completedHash)
+        assertEquals("", viewModel.state.value.displayedText)
         assertEquals("", viewModel.state.value.latestGlyph)
-        assertEquals(2, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
         assertEquals(480000, viewModel.state.value.elapsedMs)
         assertEquals(8000, viewModel.state.value.silenceElapsedMs)
         assertEquals(0, viewModel.state.value.silenceRemainingMs)
@@ -167,12 +171,12 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Could not save this .anky.", viewModel.state.value.errorMessage)
-        assertEquals("$start h\n480000 e\n8000", draft.load())
+        assertEquals("$start h\n480000 e", draft.load())
         assertEquals(0, index.load().size)
     }
 
     @Test
-    fun shortSessionTerminalSilenceFreezesWriteStateLikeIos() = runTest {
+    fun shortSessionSilenceCloseNavigatesToReveal() = runTest {
         val stores = stores()
         var now = 1_770_000_000_000
         val viewModel = WriteViewModel(
@@ -189,22 +193,105 @@ class WriteViewModelTest {
         advanceUntilIdle()
 
         val saved = stores.archive.list().single()
-        assertEquals("1770000000000 h\n8000", saved.text)
-        assertNull(stores.draft.load())
+        assertEquals("1770000000000 h", saved.text)
+        assertEquals("1770000000000 h", stores.draft.load())
         assertEquals(saved.hash, viewModel.state.value.completedHash)
-        assertEquals("h", viewModel.state.value.displayedText)
-        assertEquals(1, viewModel.state.value.acceptedGlyphCount)
-        assertEquals(480000, viewModel.state.value.elapsedMs)
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals(0, viewModel.state.value.elapsedMs)
         assertEquals(8000, viewModel.state.value.silenceElapsedMs)
         assertEquals(0, viewModel.state.value.silenceRemainingMs)
-        assertEquals(1f, viewModel.state.value.progress)
+        assertEquals(0f, viewModel.state.value.progress)
     }
 
     @Test
-    fun terminalSilenceFragmentContinuesInWriteAndReplacesOldFragment() = runTest {
+    fun shortSessionSilenceCloseDoesNotRemainFrozenInWrite() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 8_000
+        advanceUntilIdle()
+        val saved = stores.archive.list().single()
+
+        viewModel.refreshLiveState()
+
+        assertEquals(saved.hash, viewModel.state.value.completedHash)
+        assertEquals(false, viewModel.state.value.isClosing)
+        assertEquals("", viewModel.state.value.displayedText)
+        assertEquals(0, viewModel.state.value.acceptedGlyphCount)
+        assertEquals("1770000000000 h", stores.draft.load())
+    }
+
+    @Test
+    fun incompleteSavePreservesDraftButStillEmitsRevealNavigation() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 1_000
+        viewModel.acceptGlyph("i")
+        now += 8_000
+        advanceTimeBy(8_000)
+        runCurrent()
+
+        val saved = stores.archive.list().single()
+        assertEquals("1770000000000 h\n1000 i", stores.draft.load())
+        assertEquals(saved.hash, viewModel.state.value.completedHash)
+        assertEquals(saved.hash, stores.index.load().single().hash)
+    }
+
+    @Test
+    fun incompleteSaveDoesNotAutoContinue() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { now },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.acceptGlyph("h")
+        now += 8_000
+        advanceUntilIdle()
+        val sealedFragment = stores.archive.list().single()
+        viewModel.consumeCompletedHash()
+
+        now += 1_000
+        viewModel.acceptGlyph("!")
+
+        assertEquals("${now} !", stores.draft.load())
+        assertEquals(true, stores.archive.fileList().any { it.name == "${sealedFragment.hash}.anky" })
+        assertEquals(false, stores.archive.list().any { it.text == "1770000000000 h\n0 !" })
+        assertEquals(true, viewModel.state.value.isClosing)
+        assertEquals("!", viewModel.state.value.displayedText)
+        assertEquals(1, viewModel.state.value.acceptedGlyphCount)
+    }
+
+    @Test
+    fun nonTerminalFragmentContinuesInWriteAndReplacesOldFragment() = runTest {
         val stores = stores()
         val start = 1_770_000_000_000
-        val oldFragment = stores.archive.save("$start h\n1000 i\n8000")
+        val oldFragment = stores.archive.save("$start h\n1000 i")
         stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(oldFragment, null))
         var now = start + 120_000
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -232,11 +319,34 @@ class WriteViewModelTest {
         runCurrent()
 
         val continued = stores.archive.list().single()
-        assertEquals("$start h\n1000 i\n0 !\n8000", continued.text)
+        assertEquals("$start h\n1000 i\n0 !", continued.text)
         assertEquals("hi!", continued.reconstructedText)
         assertEquals(listOf(continued.hash), stores.index.load().map { it.hash })
         assertEquals(false, stores.archive.fileList().any { it.name == "${oldFragment.hash}.anky" })
+        assertEquals("$start h\n1000 i\n0 !", stores.draft.load())
+    }
+
+    @Test
+    fun terminalMarkedFragmentIsNotMadeContinuableByStrippingTerminalSilence() = runTest {
+        val stores = stores()
+        val start = 1_770_000_000_000
+        val closedFragment = stores.archive.save("$start h\n1000 i\n8000")
+        stores.index.upsert(inc.anky.android.core.storage.SessionSummary.make(closedFragment, null))
+        val viewModel = WriteViewModel(
+            activeDraftStore = stores.draft,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            nowMs = { start + 120_000 },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertEquals(false, viewModel.continueSession(closedFragment))
+
+        assertEquals("", viewModel.state.value.displayedText)
         assertNull(stores.draft.load())
+        assertEquals(listOf(closedFragment.hash), stores.index.load().map { it.hash })
+        assertEquals(listOf(closedFragment.hash), stores.archive.list().map { it.hash })
     }
 
     @Test
@@ -296,10 +406,11 @@ class WriteViewModelTest {
 
         assertEquals("$start h", stores.draft.load())
         assertEquals(1, stores.archive.list().size)
-        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+        assertEquals("Backspace and enter stay outside this chamber. Just keep writing.", viewModel.state.value.errorMessage)
+        assertEquals(1, viewModel.state.value.rejectedInputPulseId)
 
         advanceTimeBy(1_999)
-        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+        assertEquals("Backspace and enter stay outside this chamber. Just keep writing.", viewModel.state.value.errorMessage)
 
         advanceTimeBy(1)
         runCurrent()
@@ -319,14 +430,14 @@ class WriteViewModelTest {
         )
 
         viewModel.ignoreBackspaceOrReplacement()
-        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+        assertEquals("Backspace and enter stay outside this chamber. Just keep writing.", viewModel.state.value.errorMessage)
 
         advanceTimeBy(2_000)
         runCurrent()
         assertNull(viewModel.state.value.errorMessage)
 
         assertEquals(true, viewModel.replayRecentPromptIfAvailable())
-        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+        assertEquals("Backspace and enter stay outside this chamber. Just keep writing.", viewModel.state.value.errorMessage)
 
         advanceTimeBy(2_000)
         runCurrent()
@@ -374,7 +485,7 @@ class WriteViewModelTest {
         assertEquals("$now h", stores.draft.load())
         assertEquals("h", viewModel.state.value.displayedText)
         assertEquals(1, viewModel.state.value.acceptedGlyphCount)
-        assertEquals("that doesn't work here. just keep writing without agenda.", viewModel.state.value.errorMessage)
+        assertEquals("Backspace and enter stay outside this chamber. Just keep writing.", viewModel.state.value.errorMessage)
 
         viewModel.resetAfterAccountDeletion()
         now += 8_000
@@ -476,6 +587,7 @@ class WriteViewModelTest {
 
         viewModel.acceptGlyph("h")
         now += 120
+        viewModel.acceptGlyph(" ")
 
         assertEquals(true, viewModel.startAnkyNudgeIfPossible())
         assertEquals("anky is listening to this .anky for one line.", viewModel.state.value.nudgeDialogueMessage)
@@ -483,7 +595,7 @@ class WriteViewModelTest {
 
         runCurrent()
 
-        assertEquals("1770000000000 h", capturedText)
+        assertEquals("1770000000000 h\n120 SPACE", capturedText)
         assertEquals(MirrorIntent.Nudge, capturedIntent)
         assertEquals("Stay here", viewModel.state.value.nudgeDialogueMessage)
         assertEquals(false, viewModel.state.value.isRequestingNudge)

@@ -29,6 +29,7 @@ enum class MirrorErrorCode {
     MissingSignature,
     InvalidSignature,
     InsufficientCredits,
+    TrialAlreadyClaimed,
     DuplicateInProgress,
     RateLimited,
     MirrorFailed,

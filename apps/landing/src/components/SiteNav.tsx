@@ -7,8 +7,7 @@ type SiteNavProps = {
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Docs", href: "/docs" },
-  { label: "Blog", href: "/blog" },
+  { label: "Memes", href: "/memes" },
   { label: "Contact", href: "/contact" },
   { label: "$ANKY", href: "/ankycoin" },
   { label: "Download", href: "#download" },

@@ -13,6 +13,7 @@ import inc.anky.android.core.identity.WriterIdentity
 import inc.anky.android.core.mirror.AnkyReflectionPrompt
 import inc.anky.android.core.mirror.MirrorClient
 import inc.anky.android.core.mirror.MirrorClientError
+import inc.anky.android.core.mirror.MirrorErrorCode
 import inc.anky.android.core.mirror.MirrorEligibility
 import inc.anky.android.core.mirror.ReflectionCreditPresentation
 import inc.anky.android.core.mirror.ReflectionCreditPromptState
@@ -242,7 +243,7 @@ class RevealViewModel(
                         canAskAnky = false,
                         isAsking = false,
                         reflectionStatusMessage = "",
-                        streamingReflectionMarkdown = "",
+                        streamingReflectionMarkdown = reflection.reflection,
                         progressStage = null,
                         creditBalance = reflection.creditsRemaining ?: it.creditBalance,
                         hasClaimedFreeCredits = true,
@@ -251,6 +252,7 @@ class RevealViewModel(
                 }
             }.onFailure { error ->
                 val message = mirrorFailureMessage(error)
+                val creditDenied = isCreditDenied(error, message)
                 if (message.contains("already being reflected", ignoreCase = true)) {
                     requestStore?.markPending(artifact.hash)
                     _state.update {
@@ -276,11 +278,13 @@ class RevealViewModel(
                         reflectionStatusMessage = "",
                         streamingReflectionMarkdown = "",
                         progressStage = null,
-                        creditBalance = if (message.contains("credit", ignoreCase = true)) 0 else it.creditBalance,
-                        creditsDenied = it.creditsDenied || message.contains("credit", ignoreCase = true),
+                        creditBalance = if (creditDenied) 0 else it.creditBalance,
+                        hasClaimedFreeCredits = if (creditDenied) true else it.hasClaimedFreeCredits,
+                        creditsDenied = it.creditsDenied || creditDenied,
                         error = message,
                     )
                 }
+                if (creditDenied) markFreeCreditsClaimed()
             }
         }
     }
@@ -536,11 +540,26 @@ internal fun progressMessage(stage: String?, fallback: String? = null): String =
         else -> fallback ?: "anky is working..."
     }
 
-private fun mirrorFailureMessage(error: Throwable): String =
-    when (error) {
+private fun mirrorFailureMessage(error: Throwable): String {
+    if (error is MirrorClientError.Server && error.code == MirrorErrorCode.TrialAlreadyClaimed) {
+        return "This device already used its first two reflections. Add credits to ask Anky again. Writing is still free."
+    }
+    if (isCreditDenied(error, error.message.orEmpty())) {
+        return "You need one reflection credit to ask Anky. Writing is still free."
+    }
+    return when (error) {
         is MirrorClientError -> error.message ?: GenericMirrorFailureMessage
         else -> GenericMirrorFailureMessage
     }
+}
+
+private fun isCreditDenied(error: Throwable, message: String): Boolean {
+    if (error is MirrorClientError.Server) {
+        return error.code == MirrorErrorCode.InsufficientCredits ||
+            error.code == MirrorErrorCode.TrialAlreadyClaimed
+    }
+    return message.contains("credit", ignoreCase = true)
+}
 
 private const val GenericMirrorFailureMessage = "Anky could not return a reflection right now."
 

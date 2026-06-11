@@ -5,11 +5,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +41,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +83,7 @@ import kotlinx.coroutines.launch
 fun MapScreen(
     viewModel: MapViewModel,
     onOpenReveal: (String) -> Unit,
+    onOpenAllAnkys: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) {
         while (true) {
@@ -87,7 +92,7 @@ fun MapScreen(
         }
     }
     val state = viewModel.state.collectAsStateWithLifecycle().value
-    val selectedDayEpoch = remember { mutableStateOf<Long?>(null) }
+    val selectedDayEpoch = rememberSaveable { mutableStateOf<Long?>(null) }
     val selectedDay = selectedDayEpoch.value?.let { epoch ->
         state.days.firstOrNull { it.dayEpochMs == epoch }
     }
@@ -112,6 +117,7 @@ fun MapScreen(
                 streak = state.currentStreak,
                 labels = labels,
                 onOpenDay = { selectedDayEpoch.value = it.dayEpochMs },
+                onOpenAllAnkys = onOpenAllAnkys,
             )
         } else {
             DayDetail(
@@ -125,6 +131,34 @@ fun MapScreen(
 }
 
 @Composable
+fun MapAllAnkysScreen(
+    viewModel: MapViewModel,
+    onBack: () -> Unit,
+    onOpenReveal: (String) -> Unit,
+) {
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+    val state = viewModel.state.collectAsStateWithLifecycle().value
+    val labels = mapLabels()
+    val sessions = state.completeAnkySessions
+    val title = when (sessions.size) {
+        0 -> stringResource(R.string.zero_ankys)
+        1 -> stringResource(R.string.one_anky_count_format, sessions.size)
+        else -> stringResource(R.string.ankys_count_format, sessions.size)
+    }
+
+    MapSessionListScreen(
+        title = title,
+        sessions = sessions,
+        labels = labels,
+        onBack = onBack,
+        onOpenReveal = onOpenReveal,
+        showsDayInHeader = true,
+    )
+}
+
+@Composable
 private fun TrailMap(
     days: List<SessionDay>,
     ankys: Int,
@@ -132,6 +166,7 @@ private fun TrailMap(
     streak: Int,
     labels: MapLabels,
     onOpenDay: (SessionDay) -> Unit,
+    onOpenAllAnkys: () -> Unit,
 ) {
     val displayDays = days.reversed()
     val listState = rememberLazyListState()
@@ -151,15 +186,17 @@ private fun TrailMap(
         if (todayIndex >= 0) listState.animateScrollToItem(todayIndex)
     }
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val centerPadding = ((maxHeight - rowHeight) / 2).coerceAtLeast(0.dp)
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(bottom = 48.dp),
+            modifier = Modifier.fillMaxSize(),
             state = listState,
+            contentPadding = PaddingValues(
+                top = centerPadding,
+                bottom = centerPadding + maxHeight,
+            ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            item {
-                Spacer(Modifier.height(156.dp))
-            }
             if (displayDays.isEmpty()) {
                 item {
                     Text(
@@ -209,6 +246,7 @@ private fun TrailMap(
             minutes = minutes,
             streak = streak,
             labels = labels,
+            onClick = onOpenAllAnkys,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 34.dp, start = 20.dp, end = 20.dp),
@@ -222,6 +260,7 @@ private fun MapStatsPanel(
     minutes: Int,
     streak: Int,
     labels: MapLabels,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -231,6 +270,7 @@ private fun MapStatsPanel(
             .clip(RoundedCornerShape(18.dp))
             .background(AnkyColors.Ink.copy(alpha = 0.78f))
             .border(1.dp, AnkyColors.Gold.copy(alpha = 0.22f), RoundedCornerShape(18.dp))
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = labels.openAllAnkys },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -461,6 +501,28 @@ private fun DayCompletionMarker(contentDescription: String, modifier: Modifier =
 
 @Composable
 private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, onOpenReveal: (String) -> Unit) {
+    MapSessionListScreen(
+        title = DateTimeFormatter
+            .ofPattern("MMMM d, yyyy")
+            .withZone(ZoneOffset.UTC)
+            .format(Instant.ofEpochMilli(day.dayEpochMs))
+            .lowercase(),
+        sessions = day.sessions.sortedByDescending { it.createdAt },
+        labels = labels,
+        onBack = onBack,
+        onOpenReveal = onOpenReveal,
+    )
+}
+
+@Composable
+private fun MapSessionListScreen(
+    title: String,
+    sessions: List<SessionSummary>,
+    labels: MapLabels,
+    onBack: () -> Unit,
+    onOpenReveal: (String) -> Unit,
+    showsDayInHeader: Boolean = false,
+) {
     Box(Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.map_background),
@@ -470,30 +532,7 @@ private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, on
         )
         Box(Modifier.fillMaxSize().background(AnkyColors.Ink.copy(alpha = 0.76f)))
         Column(Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().background(AnkyColors.Ink.copy(alpha = 0.96f)).padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Filled.ChevronLeft,
-                        contentDescription = labels.back,
-                        tint = AnkyColors.Gold,
-                        modifier = Modifier.size(30.dp),
-                    )
-                }
-                Text(
-                    DateTimeFormatter.ofPattern("MMMM d, yyyy").withZone(ZoneOffset.UTC).format(Instant.ofEpochMilli(day.dayEpochMs)).lowercase(),
-                    style = AnkyType.Body.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AnkyColors.Paper,
-                    ),
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.size(48.dp))
-            }
+            MapSessionTopBar(title = title, backLabel = labels.back, onBack = onBack)
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val contentWidth = maxWidth * 0.87f
                 val horizontalPadding = (maxWidth - contentWidth) / 2
@@ -501,12 +540,12 @@ private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, on
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = horizontalPadding)
-                        .padding(top = 24.dp, bottom = 72.dp),
+                        .padding(top = 34.dp, bottom = 104.dp),
                 ) {
-                    if (day.sessions.isEmpty()) item {
+                    if (sessions.isEmpty()) item {
                         Spacer(Modifier.fillMaxWidth().height(180.dp))
                     }
-                    items(day.sessions.sortedByDescending { it.createdAt }, key = { it.hash }) { SessionRow(it, onOpenReveal) }
+                    items(sessions, key = { it.hash }) { SessionRow(it, onOpenReveal, showsDayInHeader) }
                 }
             }
         }
@@ -514,17 +553,65 @@ private fun DayDetail(day: SessionDay, labels: MapLabels, onBack: () -> Unit, on
 }
 
 @Composable
-private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) {
+private fun MapSessionTopBar(title: String, backLabel: String, onBack: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(AnkyColors.Ink.copy(alpha = 0.96f))) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(58.dp)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(44.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = backLabel,
+                    tint = AnkyColors.Paper,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Text(
+                title,
+                style = AnkyType.Body.copy(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AnkyColors.Paper,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
+            Spacer(Modifier.size(44.dp))
+            Spacer(Modifier.size(44.dp))
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.13f)))
+    }
+}
+
+@Composable
+private fun SessionRow(
+    session: SessionSummary,
+    onOpenReveal: (String) -> Unit,
+    showsDayInHeader: Boolean = false,
+) {
     val reflectedTitle = session.reflectedTitle()
     val displayTags = session.displayTags()
+    val rowInteraction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOpenReveal(session.hash) }
+            .clickable(
+                interactionSource = rowInteraction,
+                indication = null,
+            ) { onOpenReveal(session.hash) }
             .semantics(mergeDescendants = true) {
                 contentDescription = sessionAccessibilityLabel(session)
             }
-            .padding(vertical = 18.dp),
+            .padding(top = 16.dp, bottom = 18.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -535,11 +622,11 @@ private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    session.createdAt.formattedForMapSessionTime(),
+                    session.createdAt.formattedForMapSessionTime(showsDayInHeader),
                     style = AnkyType.Mono.copy(
-                        fontSize = 13.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = AnkyColors.Gold.copy(alpha = 0.82f),
+                        color = AnkyColors.Gold.copy(alpha = 0.78f),
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -550,8 +637,8 @@ private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) 
                 Text(
                     it,
                     style = AnkyType.Heading.copy(
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 29.sp,
+                        fontWeight = FontWeight.Bold,
                         color = AnkyColors.Gold,
                     ),
                     maxLines = 2,
@@ -561,11 +648,12 @@ private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) 
             Text(
                 session.preview,
                 style = AnkyType.Body.copy(
-                    fontSize = if (session.isComplete) 17.sp else 16.sp,
-                    fontWeight = if (session.isComplete && session.reflectionTitle.isNullOrBlank()) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (session.isComplete) AnkyColors.Paper else AnkyColors.PaperMuted,
+                    fontSize = 20.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = if (session.isComplete) AnkyColors.Paper.copy(alpha = 0.94f) else AnkyColors.PaperMuted.copy(alpha = 0.82f),
                 ),
-                maxLines = 4,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             if (displayTags.isNotEmpty()) {
@@ -590,13 +678,14 @@ private fun SessionRow(session: SessionSummary, onOpenReveal: (String) -> Unit) 
                     }
                 }
             }
+            Spacer(Modifier.height(10.dp))
         }
         Box(
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .height(1.5.dp)
-                .background(AnkyColors.Gold.copy(alpha = 0.34f)),
+                .height(1.dp)
+                .background(AnkyColors.Gold.copy(alpha = 0.28f)),
         )
     }
 }
@@ -624,13 +713,21 @@ private fun String.asMapHashtag(): String? {
     return cleaned.takeIf { it.isNotEmpty() }?.let { "#$it" }
 }
 
-private fun Instant.formattedForMapSessionTime(): String =
-    DateTimeFormatter
+private fun Instant.formattedForMapSessionTime(showsDayInHeader: Boolean = false): String {
+    val time = DateTimeFormatter
         .ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Locale.getDefault())
         .withZone(ZoneId.systemDefault())
         .format(this)
         .lowercase()
+    if (!showsDayInHeader) return time
+    val day = DateTimeFormatter
+        .ofPattern("MMMM d, yyyy")
+        .withLocale(Locale.getDefault())
+        .withZone(ZoneOffset.UTC)
+        .format(this)
+    return "$time · $day"
+}
 
 private fun dayColor(dayInRegion: Int): Color = when (((dayInRegion.coerceAtLeast(1) - 1) % 8) + 1) {
     1 -> Color(0xFFE5484D)

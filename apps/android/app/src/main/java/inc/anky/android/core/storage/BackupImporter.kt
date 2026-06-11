@@ -268,7 +268,7 @@ class BackupImporter(
                 if (separator < 0) return@joinToString line
                 val timeText = line.substring(0, separator)
                 val characterText = line.substring(separator + 1)
-                if (characterText == "SPACE") "$timeText  " else line
+                if (characterText == "SPACE" || characterText == " ") "$timeText SPACE" else line
             }
 
     private fun decodeUtf8Strict(bytes: ByteArray): String =

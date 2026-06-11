@@ -1,0 +1,19 @@
+{
+  "memes": [
+    {
+      "id": "anky-avatar",
+      "title": "Anky Avatar",
+      "src": "/anky-assets/anky-avatar.png"
+    },
+    {
+      "id": "anky-sigil",
+      "title": "Anky Sigil",
+      "src": "/anky-assets/anky-sigil.png"
+    },
+    {
+      "id": "anky-icon",
+      "title": "Anky Icon",
+      "src": "/anky-assets/app-icon.png"
+    }
+  ]
+}

@@ -211,6 +211,7 @@ private fun String?.toMirrorErrorCode(): MirrorErrorCode =
         "MISSING_SIGNATURE" -> MirrorErrorCode.MissingSignature
         "INVALID_SIGNATURE" -> MirrorErrorCode.InvalidSignature
         "INSUFFICIENT_CREDITS" -> MirrorErrorCode.InsufficientCredits
+        "TRIAL_ALREADY_CLAIMED" -> MirrorErrorCode.TrialAlreadyClaimed
         "DUPLICATE_IN_PROGRESS" -> MirrorErrorCode.DuplicateInProgress
         "RATE_LIMITED" -> MirrorErrorCode.RateLimited
         "MIRROR_FAILED" -> MirrorErrorCode.MirrorFailed

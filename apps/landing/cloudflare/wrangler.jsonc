@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anky-memes",
+  "main": "./memes-r2-worker.js",
+  "compatibility_date": "2026-06-10",
+  "r2_buckets": [
+    {
+      "binding": "MEMES_BUCKET",
+      "bucket_name": "anky-memes"
+    }
+  ]
+}

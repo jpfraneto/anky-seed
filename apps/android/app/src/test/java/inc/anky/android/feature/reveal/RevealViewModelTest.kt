@@ -248,7 +248,7 @@ class RevealViewModelTest {
     }
 
     @Test
-    fun askAnkyStreamsProgressAndClearsDraftStreamAfterSave() = runTest {
+    fun askAnkyStreamsProgressAndKeepsFinalStreamAfterSaveLikeIos() = runTest {
         val server = MockWebServer()
         val stores = stores()
         val artifact = stores.archive.save(completeAnky())
@@ -270,7 +270,7 @@ class RevealViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isAsking)
-            assertEquals("", viewModel.state.value.streamingReflectionMarkdown)
+            assertEquals(viewModel.state.value.reflection?.reflection, viewModel.state.value.streamingReflectionMarkdown)
             assertEquals(null, viewModel.state.value.progressStage)
             assertEquals("Small Thread", viewModel.state.value.reflection?.title)
             assertEquals(listOf("truth", "body"), viewModel.state.value.reflection?.tags)
@@ -430,6 +430,51 @@ class RevealViewModelTest {
             assertEquals(0, viewModel.state.value.creditBalance)
             assertTrue(viewModel.state.value.creditsDenied)
             assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+            assertEquals(
+                "You need one reflection credit to ask Anky. Writing is still free.",
+                viewModel.state.value.error,
+            )
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun askAnkyTrialAlreadyClaimedShowsDeviceGiftCopyLikeIos() = runTest {
+        val server = MockWebServer()
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(402)
+                .setBody("""{"error":{"code":"TRIAL_ALREADY_CLAIMED","message":"Trial already claimed."}}"""),
+        )
+        server.start()
+        try {
+            var markedClaimed = false
+            val viewModel = RevealViewModel(
+                hash = artifact.hash,
+                archive = stores.archive,
+                reflectionStore = stores.reflections,
+                indexStore = stores.index,
+                identityProvider = { identity() },
+                mirrorClientProvider = { MirrorClient(MirrorConfiguration(server.url("/").toString())) },
+                hasClaimedFreeCreditsProvider = { false },
+                markFreeCreditsClaimed = { markedClaimed = true },
+                dispatcher = StandardTestDispatcher(testScheduler),
+            )
+
+            viewModel.askAnky()
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.state.value.creditBalance)
+            assertTrue(viewModel.state.value.creditsDenied)
+            assertTrue(viewModel.state.value.hasClaimedFreeCredits)
+            assertTrue(markedClaimed)
+            assertEquals(
+                "This device already used its first two reflections. Add credits to ask Anky again. Writing is still free.",
+                viewModel.state.value.error,
+            )
         } finally {
             server.shutdown()
         }

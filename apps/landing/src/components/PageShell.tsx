@@ -4,11 +4,19 @@ import SiteNav from "./SiteNav";
 
 type PageShellProps = {
   children: ReactNode;
+  compact?: boolean;
   currentPath: string;
   onNavigate: (href: string) => void;
+  wide?: boolean;
 };
 
-function PageShell({ children, currentPath, onNavigate }: PageShellProps) {
+function PageShell({
+  children,
+  compact = false,
+  currentPath,
+  onNavigate,
+  wide = false,
+}: PageShellProps) {
   return (
     <div className="relative min-h-svh overflow-hidden bg-ink-950 text-cream">
       <div
@@ -20,8 +28,14 @@ function PageShell({ children, currentPath, onNavigate }: PageShellProps) {
 
       <SiteNav currentPath={currentPath} onNavigate={onNavigate} />
 
-      <main className="relative z-10 px-5 pb-24 pt-16 sm:px-8 lg:px-10">
-        <div className="mx-auto max-w-4xl">{children}</div>
+      <main
+        className={`relative z-10 px-5 sm:px-8 lg:px-10 ${
+          compact ? "pb-12 pt-6" : "pb-24 pt-16"
+        }`}
+      >
+        <div className={`mx-auto ${wide ? "max-w-[92rem]" : "max-w-4xl"}`}>
+          {children}
+        </div>
       </main>
 
       <div className="relative z-10">

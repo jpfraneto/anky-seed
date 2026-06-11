@@ -6,6 +6,7 @@ import inc.anky.android.core.storage.LocalAnkyArchive
 import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.SessionDay
 import inc.anky.android.core.storage.SessionIndexStore
+import inc.anky.android.core.storage.SessionSummary
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 data class MapState(
     val days: List<SessionDay> = emptyList(),
+    val completeAnkySessions: List<SessionSummary> = emptyList(),
     val completeAnkyCount: Int = 0,
     val totalWritingMinutes: Int = 0,
     val currentStreak: Int = 0,
@@ -46,6 +48,7 @@ class MapViewModel(
             val totalDurationMs = sessions.sumOf { it.durationMs }
             MapState(
                 days = days,
+                completeAnkySessions = completeSessions.sortedByDescending { it.createdAt },
                 completeAnkyCount = completeSessions.size,
                 totalWritingMinutes = if (sessions.isEmpty()) 0 else maxOf(1, ((totalDurationMs + 59_999L) / 60_000L).toInt()),
                 currentStreak = currentStreak(completeSessions.map { it.createdAt }),

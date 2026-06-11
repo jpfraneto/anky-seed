@@ -135,7 +135,7 @@ fun RevealScreen(
     var didAutoStartReflection by remember { mutableStateOf(false) }
     var showCreditPurchaseSheet by remember { mutableStateOf(false) }
     var reflectionPromptGuidanceVisible by remember { mutableStateOf(false) }
-    val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val creditPurchaseSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val labels = revealLabels()
 
     fun scrollToReflection() {
@@ -281,12 +281,9 @@ fun RevealScreen(
                             modifier = Modifier.padding(top = 36.dp),
                         )
                     }
-                    state.streamingReflectionMarkdown.isNotBlank() || state.isAsking -> {
+                    state.streamingReflectionMarkdown.isNotBlank() -> {
                         StreamingReflectionPanel(
                             markdown = state.streamingReflectionMarkdown,
-                            status = state.reflectionStatusMessage,
-                            generatedCharacters = state.streamingReflectionCharacterCount,
-                            labels = labels,
                             modifier = Modifier.padding(top = 36.dp),
                         )
                     }
@@ -774,28 +771,18 @@ private fun SavedReflectionPanel(
 @Composable
 private fun StreamingReflectionPanel(
     markdown: String,
-    status: String,
-    generatedCharacters: Int,
-    labels: RevealLabels,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(
-            labels.mirrorForming,
-            style = AnkyType.Heading.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
-        )
-        MirrorProgress(status = status, generatedCharacters = generatedCharacters, labels = labels)
-        if (markdown.isNotBlank()) {
+    val title = markdown.firstMarkdownHeadingText()
+    val body = title?.let(markdown::removingLeadingMarkdownHeading) ?: markdown
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (!title.isNullOrBlank()) {
             Text(
-                labels.writingReflectionCharacters(generatedCharacters),
-                style = AnkyType.Caption.copy(
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AnkyColors.Gold.copy(alpha = 0.72f),
-                ),
+                title.lowercase(),
+                style = AnkyType.Heading.copy(fontSize = 23.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold),
             )
-            MarkdownishText(markdown)
         }
+        MarkdownishText(body)
     }
 }
 
@@ -1897,6 +1884,11 @@ private fun String.removingLeadingMarkdownHeading(title: String): String {
 private fun markdownHeadingText(line: String): String? {
     val trimmed = line.trim()
     return listOf("### ", "## ", "# ").firstOrNull { trimmed.startsWith(it) }?.let { trimmed.drop(it.length) }
+}
+
+private fun String.firstMarkdownHeadingText(): String? {
+    val line = replace("\r\n", "\n").lineSequence().firstOrNull { it.trim().isNotEmpty() } ?: return null
+    return markdownHeadingText(line)
 }
 
 private val CopyMagenta = Color(0xFFFF3BD4)

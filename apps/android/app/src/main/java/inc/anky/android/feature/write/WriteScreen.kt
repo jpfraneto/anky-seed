@@ -7,6 +7,9 @@ import android.content.ContextWrapper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.LinearEasing
@@ -23,6 +26,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -79,6 +83,7 @@ import inc.anky.android.ui.theme.AnkyType
 import kotlin.math.min
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -88,6 +93,7 @@ fun WriteScreen(
     onImported: (String) -> Unit,
     onCompleted: (String) -> Unit,
     onCloseToMap: () -> Unit,
+    onBackFromContinuation: () -> Unit = onCloseToMap,
     onImportAnkyText: (String) -> SavedAnky,
     onImportAnkyBytes: (ByteArray) -> SavedAnky,
     inputEnabled: Boolean = true,
@@ -199,27 +205,43 @@ fun WriteScreen(
                 .fillMaxSize()
                 .imePadding(),
         ) {
-            val ringSize = 190.dp
-            val ringTop = (maxHeight * 0.36f - ringSize / 2f).coerceAtLeast(24.dp)
+            val writingScrollState = rememberScrollState()
+            LaunchedEffect(state.displayedGlyphs.size, state.keyboardFocusRequestId) {
+                delay(16)
+                writingScrollState.scrollTo(writingScrollState.maxValue)
+            }
             if (state.displayedText.isNotEmpty()) {
-                Text(
-                    text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
-                    fontSize = 20.sp,
-                    lineHeight = 28.sp,
-                    fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.End,
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
-                )
+                        .height(maxHeight)
+                        .verticalScroll(writingScrollState),
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    Text(
+                        text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
+                        fontSize = 20.sp,
+                        lineHeight = 28.sp,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    )
+                }
             }
 
             WriteTopBar(
                 hasActiveDotAnky = state.acceptedGlyphCount > 0 || state.isClosing,
+                showContinuationBack = state.isFrozenForContinuation,
                 onCloseToMap = {
                     viewModel.abandonIfEmpty()
                     onCloseToMap()
+                },
+                onBackFromContinuation = {
+                    viewModel.abandonIfEmpty()
+                    onBackFromContinuation()
                 },
                 openMapLabel = openMapLabel,
                 modifier = Modifier
@@ -265,10 +287,10 @@ fun WriteScreen(
                 elapsedMs = state.elapsedMs,
                 silenceElapsedMs = state.silenceElapsedMs,
                 latestGlyph = state.latestGlyph,
+                rejectedInputPulseId = state.rejectedInputPulseId,
                 isRitualComplete = state.hasReachedRitualMark,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = ringTop)
+                    .align(Alignment.Center)
                     .testTag("ritual-glyph"),
             )
         }
@@ -278,13 +300,22 @@ fun WriteScreen(
 @Composable
 private fun WriteTopBar(
     hasActiveDotAnky: Boolean,
+    showContinuationBack: Boolean,
     onCloseToMap: () -> Unit,
+    onBackFromContinuation: () -> Unit,
     openMapLabel: String,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        if (!hasActiveDotAnky) {
-            WriteChromeButton(onClick = onCloseToMap, enabled = true) {
+        AnimatedVisibility(
+            visible = !hasActiveDotAnky || showContinuationBack,
+            enter = fadeIn(animationSpec = tween(160)),
+            exit = fadeOut(animationSpec = tween(180)),
+        ) {
+            WriteChromeButton(
+                onClick = if (showContinuationBack) onBackFromContinuation else onCloseToMap,
+                enabled = true,
+            ) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
                     contentDescription = openMapLabel,
@@ -360,6 +391,7 @@ private fun RitualRings(
     elapsedMs: Long,
     silenceElapsedMs: Long,
     latestGlyph: String,
+    rejectedInputPulseId: Int,
     isRitualComplete: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -392,6 +424,19 @@ private fun RitualRings(
         Color(0xFF943DE6),
         Color(0xFFF5F2DE),
     )
+    var rejectedInputFlash by remember { mutableStateOf(0f) }
+    val rejectedFlashAlpha by animateFloatAsState(
+        targetValue = rejectedInputFlash,
+        animationSpec = tween(durationMillis = if (rejectedInputFlash > 0f) 80 else 420),
+        label = "rejected-input-flash",
+    )
+
+    LaunchedEffect(rejectedInputPulseId) {
+        if (rejectedInputPulseId <= 0) return@LaunchedEffect
+        rejectedInputFlash = 1f
+        delay(520)
+        rejectedInputFlash = 0f
+    }
 
     Box(modifier = modifier.size(190.dp), contentAlignment = Alignment.Center) {
         if (isRitualComplete) {
@@ -454,7 +499,12 @@ private fun RitualRings(
                 }
             }
             drawCircle(AnkyColors.Gold.copy(alpha = 0.24f), radius = 59.dp.toPx(), style = Stroke(width = 1.5.dp.toPx()))
-            drawCircle(Color(0xFF050506).copy(alpha = 0.88f), radius = 54.dp.toPx())
+            drawCircle(Color(0xFF050506).copy(alpha = 0.88f + 0.11f * rejectedFlashAlpha), radius = 54.dp.toPx())
+            drawCircle(
+                Color(0xFFF20A08).copy(alpha = 0.06f + 0.22f * rejectedFlashAlpha),
+                radius = 59.dp.toPx(),
+                style = Stroke(width = (1.1f + rejectedFlashAlpha * 1.1f).dp.toPx(), cap = StrokeCap.Round),
+            )
         }
         if (silenceElapsedMs >= 3000 && remainingSilenceSeconds > 0) {
             Text(

@@ -300,6 +300,7 @@ class MirrorClientTest {
         val cases = listOf(
             400 to ("INCOMPLETE_RITUAL" to MirrorErrorCode.IncompleteRitual),
             401 to ("INVALID_SIGNATURE" to MirrorErrorCode.InvalidSignature),
+            402 to ("TRIAL_ALREADY_CLAIMED" to MirrorErrorCode.TrialAlreadyClaimed),
             500 to ("MIRROR_FAILED" to MirrorErrorCode.MirrorFailed),
         )
         val body = "1770000000000 h\n8000".toByteArray(Charsets.UTF_8)

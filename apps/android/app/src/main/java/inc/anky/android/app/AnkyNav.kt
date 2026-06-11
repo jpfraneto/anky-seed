@@ -11,6 +11,7 @@ sealed class AnkyRoute(
 ) {
     data object Write : AnkyRoute("write", "Write", R.string.tab_write)
     data object Map : AnkyRoute("map", "Map", R.string.tab_map)
+    data object MapAllAnkys : AnkyRoute("map/all-ankys", "Map", R.string.tab_map)
     data object You : AnkyRoute("you", "You", R.string.tab_you)
     data object YouCredits : AnkyRoute("you/credits", "You", R.string.tab_you)
     data object Reveal : AnkyRoute("reveal/{hash}?reflect={reflect}", "Reveal", R.string.tab_write) {

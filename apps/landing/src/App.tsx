@@ -8,6 +8,7 @@ import FeatureCard from "./components/FeatureCard";
 import Footer from "./components/Footer";
 import Hero from "./components/Hero";
 import LegalPage, { type LegalRoute } from "./components/LegalPage";
+import MemesPage from "./components/MemesPage";
 import SiteNav from "./components/SiteNav";
 import StoreBadges from "./components/StoreBadges";
 import { featureCards } from "./content";
@@ -104,6 +105,10 @@ function App() {
 
   if (path === "/contact") {
     return <ContactPage currentPath={path} onNavigate={navigate} />;
+  }
+
+  if (path === "/memes") {
+    return <MemesPage currentPath={path} onNavigate={navigate} />;
   }
 
   if (path === "/docs" || path === "/blog") {

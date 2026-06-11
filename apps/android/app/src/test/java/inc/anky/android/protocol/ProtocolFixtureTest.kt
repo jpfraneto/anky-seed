@@ -2,6 +2,7 @@ package inc.anky.android.protocol
 
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.protocol.AnkyHasher
+import inc.anky.android.core.protocol.AnkyParseException
 import inc.anky.android.core.protocol.AnkyParser
 import inc.anky.android.core.protocol.AnkyReconstructor
 import inc.anky.android.core.protocol.AnkyValidation
@@ -14,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class ProtocolFixtureTest {
@@ -53,9 +55,22 @@ class ProtocolFixtureTest {
         assertTrue(writer.accept(" ", 1770000000043))
         assertFalse(writer.accept("\n", 1770000000043))
         writer.closeWithTerminalSilence()
-        assertEquals("1770000000000 h\n42 e\n1  \n${AnkyDuration.TerminalSilenceMs}", writer.text)
+        assertEquals("1770000000000 h\n42 e\n1 SPACE\n${AnkyDuration.TerminalSilenceMs}", writer.text)
         val validation = AnkyValidator.validate(writer.text) as AnkyValidation.Valid
         assertEquals("he ", AnkyReconstructor.reconstructText(validation.parsed))
+    }
+
+    @Test
+    fun parserAcceptsCanonicalSpaceAndRejectsLiteralSpacePayload() {
+        val parsed = AnkyParser.parse("1770000000000 h\n42 SPACE")
+        assertEquals("h ", AnkyReconstructor.reconstructText(parsed))
+
+        try {
+            AnkyParser.parse("1770000000000 h\n42  ")
+            fail("Expected literal-space payload rejection.")
+        } catch (expected: AnkyParseException) {
+            assertEquals("NON_CANONICAL_SPACE", expected.message)
+        }
     }
 
     @Test
@@ -106,6 +121,29 @@ class ProtocolFixtureTest {
         assertEquals(472000, AnkyDuration.writingDurationMs(parsed))
         assertEquals(472000, AnkyDuration.durationMs(parsed))
         assertFalse(AnkyDuration.isComplete(parsed))
+    }
+
+    @Test
+    fun completionUsesDurationWithoutTerminalSilence() {
+        assertFalse(AnkyDuration.isComplete(AnkyParser.parse("1770000000000 h\n479999 i\n${AnkyDuration.TerminalSilenceMs}")))
+        assertTrue(AnkyDuration.isComplete(AnkyParser.parse("1770000000000 h\n480000 i")))
+    }
+
+    @Test
+    fun parserRejectsDuplicateTerminalAndEventsAfterTerminal() {
+        try {
+            AnkyParser.parse("1770000000000 h\n8000\n8000")
+            fail("Expected duplicate terminal rejection.")
+        } catch (expected: AnkyParseException) {
+            assertEquals("DUPLICATE_TERMINAL_SILENCE", expected.message)
+        }
+
+        try {
+            AnkyParser.parse("1770000000000 h\n8000\n42 i")
+            fail("Expected post-terminal event rejection.")
+        } catch (expected: AnkyParseException) {
+            assertEquals("EVENT_AFTER_TERMINAL_SILENCE", expected.message)
+        }
     }
 
     @Test
