@@ -229,7 +229,7 @@ fun AnkyApp(container: AppContainer) {
             showsOnboarding.value = false
             mapViewModel.refresh()
             container.encryptedBackupStore.backUpIfEnabled()
-            navController.navigate(AnkyRoute.Reveal.route(hash)) {
+            navController.navigate(AnkyRoute.Reveal.route(hash, from = RevealSource.Write)) {
                 launchSingleTop = true
                 popUpTo(AnkyRoute.Write.route) { inclusive = true }
             }
@@ -298,7 +298,14 @@ fun AnkyApp(container: AppContainer) {
             writeViewModelWithCurrentMirror.openWritingPortal()
         }
 
-        fun navigateBackFromReveal() {
+        fun navigateBackFromReveal(source: String) {
+            if (source == RevealSource.Write) {
+                navController.navigate(AnkyRoute.Map.route) {
+                    launchSingleTop = true
+                    popUpTo(AnkyRoute.Reveal.route) { inclusive = true }
+                }
+                return
+            }
             if (!navController.popBackStack()) {
                 navController.navigate(AnkyRoute.Map.route) {
                     launchSingleTop = true
@@ -362,41 +369,48 @@ fun AnkyApp(container: AppContainer) {
                     popExitTransition = { fadeOut(animationSpec = tween(100)) },
                 ) {
                     composable(AnkyRoute.Write.route) {
-                        WriteScreen(
-                            viewModel = writeViewModelWithCurrentMirror,
-                            onImported = { hash ->
-                                importedCompletedHash.value = hash
-                            },
-                            onCompleted = { hash -> openPostWriteReveal(hash) },
-                            onCloseToMap = { navController.navigate(AnkyRoute.Map.route) },
-                            onBackFromContinuation = {
-                                if (!navController.popBackStack()) {
-                                    navController.navigate(AnkyRoute.Map.route)
-                                }
-                            },
-                            onImportAnkyText = { text ->
-                                SingleAnkyImporter.importText(
-                                    rawText = text,
-                                    archive = container.archive,
-                                    reflectionStore = container.reflectionStore,
-                                    indexStore = container.sessionIndexStore,
-                                )
-                            },
-                            onImportAnkyBytes = { bytes ->
-                                SingleAnkyImporter.importBytes(
-                                    bytes = bytes,
-                                    archive = container.archive,
-                                    reflectionStore = container.reflectionStore,
-                                    indexStore = container.sessionIndexStore,
-                                )
-                            },
-                            inputEnabled = !shouldShowOnboarding,
-                        )
+                        if (shouldShowOnboarding) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black),
+                            )
+                        } else {
+                            WriteScreen(
+                                viewModel = writeViewModelWithCurrentMirror,
+                                onImported = { hash ->
+                                    importedCompletedHash.value = hash
+                                },
+                                onCompleted = { hash -> openPostWriteReveal(hash) },
+                                onCloseToMap = { navController.navigate(AnkyRoute.Map.route) },
+                                onBackFromContinuation = {
+                                    if (!navController.popBackStack()) {
+                                        navController.navigate(AnkyRoute.Map.route)
+                                    }
+                                },
+                                onImportAnkyText = { text ->
+                                    SingleAnkyImporter.importText(
+                                        rawText = text,
+                                        archive = container.archive,
+                                        reflectionStore = container.reflectionStore,
+                                        indexStore = container.sessionIndexStore,
+                                    )
+                                },
+                                onImportAnkyBytes = { bytes ->
+                                    SingleAnkyImporter.importBytes(
+                                        bytes = bytes,
+                                        archive = container.archive,
+                                        reflectionStore = container.reflectionStore,
+                                        indexStore = container.sessionIndexStore,
+                                    )
+                                },
+                            )
+                        }
                     }
                     composable(AnkyRoute.Map.route) {
                         MapScreen(
                             viewModel = mapViewModel,
-                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
+                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash, from = RevealSource.Day)) },
                             onOpenAllAnkys = { navController.navigate(AnkyRoute.MapAllAnkys.route) },
                         )
                     }
@@ -404,7 +418,7 @@ fun AnkyApp(container: AppContainer) {
                         MapAllAnkysScreen(
                             viewModel = mapViewModel,
                             onBack = { navController.popBackStack() },
-                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash)) },
+                            onOpenReveal = { hash -> navController.navigate(AnkyRoute.Reveal.route(hash, from = RevealSource.Map)) },
                         )
                     }
                     composable(AnkyRoute.You.route) {
@@ -509,10 +523,15 @@ fun AnkyApp(container: AppContainer) {
                                 type = NavType.BoolType
                                 defaultValue = false
                             },
+                            navArgument("from") {
+                                type = NavType.StringType
+                                defaultValue = RevealSource.Map
+                            },
                         ),
                     ) { entry ->
                         val hash = entry.arguments?.getString("hash").orEmpty()
                         val startsReflectionOnAppear = entry.arguments?.getBoolean("reflect") ?: false
+                        val revealSource = entry.arguments?.getString("from") ?: RevealSource.Map
                         val viewModel = remember(hash, settings.mirrorBaseUrl) {
                             RevealViewModel(
                                 hash = hash,
@@ -546,7 +565,7 @@ fun AnkyApp(container: AppContainer) {
                                 mapViewModel.refresh()
                             },
                             onTryAgain = { artifact -> beginContinuingWriting(artifact) },
-                            onBack = { navigateBackFromReveal() },
+                            onBack = { navigateBackFromReveal(revealSource) },
                         )
                     }
                     composable(
@@ -595,7 +614,7 @@ fun AnkyApp(container: AppContainer) {
             ) {
                 Box(Modifier.fillMaxSize().imePadding().zIndex(220f), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
-                        message = writeState.errorMessage.orEmpty(),
+                        message = localizedWriteErrorMessage(writeState.errorMessage.orEmpty()),
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
                         modifier = Modifier
                             .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
@@ -608,7 +627,7 @@ fun AnkyApp(container: AppContainer) {
             ) {
                 Box(Modifier.fillMaxSize().imePadding().zIndex(220f), contentAlignment = Alignment.BottomCenter) {
                     AnkyConversationPrompt(
-                        message = writeState.nudgeDialogueMessage,
+                        message = localizedWriteNudgeMessage(writeState.nudgeDialogueMessage),
                         onClose = writeViewModelWithCurrentMirror::dismissCurrentPrompt,
                         modifier = Modifier
                             .padding(start = 18.dp, end = 18.dp, bottom = 96.dp),
@@ -704,6 +723,25 @@ private fun AnkyRoute.isSelectedForRoute(currentRoute: String?): Boolean =
         AnkyRoute.You -> currentRoute == AnkyRoute.You.route || currentRoute == AnkyRoute.YouCredits.route
         AnkyRoute.Map -> currentRoute == AnkyRoute.Map.route || currentRoute == AnkyRoute.MapAllAnkys.route
         else -> currentRoute == route
+    }
+
+@Composable
+private fun localizedWriteErrorMessage(message: String): String =
+    when (message) {
+        "Could not restore the active draft." -> stringResource(R.string.write_restore_draft_error)
+        "Could not save this .anky." -> stringResource(R.string.write_save_anky_error)
+        else -> stringResource(R.string.write_generic_error)
+    }
+
+@Composable
+private fun localizedWriteNudgeMessage(message: String): String =
+    when (message) {
+        "anky is listening to this .anky for one line." -> stringResource(R.string.write_nudge_listening)
+        "stay with the next true sentence." -> stringResource(R.string.write_nudge_empty_fallback)
+        "that nudge needs one credit." -> stringResource(R.string.write_nudge_credit_error)
+        "the mirror is not ready to nudge unfinished ankys yet." -> stringResource(R.string.write_nudge_incomplete_error)
+        "anky could not return a nudge right now." -> stringResource(R.string.write_nudge_generic_error)
+        else -> message
     }
 
 private tailrec fun Context.findFragmentActivity(): FragmentActivity? =

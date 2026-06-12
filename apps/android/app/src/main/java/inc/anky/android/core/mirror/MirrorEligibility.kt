@@ -66,11 +66,7 @@ object ReflectionCreditPresentation {
         if (creditsDenied) return ReflectionCreditPromptState.Unavailable
         creditsRemaining?.let { balance ->
             if (balance > 0) return ReflectionCreditPromptState.Available(balance)
-            return if (hasClaimedFreeCredits) {
-                ReflectionCreditPromptState.Unavailable
-            } else {
-                ReflectionCreditPromptState.FreeGift(FirstGiftCount)
-            }
+            return ReflectionCreditPromptState.Unavailable
         }
         return if (hasClaimedFreeCredits) {
             ReflectionCreditPromptState.Unavailable

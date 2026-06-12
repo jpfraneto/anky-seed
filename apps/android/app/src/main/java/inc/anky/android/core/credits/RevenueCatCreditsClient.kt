@@ -262,6 +262,7 @@ internal object CreditCatalog {
         "inc.anky.credits.33" to "33 reflections",
     )
     private val productSubtitles = mapOf(
+        "inc.anky.credits.3" to "Starter pack",
         "inc.anky.credits.11" to "Stay with it",
         "inc.anky.credits.33" to "Daily practice",
     )

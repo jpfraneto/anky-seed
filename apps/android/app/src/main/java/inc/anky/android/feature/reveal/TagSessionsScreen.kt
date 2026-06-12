@@ -148,6 +148,9 @@ fun TagSessionsScreen(
 @Composable
 private fun TagSessionRow(summary: SessionSummary, onOpenReveal: (String) -> Unit) {
     val wordLabel = stringResource(if (summary.wordCount == 1) R.string.word else R.string.words)
+    val importedReflection = stringResource(R.string.imported_reflection_title)
+    val fragmentTitle = stringResource(R.string.session_fragment_title)
+    val title = summary.localizedTagSessionTitle(importedReflection, fragmentTitle)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -161,7 +164,7 @@ private fun TagSessionRow(summary: SessionSummary, onOpenReveal: (String) -> Uni
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                summary.title,
+                title,
                 style = AnkyType.Mono.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AnkyColors.Gold.copy(alpha = 0.9f)),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -196,6 +199,13 @@ internal fun java.time.Instant.formattedForTagSession(): String =
         .withLocale(Locale.getDefault())
         .withZone(ZoneId.systemDefault())
         .format(this)
+
+private fun SessionSummary.localizedTagSessionTitle(importedReflection: String, fragmentTitle: String): String =
+    when (title) {
+        "Imported reflection" -> importedReflection
+        "Fragment" -> fragmentTitle
+        else -> title
+    }
 
 @Composable
 private fun RevealTagTexture() {

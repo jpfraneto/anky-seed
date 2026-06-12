@@ -32,7 +32,7 @@ class CreditCatalogTest {
         assertEquals("3 reflections", CreditCatalog.titleForProduct("inc.anky.credits.3"))
         assertEquals("11 reflections", CreditCatalog.titleForProduct("inc.anky.credits.11"))
         assertEquals("33 reflections", CreditCatalog.titleForProduct("inc.anky.credits.33"))
-        assertNull(CreditCatalog.subtitleForProduct("inc.anky.credits.3"))
+        assertEquals("Starter pack", CreditCatalog.subtitleForProduct("inc.anky.credits.3"))
         assertEquals("Stay with it", CreditCatalog.subtitleForProduct("inc.anky.credits.11"))
         assertEquals("Daily practice", CreditCatalog.subtitleForProduct("inc.anky.credits.33"))
 

@@ -148,6 +148,7 @@ fun YouScreen(
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val ankyAddressClipboardLabel = stringResource(R.string.anky_address)
+    val contractAddressClipboardLabel = stringResource(R.string.contract_address_clipboard_label)
     val recoveryWordsClipboardLabel = stringResource(R.string.you_recovery_words_label)
     val exportWritingsChooserTitle = stringResource(R.string.export_writings)
     val exportBackupZipChooserTitle = stringResource(R.string.export_backup_zip)
@@ -241,7 +242,7 @@ fun YouScreen(
                     activePrompt = activePrompt.value,
                     onOpenPage = { page.value = it },
                     onCopyAnkyContract = {
-                        context.copyText("Anky contract address", PrivacyMessages.AnkyCoinContractAddress)
+                        context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress)
                         didCopyAnkyContract.value = true
                     },
                     onOpenCreditsSheet = {
@@ -296,8 +297,15 @@ fun YouScreen(
                                     exportWritings = stringResource(R.string.export_writings),
                                     copyAccount = stringResource(R.string.copy_account),
                                     ankyAddress = stringResource(R.string.anky_address),
+                                    repairMapIndex = stringResource(R.string.repair_map_index),
                                     deleteLocalData = stringResource(R.string.delete_local_data),
                                     openEmail = stringResource(R.string.open_email),
+                                    loadingCreditPacks = stringResource(R.string.loading_credit_packs),
+                                    refreshCredits = stringResource(R.string.refresh_credits),
+                                    bestValue = stringResource(R.string.best_value),
+                                    creditPack3Title = stringResource(R.string.credit_pack_3_title),
+                                    creditPack11Title = stringResource(R.string.credit_pack_11_title),
+                                    creditPack33Title = stringResource(R.string.credit_pack_33_title),
                                     backupRecoveryWordsSecureStorageReason = backupRecoveryWordsSecureStorageReason,
                                     enableEncryptedBackupReason = enableEncryptedBackupReason,
                                     couldNotConfirmIdentity = couldNotConfirmIdentity,
@@ -395,7 +403,7 @@ fun YouScreen(
                             onSupportFeedback = { context.openUrl(state.supportFeedbackEmailUrl) },
                         )
                         YouPage.Token -> TokenPage(
-                            onCopy = { context.copyText("Anky contract address", PrivacyMessages.AnkyCoinContractAddress) },
+                            onCopy = { context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress) },
                         )
                         YouPage.Developer -> if (BuildConfig.DEBUG) {
                             DeveloperPage(
@@ -525,8 +533,8 @@ fun YouScreen(
 
     if (confirmClearArchive.value) {
         DestructiveConfirmDialog(
-            title = "clear local .anky archive?",
-            action = "clear .anky archive",
+            title = stringResource(R.string.clear_local_anky_archive_question),
+            action = stringResource(R.string.clear_local_anky_archive_action),
             onDismiss = { confirmClearArchive.value = false },
             onConfirm = {
                 confirmClearArchive.value = false
@@ -537,8 +545,8 @@ fun YouScreen(
 
     if (confirmClearReflections.value) {
         DestructiveConfirmDialog(
-            title = "clear local reflections?",
-            action = "clear reflections",
+            title = stringResource(R.string.clear_local_reflections_question),
+            action = stringResource(R.string.clear_local_reflections_action),
             onDismiss = { confirmClearReflections.value = false },
             onConfirm = {
                 confirmClearReflections.value = false
@@ -549,9 +557,9 @@ fun YouScreen(
 
     if (confirmResetIdentity.value) {
         DestructiveConfirmDialog(
-            title = "reset local identity?",
-            action = "reset identity",
-            message = "Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery words before resetting.",
+            title = stringResource(R.string.reset_local_identity_question),
+            action = stringResource(R.string.reset_identity_action),
+            message = stringResource(R.string.reset_identity_warning),
             onDismiss = { confirmResetIdentity.value = false },
             onConfirm = {
                 confirmResetIdentity.value = false
@@ -620,7 +628,7 @@ private fun DestructiveConfirmDialog(
             TextButton(onClick = onConfirm) { Text(action, color = AnkyColors.Danger) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
         containerColor = AnkyColors.PanelStrong,
     )
@@ -1019,7 +1027,7 @@ private fun YouStatusMessages(state: YouState) {
     state.error?.let { message ->
         AnkyPanel {
             Text(
-                message,
+                localizedYouStatusMessage(message),
                 style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.Danger),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -1028,11 +1036,80 @@ private fun YouStatusMessages(state: YouState) {
     state.statusMessage?.let { message ->
         AnkyPanel {
             Text(
-                message,
+                localizedYouStatusMessage(message),
                 style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+private val importedCountsRegex = Regex("""Imported (\d+) \.anky files? and (\d+) reflections?\.""")
+
+@Composable
+private fun localizedYouStatusMessage(message: String): String {
+    importedCountsRegex.matchEntire(message)?.let { match ->
+        return stringResource(R.string.you_status_imported_counts, match.groupValues[1], match.groupValues[2])
+    }
+    return when (message) {
+        "Notifications are not allowed for ANKY." -> stringResource(R.string.you_status_notifications_not_allowed)
+        "loading credit packs" -> stringResource(R.string.you_status_loading_credit_packs)
+        "Could not complete that credit purchase." -> stringResource(R.string.you_status_could_not_complete_credit_purchase)
+        "Credits updated." -> stringResource(R.string.you_status_credits_updated)
+        "restoring purchases" -> stringResource(R.string.you_status_restoring_purchases)
+        "Anky could not restore from encrypted backup." -> stringResource(R.string.you_status_could_not_restore_encrypted_backup)
+        "Could not import that backup." -> stringResource(R.string.you_status_could_not_import_backup)
+        "Could not open that backup." -> stringResource(R.string.you_status_could_not_open_backup)
+        "No .anky files or reflections were found in that import." -> stringResource(R.string.you_status_no_importable_backup_data)
+        "That backup could not be read." -> stringResource(R.string.you_status_backup_could_not_be_read)
+        "Choose a .zip backup, .anky file, or exported reflection JSON." -> stringResource(R.string.you_status_choose_supported_backup_file)
+        "That zip backup appears to be corrupt." -> stringResource(R.string.you_status_zip_backup_corrupt)
+        "Encrypted zip backups are not supported." -> stringResource(R.string.you_status_encrypted_zip_not_supported)
+        "That zip backup uses unsupported compression." -> stringResource(R.string.you_status_zip_unsupported_compression)
+        "i couldn't find a readable .anky in that." -> stringResource(R.string.write_import_readable_error)
+        "That .anky file could not be read." -> stringResource(R.string.you_status_anky_file_could_not_be_read)
+        "There is no writing to back up yet." -> stringResource(R.string.you_status_no_writing_to_back_up)
+        "No Anky encrypted backup was found." -> stringResource(R.string.you_status_no_encrypted_backup_found)
+        "The encrypted backup could not be read." -> stringResource(R.string.you_status_encrypted_backup_could_not_be_read)
+        "The encrypted backup could not be encrypted." -> stringResource(R.string.you_status_encrypted_backup_could_not_be_encrypted)
+        "The encrypted backup could not be decrypted." -> stringResource(R.string.you_status_encrypted_backup_could_not_be_decrypted)
+        "Could not clear local writing data." -> stringResource(R.string.you_status_could_not_clear_local_writing_data)
+        "Could not rebuild the local session index." -> stringResource(R.string.you_status_could_not_rebuild_local_session_index)
+        "Could not clear local reflections." -> stringResource(R.string.you_status_could_not_clear_local_reflections)
+        "Could not clear local .anky files." -> stringResource(R.string.you_status_could_not_clear_local_anky_files)
+        "Could not reset the local identity." -> stringResource(R.string.you_status_could_not_reset_local_identity)
+        "Recovery words must be 12 words." -> stringResource(R.string.you_status_recovery_words_must_be_12)
+        "Recovery words contain an unrecognized word." -> stringResource(R.string.you_status_recovery_words_unrecognized)
+        "Could not recover that identity." -> stringResource(R.string.you_status_could_not_recover_identity)
+        "no credit packs available" -> stringResource(R.string.you_status_no_credit_packs_available)
+        "credits refreshed." -> stringResource(R.string.you_status_credits_refreshed)
+        "That credit package is not available." -> stringResource(R.string.you_status_credit_package_unavailable)
+        CreditCatalog.RestoreSuccessMessage -> stringResource(R.string.you_status_purchases_restored_identity)
+        CreditCatalog.RestoreFailureMessage -> stringResource(R.string.you_status_could_not_restore_purchases_identity)
+        YouStatusCopy.IdentityBackupSaved -> stringResource(R.string.you_status_identity_backup_saved)
+        YouStatusCopy.RecoveryPhraseImported -> stringResource(R.string.you_status_identity_recovered)
+        YouStatusCopy.MapIndexRepaired -> stringResource(R.string.you_status_map_index_repaired)
+        YouStatusCopy.LocalReflectionsCleared -> stringResource(R.string.you_status_local_reflections_cleared)
+        YouStatusCopy.LocalAnkyArchiveCleared -> stringResource(R.string.you_status_local_anky_archive_cleared)
+        YouStatusCopy.LocalWritingDataCleared -> stringResource(R.string.you_status_local_writing_data_cleared)
+        YouStatusCopy.LocalIdentityReset -> stringResource(R.string.you_status_local_identity_reset)
+        YouStatusCopy.AccountAndDataDeleted -> stringResource(R.string.you_status_account_data_deleted)
+        YouStatusCopy.CouldNotDeleteAllAccountData -> stringResource(R.string.you_status_could_not_delete_all_account_data)
+        YouStatusCopy.CouldNotCreateBackupZip -> stringResource(R.string.you_status_could_not_create_backup_zip)
+        YouStatusCopy.CouldNotCreateWritingExport -> stringResource(R.string.you_status_could_not_create_writing_export)
+        YouStatusCopy.NoWritingToExportYet -> stringResource(R.string.you_status_no_writing_to_export_yet)
+        YouStatusCopy.CouldNotLoadLocalWriterIdentity -> stringResource(R.string.you_status_could_not_load_local_writer_identity)
+        YouStatusCopy.CouldNotLoadRecoveryPhrase -> stringResource(R.string.you_status_could_not_load_recovery_words)
+        YouStatusCopy.CouldNotBackUpAnkyIdentity -> stringResource(R.string.you_status_could_not_backup_anky_identity)
+        YouStatusCopy.CouldNotScheduleDailyReminder -> stringResource(R.string.you_status_could_not_schedule_daily_reminder)
+        YouStatusCopy.CouldNotLoadCredits -> stringResource(R.string.you_status_could_not_load_credits)
+        YouStatusCopy.EncryptedBackupOn -> stringResource(R.string.you_status_encrypted_backup_on)
+        YouStatusCopy.EncryptedBackupOff -> stringResource(R.string.you_status_encrypted_backup_off)
+        YouStatusCopy.EncryptedBackupUpdated -> stringResource(R.string.you_status_encrypted_backup_updated)
+        YouStatusCopy.EncryptedBackupOnAfterNextWriting -> stringResource(R.string.you_status_encrypted_backup_on_after_next_writing)
+        YouStatusCopy.CouldNotEnableEncryptedBackup -> stringResource(R.string.you_status_could_not_enable_encrypted_backup)
+        YouStatusCopy.CouldNotUpdateEncryptedBackup -> stringResource(R.string.you_status_could_not_update_encrypted_backup)
+        else -> stringResource(R.string.you_status_unexpected_problem)
     }
 }
 
@@ -1203,11 +1280,22 @@ private fun YouHistorySessionRow(
     wordPlural: String,
     onOpenReveal: (String) -> Unit,
 ) {
+    val importedReflection = stringResource(R.string.imported_reflection_title)
+    val fragmentTitle = stringResource(R.string.session_fragment_title)
+    val noReadableText = stringResource(R.string.map_no_readable_text)
+    val title = session.localizedHistoryTitle(importedReflection, fragmentTitle)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpenReveal(session.hash) }
-            .semantics(mergeDescendants = true) { contentDescription = historySessionAccessibilityLabel(session) }
+            .semantics(mergeDescendants = true) {
+                contentDescription = historySessionAccessibilityLabel(
+                    session = session,
+                    importedReflection = importedReflection,
+                    fragmentTitle = fragmentTitle,
+                    noReadableText = noReadableText,
+                )
+            }
             .padding(vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1217,7 +1305,7 @@ private fun YouHistorySessionRow(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                session.title,
+                title,
                 style = AnkyType.Mono.copy(
                     fontSize = 15.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -1261,8 +1349,26 @@ private fun YouHistorySessionRow(
 private fun historyTitle(count: Int, oneAnkyFormat: String, ankysFormat: String): String =
     if (count == 1) oneAnkyFormat.format(count) else ankysFormat.format(count)
 
-private fun historySessionAccessibilityLabel(session: SessionSummary): String =
-    listOf(session.title, session.preview).joinToString(", ")
+private fun historySessionAccessibilityLabel(
+    session: SessionSummary,
+    importedReflection: String,
+    fragmentTitle: String,
+    noReadableText: String,
+): String =
+    listOf(
+        session.localizedHistoryTitle(importedReflection, fragmentTitle),
+        session.localizedHistoryPreview(noReadableText),
+    ).joinToString(", ")
+
+private fun SessionSummary.localizedHistoryTitle(importedReflection: String, fragmentTitle: String): String =
+    when (title) {
+        "Imported reflection" -> importedReflection
+        "Fragment" -> fragmentTitle
+        else -> title
+    }
+
+private fun SessionSummary.localizedHistoryPreview(noReadableText: String): String =
+    if (preview == "No readable text") noReadableText else preview
 
 private fun java.time.Instant.formattedForYouHistory(): String =
     DateTimeFormatter
@@ -1525,14 +1631,14 @@ private fun AccountPage(
 @Composable
 private fun PrivacyPage() {
     Text(stringResource(R.string.privacy_page_heading), style = AnkyType.Heading.copy(fontSize = 19.sp, color = AnkyColors.Paper), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    PrivacyCopy.forEach { ArticleLine(it) }
+    ArticleBodyText(stringResource(R.string.privacy_article_body))
 }
 
 @Composable
 private fun TermsPage() {
     Text(stringResource(R.string.you_terms_conditions), style = AnkyType.Heading.copy(fontSize = 24.sp, color = AnkyColors.Paper), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     Text(stringResource(R.string.terms_reflection_agreement), style = AnkyType.Caption.copy(color = AnkyColors.PaperMuted), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    TermsCopy.forEach { ArticleLine(it) }
+    ArticleBodyText(stringResource(R.string.terms_article_body))
 }
 
 @Composable
@@ -1645,7 +1751,7 @@ private fun CreditsPage(
             enabled = !state.isRestoringPurchases,
             onClick = onRestorePurchases,
         )
-        Text(CreditCatalog.RestoreIdentityNote, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        Text(stringResource(R.string.you_restore_identity_note), style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
     }
     AnkyPanel {
         AnkyActionButton(stringResource(R.string.support_feedback_lower), onClick = onSupportFeedback)
@@ -1722,7 +1828,7 @@ private fun YouReflectionCreditsSheet(
                     state.creditState.packages.take(3).forEach { creditPackage ->
                         YouCreditPackageRow(
                             creditPackage = creditPackage,
-                            isRecommended = creditPackage.title == "11 reflections" ||
+                            isRecommended = creditPackage.productId == "inc.anky.credits.11" ||
                                 creditPackage.packageId.endsWith(".credits.11"),
                             isPurchasing = state.purchasingCreditPackageId == creditPackage.packageId,
                             onPurchase = onPurchase,
@@ -1755,7 +1861,7 @@ private fun YouReflectionCreditsSheet(
 
         state.error?.let { error ->
             Text(
-                error,
+                localizedYouStatusMessage(error),
                 style = AnkyType.Mono.copy(fontSize = 12.sp, color = AnkyColors.Danger.copy(alpha = 0.82f)),
             )
         }
@@ -1856,13 +1962,13 @@ private fun YouCreditPackageRow(
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(
-                creditPackage.title,
+                localizedCreditPackageTitle(creditPackage),
                 style = AnkyType.Heading.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                creditPackage.subtitle,
+                localizedCreditPackageSubtitle(creditPackage),
                 style = AnkyType.Body.copy(fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = AnkyColors.Paper.copy(alpha = 0.58f)),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -1887,6 +1993,24 @@ private fun YouCreditPackageRow(
         }
     }
 }
+
+@Composable
+private fun localizedCreditPackageTitle(creditPackage: CreditPackage): String =
+    when (creditPackage.productId) {
+        "inc.anky.credits.3" -> stringResource(R.string.credit_pack_3_title)
+        "inc.anky.credits.11" -> stringResource(R.string.credit_pack_11_title)
+        "inc.anky.credits.33" -> stringResource(R.string.credit_pack_33_title)
+        else -> creditPackage.title
+    }
+
+@Composable
+private fun localizedCreditPackageSubtitle(creditPackage: CreditPackage): String =
+    when (creditPackage.productId) {
+        "inc.anky.credits.3" -> stringResource(R.string.credit_pack_3_subtitle)
+        "inc.anky.credits.11" -> stringResource(R.string.credit_pack_11_subtitle)
+        "inc.anky.credits.33" -> stringResource(R.string.credit_pack_33_subtitle)
+        else -> creditPackage.subtitle
+    }
 
 @Composable
 private fun YouCreditDisabledRow(text: String) {
@@ -1918,11 +2042,12 @@ private fun CreditPackageButton(creditPackage: CreditPackage, isPurchasing: Bool
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                creditPackage.title,
+                localizedCreditPackageTitle(creditPackage),
                 style = AnkyType.Body.copy(fontSize = 17.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
             )
-            if (creditPackage.subtitle.isNotBlank() && creditPackage.subtitle != creditPackage.title) {
-                Text(creditPackage.subtitle, style = AnkyType.Caption)
+            val localizedSubtitle = localizedCreditPackageSubtitle(creditPackage)
+            if (localizedSubtitle.isNotBlank() && localizedSubtitle != localizedCreditPackageTitle(creditPackage)) {
+                Text(localizedSubtitle, style = AnkyType.Caption)
             }
         }
         Text(if (isPurchasing) "..." else creditPackage.price, style = AnkyType.Caption.copy(fontSize = 15.sp, color = AnkyColors.Gold))
@@ -1995,10 +2120,10 @@ private fun TokenPage(onCopy: () -> Unit) {
                 .border(1.dp, AnkyColors.Gold.copy(alpha = 0.5f), CircleShape),
         )
     }
-    TokenCopy.forEach { ArticleLine(it) }
-    AnkyPanel {
-        Text(PrivacyMessages.AnkyCoinContractAddress, style = AnkyType.Mono)
-        AnkyActionButton(if (copied.value) "copied!" else "copy contract address") {
+    ArticleBodyText(stringResource(R.string.token_article_body))
+        AnkyPanel {
+            Text(PrivacyMessages.AnkyCoinContractAddress, style = AnkyType.Mono)
+        AnkyActionButton(if (copied.value) stringResource(R.string.copied_exclamation) else stringResource(R.string.copy_contract_address)) {
             onCopy()
             copied.value = true
         }
@@ -2021,17 +2146,17 @@ private fun DeveloperPage(
             onValueChange = onMirrorUrl,
             textStyle = AnkyType.Mono,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            label = { Text("mirror base url") },
+            label = { Text(stringResource(R.string.mirror_base_url)) },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text("emulator local mirror: http://10.0.2.2:3000. physical devices should use the deployed https mirror or an https tunnel to local.", style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
-        AnkyActionButton("save mirror url", onClick = onSaveMirrorUrl)
-        AnkyActionButton("repair map index", onClick = onRepairMapIndex)
+        Text(stringResource(R.string.mirror_base_url_help), style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted))
+        AnkyActionButton(stringResource(R.string.save_mirror_url), onClick = onSaveMirrorUrl)
+        AnkyActionButton(stringResource(R.string.repair_map_index), onClick = onRepairMapIndex)
     }
     AnkyPanel {
-        AnkyActionButton("clear local reflections", destructive = true, onClick = onClearReflections)
-        AnkyActionButton("clear local .anky archive", destructive = true, onClick = onClearArchive)
-        AnkyActionButton("reset local identity", destructive = true, onClick = onResetIdentity)
+        AnkyActionButton(stringResource(R.string.clear_local_reflections_action), destructive = true, onClick = onClearReflections)
+        AnkyActionButton(stringResource(R.string.clear_local_anky_archive_action), destructive = true, onClick = onClearArchive)
+        AnkyActionButton(stringResource(R.string.reset_identity_action), destructive = true, onClick = onResetIdentity)
     }
 }
 
@@ -2044,29 +2169,35 @@ private fun SwitchRow(label: String, checked: Boolean, onChecked: (Boolean) -> U
 }
 
 @Composable private fun DetailRow(title: String, value: String) = Row(Modifier.fillMaxWidth()) { Text(title, style = AnkyType.Caption); Spacer(Modifier.weight(1f)); Text(value, style = AnkyType.Body.copy(fontSize = 14.sp)) }
-@Composable private fun Rule(text: String) = Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(5.dp).clip(CircleShape).background(AnkyColors.Gold.copy(alpha = 0.72f))); Text(text, style = AnkyType.Body.copy(fontSize = 14.sp, color = AnkyColors.PaperMuted)) }
+@Composable private fun Rule(text: String) = Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(5.dp).clip(CircleShape).background(AnkyColors.Gold.copy(alpha = 0.72f))); Text(text, style = AnkyType.Body.copy(color = AnkyColors.PaperMuted)) }
 @Composable private fun Divider() = Box(Modifier.fillMaxWidth().height(1.dp).background(AnkyColors.Gold.copy(alpha = 0.13f)))
 @Composable private fun VerticalDivider() = Box(Modifier.height(52.dp).size(width = 1.dp, height = 52.dp).background(AnkyColors.Gold.copy(alpha = 0.12f)))
 
 @Composable
-private fun ArticleLine(item: ArticleItem) {
-    when (item) {
-        is ArticleItem.Caption -> Text(item.text, style = AnkyType.Caption)
-        is ArticleItem.Callout -> AnkyPanel {
-            MarkdownArticleText(item.text)
-        }
-        is ArticleItem.Heading -> Text(item.text, style = AnkyType.Heading.copy(fontSize = 21.sp), modifier = Modifier.padding(top = 4.dp))
-        is ArticleItem.Subheading -> Text(item.text, style = AnkyType.Body.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = AnkyColors.GoldSoft), modifier = Modifier.padding(top = 2.dp))
-        is ArticleItem.Paragraph -> MarkdownArticleText(item.text)
-        is ArticleItem.Bullets -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item.items.forEach { Rule(it) }
-        }
-    }
+private fun MarkdownArticleText(text: String) {
+    Text(markdownLinks(text), style = AnkyType.Body)
 }
 
 @Composable
-private fun MarkdownArticleText(text: String) {
-    Text(markdownLinks(text), style = AnkyType.Body.copy(fontSize = 16.sp))
+private fun ArticleBodyText(text: String) {
+    text.trimIndent()
+        .split(Regex("\\n\\s*\\n"))
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .forEach { paragraph ->
+            when {
+                paragraph.startsWith("## ") -> {
+                    Text(paragraph.removePrefix("## "), style = AnkyType.Heading.copy(fontSize = 21.sp), modifier = Modifier.padding(top = 4.dp))
+                }
+                paragraph.startsWith("- ") -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    paragraph.lines()
+                        .map { it.removePrefix("- ").trim() }
+                        .filter { it.isNotEmpty() }
+                        .forEach { Rule(it) }
+                }
+                else -> MarkdownArticleText(paragraph)
+            }
+        }
 }
 
 private fun markdownLinks(text: String): AnnotatedString = buildAnnotatedString {
@@ -2108,346 +2239,6 @@ private fun markdownLinks(text: String): AnnotatedString = buildAnnotatedString 
     }
 }
 
-private sealed interface ArticleItem {
-    data class Caption(val text: String) : ArticleItem
-    data class Callout(val text: String) : ArticleItem
-    data class Heading(val text: String) : ArticleItem
-    data class Subheading(val text: String) : ArticleItem
-    data class Paragraph(val text: String) : ArticleItem
-    data class Bullets(val items: List<String>) : ArticleItem
-}
-
-private val PrivacyCopy = listOf(
-    ArticleItem.Caption("Anky, Inc. - Effective June 7, 2026"),
-    ArticleItem.Callout("The short version: Anky is local-first. Your writing stays on your device unless you choose to export it, back it up, contact support, or ask Anky for a reflection. When you ask for a reflection, your writing is sent to Anky's mirror service and AI providers so a reflection can be generated. We use providers that don't store your writing. We do not sell your data, use it for advertising, or use your writing to train our own models."),
-    ArticleItem.Heading("1. Who We Are"),
-    ArticleItem.Paragraph("Anky is operated by **Anky, Inc.**, a Delaware corporation."),
-    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
-    ArticleItem.Paragraph("This Privacy Policy explains how Anky handles information when you use the Anky mobile app, website, mirror service, purchases, support, and related services."),
-    ArticleItem.Heading("2. What Anky Is"),
-    ArticleItem.Paragraph("Anky is a local-first writing and reflection app."),
-    ArticleItem.Paragraph("The core artifact is the `.anky` file: a forward-only writing session created under constraint. The app lets you write, save, revisit, export, import, delete, and optionally reflect on that writing."),
-    ArticleItem.Paragraph("Anky is not a therapist, medical service, crisis service, financial advisor, legal advisor, or spiritual authority."),
-    ArticleItem.Heading("3. What Stays On Your Device By Default"),
-    ArticleItem.Paragraph("The following data is stored locally on your device unless you choose to export it, back it up, recover it elsewhere, contact support, or request a reflection:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Your `.anky` writing files",
-            "Active writing drafts",
-            "Reconstructed readable writing",
-            "Local reflections returned by Anky",
-            "Session history and Map data",
-            "Local app settings",
-            "Daily reminder settings",
-            "Local Anky access information",
-            "Private recovery material stored in secure device storage",
-            "Local credit balance cache",
-            "Local export/import files you create",
-        ),
-    ),
-    ArticleItem.Paragraph("Writing, saving, revealing, copying, browsing Map, and viewing local history do not require sending your writing to Anky's server."),
-    ArticleItem.Heading("4. What Leaves Your Device"),
-    ArticleItem.Paragraph("Data leaves your device in these situations:"),
-    ArticleItem.Subheading("Asking Anky for a reflection or writing nudge"),
-    ArticleItem.Paragraph("When you tap **Ask Anky** or request a writing nudge, the app sends the exact `.anky` file bytes to Anky's mirror service."),
-    ArticleItem.Paragraph("The mirror service:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Verifies the request",
-            "Verifies the `.anky` format and hash",
-            "Reconstructs readable text from the `.anky`",
-            "Sends the reconstructed writing and prompt to AI service providers",
-            "Receives the generated reflection or nudge",
-            "Returns the result to your device",
-            "Checks credits for reflections and spends one reflection credit after a successful reflection",
-        ),
-    ),
-    ArticleItem.Paragraph("The returned reflection is stored locally on your device."),
-    ArticleItem.Subheading("Purchases and credits"),
-    ArticleItem.Paragraph("If you buy reflection credits, purchases are processed by Google Play and managed through RevenueCat. We do not receive or store your credit card number."),
-    ArticleItem.Paragraph("Anky uses purchase-related records, credit balances, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Google Play and RevenueCat to grant and manage reflection credits."),
-    ArticleItem.Subheading("Local access and request safety"),
-    ArticleItem.Paragraph("Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and return credits to the right profile."),
-    ArticleItem.Paragraph("Credit operations identify your RevenueCat customer with your Anky profile so credits can be loaded, purchased, and spent correctly."),
-    ArticleItem.Paragraph("Your private recovery material is not sent to Anky."),
-    ArticleItem.Subheading("Device trial and abuse prevention"),
-    ArticleItem.Paragraph("For free trials, abuse prevention, fraud prevention, and request safety, the app may ask Android platform integrity or device attestation services for a token when supported. Reflection and nudge requests send that token to the mirror service as trial proof. The mirror service also uses timestamps, hashes, app version, platform/client, and request intent."),
-    ArticleItem.Subheading("Backup, export, and import"),
-    ArticleItem.Paragraph("When you enable backup, recovery, or export features, the selected writing, reflections, recovery information, or related files are stored using Android device storage, Android backup services when enabled by your device settings, or the destination you choose through the share sheet or file picker."),
-    ArticleItem.Paragraph("Anky cannot control the privacy of files after you export or share them."),
-    ArticleItem.Subheading("Support"),
-    ArticleItem.Paragraph("If you contact support, you choose what to send. Support messages include the email address you send from and any Anky support ID, platform, app version, text, screenshots, files, or context you include."),
-    ArticleItem.Heading("5. What We Do Not Collect"),
-    ArticleItem.Paragraph("Anky does not require:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Your legal name",
-            "Your phone number",
-            "Your contacts",
-            "Your precise location",
-            "Your camera",
-            "Your microphone",
-            "Your photos",
-            "Your social accounts",
-            "A traditional username/password login",
-        ),
-    ),
-    ArticleItem.Paragraph("Anky does not sell personal data."),
-    ArticleItem.Paragraph("Anky does not use your writing for advertising."),
-    ArticleItem.Paragraph("Anky does not use your writing to train Anky-owned AI models."),
-    ArticleItem.Heading("6. Third-Party Services"),
-    ArticleItem.Paragraph("Anky uses the following third-party services for the app features described in this policy:"),
-    ArticleItem.Bullets(
-        listOf(
-            "**Google** - Google Play purchases, refunds, device services, Android backup services when enabled, notifications, device attestation, and platform services.",
-            "**RevenueCat** - purchase management, credit balances, entitlements, and transaction-related records.",
-            "**OpenRouter** - routing reflection requests to AI model providers.",
-            "**AI model providers** - generating reflections from the text you choose to send.",
-            "**Cloud hosting / infrastructure providers** - operating Anky's mirror service, logs, security, and reliability.",
-            "**Email/support providers** - receiving and responding to support requests.",
-        ),
-    ),
-    ArticleItem.Paragraph("These providers process data according to their own terms and privacy policies."),
-    ArticleItem.Heading("7. AI Processing"),
-    ArticleItem.Paragraph("When you ask for a reflection, your writing is processed by AI systems."),
-    ArticleItem.Paragraph("AI-generated reflections can be inaccurate, incomplete, unexpected, emotionally intense, or not useful. Reflections are generated automatically and should not be treated as professional advice."),
-    ArticleItem.Paragraph("We design Anky's mirror service to avoid permanently storing raw `.anky` writing, reconstructed writing, or reflection text unless needed for a user-requested support/debugging flow, security, abuse prevention, legal compliance, or another clearly stated purpose."),
-    ArticleItem.Paragraph("AI providers process requests according to their own data-handling policies. We use privacy-protective settings where available, but we cannot promise that every downstream provider has identical retention practices."),
-    ArticleItem.Heading("8. Operational Metadata"),
-    ArticleItem.Paragraph("To operate Anky, we collect and process limited metadata, such as:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Anky support ID or app user identifier",
-            "Request timestamps",
-            "Request hashes",
-            "App version",
-            "Platform",
-            "Credit balance and credit transaction records",
-            "Purchase product identifiers",
-            "Error states",
-            "Provider usage metadata",
-            "Security and abuse-prevention signals",
-            "Support request metadata",
-        ),
-    ),
-    ArticleItem.Paragraph("We use this data to provide reflections, manage credits, prevent abuse, debug issues, respond to support, comply with law, and operate the service."),
-    ArticleItem.Heading("9. Payments"),
-    ArticleItem.Paragraph("Payments are handled by Google Play and managed with RevenueCat."),
-    ArticleItem.Paragraph("We do not receive your full payment card details."),
-    ArticleItem.Paragraph("Refunds, billing disputes, and purchase history are handled according to Google Play policies."),
-    ArticleItem.Heading("10. Tokens And Public References"),
-    ArticleItem.Paragraph("Anky may display token or public-reference information when those features are available."),
-    ArticleItem.Paragraph("Your private recovery material remains on your device unless you export, reveal, back up, or otherwise share it."),
-    ArticleItem.Paragraph("Never share your recovery words. If you lose them, Anky cannot restore access without a backup you control."),
-    ArticleItem.Paragraph("Some token, transaction, and public-reference information can be public by nature. Anky cannot delete information written to public networks."),
-    ArticleItem.Heading("11. Data Retention"),
-    ArticleItem.Paragraph("Local data remains on your device until you delete it, delete the app, reset the app, or remove backups."),
-    ArticleItem.Paragraph("Reflection-related operational metadata is retained as long as needed to operate the service, manage credits, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security."),
-    ArticleItem.Paragraph("Purchase records are retained by Google Play, RevenueCat, and Anky as needed for billing, accounting, fraud prevention, tax, legal, and support purposes."),
-    ArticleItem.Paragraph("Support emails are retained as long as needed to respond to you, keep records, and protect Anky."),
-    ArticleItem.Heading("12. Deletion"),
-    ArticleItem.Paragraph("You can delete local writing, local reflections, private access, and local app data from inside the app where deletion tools are available, or by deleting the app from your device."),
-    ArticleItem.Paragraph("Deleting the app does not delete data outside the app, including:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Files you exported or shared",
-            "Android backups or device backups controlled by your device settings",
-            "Google Play purchase records",
-            "RevenueCat purchase records",
-            "Support emails you sent",
-            "Backend metadata needed for security, credit accounting, fraud prevention, legal compliance, or dispute resolution",
-            "Public network data",
-        ),
-    ),
-    ArticleItem.Paragraph("To request deletion of data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
-    ArticleItem.Heading("13. Children"),
-    ArticleItem.Paragraph("Anky is not intended for children under 13."),
-    ArticleItem.Paragraph("If you are under 18, use Anky only with permission from a parent or guardian."),
-    ArticleItem.Paragraph("We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information, contact **[support@anky.app](mailto:support@anky.app)**."),
-    ArticleItem.Heading("14. Your Rights"),
-    ArticleItem.Paragraph("Depending on where you live, your rights can include access, correction, deletion, export, restriction, or objection to certain uses of your personal data."),
-    ArticleItem.Paragraph("Because Anky is local-first, much of your data is only on your device and can be managed by you directly."),
-    ArticleItem.Paragraph("For requests about data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**."),
-    ArticleItem.Heading("15. Security"),
-    ArticleItem.Paragraph("We use reasonable technical and organizational measures to protect data we process."),
-    ArticleItem.Paragraph("No system is perfectly secure. You are responsible for protecting your device, passcode, recovery words, exported files, Android account, and any place where you store or share your writing."),
-    ArticleItem.Heading("16. International Users"),
-    ArticleItem.Paragraph("Anky, Inc. is based in the United States. Data sent to Anky or its service providers is processed in the United States or other countries where those providers operate."),
-    ArticleItem.Heading("17. Changes"),
-    ArticleItem.Paragraph("We update this Privacy Policy when the policy changes."),
-    ArticleItem.Paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated policy."),
-    ArticleItem.Heading("18. Contact"),
-    ArticleItem.Paragraph("**Anky, Inc.**"),
-    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
-)
-
-private val TermsCopy = listOf(
-    ArticleItem.Caption("Anky, Inc. - Effective June 7, 2026"),
-    ArticleItem.Callout("Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery words, your purchases, and how you use AI-generated reflections."),
-    ArticleItem.Heading("1. Acceptance"),
-    ArticleItem.Paragraph("These Terms and Conditions are an agreement between you and **Anky, Inc.**, a Delaware corporation."),
-    ArticleItem.Paragraph("By downloading, accessing, or using Anky, you agree to these Terms."),
-    ArticleItem.Paragraph("If you do not agree, do not use Anky."),
-    ArticleItem.Heading("2. What Anky Provides"),
-    ArticleItem.Paragraph("Anky lets you:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Write forward-only `.anky` sessions",
-            "Save writing locally",
-            "Revisit local writing history",
-            "Export or import writing files",
-            "Manage private Anky access",
-            "Buy or use reflection credits",
-            "Ask Anky for AI-generated reflections",
-            "Use related features we provide over time",
-        ),
-    ),
-    ArticleItem.Paragraph("We may change, suspend, or discontinue any part of Anky at any time."),
-    ArticleItem.Heading("3. Age Requirement"),
-    ArticleItem.Paragraph("Anky is not intended for children under 13."),
-    ArticleItem.Paragraph("If you are under 18, you may use Anky only with permission from a parent or guardian."),
-    ArticleItem.Paragraph("By using Anky, you represent that you meet these requirements."),
-    ArticleItem.Heading("4. Anky Is Not Professional Advice"),
-    ArticleItem.Paragraph("Anky is not a therapist, doctor, emergency service, financial advisor, legal advisor, religious authority, or spiritual authority."),
-    ArticleItem.Paragraph("AI-generated reflections are for personal writing reflection only."),
-    ArticleItem.Paragraph("They may be inaccurate, incomplete, unexpected, emotionally intense, or not useful."),
-    ArticleItem.Paragraph("Do not rely on Anky for medical, mental health, legal, financial, emergency, or safety decisions."),
-    ArticleItem.Paragraph("If you may hurt yourself or someone else, or if you are in immediate danger, contact local emergency services or a trusted person immediately."),
-    ArticleItem.Heading("5. Your Writing"),
-    ArticleItem.Paragraph("You own your writing."),
-    ArticleItem.Paragraph("By using Anky, you give Anky, Inc. a limited permission to process your writing only as needed to provide the features you choose, such as saving locally, generating a reflection, exporting, importing, backing up, debugging, support, security, and abuse prevention."),
-    ArticleItem.Paragraph("You are responsible for what you write, export, send, share, or back up."),
-    ArticleItem.Paragraph("Do not write, upload, export, or share content through Anky in a way that violates the law or harms others."),
-    ArticleItem.Heading("6. Local-First Design"),
-    ArticleItem.Paragraph("Anky is designed to be local-first."),
-    ArticleItem.Paragraph("Your writing normally stays on your device."),
-    ArticleItem.Paragraph("When you ask for a reflection, you understand that your writing is sent to Anky's mirror service and AI service providers to generate the reflection. We use providers that don't store your writing."),
-    ArticleItem.Paragraph("When you export, share, back up, or contact support, you are choosing to send or store data outside the app."),
-    ArticleItem.Heading("7. Private Access And Recovery"),
-    ArticleItem.Paragraph("Anky may create private local access for your device."),
-    ArticleItem.Paragraph("You are responsible for protecting your recovery words, device passcode, biometric access, account backups, and exported files."),
-    ArticleItem.Paragraph("Never share your recovery words."),
-    ArticleItem.Paragraph("If you lose your recovery words, Anky may not be able to restore your credits, profile state, or related data."),
-    ArticleItem.Paragraph("Anky is not responsible for losses caused by lost recovery words, compromised devices, shared credentials, or unauthorized access to your device or accounts."),
-    ArticleItem.Heading("8. Purchases, Credits, and Refunds"),
-    ArticleItem.Paragraph("Writing in Anky is free."),
-    ArticleItem.Paragraph("Reflections may require credits."),
-    ArticleItem.Paragraph("Credits are digital app credits used only inside Anky for reflection requests. Credits are not money, not cryptocurrency, not stored value, not withdrawable, not redeemable for cash, and not transferable unless we explicitly say otherwise."),
-    ArticleItem.Paragraph("Purchases are processed through Google Play and may be managed by RevenueCat."),
-    ArticleItem.Paragraph("We do not handle or store your full payment card details."),
-    ArticleItem.Paragraph("Refunds are handled by Google Play according to Google's policies."),
-    ArticleItem.Paragraph("We may change pricing, credit packs, free trials, or credit rules at any time, subject to applicable law and Google Play rules."),
-    ArticleItem.Heading("9. AI-Generated Reflections"),
-    ArticleItem.Paragraph("AI-generated reflections are produced automatically."),
-    ArticleItem.Paragraph("You understand that reflections may:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Be wrong",
-            "Miss important context",
-            "Sound more certain than they are",
-            "Be emotionally uncomfortable",
-            "Fail to understand your language, tone, or intent",
-            "Contain unexpected content",
-            "Be unavailable because of technical errors",
-        ),
-    ),
-    ArticleItem.Paragraph("You remain responsible for interpreting and using any reflection."),
-    ArticleItem.Paragraph("Anky, Inc. is not responsible for decisions you make based on AI-generated content."),
-    ArticleItem.Heading("10. Token References"),
-    ArticleItem.Paragraph("Anky may display token references, public references, or related information."),
-    ArticleItem.Paragraph("These references are informational only."),
-    ArticleItem.Paragraph("Nothing in Anky is financial advice, investment advice, tax advice, legal advice, or an offer to buy or sell any token, security, or asset."),
-    ArticleItem.Paragraph("Using Anky does not require buying, holding, or trading any token."),
-    ArticleItem.Paragraph("Public-network transactions may be public, irreversible, volatile, risky, and outside Anky's control."),
-    ArticleItem.Paragraph("You are responsible for your own purchases, transactions, taxes, and financial decisions."),
-    ArticleItem.Heading("11. User Conduct"),
-    ArticleItem.Paragraph("You agree not to:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Use Anky if you do not meet the age requirements",
-            "Use Anky for illegal activity",
-            "Abuse, attack, disrupt, or overload Anky's systems",
-            "Circumvent credits, paywalls, trials, app attestation, or security controls",
-            "Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, or backend systems",
-            "Use bots, scripts, or automation to abuse the app",
-            "Attempt to access another person's data, recovery words, private access, or account",
-            "Upload or share content that violates another person's rights",
-            "Use Anky to generate instructions for harming yourself or others",
-            "Misrepresent Anky, Anky, Inc., or any affiliation with us",
-        ),
-    ),
-    ArticleItem.Paragraph("We may suspend, restrict, or terminate access if we believe you violated these Terms, abused the service, created risk, or used Anky unlawfully."),
-    ArticleItem.Heading("12. Intellectual Property"),
-    ArticleItem.Paragraph("Anky, Inc. owns Anky's software, design, name, logos, characters, visual assets, prompts, product concepts, documentation, and related intellectual property."),
-    ArticleItem.Paragraph("You may not copy, modify, distribute, sell, reverse engineer, or create derivative works from Anky except where allowed by law or by an open-source license we explicitly provide."),
-    ArticleItem.Paragraph("You retain ownership of your own writing."),
-    ArticleItem.Heading("13. Feedback"),
-    ArticleItem.Paragraph("If you send us feedback, ideas, suggestions, bug reports, or feature requests, you give Anky, Inc. permission to use them without restriction or compensation."),
-    ArticleItem.Paragraph("This does not give us ownership of your private writing."),
-    ArticleItem.Heading("14. Third-Party Services"),
-    ArticleItem.Paragraph("Anky depends on third-party services, which may include Google, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and public networks."),
-    ArticleItem.Paragraph("We are not responsible for third-party services, terms, outages, policies, prices, decisions, or data practices."),
-    ArticleItem.Paragraph("Your use of third-party services may be subject to their terms and privacy policies."),
-    ArticleItem.Heading("15. App Store Terms"),
-    ArticleItem.Paragraph("If you downloaded Anky from Google Play, Google's terms also apply."),
-    ArticleItem.Paragraph("Google is not responsible for Anky, its content, support, warranties, or claims, except as required by applicable law or Google's own terms."),
-    ArticleItem.Heading("16. Availability"),
-    ArticleItem.Paragraph("Anky may be unavailable, delayed, interrupted, inaccurate, or discontinued."),
-    ArticleItem.Paragraph("We do not guarantee that Anky will always work, that reflections will always be available, that credits will always sync instantly, or that local data will never be lost."),
-    ArticleItem.Paragraph("Back up anything important."),
-    ArticleItem.Heading("17. Termination"),
-    ArticleItem.Paragraph("You may stop using Anky at any time."),
-    ArticleItem.Paragraph("You can delete the app and delete local data where the app provides deletion tools."),
-    ArticleItem.Paragraph("We may suspend, limit, or terminate your access to Anky at any time if we believe it is necessary to protect Anky, users, third parties, or the integrity of the service."),
-    ArticleItem.Heading("18. Disclaimer of Warranties"),
-    ArticleItem.Paragraph("ANKY IS PROVIDED \"AS IS\" AND \"AS AVAILABLE.\""),
-    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RELIABILITY."),
-    ArticleItem.Paragraph("YOUR USE OF ANKY IS AT YOUR OWN RISK."),
-    ArticleItem.Heading("19. Limitation of Liability"),
-    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT."),
-    ArticleItem.Paragraph("TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.'S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:"),
-    ArticleItem.Paragraph("(A) THE AMOUNT YOU PAID TO ANKY, INC. THROUGH THE APP IN THE 12 MONTHS BEFORE THE CLAIM, OR"),
-    ArticleItem.Paragraph("(B) $50 USD."),
-    ArticleItem.Paragraph("Some jurisdictions do not allow certain limitations, so some of these limits may not apply to you."),
-    ArticleItem.Heading("20. Indemnification"),
-    ArticleItem.Paragraph("You agree to defend, indemnify, and hold harmless Anky, Inc. and its owners, directors, officers, employees, contractors, service providers, and affiliates from claims, damages, losses, liabilities, costs, and expenses arising from:"),
-    ArticleItem.Bullets(
-        listOf(
-            "Your use of Anky",
-            "Your writing or exported content",
-            "Your violation of these Terms",
-            "Your violation of law",
-            "Your violation of another person's rights",
-            "Your misuse of AI-generated reflections",
-            "Your token, transaction, or recovery activity",
-        ),
-    ),
-    ArticleItem.Heading("21. Governing Law"),
-    ArticleItem.Paragraph("These Terms are governed by the laws of the State of Delaware, without regard to conflict-of-law principles, except where your local law requires otherwise."),
-    ArticleItem.Heading("22. Disputes and Arbitration"),
-    ArticleItem.Paragraph("To the fullest extent permitted by law, disputes between you and Anky, Inc. will be resolved through binding individual arbitration, not in a class action or jury trial."),
-    ArticleItem.Paragraph("You and Anky, Inc. agree to bring claims only on an individual basis."),
-    ArticleItem.Paragraph("This section does not prevent either party from seeking relief in small claims court or seeking injunctive relief for intellectual property, security, or unauthorized access issues."),
-    ArticleItem.Paragraph("If this arbitration section is not enforceable where you live, the rest of these Terms still apply."),
-    ArticleItem.Heading("23. Changes"),
-    ArticleItem.Paragraph("We may update these Terms from time to time."),
-    ArticleItem.Paragraph("When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated Terms."),
-    ArticleItem.Heading("24. Contact"),
-    ArticleItem.Paragraph("**Anky, Inc.**"),
-    ArticleItem.Paragraph("Contact: **[support@anky.app](mailto:support@anky.app)**"),
-)
-
-private val TokenCopy = listOf(
-    ArticleItem.Paragraph("a memecoin is the simplest possible expression of an idea on the internet. no pitch deck, no roadmap, no Series A. just a name, a ticker, and a bet that enough people will recognize what it points to."),
-    ArticleItem.Paragraph("\$ANKY exists as a memecoin. that's it. no presale, no team allocation, no vesting schedule. the bonding curve did what bonding curves do."),
-    ArticleItem.Heading("what it points to"),
-    ArticleItem.Paragraph("anky is a writing practice. you sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. the token doesn't change what the practice is. it doesn't unlock features or grant access. it's a flag planted in the ground that says: this idea exists, and the market gets to decide what it's worth."),
-    ArticleItem.Heading("memecoins and the new internet"),
-    ArticleItem.Paragraph("the old internet released ideas through products. you built something, charged for it, and hoped people would pay. the new internet releases ideas through tokens. the idea itself becomes tradeable the moment it has a name."),
-    ArticleItem.Paragraph("this is either profoundly stupid or profoundly honest. probably both. a memecoin strips away every pretension about what makes something valuable and reduces it to the only question that ever mattered: do people care about this?"),
-    ArticleItem.Paragraph("most memecoins are jokes. some jokes contain more truth than business plans. the cosmic joke of \$ANKY is that a tool designed to bypass your conscious mind — to help you stop thinking and just write — now has a price feed that people watch with their conscious minds, thinking very hard about whether the number will go up."),
-    ArticleItem.Paragraph("the mirror doesn't care about the price. the practice remains free. write for 8 minutes. meet yourself. whether the token is worth a penny or a dollar, the words you wrote are still yours."),
-)
 
 internal fun identityStatus(state: YouState): String = "Local identity"
 
@@ -2483,38 +2274,52 @@ private fun YouInitialPage.toYouPage(): YouPage =
         YouInitialPage.Credits -> YouPage.Credits
     }
 
-private enum class YouPrompt(val message: String) {
-    Identity("your identity can be saved to secure storage."),
-    Privacy("Writing stays local unless you export or ask for a reflection."),
-    Export("Your archive is yours. Export readable writings or keep a local backup."),
-    Credits("Credits are only for reflections. Writing is free."),
-    Support("Send us an email! We want to evolve this app based on your feedback."),
-    Developer("Local tools. Repair first, delete only when you mean it."),
+private enum class YouPrompt {
+    Identity,
+    Privacy,
+    Export,
+    Credits,
+    Support,
+    Developer,
 }
 
+@Composable
+private fun localizedYouPromptMessage(prompt: YouPrompt): String =
+    when (prompt) {
+        YouPrompt.Identity -> stringResource(R.string.you_prompt_identity)
+        YouPrompt.Privacy -> stringResource(R.string.you_prompt_privacy)
+        YouPrompt.Export -> stringResource(R.string.you_prompt_export)
+        YouPrompt.Credits -> stringResource(R.string.you_prompt_credits)
+        YouPrompt.Support -> stringResource(R.string.you_prompt_support)
+        YouPrompt.Developer -> stringResource(R.string.you_prompt_developer)
+    }
+
+@Composable
 private fun youConversationMessage(
     state: YouState,
     activePrompt: YouPrompt?,
     isShowingSystemPrompt: Boolean,
 ): String =
     if (isShowingSystemPrompt) {
-        state.error ?: state.statusMessage ?: activePrompt?.message.orEmpty()
+        state.error?.let { localizedYouStatusMessage(it) }
+            ?: state.statusMessage?.let { localizedYouStatusMessage(it) }
+            ?: activePrompt?.let { localizedYouPromptMessage(it) }.orEmpty()
     } else if (activePrompt == YouPrompt.Credits) {
         val purchasingPackage = state.purchasingCreditPackageId
             ?.let { packageId -> state.creditState.packages.firstOrNull { it.packageId == packageId } }
         when {
-            purchasingPackage != null -> "Anky is opening the ${purchasingPackage.title} pack."
-            state.creditState.isLoading -> "Anky is checking the credit gate."
+            purchasingPackage != null -> stringResource(R.string.you_conversation_opening_pack, localizedCreditPackageTitle(purchasingPackage))
+            state.creditState.isLoading -> stringResource(R.string.you_conversation_checking_credit_gate)
             else -> creditsPromptMessage(state)
         }
     } else if (activePrompt == YouPrompt.Export) {
         if (state.isEncryptedBackupWorking) {
-            "Anky is updating the encrypted backup."
+            stringResource(R.string.you_conversation_updating_encrypted_backup)
         } else {
             encryptedBackupDetail(state)
         }
     } else {
-        activePrompt?.message.orEmpty()
+        activePrompt?.let { localizedYouPromptMessage(it) }.orEmpty()
     }
 
 private fun isConversationThinking(activePrompt: YouPrompt?, state: YouState): Boolean =
@@ -2522,16 +2327,17 @@ private fun isConversationThinking(activePrompt: YouPrompt?, state: YouState): B
         (state.creditState.isLoading || state.purchasingCreditPackageId != null)) ||
         (activePrompt == YouPrompt.Export && state.isEncryptedBackupWorking)
 
+@Composable
 private fun encryptedBackupDetail(state: YouState): String {
     if (state.isEncryptedBackupEnabled) {
         val lastBackup = state.encryptedBackupLastDate
         return if (lastBackup != null) {
-            "Encrypted backup is on. Last updated ${lastBackup.formattedForYouBackup()}."
+            stringResource(R.string.you_encrypted_backup_last_updated, lastBackup.formattedForYouBackup())
         } else {
-            YouStatusCopy.EncryptedBackupOnAfterNextWriting
+            stringResource(R.string.you_status_encrypted_backup_on_after_next_writing)
         }
     }
-    return "Export readable writings or turn on encrypted backup for reinstall recovery."
+    return stringResource(R.string.you_encrypted_backup_export_or_turn_on)
 }
 
 private fun Instant.formattedForYouBackup(): String =
@@ -2554,13 +2360,14 @@ private fun creditsMenuSubtitle(
         else -> reflectionBalance
     }
 
+@Composable
 private fun creditsPromptMessage(state: YouState): String {
     val balance = when {
-        state.creditState.isLoading && state.creditState.balance == null -> "loading..."
+        state.creditState.isLoading && state.creditState.balance == null -> stringResource(R.string.you_credit_balance_loading)
         state.creditState.balance != null -> state.creditState.balance.toString()
-        else -> "unknown"
+        else -> stringResource(R.string.you_credit_balance_unknown)
     }
-    return "You have $balance reflection ${if (balance == "1") "credit" else "credits"}. Choose a pack to add more."
+    return stringResource(R.string.you_credit_prompt_message, balance)
 }
 
 private fun ankyContractDisplayAddress(): String {
@@ -2575,8 +2382,15 @@ private data class YouPromptActionLabels(
     val exportWritings: String,
     val copyAccount: String,
     val ankyAddress: String,
+    val repairMapIndex: String,
     val deleteLocalData: String,
     val openEmail: String,
+    val loadingCreditPacks: String,
+    val refreshCredits: String,
+    val bestValue: String,
+    val creditPack3Title: String,
+    val creditPack11Title: String,
+    val creditPack33Title: String,
     val backupRecoveryWordsSecureStorageReason: String,
     val enableEncryptedBackupReason: String,
     val couldNotConfirmIdentity: String,
@@ -2628,19 +2442,19 @@ private fun youPromptActions(
             val packages = state.creditState.packages.take(3)
             if (packages.isEmpty()) {
                 listOf(
-                    AnkyChatAction(if (state.creditState.isLoading) "loading packs" else "refresh credits", isPrimary = true) {
+                    AnkyChatAction(if (state.creditState.isLoading) labels.loadingCreditPacks else labels.refreshCredits, isPrimary = true) {
                         viewModel.refreshCredits()
                     },
                 )
             } else {
                 packages.map { creditPackage ->
-                    val isRecommended = creditPackage.title == "11 reflections" ||
+                    val isRecommended = creditPackage.productId == "inc.anky.credits.11" ||
                         creditPackage.packageId.endsWith(".credits.11")
                     AnkyChatAction(
-                        title = creditPackage.title,
+                        title = localizedCreditPackageTitle(creditPackage, labels),
                         isPrimary = isRecommended,
                         subtitle = creditPackage.price,
-                        badge = if (isRecommended) "recommended" else null,
+                        badge = if (isRecommended) labels.bestValue else null,
                     ) {
                         viewModel.purchaseCredits(creditPackage.packageId, context.findActivity())
                     }
@@ -2652,13 +2466,21 @@ private fun youPromptActions(
         )
         YouPrompt.Developer -> if (BuildConfig.DEBUG) {
             listOf(
-                AnkyChatAction("repair map", isPrimary = true) { viewModel.rebuildSessionIndex() },
+                AnkyChatAction(labels.repairMapIndex, isPrimary = true) { viewModel.rebuildSessionIndex() },
                 AnkyChatAction(labels.deleteLocalData) { confirmDeleteLocalData() },
             )
         } else {
             emptyList()
         }
         null -> emptyList()
+    }
+
+private fun localizedCreditPackageTitle(creditPackage: CreditPackage, labels: YouPromptActionLabels): String =
+    when (creditPackage.productId) {
+        "inc.anky.credits.3" -> labels.creditPack3Title
+        "inc.anky.credits.11" -> labels.creditPack11Title
+        "inc.anky.credits.33" -> labels.creditPack33Title
+        else -> creditPackage.title
     }
 
 private fun Context.copyText(label: String, text: String) {

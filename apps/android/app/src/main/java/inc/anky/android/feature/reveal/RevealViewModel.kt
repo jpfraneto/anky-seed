@@ -70,7 +70,10 @@ data class RevealState(
         get() = ReflectionCreditPresentation.messageFor(creditPromptState)
 
     val canSubmitReflectionRequest: Boolean
-        get() = canAskAnky && !isAsking && creditPromptState != ReflectionCreditPromptState.Unavailable
+        get() = canAskAnky &&
+            !isAsking &&
+            !creditsLoading &&
+            creditPromptState != ReflectionCreditPromptState.Unavailable
 
     val needsCreditsToReflect: Boolean
         get() = artifact?.isComplete == true &&
@@ -162,6 +165,7 @@ class RevealViewModel(
             isAsking = isPending,
             reflectionStatusMessage = if (isPending) "i am waiting with the mirror." else "",
             creditBalance = reflection?.creditsRemaining ?: cachedBalance,
+            creditsLoading = canAskAnky && creditsClient != null && cachedBalance == null,
             hasClaimedFreeCredits = hasClaimedFreeCreditsProvider() || reflectionStore.list().isNotEmpty(),
         )
         if (isPending) {

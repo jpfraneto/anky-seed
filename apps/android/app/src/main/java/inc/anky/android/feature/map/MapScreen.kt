@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -202,7 +204,7 @@ private fun TrailMap(
                 item {
                     Text(
                         labels.noWritingSaved,
-                        style = AnkyType.Body.copy(fontSize = 20.sp, color = AnkyColors.PaperMuted),
+                        style = AnkyType.Body.copy(color = AnkyColors.PaperMuted),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
                     )
@@ -337,7 +339,13 @@ private fun TrailDayNode(
             .height(rowHeight)
             .clickable { onOpenDay(day) }
             .semantics {
-                contentDescription = dayAccessibilityLabel(day, labels.today)
+                contentDescription = dayAccessibilityLabel(
+                    day = day,
+                    todayLabel = labels.today,
+                    noWritingLabel = labels.noWriting,
+                    showedUpLabel = labels.showedUp,
+                    noCompleteAnkyLabel = labels.noCompleteAnky,
+                )
         },
         contentAlignment = Alignment.Center,
     ) {
@@ -401,14 +409,32 @@ private fun TrailDayNode(
     }
 }
 
-internal fun dayAccessibilityLabel(day: SessionDay, todayLabel: String = "Today"): String {
+internal fun dayAccessibilityLabel(
+    day: SessionDay,
+    todayLabel: String = "Today",
+    noWritingLabel: String = "No writing",
+    showedUpLabel: String = "Showed up",
+    noCompleteAnkyLabel: String = "No complete anky",
+): String {
     val date = if (isToday(day.dayEpochMs)) {
         todayLabel
     } else {
         Instant.ofEpochMilli(day.dayEpochMs).formattedForMapDay()
     }
-    return "$date, ${day.trailActivitySummary}"
+    return "$date, ${day.localizedTrailActivitySummary(noWritingLabel, showedUpLabel, noCompleteAnkyLabel)}"
 }
+
+private fun SessionDay.localizedTrailActivitySummary(
+    noWritingLabel: String,
+    showedUpLabel: String,
+    noCompleteAnkyLabel: String,
+): String =
+    when (trailActivitySummary) {
+        "No writing" -> noWritingLabel
+        "Showed up" -> showedUpLabel
+        "No complete anky" -> noCompleteAnkyLabel
+        else -> trailActivitySummary
+    }
 
 private fun Instant.formattedForMapDay(): String =
     DateTimeFormatter
@@ -526,7 +552,23 @@ private fun MapSessionListScreen(
     onOpenReveal: (String) -> Unit,
     showsDayInHeader: Boolean = false,
 ) {
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(onBack) {
+                var totalDragX = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { totalDragX = 0f },
+                    onHorizontalDrag = { _, dragAmount -> totalDragX += dragAmount },
+                    onDragEnd = {
+                        if (totalDragX < -88.dp.toPx()) {
+                            onBack()
+                        }
+                    },
+                    onDragCancel = { totalDragX = 0f },
+                )
+            },
+    ) {
         Image(
             painter = painterResource(R.drawable.map_background),
             contentDescription = null,
@@ -548,14 +590,14 @@ private fun MapSessionListScreen(
                     if (sessions.isEmpty()) item {
                         Text(
                             emptyMessage,
-                            style = AnkyType.Body.copy(fontSize = 17.sp, color = AnkyColors.PaperMuted),
+                            style = AnkyType.Body.copy(color = AnkyColors.PaperMuted),
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 22.dp),
                         )
                     }
-                    items(sessions, key = { it.hash }) { SessionRow(it, onOpenReveal, showsDayInHeader) }
+                    items(sessions, key = { it.hash }) { SessionRow(it, labels, onOpenReveal, showsDayInHeader) }
                 }
             }
         }
@@ -605,10 +647,12 @@ private fun MapSessionTopBar(title: String, backLabel: String, onBack: () -> Uni
 @Composable
 private fun SessionRow(
     session: SessionSummary,
+    labels: MapLabels,
     onOpenReveal: (String) -> Unit,
     showsDayInHeader: Boolean = false,
 ) {
-    val reflectedTitle = session.reflectedTitle()
+    val reflectedTitle = session.reflectedTitle(labels.importedReflection)
+    val preview = session.localizedPreview(labels.noReadableText)
     val displayTags = session.displayTags()
     val rowInteraction = remember { MutableInteractionSource() }
     Box(
@@ -619,7 +663,11 @@ private fun SessionRow(
                 indication = null,
             ) { onOpenReveal(session.hash) }
             .semantics(mergeDescendants = true) {
-                contentDescription = sessionAccessibilityLabel(session)
+                contentDescription = sessionAccessibilityLabel(
+                    session = session,
+                    importedReflection = labels.importedReflection,
+                    noReadableText = labels.noReadableText,
+                )
             }
             .padding(top = 16.dp, bottom = 18.dp),
     ) {
@@ -634,7 +682,7 @@ private fun SessionRow(
                 Text(
                     session.createdAt.formattedForMapSessionTime(showsDayInHeader),
                     style = AnkyType.Mono.copy(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = AnkyColors.Gold.copy(alpha = 0.78f),
                     ),
@@ -647,7 +695,7 @@ private fun SessionRow(
                 Text(
                     it,
                     style = AnkyType.Heading.copy(
-                        fontSize = 29.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = AnkyColors.Gold,
                     ),
@@ -656,10 +704,8 @@ private fun SessionRow(
                 )
             }
             Text(
-                session.preview,
+                preview,
                 style = AnkyType.Body.copy(
-                    fontSize = 20.sp,
-                    lineHeight = 28.sp,
                     fontWeight = FontWeight.Normal,
                     color = if (session.isComplete) AnkyColors.Paper.copy(alpha = 0.94f) else AnkyColors.PaperMuted.copy(alpha = 0.82f),
                 ),
@@ -700,17 +746,25 @@ private fun SessionRow(
     }
 }
 
-internal fun sessionAccessibilityLabel(session: SessionSummary): String =
+internal fun sessionAccessibilityLabel(
+    session: SessionSummary,
+    importedReflection: String = "Imported reflection",
+    noReadableText: String = "No readable text",
+): String =
     listOfNotNull(
-        session.reflectedTitle(),
-        session.preview,
+        session.reflectedTitle(importedReflection),
+        session.localizedPreview(noReadableText),
     ).joinToString(", ")
 
-private fun SessionSummary.reflectedTitle(): String? =
+private fun SessionSummary.reflectedTitle(importedReflection: String): String? =
     reflectionTitle
         ?.trim()
         ?.takeIf { hasReflection && it.isNotEmpty() }
+        ?.let { if (it == "Imported reflection") importedReflection else it }
         ?.lowercase()
+
+private fun SessionSummary.localizedPreview(noReadableText: String): String =
+    if (preview == "No readable text") noReadableText else preview
 
 private fun SessionSummary.displayTags(): List<String> =
     tags.mapNotNull { it.asMapHashtag() }
@@ -757,6 +811,9 @@ private fun isToday(epochMs: Long): Boolean {
 
 private data class MapLabels(
     val noWritingSaved: String,
+    val noWriting: String,
+    val noCompleteAnky: String,
+    val noReadableText: String,
     val goToCurrentDay: String,
     val today: String,
     val openAllAnkys: String,
@@ -767,12 +824,16 @@ private data class MapLabels(
     val showedUp: String,
     val back: String,
     val couldNotLoadMap: String,
+    val importedReflection: String,
 )
 
 @Composable
 private fun mapLabels(): MapLabels =
     MapLabels(
         noWritingSaved = stringResource(R.string.map_no_writing_saved),
+        noWriting = stringResource(R.string.map_no_writing),
+        noCompleteAnky = stringResource(R.string.map_no_complete_anky),
+        noReadableText = stringResource(R.string.map_no_readable_text),
         goToCurrentDay = stringResource(R.string.map_go_to_current_day),
         today = stringResource(R.string.map_today),
         openAllAnkys = stringResource(R.string.open_all_ankys),
@@ -783,4 +844,5 @@ private fun mapLabels(): MapLabels =
         showedUp = stringResource(R.string.map_showed_up),
         back = stringResource(R.string.map_back),
         couldNotLoadMap = stringResource(R.string.map_could_not_load),
+        importedReflection = stringResource(R.string.imported_reflection_title),
     )

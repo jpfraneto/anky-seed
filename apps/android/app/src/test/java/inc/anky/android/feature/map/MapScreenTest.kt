@@ -56,6 +56,24 @@ class MapScreenTest {
     }
 
     @Test
+    fun dayAccessibilityLabelLocalizesKnownTrailActivitySummary() {
+        val label = dayAccessibilityLabel(
+            SessionDay(
+                dayEpochMs = Instant.parse("2026-05-31T00:00:00Z").toEpochMilli(),
+                sessions = emptyList(),
+                completeCount = 0,
+                fragmentCount = 0,
+                reflectionCount = 0,
+                dayIndex = 1,
+                dayInRegion = 1,
+            ),
+            noWritingLabel = "Sin escritura",
+        )
+
+        assertTrue(label.endsWith(", Sin escritura"))
+    }
+
+    @Test
     fun sessionAccessibilityLabelMatchesCurrentSwiftPreviewShape() {
         val label = sessionAccessibilityLabel(
             SessionSummary(
@@ -93,5 +111,25 @@ class MapScreenTest {
         assertEquals("short spark", label)
         assertFalse(label.contains("anky"))
         assertFalse(label.contains("reflected"))
+    }
+
+    @Test
+    fun sessionAccessibilityLabelLocalizesEmptyPreviewFallback() {
+        val label = sessionAccessibilityLabel(
+            SessionSummary(
+                hash = "d".repeat(64),
+                createdAt = Instant.parse("2026-05-31T19:50:00Z"),
+                localFilePath = "/tmp/d.anky",
+                durationMs = 45_000,
+                isComplete = false,
+                preview = "No readable text",
+                wordCount = 0,
+                hasReflection = false,
+                reflectionTitle = null,
+            ),
+            noReadableText = "Sin texto legible",
+        )
+
+        assertEquals("Sin texto legible", label)
     }
 }

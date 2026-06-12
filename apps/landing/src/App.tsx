@@ -12,6 +12,7 @@ import LegalPage, { type LegalRoute } from "./components/LegalPage";
 import MemesPage from "./components/MemesPage";
 import SiteNav from "./components/SiteNav";
 import StoreBadges from "./components/StoreBadges";
+import TikTokLandingPage from "./components/TikTokLandingPage";
 import { featureCards } from "./content";
 
 function isInteractiveTarget(target: EventTarget | null) {
@@ -175,6 +176,15 @@ function App() {
           title={path === "/docs" ? "Docs" : "Blog"}
           onNavigate={navigate}
         />
+        {ankyModeLayer}
+      </>
+    );
+  }
+
+  if (path === "/tiktok") {
+    return (
+      <>
+        <TikTokLandingPage onNavigate={navigate} />
         {ankyModeLayer}
       </>
     );

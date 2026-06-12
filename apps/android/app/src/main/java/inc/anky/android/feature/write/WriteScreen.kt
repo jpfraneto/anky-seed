@@ -21,12 +21,15 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -57,7 +60,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -101,11 +106,13 @@ fun WriteScreen(
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val view = LocalView.current
+    val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val importReadableError = stringResource(R.string.write_import_readable_error)
     val importOpenError = stringResource(R.string.write_import_open_error)
     val openMapLabel = stringResource(R.string.open_map)
     var importError by remember { mutableStateOf<String?>(null) }
+    var rememberedKeyboardBottomPx by remember { mutableIntStateOf(0) }
     WriteSystemBarsHidden()
     WriteHaptics(state)
 
@@ -182,10 +189,29 @@ fun WriteScreen(
         state.completedHash?.let(onCompleted)
     }
 
+    val keyboardBottomPx = WindowInsets.ime.getBottom(density)
+    LaunchedEffect(keyboardBottomPx) {
+        if (keyboardBottomPx > rememberedKeyboardBottomPx) {
+            rememberedKeyboardBottomPx = keyboardBottomPx
+        }
+    }
+    val estimatedKeyboardBottomPx = with(density) { 300.dp.roundToPx() }
+    val reservedKeyboardBottomPx = when {
+        rememberedKeyboardBottomPx > 0 -> rememberedKeyboardBottomPx
+        keyboardBottomPx > 0 -> keyboardBottomPx
+        else -> estimatedKeyboardBottomPx
+    }
+    val reservedKeyboardBottom = with(density) { reservedKeyboardBottomPx.toDp() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(inputEnabled) {
+                detectTapGestures {
+                    if (inputEnabled) viewModel.openWritingPortal()
+                }
+            }
             .testTag("write-screen"),
     ) {
         HiddenTextInput(
@@ -202,15 +228,26 @@ fun WriteScreen(
 
         BoxWithConstraints(
             modifier = Modifier
-                .fillMaxSize()
-                .imePadding(),
+                .fillMaxSize(),
         ) {
             val writingScrollState = rememberScrollState()
-            LaunchedEffect(state.displayedGlyphs.size, state.keyboardFocusRequestId) {
-                repeat(4) {
-                    delay(16)
+            var lastHandledContinuationScrollRequestId by remember {
+                mutableIntStateOf(state.continuationScrollRequestId)
+            }
+            LaunchedEffect(
+                state.displayedGlyphs.size,
+                state.keyboardFocusRequestId,
+                state.continuationScrollRequestId,
+                keyboardBottomPx,
+            ) {
+                val isContinuationRestore =
+                    state.isFrozenForContinuation ||
+                        state.continuationScrollRequestId != lastHandledContinuationScrollRequestId
+                repeat(if (isContinuationRestore) 12 else 4) {
+                    delay(if (isContinuationRestore) 32 else 16)
                     writingScrollState.scrollTo(writingScrollState.maxValue)
                 }
+                lastHandledContinuationScrollRequestId = state.continuationScrollRequestId
             }
             if (state.displayedText.isNotEmpty()) {
                 Box(
@@ -218,13 +255,14 @@ fun WriteScreen(
                         .align(Alignment.BottomEnd)
                         .fillMaxWidth()
                         .height(maxHeight)
+                        .imePadding()
                         .verticalScroll(writingScrollState),
                     contentAlignment = Alignment.BottomEnd,
                 ) {
                     Text(
                         text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
-                        fontSize = 20.sp,
-                        lineHeight = 28.sp,
+                        fontSize = 16.sp,
+                        lineHeight = 23.sp,
                         fontFamily = FontFamily.Default,
                         textAlign = TextAlign.End,
                         modifier = Modifier
@@ -285,16 +323,21 @@ fun WriteScreen(
                 )
             }
 
-            RitualRings(
-                elapsedMs = state.elapsedMs,
-                silenceElapsedMs = state.silenceElapsedMs,
-                latestGlyph = state.latestGlyph,
-                rejectedInputPulseId = state.rejectedInputPulseId,
-                isRitualComplete = state.hasReachedRitualMark,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .testTag("ritual-glyph"),
-            )
+                    .fillMaxSize()
+                    .padding(bottom = reservedKeyboardBottom),
+                contentAlignment = Alignment.Center,
+            ) {
+                RitualRings(
+                    elapsedMs = state.elapsedMs,
+                    silenceElapsedMs = state.silenceElapsedMs,
+                    latestGlyph = state.latestGlyph,
+                    rejectedInputPulseId = state.rejectedInputPulseId,
+                    isRitualComplete = state.hasReachedRitualMark,
+                    modifier = Modifier.testTag("ritual-glyph"),
+                )
+            }
         }
     }
 }
@@ -551,7 +594,7 @@ private fun writingGlyphText(glyphs: List<WritingGlyph>, silenceElapsedMs: Long)
     val pageOpacity = 0.22f + (((silenceElapsedMs - 3000).toFloat() / 5000f).coerceIn(0f, 1f) * 0.78f)
     glyphs.forEachIndexed { index, glyph ->
         val isLatest = index == latestIndex
-        val alpha = if (isLatest) 0.96f else maxOf(0.28f, pageOpacity * 0.82f)
+        val alpha = if (isLatest) 0.96f else maxOf(0.40f, pageOpacity * 0.78f)
         withStyle(SpanStyle(color = Color.White.copy(alpha = alpha))) {
             append(glyph.glyph)
         }

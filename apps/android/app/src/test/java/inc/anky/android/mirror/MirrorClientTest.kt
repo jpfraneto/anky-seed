@@ -66,10 +66,15 @@ class MirrorClientTest {
             creditsRemaining = 0,
             hasClaimedFreeCredits = true,
         )
+        val unavailableBeforeClaim = ReflectionCreditPresentation.state(
+            creditsRemaining = 0,
+            hasClaimedFreeCredits = false,
+        )
 
         assertEquals(ReflectionCreditPromptState.Available(2), available)
         assertEquals("You have 2 reflections left", ReflectionCreditPresentation.messageFor(available))
         assertEquals(ReflectionCreditPromptState.Unavailable, unavailable)
+        assertEquals(ReflectionCreditPromptState.Unavailable, unavailableBeforeClaim)
         assertEquals("No reflections left", ReflectionCreditPresentation.messageFor(unavailable))
     }
 

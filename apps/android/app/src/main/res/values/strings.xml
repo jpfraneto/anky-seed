@@ -17,6 +17,14 @@
     <string name="hold_dev_paste_anky_artifact">Hold for five seconds to paste the built-in dev .anky</string>
     <string name="write_import_readable_error">i couldn\'t find a readable .anky in that.</string>
     <string name="write_import_open_error">i couldn\'t open that .anky yet.</string>
+    <string name="write_restore_draft_error">Could not restore the active draft.</string>
+    <string name="write_save_anky_error">Could not save this .anky.</string>
+    <string name="write_generic_error">Could not keep writing right now.</string>
+    <string name="write_nudge_listening">anky is listening to this .anky for one line.</string>
+    <string name="write_nudge_empty_fallback">stay with the next true sentence.</string>
+    <string name="write_nudge_credit_error">that nudge needs one credit.</string>
+    <string name="write_nudge_incomplete_error">the mirror is not ready to nudge unfinished ankys yet.</string>
+    <string name="write_nudge_generic_error">anky could not return a nudge right now.</string>
     <string name="device_lock_prompt">Protect your Anky with your device lock. Your writing is local, and this keeps access private on this phone.</string>
     <string name="activate_device_lock">Activate Device Lock</string>
     <string name="protect_device_lock_reason">Protect ANKY with your device lock.</string>
@@ -29,16 +37,16 @@
     <string name="could_not_confirm_identity">Could not confirm identity.</string>
     <string name="not_now">Not now</string>
     <string name="you_title">You</string>
-    <string name="you_data" translatable="false">Data</string>
-    <string name="you_credits" translatable="false">Credits</string>
-    <string name="you_support_feedback" translatable="false">Support / Feedback</string>
-    <string name="you_email_support" translatable="false">Email support@anky.app</string>
+    <string name="you_data">Data</string>
+    <string name="you_credits">Credits</string>
+    <string name="you_support_feedback">Support / Feedback</string>
+    <string name="you_email_support">Email support@anky.app</string>
     <string name="you_privacy_policy">Privacy Policy</string>
-    <string name="you_privacy_subtitle" translatable="false">How your data is handled.</string>
+    <string name="you_privacy_subtitle">How your data is handled.</string>
     <string name="you_terms_conditions">Terms &amp; Conditions</string>
-    <string name="you_terms_subtitle" translatable="false">The agreement for using Anky</string>
-    <string name="you_copied_to_clipboard" translatable="false">Copied to clipboard</string>
-    <string name="you_token_pending" translatable="false">To be deployed</string>
+    <string name="you_terms_subtitle">The agreement for using Anky</string>
+    <string name="you_copied_to_clipboard">Copied to clipboard</string>
+    <string name="you_token_pending">To be deployed</string>
     <string name="you_encrypted_backup_on">Encrypted backup on</string>
     <string name="you_export_writings_or_enable_backup">Export writings or enable backup</string>
     <string name="you_loading_balance">Loading balance</string>
@@ -65,7 +73,7 @@
     <string name="copy_account">copy account</string>
     <string name="daily_reminder">daily reminder</string>
     <string name="daily_reminder_notification_title" translatable="false">ANKY</string>
-    <string name="daily_reminder_notification_body" translatable="false">write your anky today</string>
+    <string name="daily_reminder_notification_body">write your anky today</string>
     <string name="time">time</string>
     <string name="change_time">change time</string>
     <string name="hour">hour</string>
@@ -101,6 +109,13 @@
     <string name="no_local_data_to_back_up_yet">no local data to back up yet</string>
     <string name="restore_backup">restore backup</string>
     <string name="delete_local_data">delete local data</string>
+    <string name="clear_local_anky_archive_question">clear local .anky archive?</string>
+    <string name="clear_local_anky_archive_action">clear .anky archive</string>
+    <string name="clear_local_reflections_question">clear local reflections?</string>
+    <string name="clear_local_reflections_action">clear reflections</string>
+    <string name="reset_local_identity_question">reset local identity?</string>
+    <string name="reset_identity_action">reset identity</string>
+    <string name="reset_identity_warning">Resetting identity creates a new Anky Base account. Credits are tied to your current account. Save your recovery words before resetting.</string>
     <string name="privacy_page_heading">privacy is the shape of anky, not a feature added later.</string>
     <string name="privacy_contact_caption">questions, deletion requests, and privacy reports</string>
     <string name="terms_reflection_agreement">Writing and reflection agreement</string>
@@ -126,8 +141,8 @@
     <string name="copy_your_writing">copy your writing</string>
     <string name="open_email">Open email</string>
     <string name="you_backup_recovery_words">Back up recovery words</string>
-    <string name="you_history_title" translatable="false">all ankys</string>
-    <string name="you_history_subtitle" translatable="false">local writing history</string>
+    <string name="you_history_title">all ankys</string>
+    <string name="you_history_subtitle">local writing history</string>
     <string name="open_all_ankys">Open all ankys</string>
     <string name="you_stat_ankys">ankys</string>
     <string name="you_stat_minutes">minutes</string>
@@ -147,10 +162,86 @@
     <string name="biometric_lock">Biometric lock</string>
     <string name="device_lock">Device lock</string>
     <string name="you_token_title" translatable="false">$ANKY</string>
-    <string name="you_token_subtitle" translatable="false">the memetic layer</string>
-    <string name="you_developer_title" translatable="false">developer</string>
-    <string name="you_developer_subtitle" translatable="false">local tools</string>
+    <string name="you_token_subtitle">the memetic layer</string>
+    <string name="you_developer_title">developer</string>
+    <string name="you_developer_subtitle">local tools</string>
+    <string name="copied_exclamation">copied!</string>
+    <string name="copy_contract_address">copy contract address</string>
+    <string name="contract_address_clipboard_label">Anky contract address</string>
+    <string name="mirror_base_url">mirror base url</string>
+    <string name="mirror_base_url_help">emulator local mirror: http://10.0.2.2:3000. physical devices should use the deployed https mirror or an https tunnel to local.</string>
+    <string name="save_mirror_url">save mirror url</string>
+    <string name="repair_map_index">repair map index</string>
+    <string name="you_status_notifications_not_allowed">Notifications are not allowed for ANKY.</string>
+    <string name="you_status_loading_credit_packs">loading credit packs</string>
+    <string name="you_status_could_not_complete_credit_purchase">Could not complete that credit purchase.</string>
+    <string name="you_status_credits_updated">Credits updated.</string>
+    <string name="you_status_restoring_purchases">restoring purchases</string>
+    <string name="you_status_imported_counts">Imported %1$s .anky files and %2$s reflections.</string>
+    <string name="you_status_could_not_restore_encrypted_backup">Anky could not restore from encrypted backup.</string>
+    <string name="you_status_could_not_import_backup">Could not import that backup.</string>
+    <string name="you_status_could_not_clear_local_writing_data">Could not clear local writing data.</string>
+    <string name="you_status_could_not_rebuild_local_session_index">Could not rebuild the local session index.</string>
+    <string name="you_status_could_not_clear_local_reflections">Could not clear local reflections.</string>
+    <string name="you_status_could_not_clear_local_anky_files">Could not clear local .anky files.</string>
+    <string name="you_status_could_not_reset_local_identity">Could not reset the local identity.</string>
+    <string name="you_status_recovery_words_must_be_12">Recovery words must be 12 words.</string>
+    <string name="you_status_recovery_words_unrecognized">Recovery words contain an unrecognized word.</string>
+    <string name="you_status_could_not_recover_identity">Could not recover that identity.</string>
+    <string name="you_status_no_credit_packs_available">no credit packs available</string>
+    <string name="you_status_credits_refreshed">credits refreshed.</string>
+    <string name="you_status_credit_package_unavailable">That credit package is not available.</string>
+    <string name="you_status_purchases_restored_identity">Purchases restored for this Anky identity.</string>
+    <string name="you_status_could_not_restore_purchases_identity">Could not restore purchases for this Anky identity.</string>
+    <string name="you_restore_identity_note">Restores purchases linked to this Anky address. Spent credits may not reappear if this is not the same Anky identity used to buy them.</string>
+    <string name="you_status_identity_backup_saved">Recovery words saved to device secure storage. Use Data export for writing and reflection backups.</string>
+    <string name="you_status_identity_recovered">Identity recovered.</string>
+    <string name="you_status_map_index_repaired">Map index repaired.</string>
+    <string name="you_status_local_reflections_cleared">Local reflections cleared.</string>
+    <string name="you_status_local_anky_archive_cleared">Local .anky archive cleared.</string>
+    <string name="you_status_local_writing_data_cleared">Local writing data cleared.</string>
+    <string name="you_status_local_identity_reset">Local identity reset.</string>
+    <string name="you_status_account_data_deleted">Account and data deleted from this device.</string>
+    <string name="you_status_could_not_delete_all_account_data">Could not delete all account data.</string>
+    <string name="you_status_could_not_create_backup_zip">Could not create a backup zip.</string>
+    <string name="you_status_could_not_create_writing_export">Could not create a writing export.</string>
+    <string name="you_status_no_writing_to_export_yet">There is no writing to export yet.</string>
+    <string name="you_status_could_not_load_local_writer_identity">Could not load the local Base identity.</string>
+    <string name="you_status_could_not_load_recovery_words">Could not load the recovery words.</string>
+    <string name="you_status_could_not_backup_anky_identity">Could not back up Anky identity.</string>
+    <string name="you_status_could_not_schedule_daily_reminder">Could not schedule the daily reminder.</string>
+    <string name="you_status_could_not_load_credits">Could not load credits.</string>
+    <string name="you_status_encrypted_backup_on">Encrypted backup is on.</string>
+    <string name="you_status_encrypted_backup_off">Encrypted backup is off.</string>
+    <string name="you_status_encrypted_backup_updated">Encrypted backup updated.</string>
+    <string name="you_status_encrypted_backup_on_after_next_writing">Encrypted backup is on. It will run after your next writing session.</string>
+    <string name="you_status_could_not_enable_encrypted_backup">Could not enable encrypted backup.</string>
+    <string name="you_status_could_not_update_encrypted_backup">Could not update encrypted backup.</string>
+    <string name="you_prompt_identity">your identity can be saved to secure storage.</string>
+    <string name="you_prompt_privacy">Writing stays local unless you export or ask for a reflection.</string>
+    <string name="you_prompt_export">Your archive is yours. Export readable writings or keep a local backup.</string>
+    <string name="you_prompt_credits">Credits are only for reflections. Writing is free.</string>
+    <string name="you_prompt_support">Send us an email! We want to evolve this app based on your feedback.</string>
+    <string name="you_prompt_developer">Local tools. Repair first, delete only when you mean it.</string>
+    <string name="you_conversation_opening_pack">Anky is opening the %1$s pack.</string>
+    <string name="you_conversation_checking_credit_gate">Anky is checking the credit gate.</string>
+    <string name="you_conversation_updating_encrypted_backup">Anky is updating the encrypted backup.</string>
+    <string name="you_encrypted_backup_last_updated">Encrypted backup is on. Last updated %1$s.</string>
+    <string name="you_encrypted_backup_export_or_turn_on">Export readable writings or turn on encrypted backup for reinstall recovery.</string>
+    <string name="you_credit_balance_loading">loading...</string>
+    <string name="you_credit_balance_unknown">unknown</string>
+    <string name="you_credit_prompt_message">You have %1$s reflection credits. Choose a pack to add more.</string>
+    <string name="credit_pack_3_title">3 reflections</string>
+    <string name="credit_pack_11_title">11 reflections</string>
+    <string name="credit_pack_33_title">33 reflections</string>
+    <string name="credit_pack_3_subtitle">Starter pack</string>
+    <string name="credit_pack_11_subtitle">Stay with it</string>
+    <string name="credit_pack_33_subtitle">Daily practice</string>
     <string name="map_no_writing_saved">no writing saved</string>
+    <string name="map_no_writing">No writing</string>
+    <string name="map_no_complete_anky">No complete anky</string>
+    <string name="map_no_readable_text">No readable text</string>
+    <string name="session_fragment_title">Fragment</string>
     <string name="map_go_to_current_day">Go to current day</string>
     <string name="map_today">Today</string>
     <string name="map_utc_day_progress">UTC day progress</string>
@@ -162,6 +253,9 @@
     <string name="writing_copied">Writing copied</string>
     <string name="copied_writing">copied writing</string>
     <string name="copy_writing">Copy writing</string>
+    <string name="reveal_copy_writing_clipboard_label">Anky writing</string>
+    <string name="reveal_copy_reflection_clipboard_label">Anky reflection</string>
+    <string name="reveal_copy_reflection_prompt_clipboard_label">Anky reflection prompt</string>
     <string name="copy_reflection_prompt_hint">Long press to copy the reflection prompt for your own AI tool.</string>
     <string name="reflection_prompt_copied">reflection prompt copied</string>
     <string name="reflection_prompt_clipboard_guidance">The reflection prompt is on your clipboard. Take it to your favorite AI tool and get a reflection from it.</string>
@@ -202,6 +296,7 @@
     <string name="reveal_status_opening_quiet_channel">i am opening a quiet channel.</string>
     <string name="reveal_status_preparing_reflection">i am preparing your reflection.</string>
     <string name="reveal_status_carrying_thread">i am carrying the thread to the mirror.</string>
+    <string name="reveal_status_found_writer_key">i found your writer key. staying close.</string>
     <string name="reveal_status_threading_back">something answered. i am threading it back.</string>
     <string name="reveal_status_already_holding_thread">the mirror is already holding this thread.</string>
     <string name="reveal_status_waiting_with_mirror">i am still waiting with the mirror.</string>
@@ -223,6 +318,12 @@
     <string name="reveal_progress_opening_scroll">opening the scroll...</string>
     <string name="reveal_error_load_reflections">Could not load reflections.</string>
     <string name="reveal_error_return_reflection">Anky could not return a reflection right now.</string>
+    <string name="reveal_error_credit_purchase">Could not complete that credit purchase.</string>
+    <string name="reveal_error_invalid_mirror_url">The mirror URL is not valid.</string>
+    <string name="reveal_error_invalid_mirror_response">The mirror returned an invalid response.</string>
+    <string name="reveal_error_hash_mismatch">The mirror response did not match this .anky.</string>
+    <string name="reveal_error_trial_already_claimed">This device already used its first two reflections. Add credits to ask Anky again. Writing is still free.</string>
+    <string name="reveal_error_credit_required">You need one reflection credit to ask Anky. Writing is still free.</string>
     <string name="reveal_progress_anky_working">anky is working...</string>
     <string name="tag_no_saved_sessions">no saved sessions with this tag.</string>
     <string name="reveal_chat_staying_with_anky">i am staying with this .anky.</string>
@@ -243,9 +344,27 @@
     <string name="reveal_invitation_mirror_may_be_open">the mirror may be open.\n\nyour writing only leaves this device if you ask me now.</string>
     <string name="reveal_invitation_ready">i can sit with this and bring back a reflection.\n\nyour writing only leaves this device if you ask me now.</string>
     <string name="reveal_ready_to_mirror_artifact">ready to mirror this artifact</string>
+    <string name="credit_prompt_free_gift">%1$d reflections available on this device</string>
+    <string name="credit_prompt_no_reflections_left">No reflections left</string>
+    <string name="credit_prompt_balance_updates">Reflection balance updates after mirroring</string>
     <string name="reveal_short_keep_going">keep going until you get to %1$d minutes.</string>
     <string name="reveal_short_thread_opened">the thread opened, but it needs the full %1$d minutes.</string>
     <string name="reveal_short_spark">that was a spark. stay with it until %1$d minutes.</string>
     <string name="reveal_short_whole_ritual">anky needs the whole ritual. come back and write %1$d minutes.</string>
     <string name="reveal_short_cross_mark">you stopped too soon. try again and cross the %1$d-minute mark.</string>
+    <string name="imported_reflection_title">Imported reflection</string>
+    <string name="you_status_could_not_open_backup">Could not open that backup.</string>
+    <string name="you_status_no_importable_backup_data">No .anky files or reflections were found in that import.</string>
+    <string name="you_status_backup_could_not_be_read">That backup could not be read.</string>
+    <string name="you_status_choose_supported_backup_file">Choose a .zip backup, .anky file, or exported reflection JSON.</string>
+    <string name="you_status_zip_backup_corrupt">That zip backup appears to be corrupt.</string>
+    <string name="you_status_encrypted_zip_not_supported">Encrypted zip backups are not supported.</string>
+    <string name="you_status_zip_unsupported_compression">That zip backup uses unsupported compression.</string>
+    <string name="you_status_anky_file_could_not_be_read">That .anky file could not be read.</string>
+    <string name="you_status_no_writing_to_back_up">There is no writing to back up yet.</string>
+    <string name="you_status_no_encrypted_backup_found">No Anky encrypted backup was found.</string>
+    <string name="you_status_encrypted_backup_could_not_be_read">The encrypted backup could not be read.</string>
+    <string name="you_status_encrypted_backup_could_not_be_encrypted">The encrypted backup could not be encrypted.</string>
+    <string name="you_status_encrypted_backup_could_not_be_decrypted">The encrypted backup could not be decrypted.</string>
+    <string name="you_status_unexpected_problem">Something went wrong. Try again.</string>
 </resources>

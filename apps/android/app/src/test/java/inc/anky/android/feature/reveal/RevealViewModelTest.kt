@@ -214,7 +214,9 @@ class RevealViewModelTest {
         val server = MockWebServer()
         val stores = stores()
         val credits = FakeCreditsClient(balance = 9)
-        val creditCache = FakeReflectionCreditCache()
+        val creditCache = FakeReflectionCreditCache().apply {
+            storeBalance(9, identity().accountId)
+        }
         val artifact = stores.archive.save(completeAnky())
         stores.index.rebuild(stores.archive, stores.reflections)
         server.enqueue(reflectionResponse(artifact.hash, creditsRemaining = 7))
@@ -324,6 +326,8 @@ class RevealViewModelTest {
             dispatcher = StandardTestDispatcher(testScheduler),
         )
 
+        assertTrue(viewModel.state.value.creditsLoading)
+        assertFalse(viewModel.state.value.canSubmitReflectionRequest)
         viewModel.refreshCredits()
         advanceUntilIdle()
 
@@ -333,6 +337,35 @@ class RevealViewModelTest {
         assertEquals(credits.packages, viewModel.state.value.creditPackages)
         assertFalse(viewModel.state.value.creditsDenied)
         assertFalse(viewModel.state.value.creditsLoading)
+    }
+
+    @Test
+    fun zeroLoadedCreditsShowsPurchaseCtaInsteadOfDeviceGift() = runTest {
+        val stores = stores()
+        val artifact = stores.archive.save(completeAnky())
+        val credits = FakeCreditsClient(balance = 0)
+        val viewModel = RevealViewModel(
+            hash = artifact.hash,
+            archive = stores.archive,
+            reflectionStore = stores.reflections,
+            indexStore = stores.index,
+            identityProvider = { identity() },
+            mirrorClientProvider = { error("Zero credits should open purchase instead of asking the mirror.") },
+            creditsClient = credits,
+            hasClaimedFreeCreditsProvider = { false },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        viewModel.refreshCredits()
+        advanceUntilIdle()
+
+        assertEquals(0, viewModel.state.value.creditBalance)
+        assertEquals(ReflectionCreditPromptState.Unavailable, viewModel.state.value.creditPromptState)
+        assertTrue(viewModel.state.value.needsCreditsToReflect)
+        assertFalse(viewModel.state.value.canSubmitReflectionRequest)
+        viewModel.askAnky()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isAsking)
     }
 
     @Test
@@ -492,7 +525,9 @@ class RevealViewModelTest {
         )
         server.start()
         try {
-            val creditCache = FakeReflectionCreditCache()
+            val creditCache = FakeReflectionCreditCache().apply {
+                storeBalance(1, identity().accountId)
+            }
             val credits = FakeCreditsClient(balance = 2)
             val viewModel = RevealViewModel(
                 hash = artifact.hash,

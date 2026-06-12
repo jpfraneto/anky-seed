@@ -45,6 +45,7 @@ data class WriteState(
     val acceptedGlyphCount: Int = 0,
     val todayAnkyCount: Int = 0,
     val keyboardFocusRequestId: Int = 0,
+    val continuationScrollRequestId: Int = 0,
     val errorMessage: String? = null,
     val nudgeMessage: String? = null,
     val isRequestingNudge: Boolean = false,
@@ -109,6 +110,7 @@ class WriteViewModel(
     private var visibleErrorMessage: String? = restoreErrorMessage
     private var recentErrorMessage: String? = null
     private var keyboardFocusRequestId = 0
+    private var continuationScrollRequestId = 0
     private var isFrozenForContinuation = false
     private var continuedArtifactToReplace: SavedAnky? = null
     private var rejectedInputPulseId = 0
@@ -275,6 +277,7 @@ class WriteViewModel(
             continuedArtifactToReplace = artifact
             activeDraftStore.save(writer.text)
             keyboardFocusRequestId += 1
+            continuationScrollRequestId += 1
             _state.value = deriveState()
         }.isSuccess
     }
@@ -407,6 +410,7 @@ class WriteViewModel(
             acceptedGlyphCount = acceptedGlyphCount,
             todayAnkyCount = todayAnkyCount(now),
             keyboardFocusRequestId = keyboardFocusRequestId,
+            continuationScrollRequestId = continuationScrollRequestId,
             errorMessage = visibleErrorMessage,
             nudgeMessage = nudgeMessage,
             isRequestingNudge = isRequestingNudge,
