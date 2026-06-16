@@ -46,7 +46,7 @@
     <string name="you_terms_conditions">Terms &amp; Conditions</string>
     <string name="you_terms_subtitle">The agreement for using Anky</string>
     <string name="you_copied_to_clipboard">Copied to clipboard</string>
-    <string name="you_token_pending">To be deployed</string>
+    <string name="you_token_pending">Not deployed yet</string>
     <string name="you_encrypted_backup_on">Encrypted backup on</string>
     <string name="you_export_writings_or_enable_backup">Export writings or enable backup</string>
     <string name="you_loading_balance">Loading balance</string>

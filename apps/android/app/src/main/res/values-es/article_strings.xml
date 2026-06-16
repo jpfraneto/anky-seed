@@ -234,21 +234,15 @@ Podemos actualizar estos Términos de vez en cuando. Seguir usando Anky después
 
 Contacto: **[support@anky.app](mailto:support@anky.app)**]]></string>
 
-    <string name="token_article_body"><![CDATA[una memecoin es la expresión más simple posible de una idea en internet. sin pitch deck, sin hoja de ruta, sin Serie A. solo un nombre, un ticker y una apuesta a que suficientes personas reconocerán lo que señala.
-
-$ANKY existe como memecoin. eso es todo. sin preventa, sin asignación al equipo, sin calendario de vesting. la curva de bonding hizo lo que hacen las curvas de bonding.
+    <string name="token_article_body"><![CDATA[$ANKY aún no está desplegado. cuando lo esté, la única dirección canónica del contrato en Base aparecerá en anky.app y en una futura actualización de la app.
 
 ## lo que señala
 
-anky es una práctica de escritura. te sientas, escribes 8 minutos sin parar y emerge algo que tu mente consciente no planeó. el token no cambia lo que es la práctica. no desbloquea funciones ni concede acceso. es una bandera clavada en el suelo que dice: esta idea existe, y el mercado decide cuánto vale.
+anky es una práctica de escritura. te sientas, escribes durante 8 minutos sin detenerte, y aparece algo que tu mente consciente no había planeado. el token no cambiará la práctica. no desbloqueará funciones, no dará acceso a la app y no reemplazará los créditos. será solo la capa memética alrededor de la práctica.
 
-## memecoins y el nuevo internet
+## antes de que exista la dirección
 
-el viejo internet lanzaba ideas mediante productos. construías algo, cobrabas y esperabas que la gente pagara. el nuevo internet lanza ideas mediante tokens. la idea misma se vuelve transable en el momento en que tiene nombre.
+ignora cualquier token que diga ser el $ANKY canónico hasta que Anky publique la dirección exacta del contrato en Base. no confíes en capturas, tickers parecidos ni nombres copiados.
 
-esto es profundamente tonto o profundamente honesto. probablemente ambas cosas. una memecoin elimina toda pretensión sobre qué hace valioso algo y lo reduce a la única pregunta que siempre importó: ¿a la gente le importa esto?
-
-la mayoría de las memecoins son bromas. algunas bromas contienen más verdad que planes de negocio. la broma cósmica de $ANKY es que una herramienta diseñada para esquivar tu mente consciente, para ayudarte a dejar de pensar y solo escribir, ahora tiene un precio que la gente mira con la mente consciente.
-
-al espejo no le importa el precio. la práctica sigue siendo gratis. escribe 8 minutos. encuéntrate contigo mismo. aunque el token valga un centavo o un dólar, las palabras que escribiste siguen siendo tuyas.]]></string>
+al espejo no le importa el precio. la práctica sigue siendo gratis. escribe durante 8 minutos. encuéntrate contigo.]]></string>
 </resources>

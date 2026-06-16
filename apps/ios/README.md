@@ -17,7 +17,7 @@ Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -
 - Paste, deletion, replacement, rich text, and newline input are blocked.
 - The first accepted character starts the `.anky` session with epoch milliseconds.
 - Later accepted characters store delta milliseconds.
-- 8000ms of silence appends terminal `8000` and closes the ritual.
+- 8000ms of silence closes the active writing surface without appending terminal `8000`; completion is based on accumulated writing deltas.
 - Completed `.anky` files are saved as `<sha256>.anky`.
 - Reveal shows the reconstructed writing as the primary surface, with date, time, duration, word count, hash, Copy text, and Copy `.anky`.
 - Reveal includes the local ownership reminder: writing only leaves the device after an explicit reflection request and only after 8 minutes.

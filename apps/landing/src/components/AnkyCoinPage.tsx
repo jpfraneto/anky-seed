@@ -7,30 +7,23 @@ type AnkyCoinPageProps = {
 
 const sections = [
   {
-    title: "Launch Note",
-    body: "$ANKY is the memetic layer for the practice, and it serves the goal of distribution. It does not unlock or replace the practice itself.",
-  },
-  {
-    body: "A memecoin is the simplest possible expression of an idea on the internet. No pitch deck, no roadmap, no Series A. Just a name, a ticker, and a bet that enough people will recognize what it points to.",
+    title: "Pre-Launch Note",
+    body: "$ANKY is not deployed yet. When it is, the only canonical Base contract address will appear here. Until then, ignore lookalike tickers, screenshots, and copied names.",
   },
   {
     title: "What It Points To",
-    body: "Anky is a writing practice. You sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. The token doesn't change what the practice is. It doesn't unlock features or grant access. It's a flag planted in the ground that says: this idea exists, and the market gets to decide what it's worth.",
+    body: "Anky is a writing practice. You sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. The token will not change what the practice is. It will not unlock features, grant app access, replace credits, or make the writing more real.",
   },
   {
-    body: "The old internet released ideas through products. You built something, charged for it, and hoped people would pay. The new internet gives us the possibility to deploy ideas on the markets permissionlessly via tokens.",
+    title: "The Memetic Layer",
+    body: "$ANKY is intended as the memetic layer around the practice: a public flag for the idea that the ritual exists. The app remains usable without buying, holding, or trading any token.",
   },
   {
-    body: "The idea itself becomes tradeable the moment it has a name.",
+    title: "Verify First",
+    body: "After launch, verify the exact Base contract address from this page before interacting with any token. Nothing here is financial advice, investment advice, or an offer to buy or sell anything.",
   },
   {
-    body: "This is either profoundly stupid or profoundly honest. Probably both. A memecoin strips away every pretension about what makes something valuable and reduces it to the only question that ever mattered: do people care about this?",
-  },
-  {
-    body: "Most memecoins are jokes. Some jokes contain more truth than business plans. The cosmic joke of $ANKY is that a tool designed to bypass your conscious mind - to help you stop thinking and just write - now has a price feed that people watch with their conscious minds, thinking very hard about whether the number will go up or down.",
-  },
-  {
-    body: "The mirror doesn't care about the price. The practice remains free. The app is free to download. And you can take the practice anywhere you have a pen and a timer.",
+    body: "The mirror does not care about the price. The practice remains free. The app is free to download. And you can take the practice anywhere you have a pen and a timer.",
   },
 ];
 
@@ -43,6 +36,15 @@ function AnkyCoinPage({ currentPath, onNavigate }: AnkyCoinPageProps) {
       <h1 className="mt-5 font-serif text-5xl leading-tight text-cream sm:text-6xl">
         $ANKY
       </h1>
+
+      <div className="mt-6 rounded-2xl border border-gold-200/25 bg-black/20 p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-gold-200/70">
+          Canonical Base Contract
+        </p>
+        <p className="mt-3 font-mono text-sm leading-6 text-cream/82">
+          Not deployed yet. Verify on anky.app before trusting any address.
+        </p>
+      </div>
 
       <div className="mt-10 space-y-7">
         {sections.map((section, index) => (
@@ -66,9 +68,8 @@ function AnkyCoinPage({ currentPath, onNavigate }: AnkyCoinPageProps) {
           Write for 8 minutes and meet yourself.
         </p>
         <p className="mt-5 text-lg leading-8 text-cream/74">
-          Whether the token is worth a penny or a dollar, the words you wrote
-          are still yours. That moment happened and it mattered because you
-          matter.
+          The words you wrote are still yours. That moment happened and it
+          mattered because you matter.
         </p>
       </div>
     </PageShell>

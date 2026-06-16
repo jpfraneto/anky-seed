@@ -572,10 +572,15 @@ struct YouView: View {
     }
 
     private var ankyContractAddress: String {
-        "To be deployed"
+        "Not deployed yet. Verify the canonical Base address on anky.app."
+    }
+
+    private var hasCanonicalAnkyContractAddress: Bool {
+        ankyContractAddress.hasPrefix("0x") && ankyContractAddress.count == 42
     }
 
     private var ankyContractDisplayAddress: String {
+        guard hasCanonicalAnkyContractAddress else { return ankyContractAddress }
         let prefix = ankyContractAddress.prefix(6)
         let suffix = ankyContractAddress.suffix(6)
         return "\(prefix)...\(suffix)"
@@ -583,6 +588,7 @@ struct YouView: View {
 
     private var ankyContractRow: some View {
         Button {
+            guard hasCanonicalAnkyContractAddress else { return }
             ClipboardClient().copy(ankyContractAddress)
             AnkyHaptics.light()
             withAnimation(.easeInOut(duration: 0.18)) {

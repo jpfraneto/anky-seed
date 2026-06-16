@@ -215,10 +215,10 @@ These validations do not block the audit. Passing tests are not proof of parity 
 
 The following inspected docs conflict with current iOS build 61 active code and should not be used as implementation truth for this pass:
 
-* `apps/ios/README.md` says 8000ms silence appends terminal `8000`.
-* `apps/android/README.md` says Android appends terminal silence after 8 seconds.
-* `protocol/SPEC.md` says terminal silence advances elapsed ritual time.
-* `docs/API_CONTRACT.md` still shows an example request body with terminal `8000`.
+* Historical finding: `apps/ios/README.md` said 8000ms silence appended terminal `8000`.
+* Historical finding: `apps/android/README.md` said Android appended terminal silence after 8 seconds.
+* Historical finding: `protocol/SPEC.md` said terminal silence advanced elapsed ritual time.
+* Historical finding: `docs/API_CONTRACT.md` showed an example request body with terminal `8000`.
 
 Current iOS code and tests show active save does not append terminal `8000`, and duration/completion ignore terminal silence.
 
