@@ -12,9 +12,9 @@ The client loop is deliberately small:
 
 1. Render a textarea.
 2. Capture every text delta as `.anky` lines.
-3. End the session at the exact moment either condition becomes true:
-   - the sum of all delta timestamps is `480000` ms
-   - the last keystroke is at least `8000` ms old
+3. End the session when the sum of accepted writing deltas reaches `480000` ms, or when product UX closes a fragment after silence.
+   - Completion is based only on accumulated writing deltas.
+   - A legacy terminal `8000` line may be parsed for compatibility, but it does not count toward completion and current clients should not append it to active saves.
 4. Connect an Ethereum wallet, embedded wallet, or local signer with viem.
 5. Sign the EIP-712 `AnkyMirrorRequest` over the exact `.anky` bytes.
 6. `POST /anky` with `Content-Type: text/plain; charset=utf-8`.

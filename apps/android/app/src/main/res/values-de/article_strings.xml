@@ -234,21 +234,15 @@ Wir können diese Bedingungen von Zeit zu Zeit aktualisieren. Wenn du Anky nach 
 
 Kontakt: **[support@anky.app](mailto:support@anky.app)**]]></string>
 
-    <string name="token_article_body"><![CDATA[eine memecoin ist der einfachste mögliche ausdruck einer idee im internet. kein pitch deck, keine roadmap, keine serie a. nur ein name, ein ticker und die wette, dass genug menschen erkennen, worauf sie zeigt.
+    <string name="token_article_body"><![CDATA[$ANKY ist noch nicht deployed. wenn es soweit ist, erscheint die einzige kanonische Base-contract-adresse auf anky.app und in einem zukünftigen app-update.
 
-$ANKY existiert als memecoin. das ist alles. kein vorverkauf, keine teamzuteilung, kein vesting-plan. die bonding-kurve tat, was bonding-kurven tun.
+## worauf es zeigt
 
-## worauf sie zeigt
+anky ist eine schreibpraxis. du setzt dich hin, schreibst 8 minuten ohne aufzuhören, und etwas erscheint, das dein bewusstes denken nicht geplant hat. der token verändert die praxis nicht. er schaltet keine funktionen frei, gibt keinen app-zugang und ersetzt keine credits. er ist nur die memetische schicht um die praxis.
 
-anky ist eine schreibpraxis. du setzt dich hin, schreibst 8 minuten ohne anzuhalten, und etwas taucht auf, das dein bewusstes denken nicht geplant hat. der token ändert die praxis nicht. er schaltet keine funktionen frei und gibt keinen zugang. er ist eine flagge im boden, die sagt: diese idee existiert, und der markt entscheidet, was sie wert ist.
+## bevor die adresse existiert
 
-## memecoins und das neue internet
+ignoriere jeden token, der behauptet, das kanonische $ANKY zu sein, bis Anky die exakte Base-contract-adresse veröffentlicht. vertraue keinen screenshots, ähnlichen tickern oder kopierten namen.
 
-das alte internet veröffentlichte ideen über produkte. man baute etwas, verlangte geld und hoffte, dass menschen zahlen. das neue internet veröffentlicht ideen über token. die idee selbst wird handelbar, sobald sie einen namen hat.
-
-das ist entweder zutiefst dumm oder zutiefst ehrlich. wahrscheinlich beides. eine memecoin nimmt jede pretension darüber weg, was etwas wertvoll macht, und reduziert alles auf die einzige frage, die je wichtig war: interessiert es die menschen?
-
-die meisten memecoins sind witze. manche witze enthalten mehr wahrheit als geschäftspläne. der kosmische witz von $ANKY ist, dass ein werkzeug, das dein bewusstes denken umgehen soll, damit du aufhörst zu denken und einfach schreibst, nun einen preis hat, den menschen mit bewusstem denken beobachten.
-
-dem spiegel ist der preis egal. die praxis bleibt kostenlos. schreibe 8 minuten. begegne dir selbst. ob der token einen cent oder einen dollar wert ist, die wörter, die du geschrieben hast, bleiben deine.]]></string>
+der spiegel kümmert sich nicht um den preis. die praxis bleibt kostenlos. schreibe 8 minuten. begegne dir selbst.]]></string>
 </resources>

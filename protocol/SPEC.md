@@ -18,25 +18,33 @@ Subsequent writing lines contain:
 <delta_ms> <accepted_character>
 ```
 
-A terminal silence line closes the session:
+A typed space is encoded as `SPACE`:
+
+```txt
+<delta_ms> SPACE
+```
+
+A legacy terminal silence line may appear at the end of older artifacts:
 
 ```txt
 8000
 ```
 
-The terminal line is a duration marker, not a character.
+The terminal line is a compatibility marker, not a character, and does not count toward completion.
 
 ## Duration
 
-The first accepted character occurs at the starting epoch. Each subsequent delta advances elapsed ritual time. The terminal silence line advances elapsed ritual time by 8000 milliseconds.
+The first accepted character occurs at the starting epoch. Each subsequent writing delta advances elapsed writing time.
 
-A complete Anky is at least 480000 milliseconds.
+A complete Anky has at least `480000` milliseconds of accumulated writing deltas.
 
-Valid fragments may be under 480000 milliseconds and may omit the terminal silence line.
+The legacy terminal silence line does not advance writing duration and cannot make an incomplete fragment complete.
+
+Valid fragments may be under `480000` milliseconds and may omit the terminal silence line. Current clients should not append terminal silence to newly saved active sessions.
 
 ## Reconstruction
 
-Readable text is derived by concatenating accepted characters in order. Reconstructed text is a view of `.anky`, not a replacement canonical format.
+Readable text is derived by concatenating accepted characters in order. `SPACE` reconstructs to a literal space. Reconstructed text is a view of `.anky`, not a replacement canonical format.
 
 ## Hashing
 

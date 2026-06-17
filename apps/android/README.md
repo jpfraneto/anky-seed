@@ -37,10 +37,10 @@ Release signing reads only from uncommitted `local.properties` or environment va
 
 ## Implemented Surfaces
 
-- Write opens as the first tab, captures forward-only glyph input, saves an active local draft, appends terminal silence after 8 seconds, saves a canonical `.anky`, indexes it, and opens Reveal.
+- Write opens as the first tab, captures forward-only glyph input, saves an active local draft, saves exact `.anky` bytes without appending terminal silence, indexes them, and opens Reveal.
 - Reveal loads the `.anky` file by hash, reconstructs text from protocol bytes, shows stats, supports copy actions, gates Ask Anky to complete sessions, signs exact bytes, and stores returned reflections locally.
 - Map rebuilds from the local archive and reflection files, groups sessions by day, distinguishes complete sessions from fragments, and opens Reveal.
-- You shows/copies the Anky Base account, gates recovery phrase reveal behind local authentication, exposes app lock, local daily reminders, mirror URL, archive export/share, support/manual-credit copy, `$ANKY` info/contract copy, privacy text, and RevenueCat credits/purchases when the Android public SDK key and offerings are configured.
+- You shows/copies the Anky Base account, gates recovery phrase reveal behind local authentication, exposes app lock, local daily reminders, mirror URL, archive export/share, support/manual-credit copy, pre-launch `$ANKY` info, privacy text, and RevenueCat credits/purchases when the Android public SDK key and offerings are configured.
 
 ## Identity
 

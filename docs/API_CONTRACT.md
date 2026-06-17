@@ -145,8 +145,9 @@ The body is an exact `.anky` artifact. Example shape only:
 0091 l
 0035 l
 0048 o
-8000
 ```
+
+A legacy terminal `8000` line may appear in older artifacts, but current clients should not append it to active saves. Completion is based on accumulated writing deltas only.
 
 The API must not accept JSON writing bodies.
 

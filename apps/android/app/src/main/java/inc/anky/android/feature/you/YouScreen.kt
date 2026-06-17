@@ -242,8 +242,10 @@ fun YouScreen(
                     activePrompt = activePrompt.value,
                     onOpenPage = { page.value = it },
                     onCopyAnkyContract = {
-                        context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress)
-                        didCopyAnkyContract.value = true
+                        if (hasCanonicalAnkyContractAddress()) {
+                            context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress)
+                            didCopyAnkyContract.value = true
+                        }
                     },
                     onOpenCreditsSheet = {
                         activePrompt.value = null
@@ -403,7 +405,11 @@ fun YouScreen(
                             onSupportFeedback = { context.openUrl(state.supportFeedbackEmailUrl) },
                         )
                         YouPage.Token -> TokenPage(
-                            onCopy = { context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress) },
+                            onCopy = {
+                                if (hasCanonicalAnkyContractAddress()) {
+                                    context.copyText(contractAddressClipboardLabel, PrivacyMessages.AnkyCoinContractAddress)
+                                }
+                            },
                         )
                         YouPage.Developer -> if (BuildConfig.DEBUG) {
                             DeveloperPage(
@@ -2123,9 +2129,11 @@ private fun TokenPage(onCopy: () -> Unit) {
     ArticleBodyText(stringResource(R.string.token_article_body))
         AnkyPanel {
             Text(PrivacyMessages.AnkyCoinContractAddress, style = AnkyType.Mono)
-        AnkyActionButton(if (copied.value) stringResource(R.string.copied_exclamation) else stringResource(R.string.copy_contract_address)) {
-            onCopy()
-            copied.value = true
+        if (hasCanonicalAnkyContractAddress()) {
+            AnkyActionButton(if (copied.value) stringResource(R.string.copied_exclamation) else stringResource(R.string.copy_contract_address)) {
+                onCopy()
+                copied.value = true
+            }
         }
     }
 }
@@ -2370,9 +2378,18 @@ private fun creditsPromptMessage(state: YouState): String {
     return stringResource(R.string.you_credit_prompt_message, balance)
 }
 
+private fun hasCanonicalAnkyContractAddress(): Boolean {
+    val address = PrivacyMessages.AnkyCoinContractAddress
+    return address.startsWith("0x") && address.length == 42
+}
+
 private fun ankyContractDisplayAddress(): String {
     val address = PrivacyMessages.AnkyCoinContractAddress
-    return "${address.take(5)}...${address.takeLast(5)}"
+    return if (hasCanonicalAnkyContractAddress()) {
+        "${address.take(5)}...${address.takeLast(5)}"
+    } else {
+        address
+    }
 }
 
 private data class YouPromptActionLabels(

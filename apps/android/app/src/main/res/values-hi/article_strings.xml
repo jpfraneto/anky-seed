@@ -234,21 +234,15 @@ Law द्वारा permitted fullest extent तक, आपके और Anky
 
 Contact: **[support@anky.app](mailto:support@anky.app)**]]></string>
 
-    <string name="token_article_body"><![CDATA[memecoin internet पर किसी idea की सबसे simple expression है। कोई pitch deck नहीं, roadmap नहीं, Series A नहीं। बस एक name, ticker, और यह bet कि enough लोग समझेंगे कि यह किस ओर इशारा करती है।
-
-$ANKY एक memecoin के रूप में exist करता है। बस इतना ही। कोई presale नहीं, team allocation नहीं, vesting schedule नहीं। bonding curve ने वही किया जो bonding curves करती हैं।
+    <string name="token_article_body"><![CDATA[$ANKY अभी deploy नहीं हुआ है। जब होगा, canonical Base contract address anky.app और future app update में दिखाई देगा।
 
 ## यह किस ओर इशारा करता है
 
-anky एक लेखन अभ्यास है। आप बैठते हैं, 8 मिनट बिना रुके लिखते हैं, और कुछ ऐसा निकलता है जिसे आपके सचेत मन ने योजना नहीं बनाया। टोकन अभ्यास को बदलता नहीं है। यह सुविधाएं खोलता नहीं और प्रवेश नहीं देता। यह ज़मीन में लगा झंडा है जो कहता है: यह विचार मौजूद है, और बाज़ार तय करेगा कि इसका मूल्य क्या है।
+anky एक writing practice है। आप बैठते हैं, 8 मिनट बिना रुके लिखते हैं, और कुछ ऐसा उभरता है जिसे conscious mind ने plan नहीं किया था। token practice को नहीं बदलेगा। यह features unlock नहीं करेगा, app access नहीं देगा, और credits replace नहीं करेगा। यह सिर्फ practice के around memetic layer है।
 
-## memecoins और नया internet
+## address आने से पहले
 
-पुराना internet products के through ideas release करता था। आप कुछ बनाते, charge करते, और hope करते कि लोग pay करेंगे। नया internet tokens के through ideas release करता है। idea itself नाम मिलते ही tradeable हो जाती है।
+जब तक Anky exact Base contract address publish न करे, किसी भी token पर trust न करें जो canonical $ANKY होने का दावा करे। screenshots, lookalike tickers, या copied names पर भरोसा न करें।
 
-यह गहरा stupid है या गहरा honest। शायद दोनों। memecoin value के बारे में सारी pretension हटा देती है और सब कुछ उस सवाल पर ला देती है जो हमेशा matter करता था: क्या लोगों को इसकी परवाह है?
-
-अधिकतर memecoins jokes हैं। कुछ jokes business plans से ज़्यादा truth रखते हैं। $ANKY का cosmic joke यह है कि conscious mind को bypass करने और बस लिखने में मदद करने वाला tool अब price feed रखता है जिसे लोग conscious mind से देखते हैं।
-
-mirror को price से फर्क नहीं पड़ता। practice free रहती है। 8 मिनट लिखें। खुद से मिलें। token एक cent का हो या dollar का, आपने जो words लिखे वे आपके ही हैं।]]></string>
+mirror को price से फर्क नहीं पड़ता। practice free रहती है। 8 मिनट लिखें। खुद से मिलें।]]></string>
 </resources>

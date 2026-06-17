@@ -234,21 +234,15 @@ Nous pouvons mettre à jour ces Conditions de temps à autre. Continuer à utili
 
 Contact : **[support@anky.app](mailto:support@anky.app)**]]></string>
 
-    <string name="token_article_body"><![CDATA[une memecoin est l’expression la plus simple possible d’une idée sur internet. pas de pitch deck, pas de feuille de route, pas de Série A. seulement un nom, un ticker et un pari que suffisamment de personnes reconnaîtront ce qu’elle désigne.
+    <string name="token_article_body"><![CDATA[$ANKY n’est pas encore déployé. quand il le sera, la seule adresse canonique du contrat sur Base apparaîtra sur anky.app et dans une future mise à jour de l’app.
 
-$ANKY existe comme memecoin. c’est tout. pas de prévente, pas d’allocation d’équipe, pas de calendrier d’acquisition. la courbe de bonding a fait ce que font les courbes de bonding.
+## ce qu’il désigne
 
-## ce que cela désigne
+anky est une pratique d’écriture. vous vous asseyez, vous écrivez pendant 8 minutes sans vous arrêter, et quelque chose apparaît que votre esprit conscient n’avait pas prévu. le token ne changera pas la pratique. il ne débloquera pas de fonctions, ne donnera pas accès à l’app et ne remplacera pas les crédits. il sera seulement la couche mémétique autour de la pratique.
 
-anky est une pratique d’écriture. vous vous asseyez, vous écrivez pendant 8 minutes sans vous arrêter, et quelque chose émerge que votre esprit conscient n’avait pas prévu. le jeton ne change pas ce qu’est la pratique. il ne débloque pas de fonctions et ne donne pas d’accès. c’est un drapeau planté dans le sol qui dit : cette idée existe, et le marché décide ce qu’elle vaut.
+## avant que l’adresse existe
 
-## les memecoins et le nouvel internet
+ignorez tout token prétendant être le $ANKY canonique jusqu’à ce que l’adresse exacte du contrat Base soit publiée par Anky. ne faites pas confiance aux captures d’écran, aux tickers ressemblants ni aux noms copiés.
 
-l’ancien internet lançait des idées par des produits. vous construisiez quelque chose, vous le vendiez, et vous espériez que les gens paient. le nouvel internet lance des idées par des jetons. l’idée elle-même devient échangeable dès qu’elle a un nom.
-
-c’est soit profondément stupide, soit profondément honnête. probablement les deux. une memecoin enlève toute prétention sur ce qui rend quelque chose précieux et réduit tout à la seule question qui a toujours compté : est-ce que les gens s’en soucient ?
-
-la plupart des memecoins sont des blagues. certaines blagues contiennent plus de vérité que des plans d’affaires. la blague cosmique de $ANKY est qu’un outil conçu pour contourner l’esprit conscient, pour vous aider à arrêter de penser et simplement écrire, a maintenant un prix que les gens regardent avec leur esprit conscient.
-
-le miroir ne se soucie pas du prix. la pratique reste gratuite. écrivez 8 minutes. rencontrez-vous. que le jeton vaille un centime ou un dollar, les mots que vous avez écrits restent les vôtres.]]></string>
+le miroir ne se soucie pas du prix. la pratique reste gratuite. écrivez 8 minutes. rencontrez-vous.]]></string>
 </resources>
