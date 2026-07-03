@@ -34,26 +34,6 @@ describe("GET /health", () => {
   });
 });
 
-describe("GET /active", () => {
-  test("serves the local-only active composer", async () => {
-    const app = createApp({
-      env: ankyWorld({}),
-      logger: createSafeLogger({ log() {} }),
-    });
-
-    const response = await app.request("/active");
-    const html = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/html");
-    expect(html).toContain("Anky Active writing surface");
-    expect(html).toContain("written via Anky");
-    expect(html).toContain("crypto.subtle.digest");
-    expect(html).not.toContain("fetch(");
-    expect(html).not.toContain("XMLHttpRequest");
-  });
-});
-
 describe("POST /anky", () => {
   test("returns a reflection for a complete signed .anky", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
@@ -79,6 +59,42 @@ describe("POST /anky", () => {
     expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("null");
     expect(text).toContain("# Small Steady Thread");
     expect(text).toContain("Here is what I saw");
+  });
+
+  test("sends the copied reflection prompt shape to the provider", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let capturedPrompt = "";
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
+        routeReflection: async ({ prompt }) => {
+          capturedPrompt = prompt;
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "Copied Prompt",
+            reflection: "# Copied Prompt\n\nHere is what I saw.",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(capturedPrompt.startsWith("Take a look at this stream-of-consciousness journal entry.")).toBe(true);
+    expect(capturedPrompt).toContain("\n\n---\n\n");
+    expect(capturedPrompt).toContain("Reply with pure markdown");
+    expect(capturedPrompt).not.toContain("RECONSTRUCTED ANKY");
+    expect(capturedPrompt).not.toContain("`tag`");
+    expect(capturedPrompt).not.toContain("Rules for tags");
+    expect(capturedPrompt).not.toContain('"tags"');
   });
 
   test("streams safe progress updates before the markdown reflection", async () => {

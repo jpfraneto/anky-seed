@@ -43,9 +43,20 @@ describe("trial eligibility", () => {
     expect(result).toEqual({ eligible: false, reason: "already_claimed" });
   });
 
-  test("iOS missing proof when required is ineligible", async () => {
+  test("iOS missing proof is eligible by account when DeviceCheck is best-effort", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      accountId: "writer",
+      client: "ios",
+    });
+
+    expect(result).toMatchObject({ eligible: true, platform: "ios" });
+    expect(JSON.stringify(result)).not.toContain("writer");
+  });
+
+  test("iOS missing proof when explicitly required is ineligible", async () => {
+    const result = await evaluateTrialEligibility({
+      env: await trialEnv({ iosDeviceCheckRequired: true }),
       accountId: "writer",
       client: "ios",
     });
@@ -53,9 +64,22 @@ describe("trial eligibility", () => {
     expect(result).toEqual({ eligible: false, reason: "missing_trial_proof" });
   });
 
-  test("iOS invalid proof is ineligible", async () => {
+  test("iOS invalid proof falls back to account trial when DeviceCheck is best-effort", async () => {
     const result = await evaluateTrialEligibility({
       env: await trialEnv(),
+      accountId: "writer",
+      client: "ios",
+      trialProof: "bad-device-token",
+      fetchImpl: async () => new Response("bad token", { status: 400 }),
+    });
+
+    expect(result).toMatchObject({ eligible: true, platform: "ios" });
+    expect(JSON.stringify(result)).not.toContain("writer");
+  });
+
+  test("iOS invalid proof is ineligible when explicitly required", async () => {
+    const result = await evaluateTrialEligibility({
+      env: await trialEnv({ iosDeviceCheckRequired: true }),
       accountId: "writer",
       client: "ios",
       trialProof: "bad-device-token",
@@ -98,12 +122,11 @@ describe("trial eligibility", () => {
     expect(result).toEqual({ eligible: false, reason: "platform_disabled" });
   });
 
-  test("Android account trial is eligible when explicitly enabled without Play Integrity", async () => {
+  test("Android account trial is eligible by default", async () => {
     const result = await evaluateTrialEligibility({
       env: ankyWorld({
         autoTrialEnabled: true,
         androidTrialEnabled: true,
-        androidPlayIntegrityRequired: false,
       }),
       accountId: "android-writer",
       client: "android",
@@ -118,6 +141,7 @@ describe("trial eligibility", () => {
       env: ankyWorld({
         autoTrialEnabled: true,
         androidTrialEnabled: true,
+        androidPlayIntegrityRequired: true,
       }),
       accountId: "android-writer",
       client: "android",
@@ -151,7 +175,7 @@ describe("trial eligibility", () => {
   });
 });
 
-async function trialEnv() {
+async function trialEnv(overrides: Parameters<typeof ankyWorld>[0] = {}) {
   return ankyWorld({
     autoTrialEnabled: true,
     iosTrialEnabled: true,
@@ -159,6 +183,7 @@ async function trialEnv() {
     appleDeviceCheckTeamId: "TEAMID1234",
     appleDeviceCheckKeyId: "KEYID1234",
     appleDeviceCheckPrivateKey: await testP8PrivateKey(),
+    ...overrides,
   });
 }
 

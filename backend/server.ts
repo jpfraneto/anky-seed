@@ -39,7 +39,10 @@ import {
   type Hex,
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
-import { buildReflectDotAnkyPrompt } from "./reflection";
+import {
+  buildReflectPromptFromText,
+  streamOpenRouterChatCompletion,
+} from "./reflection";
 
 // -----------------------------------------------------------------------------
 // Start Here
@@ -68,7 +71,7 @@ export const mapOfThisFile = {
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
   providers:
     "routeReflection -> openRouterProvider -> defaultReflectionProvider",
-  prompt: "buildStorytellerPrompt / buildNudgePrompt",
+  prompt: "buildReflectPromptFromText / buildNudgePrompt",
   endpoint: "handleAnkyReflection",
   startServer: "import.meta.main",
 } as const;
@@ -193,8 +196,8 @@ export const anky = {
   automaticTrials: {
     ios: true,
     android: true,
-    iosDeviceCheckRequired: true,
-    androidPlayIntegrityRequired: true,
+    iosDeviceCheckRequired: false,
+    androidPlayIntegrityRequired: false,
     androidAddressTrialsConfirmed: false,
   },
   x402: {
@@ -213,6 +216,14 @@ export const anky = {
       max: "$0.05",
     },
   },
+  cryptoOnramp: {
+    sourceCurrency: "usd",
+    sourceAmount: "8.00",
+    destinationCurrency: "usdc",
+    destinationNetwork: "base",
+    walletAddressParam: "base_network",
+    lockWalletAddress: true,
+  },
 } as const;
 
 // Private material is not public law. Keep this list short.
@@ -223,6 +234,7 @@ const privateKeys = {
   appleDeviceCheckTeamId: process.env.APPLE_DEVICECHECK_TEAM_ID ?? "",
   appleDeviceCheckKeyId: process.env.APPLE_DEVICECHECK_KEY_ID ?? "",
   appleDeviceCheckPrivateKey: process.env.APPLE_DEVICECHECK_PRIVATE_KEY ?? "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
 } as const;
 
 // -----------------------------------------------------------------------------
@@ -241,6 +253,7 @@ export type AnkyRouteDeps = {
   diagnostics?: DiagnosticsSink;
   verifyX402Payment?: typeof verifyX402Payment;
   settleX402Payment?: typeof settleX402Payment;
+  createStripeOnrampSession?: typeof createStripeOnrampSession;
   progress?: AnkyProgressSink;
   reflectionChunk?: AnkyReflectionChunkSink;
 };
@@ -281,7 +294,13 @@ export function createApp(
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true }));
-  app.get("/active", (c) => c.html(activeComposerHtml));
+  app.post("/crypto/onramp-session", (c) =>
+    handleCryptoOnrampSession(
+      c,
+      env,
+      input.ankyRouteDeps?.createStripeOnrampSession ?? createStripeOnrampSession,
+    ),
+  );
   app.post("/anky", (c) => {
     const deps = {
       ...input.ankyRouteDeps,
@@ -295,341 +314,6 @@ export function createApp(
 
   return app;
 }
-
-const activeComposerHtml = String.raw`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Anky Active</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        background: #000;
-        color: #f5f5f0;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        min-height: 100%;
-        margin: 0;
-        background: #000;
-      }
-
-      body {
-        display: flex;
-        align-items: stretch;
-      }
-
-      main {
-        width: min(920px, 100%);
-        margin: 0 auto;
-        padding: clamp(24px, 6vw, 72px);
-        display: flex;
-        flex-direction: column;
-        gap: 28px;
-      }
-
-      #surface {
-        min-height: min(62vh, 680px);
-        width: 100%;
-        padding: 0;
-        border: 0;
-        outline: 0;
-        background: #000;
-        color: #f5f5f0;
-        caret-color: #f5f5f0;
-        font: inherit;
-        font-size: clamp(20px, 2.4vw, 32px);
-        line-height: 1.55;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-
-      #surface:focus {
-        outline: 0;
-      }
-
-      #surface[aria-readonly="true"] {
-        caret-color: transparent;
-      }
-
-      #result[hidden] {
-        display: none;
-      }
-
-      pre {
-        margin: 0;
-        padding: 18px 0 0;
-        border-top: 1px solid #242424;
-        color: #f5f5f0;
-        font: inherit;
-        font-size: clamp(17px, 1.8vw, 24px);
-        line-height: 1.55;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-
-      code {
-        font: inherit;
-      }
-
-      .meta {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px 18px;
-        color: #a9a9a2;
-        font-size: 13px;
-        line-height: 1.5;
-      }
-
-      #hash {
-        overflow-wrap: anywhere;
-      }
-
-      button {
-        appearance: none;
-        border: 1px solid #3a3a36;
-        border-radius: 4px;
-        background: #0d0d0c;
-        color: #f5f5f0;
-        cursor: pointer;
-        font: inherit;
-        font-size: 13px;
-        padding: 8px 11px;
-      }
-
-      button:focus-visible {
-        outline: 2px solid #f5f5f0;
-        outline-offset: 3px;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div id="surface" role="textbox" aria-label="Anky Active writing surface" contenteditable="plaintext-only" spellcheck="true" autofocus></div>
-
-      <section id="result" hidden aria-live="polite">
-        <pre><code id="readable"></code></pre>
-        <div class="meta">
-          <span>written via Anky</span>
-          <span id="hash" aria-label=".anky sha256 hash"></span>
-          <button id="copy" type="button">Copy</button>
-        </div>
-      </section>
-    </main>
-
-    <script>
-      (() => {
-        const IDLE_SILENCE_MS = 8000;
-
-        const surface = document.getElementById("surface");
-        const result = document.getElementById("result");
-        const readable = document.getElementById("readable");
-        const hashNode = document.getElementById("hash");
-        const copyButton = document.getElementById("copy");
-
-        const state = {
-          startedAt: 0,
-          lastAcceptedAt: 0,
-          accepted: [],
-          text: "",
-          idleTimer: 0,
-          finalized: false,
-          dotAnky: "",
-          hash: "",
-          displayArtifact: "",
-        };
-
-        function focusSurface() {
-          if (!state.finalized) surface.focus({ preventScroll: true });
-        }
-
-        function acceptedCharacters(input) {
-          return [...input].filter((character) => character !== "\n" && character !== "\r");
-        }
-
-        function acceptText(input) {
-          if (state.finalized) return;
-
-          const characters = acceptedCharacters(input);
-          if (characters.length === 0) return;
-
-          const now = Date.now();
-          for (const character of characters) {
-            const deltaMs = state.accepted.length === 0 ? 0 : Math.max(0, now - state.lastAcceptedAt);
-            if (state.accepted.length === 0) state.startedAt = now;
-            state.accepted.push({ deltaMs, character });
-            state.lastAcceptedAt = now;
-            state.text += character;
-          }
-
-          surface.textContent = state.text;
-          moveCaretToEnd();
-          resetSilenceTimer();
-        }
-
-        function resetSilenceTimer() {
-          window.clearTimeout(state.idleTimer);
-          state.idleTimer = window.setTimeout(finalize, IDLE_SILENCE_MS);
-        }
-
-        async function finalize() {
-          if (state.finalized || state.accepted.length === 0) return;
-
-          state.finalized = true;
-          window.clearTimeout(state.idleTimer);
-          surface.setAttribute("aria-readonly", "true");
-          surface.removeAttribute("contenteditable");
-
-          state.dotAnky = buildDotAnky();
-          state.hash = await sha256Hex(new TextEncoder().encode(state.dotAnky));
-          state.displayArtifact = state.text + "\n\nwritten via Anky\nsha256: " + state.hash;
-
-          readable.textContent = state.text;
-          hashNode.textContent = "sha256: " + state.hash;
-          result.hidden = false;
-          copyButton.focus({ preventScroll: true });
-        }
-
-        function buildDotAnky() {
-          const lines = state.accepted.map((event, index) => {
-            const time = index === 0 ? state.startedAt : event.deltaMs;
-            const payload = event.character === " " ? "SPACE" : event.character;
-            return String(time) + " " + payload;
-          });
-          return lines.join("\n");
-        }
-
-        async function sha256Hex(bytes) {
-          const digest = await crypto.subtle.digest("SHA-256", bytes);
-          return [...new Uint8Array(digest)]
-            .map((byte) => byte.toString(16).padStart(2, "0"))
-            .join("");
-        }
-
-        async function copyArtifact() {
-          const copied = await writeClipboardText(state.displayArtifact);
-          copyButton.textContent = copied ? "Copied" : "Copy failed";
-          window.setTimeout(() => {
-            copyButton.textContent = "Copy";
-          }, 1600);
-        }
-
-        async function writeClipboardText(text) {
-          if (navigator.clipboard?.writeText) {
-            try {
-              await navigator.clipboard.writeText(text);
-              return true;
-            } catch {
-              // Fall back for browsers that expose Clipboard API but deny it.
-            }
-          }
-
-          const textarea = document.createElement("textarea");
-          textarea.value = text;
-          textarea.setAttribute("readonly", "");
-          textarea.style.position = "fixed";
-          textarea.style.inset = "0 auto auto 0";
-          textarea.style.opacity = "0";
-          document.body.append(textarea);
-          textarea.select();
-          let copied = false;
-          try {
-            copied = document.execCommand("copy");
-          } finally {
-            textarea.remove();
-            copyButton.focus({ preventScroll: true });
-          }
-          return copied;
-        }
-
-        function moveCaretToEnd() {
-          const selection = window.getSelection();
-          if (!selection) return;
-          const range = document.createRange();
-          range.selectNodeContents(surface);
-          range.collapse(false);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-
-        function block(event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-
-        surface.addEventListener("keydown", (event) => {
-          if (state.finalized) {
-            block(event);
-            return;
-          }
-
-          const key = event.key;
-          const command = event.metaKey || event.ctrlKey;
-
-          if (
-            key === "Backspace" ||
-            key === "Delete" ||
-            key === "Enter" ||
-            key === "NumpadEnter" ||
-            (command && ["v", "x", "z", "y"].includes(key.toLowerCase()))
-          ) {
-            block(event);
-            return;
-          }
-
-          if (!command && !event.altKey && !event.isComposing && key.length === 1) {
-            block(event);
-            acceptText(key);
-          }
-        }, true);
-
-        surface.addEventListener("beforeinput", (event) => {
-          if (state.finalized) {
-            block(event);
-            return;
-          }
-
-          const inputType = event.inputType || "";
-          if (
-            inputType === "insertParagraph" ||
-            inputType === "insertLineBreak" ||
-            inputType === "insertFromPaste" ||
-            inputType === "insertReplacementText" ||
-            inputType.startsWith("delete") ||
-            inputType.includes("History")
-          ) {
-            block(event);
-            return;
-          }
-
-          if (inputType.startsWith("insert") && event.data) {
-            block(event);
-            acceptText(event.data);
-          }
-        }, true);
-
-        surface.addEventListener("paste", block, true);
-        surface.addEventListener("drop", block, true);
-        surface.addEventListener("cut", block, true);
-        surface.addEventListener("contextmenu", (event) => {
-          if (!state.finalized) event.preventDefault();
-        });
-        copyButton.addEventListener("click", copyArtifact);
-        document.addEventListener("click", focusSurface);
-
-        focusSurface();
-      })();
-    </script>
-  </body>
-</html>`;
 
 // -----------------------------------------------------------------------------
 // The Covenant
@@ -754,6 +438,8 @@ export type AnkyWorld = {
   androidPlayIntegrityRequired: boolean;
   androidAddressTrialsConfirmed: boolean;
   x402: typeof anky.x402;
+  stripeSecretKey: string;
+  cryptoOnramp: typeof anky.cryptoOnramp;
 };
 
 export type Env = AnkyWorld;
@@ -792,7 +478,159 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     androidAddressTrialsConfirmed:
       anky.automaticTrials.androidAddressTrialsConfirmed,
     x402: anky.x402,
+    stripeSecretKey: privateKeys.stripeSecretKey,
+    cryptoOnramp: anky.cryptoOnramp,
     ...overrides,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Stripe Crypto Onramp
+// -----------------------------------------------------------------------------
+
+type StripeOnrampFetch = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
+
+type CryptoOnrampRequestBody = {
+  walletAddress?: unknown;
+  sourceAmount?: unknown;
+};
+
+type StripeOnrampSession = {
+  id?: string;
+  redirect_url?: string | null;
+  status?: string;
+};
+
+const baseAddressPattern = /^0x[a-fA-F0-9]{40}$/;
+
+async function handleCryptoOnrampSession(
+  c: Context,
+  env: AnkyWorld,
+  createSession: typeof createStripeOnrampSession,
+) {
+  const payload = (await c.req.json().catch(() => null)) as
+    | CryptoOnrampRequestBody
+    | null;
+  const walletAddress = typeof payload?.walletAddress === "string"
+    ? payload.walletAddress.trim()
+    : "";
+  const sourceAmount = typeof payload?.sourceAmount === "string"
+    ? payload.sourceAmount.trim()
+    : undefined;
+
+  if (!baseAddressPattern.test(walletAddress)) {
+    return c.json(
+      {
+        error: {
+          code: "INVALID_WALLET_ADDRESS",
+          message: "A valid Base wallet address is required.",
+        },
+      },
+      400,
+    );
+  }
+
+  const session = await createSession({
+    env,
+    walletAddress,
+    sourceAmount,
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : "STRIPE_ONRAMP_FAILED";
+    return { error: message };
+  });
+
+  if ("error" in session) {
+    const status = session.error === "STRIPE_ONRAMP_NOT_CONFIGURED" ? 503 : 502;
+    return c.json(
+      {
+        error: {
+          code: session.error,
+          message: "The crypto onramp is not available right now.",
+        },
+      },
+      status,
+    );
+  }
+
+  return c.json({
+    id: session.id,
+    redirectUrl: session.redirectUrl,
+    sourceAmount: session.sourceAmount,
+    sourceCurrency: session.sourceCurrency,
+    destinationCurrency: session.destinationCurrency,
+    destinationNetwork: session.destinationNetwork,
+    walletAddress,
+  });
+}
+
+export async function createStripeOnrampSession(input: {
+  env: AnkyWorld;
+  walletAddress: string;
+  sourceAmount?: string;
+  fetchImpl?: StripeOnrampFetch;
+}): Promise<{
+  id: string;
+  redirectUrl: string;
+  sourceAmount: string;
+  sourceCurrency: string;
+  destinationCurrency: string;
+  destinationNetwork: string;
+}> {
+  if (!input.env.stripeSecretKey) {
+    throw new Error("STRIPE_ONRAMP_NOT_CONFIGURED");
+  }
+
+  const sourceAmount = input.sourceAmount?.trim() || input.env.cryptoOnramp.sourceAmount;
+  if (!/^\d+(\.\d{1,2})?$/.test(sourceAmount)) {
+    throw new Error("INVALID_ONRAMP_AMOUNT");
+  }
+
+  const params = new URLSearchParams();
+  params.set(
+    `wallet_addresses[${input.env.cryptoOnramp.walletAddressParam}]`,
+    input.walletAddress,
+  );
+  params.set("lock_wallet_address", String(input.env.cryptoOnramp.lockWalletAddress));
+  params.set("source_currency", input.env.cryptoOnramp.sourceCurrency);
+  params.set("source_amount", sourceAmount);
+  params.set("destination_currency", input.env.cryptoOnramp.destinationCurrency);
+  params.set("destination_network", input.env.cryptoOnramp.destinationNetwork);
+  params.append("destination_currencies[]", input.env.cryptoOnramp.destinationCurrency);
+  params.append("destination_networks[]", input.env.cryptoOnramp.destinationNetwork);
+  params.set("metadata[anky_wallet]", input.walletAddress);
+
+  const fetcher = input.fetchImpl ?? fetch;
+  const response = await fetcher("https://api.stripe.com/v1/crypto/onramp_sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.env.stripeSecretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params,
+  });
+
+  const bodyText = await response.text();
+  const body = JSON.parse(bodyText || "{}") as StripeOnrampSession & {
+    error?: { message?: string };
+  };
+
+  if (!response.ok) {
+    throw new Error(body.error?.message ?? "STRIPE_ONRAMP_FAILED");
+  }
+  if (!body.id || !body.redirect_url) {
+    throw new Error("STRIPE_ONRAMP_MISSING_REDIRECT_URL");
+  }
+
+  return {
+    id: body.id,
+    redirectUrl: body.redirect_url,
+    sourceAmount,
+    sourceCurrency: input.env.cryptoOnramp.sourceCurrency,
+    destinationCurrency: input.env.cryptoOnramp.destinationCurrency,
+    destinationNetwork: input.env.cryptoOnramp.destinationNetwork,
   };
 }
 
@@ -1578,18 +1416,22 @@ export async function spendPreparedReflectionCredit(input: {
         spentCredit: false,
         spendIdempotencyKey,
       };
-    if (trial.platform === "ios" && !input.trialProof) {
+    if (
+      trial.platform === "ios" &&
+      input.env.iosDeviceCheckRequired &&
+      !input.trialProof
+    ) {
       return trialFailureResult("missing_trial_proof", spendIdempotencyKey);
     }
 
-    if (trial.platform === "ios") {
+    if (trial.platform === "ios" && input.trialProof) {
       const mark = await markDeviceCheckTrialClaimed({
         env: input.env,
         token: input.trialProof!,
         fetchImpl: input.fetchImpl,
       });
 
-      if (!mark.ok) {
+      if (!mark.ok && input.env.iosDeviceCheckRequired) {
         return trialFailureResult(
           mark.reason === "invalid_token"
             ? "invalid_trial_proof"
@@ -2077,6 +1919,7 @@ async function evaluateAndroidTrialEligibility(input: {
 
 async function evaluateIosTrialEligibility(input: {
   env: Env;
+  accountId: string;
   trialProof?: string;
   fetchImpl?: TrialFetch;
 }): Promise<TrialEligibility> {
@@ -2089,7 +1932,11 @@ async function evaluateIosTrialEligibility(input: {
   }
 
   if (!input.trialProof) {
-    return { eligible: false, reason: "missing_trial_proof" };
+    return {
+      eligible: true,
+      platform: "ios",
+      proofHash: await iosAccountTrialProofHash(input.accountId),
+    };
   }
 
   const deviceCheck = await queryDeviceCheckTrialBit({
@@ -2099,10 +1946,17 @@ async function evaluateIosTrialEligibility(input: {
   });
 
   if (!deviceCheck.ok) {
-    if (deviceCheck.reason === "invalid_token") {
+    if (input.env.iosDeviceCheckRequired && deviceCheck.reason === "invalid_token") {
       return { eligible: false, reason: "invalid_trial_proof" };
     }
-    return { eligible: false, reason: "trial_check_unavailable" };
+    if (input.env.iosDeviceCheckRequired) {
+      return { eligible: false, reason: "trial_check_unavailable" };
+    }
+    return {
+      eligible: true,
+      platform: "ios",
+      proofHash: await iosAccountTrialProofHash(input.accountId),
+    };
   }
 
   if (deviceCheck.claimed) {
@@ -2112,8 +1966,12 @@ async function evaluateIosTrialEligibility(input: {
   return {
     eligible: true,
     platform: "ios",
-    proofHash: await shortHash(input.trialProof),
+    proofHash: await iosAccountTrialProofHash(input.accountId),
   };
+}
+
+function iosAccountTrialProofHash(accountId: string): Promise<string> {
+  return shortHash(`ios-account-trial-v1:${accountId}`);
 }
 
 async function callAppleDeviceCheck<T>(input: {
@@ -2422,61 +2280,20 @@ async function streamOpenRouterProvider(input: {
   fetchImpl?: ProviderFetch;
   onChunk: AnkyReflectionChunkSink;
 }): Promise<ReflectionProviderResult> {
-  const fetcher = input.fetchImpl ?? fetch;
-  const response = await fetcher(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      signal: AbortSignal.timeout(input.env.openrouterTimeoutMs),
-      headers: {
-        Authorization: `Bearer ${input.env.openrouterApiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://anky.app",
-        "X-Title": "Anky Mirror",
-      },
-      body: JSON.stringify({
-        model: input.env.openrouterModel,
-        stream: true,
-        messages: [{ role: "user", content: input.prompt }],
-        provider: { data_collection: "deny", zdr: true },
-      }),
-    },
-  );
-
-  if (!response.ok) throw new Error(`OPENROUTER_HTTP_${response.status}`);
-  if (!response.body) throw new Error("OPENROUTER_EMPTY");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
   let reflection = "";
 
-  const consumeBlock = async (block: string) => {
-    for (const chunk of openRouterChunksFromSseBlock(block)) {
-      reflection += chunk;
-      await input.onChunk({
-        chunk,
-        generatedCharacters: [...reflection].length,
-      });
-    }
-  };
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const blocks = buffer.split(/\n\n/);
-    buffer = blocks.pop() ?? "";
-
-    for (const block of blocks) {
-      await consumeBlock(block);
-    }
-  }
-
-  buffer += decoder.decode();
-  if (buffer.trim()) {
-    await consumeBlock(buffer);
+  for await (const chunk of streamOpenRouterChatCompletion({
+    apiKey: input.env.openrouterApiKey,
+    model: input.env.openrouterModel,
+    timeoutMs: input.env.openrouterTimeoutMs,
+    prompt: input.prompt,
+    fetchImpl: input.fetchImpl,
+  })) {
+    reflection += chunk;
+    await input.onChunk({
+      chunk,
+      generatedCharacters: [...reflection].length,
+    });
   }
 
   if (!reflection.trim()) throw new Error("OPENROUTER_EMPTY");
@@ -2486,33 +2303,6 @@ async function streamOpenRouterProvider(input: {
     provider: "openrouter",
     chargeable: true,
   };
-}
-
-function openRouterChunksFromSseBlock(block: string): string[] {
-  const chunks: string[] = [];
-
-  for (const line of block.split(/\r?\n/)) {
-    if (!line.startsWith("data:")) continue;
-    const payload = line.slice("data:".length).trim();
-    if (!payload || payload === "[DONE]") continue;
-
-    try {
-      const json = JSON.parse(payload) as {
-        choices?: Array<{
-          delta?: { content?: unknown };
-          message?: { content?: unknown };
-        }>;
-      };
-      const content =
-        json.choices?.[0]?.delta?.content ??
-        json.choices?.[0]?.message?.content;
-      if (typeof content === "string") chunks.push(content);
-    } catch {
-      continue;
-    }
-  }
-
-  return chunks;
 }
 
 export const defaultFallbackProvider: ReflectionProvider = {
@@ -2563,82 +2353,6 @@ export function parseMirrorResponse(raw: string): MirrorResponse {
   };
 }
 
-const LANG_NAMES: Record<string, string> = {
-  en: "English",
-  es: "Spanish",
-};
-
-const LANGUAGE_GREETINGS: Record<string, string> = {
-  en: "hey, thanks for being who you are. my thoughts:",
-  es: "hola, gracias por ser quien eres. mis pensamientos:",
-};
-
-export function detectLanguage(text: string): string {
-  const lower = text.toLowerCase();
-  const spanishScore =
-    countMatches(
-      lower,
-      /\b(que|el|la|los|las|de|del|en|con|por|para|un|una|es|son|estoy|esta|este|esto|me|te|se|lo|le|y|o|no|si|como|muy|mas|más|pero|todo|mismo|aqui|aquí|ahora|bien|porque|cuando|quiero|siento|tengo|hay)\b/g,
-    ) +
-    countMatches(lower, /[áéíóúñ¿¡]/g) * 3;
-  const englishScore = countMatches(
-    lower,
-    /\b(the|and|for|are|but|not|you|all|can|was|one|our|out|day|get|has|him|his|how|new|now|old|see|two|way|who|did|its|let|put|say|she|too|use|that|this|with|have|what|been|from|will|your|come|them|just|know|want|when|like|time|could|people|there|first|may|should|very|than|these|would|other|which|their|after|over|such|also|back|only|then|feel|think|write|work)\b/g,
-  );
-
-  return spanishScore > englishScore ? "es" : "en";
-}
-
-export function buildStorytellerPrompt(writing: string): string {
-  const detectedLang = detectLanguage(writing);
-  const langName = LANG_NAMES[detectedLang] ?? LANG_NAMES.en;
-  const greeting = LANGUAGE_GREETINGS[detectedLang] ?? LANGUAGE_GREETINGS.en;
-
-  return [
-    "Someone just wrote a complete .anky: stream-of-consciousness, no backspace, no editing, just forward motion until something true broke the surface. This is your first time reading them.",
-    "",
-    "You are Anky: a transient storyteller for a local-first writer archive. You do not remember this person after the request. You transform this one writing session into a reflection that helps them see the story beneath the scattered thoughts.",
-    "",
-    "You are not a therapist. You are not a generic assistant. You are a mentor reading the raw transmission of a human mind: emotionally fluent, psychologically sharp, and able to engage creative, technical, and existential material without reducing it to cliches.",
-    "",
-    "Read for deeper meaning and emotional undercurrent. Make new connections for them. Comfort, validate, and challenge. Notice what they are reaching toward, what they are hiding from, and what kind of life is trying to assemble itself in the middle of the mess.",
-    "",
-    'Be willing to say a lot, but keep it earned. Casual, intimate, lucid. Not clinical. Not diagnostic. Not corporate. Never say "yo". Use vivid metaphors and strong imagery when they help the person finally see themselves.',
-    "",
-    "Go beyond product concepts, plans, or surface narratives to the emotional core. If they are talking about work, code, art, systems, or ambition, name the hunger living underneath it. If they are circling a contradiction, expose the pattern with precision and warmth.",
-    "",
-    "Name what feels NEW in this session: the shift, the opening, the sentence that changes the direction. Name what feels OLD: the loop, the defense, the familiar weather system they are still inside.",
-    "",
-    `LANGUAGE: The user wrote primarily in ${langName} (${detectedLang}).`,
-    `You MUST respond in ${langName}. Do not switch languages.`,
-    `The greeting after the H1 must be in ${langName}.`,
-    `Before returning, silently verify that every visible title, heading, paragraph, tag, experiment, and final line is in ${langName}. Rewrite any drifting line before returning.`,
-    "",
-    "Before the markdown document, output exactly one line of JSON:",
-    '{"tags": ["theme1", "theme2", "theme3"]}',
-    "",
-    "Rules for tags: 3 to 5 tags maximum; each tag is 1-3 words describing an emotional theme or topic; use lowercase letters, numbers, and spaces only; do not use hashtags or markdown.",
-    "",
-    'Do not wrap the markdown body in JSON. Do not use YAML front matter. Do not use a code fence. Do not introduce it with words like "here is".',
-    "",
-    "After the one-line JSON tags block, return exactly one markdown file and nothing else.",
-    "",
-    "Do not use horizontal rule separators (--- or ***). Separate sections with extra blank lines instead.",
-    "",
-    "The markdown document must begin with one H1 title: 3-5 words naming what this session is really about, not what they said, but the thing under the thing.",
-    "",
-    `After the H1, the first paragraph must begin with this exact greeting: ${greeting}`,
-    "",
-    "Use native markdown for everything else: headings, paragraphs, lists, blockquotes, links, images, or any other document element. Do not include tags anywhere in the markdown body. If you include an image reference, write it as markdown image syntax. Keep it readable on a phone with short paragraphs and only occasional lists.",
-    "",
-    "Let the document feel like a scroll Anky found and brought back: simple, intimate, lucid, and complete.",
-    "",
-    "Writing:",
-    "",
-    writing,
-  ].join("\n");
-}
-
 export function buildNudgePrompt(input: {
   writing: string;
   durationMs: number;
@@ -2678,10 +2392,6 @@ function markdownPayload(raw: string): string {
 
 function countPromptWords(text: string): number {
   return text.trim().match(/\S+/g)?.length ?? 0;
-}
-
-function countMatches(text: string, pattern: RegExp): number {
-  return text.match(pattern)?.length ?? 0;
 }
 
 function normalizeMirrorTags(value: unknown): string[] {
@@ -3285,7 +2995,7 @@ export async function handleAnkyReflection(
               durationMs: validation.durationMs,
               wordCount: countPromptWords(writing),
             })
-          : buildReflectDotAnkyPrompt(dotAnky);
+          : buildReflectPromptFromText(writing);
       await deps.progress?.({
         stage: "reflection_prepared",
         message:

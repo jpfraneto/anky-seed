@@ -246,8 +246,6 @@ export function buildReflectionPrompt(masterPrompt: string, writing: string): st
 
 ---
 
-RECONSTRUCTED ANKY
-
 ${writing.trim()}`;
 }
 

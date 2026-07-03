@@ -2,7 +2,42 @@ import { describe, expect, test } from "bun:test";
 import { ankyWorld, resolveReflectionCredit } from "../server";
 
 describe("reflection credit spending", () => {
-  test("Android account trial grants two credits once then spends one credit when explicitly enabled", async () => {
+  test("iOS account trial grants two credits without DeviceCheck proof by default", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const result = await resolveReflectionCredit({
+      env: ankyWorld({
+        autoTrialEnabled: true,
+        iosTrialEnabled: true,
+        androidTrialEnabled: false,
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
+      }),
+      accountId: "IosWriterAccountId",
+      accountIdHash: "publicHash",
+      ankyHash: "ankyHash",
+      client: "ios",
+      fetchImpl: async (url, init) => {
+        calls.push({ url: String(url), init });
+        if (calls.length === 1) return jsonResponse({ items: [{ balance: 0, currency_code: "CRD" }] });
+        if (calls.length === 2) return jsonResponse({ items: [{ balance: 2, currency_code: "CRD" }] });
+        return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.creditsRemaining).toBe(1);
+    expect(result.result).toBe("trial_granted_spent");
+    expect(result.spentCredit).toBe(true);
+    expect(calls.length).toBe(3);
+    expect(calls.some((call) => String(call.url).includes("devicecheck"))).toBe(false);
+    const grantBody = JSON.parse(String(calls[1]?.init.body));
+    expect(grantBody.adjustments).toEqual({ CRD: 2 });
+    expect(String(grantBody.reference).startsWith("anky-trial-v1:ios:publicHash:")).toBe(true);
+    expect(String(calls[1]?.init.body)).not.toContain("IosWriterAccountId");
+  });
+
+  test("Android account trial grants two credits once then spends one credit by default", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const result = await resolveReflectionCredit({
       env: ankyWorld({
@@ -41,6 +76,7 @@ describe("reflection credit spending", () => {
       env: ankyWorld({
         autoTrialEnabled: true,
         androidTrialEnabled: true,
+        androidPlayIntegrityRequired: true,
         revenueCatSecretKey: "secret",
         revenueCatProjectId: "project",
       }),

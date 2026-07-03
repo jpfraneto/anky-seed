@@ -51,8 +51,10 @@ describe("dotAnky reflection helpers", () => {
       const markdown = await reflectDotAnkyToMarkdown("0000 h\n0044 i\n8000\n");
 
       expect(markdown).toBe("# Tiny Mirror\n\nok");
-      expect(capturedPrompt).toContain("RECONSTRUCTED ANKY");
+      expect(capturedPrompt.startsWith("Take a look at this stream-of-consciousness journal entry.")).toBe(true);
+      expect(capturedPrompt).toContain("Reply with pure markdown");
       expect(capturedPrompt).toContain("hi");
+      expect(capturedPrompt).not.toContain("RECONSTRUCTED ANKY");
       expect(capturedPrompt).not.toContain("RHYTHM SUMMARY");
       expect(capturedPrompt).not.toContain("TEXT AND RHYTHM");
       expect(capturedPrompt).not.toContain("averageDeltaMs");
@@ -66,7 +68,7 @@ describe("dotAnky reflection helpers", () => {
     }
   });
 
-  test("instructs the LLM to keep headings in the writing language", async () => {
+  test("uses the same reflection prompt that app copy exposes", async () => {
     let capturedPrompt = "";
     const restore = setReflectDotAnkyLlmStreamerForTests(async function* (input) {
       capturedPrompt = input.prompt;
@@ -76,15 +78,11 @@ describe("dotAnky reflection helpers", () => {
     try {
       await reflectDotAnkyToMarkdown("0000 h\n0044 o\n0044 l\n0044 a\n8000\n");
 
-      expect(capturedPrompt).toContain("Detect the dominant language and emotional center of the reconstructed writing.");
-      expect(capturedPrompt).toContain("Write the entire reflection in that same language.");
-      expect(capturedPrompt).toContain("Preserve dialect, register, intimacy, and texture without parody.");
-      expect(capturedPrompt).toContain("If the writing sounds Chilean, do not answer with Argentine phrasing.");
-      expect(capturedPrompt).toContain("If the writing is Spanglish or mixed, follow the language that carries the emotional center.");
-      expect(capturedPrompt).toContain("All visible output must stay in that language: title, tags, headings, body, experiment, and final line.");
-      expect(capturedPrompt).toContain("Translate or rewrite the headings into the dominant language of the writing.");
-      expect(capturedPrompt).toContain("Lo que apareció");
-      expect(capturedPrompt).toContain("One line to carry");
+      expect(capturedPrompt).toContain("Write in the same language and vibe as the entry.");
+      expect(capturedPrompt).toContain("At the top of the reply add a max 4 word title.");
+      expect(capturedPrompt).not.toContain("`tag`");
+      expect(capturedPrompt).not.toContain("Rules for tags");
+      expect(capturedPrompt).not.toContain('"tags"');
     } finally {
       restore();
     }

@@ -29,7 +29,7 @@ describe("prompt eval harness", () => {
   test("builds the exact master prompt plus reconstructed writing shape", () => {
     const prompt = buildReflectionPrompt("MASTER", "reconstructed words");
 
-    expect(prompt).toBe("MASTER\n\n---\n\nRECONSTRUCTED ANKY\n\nreconstructed words");
+    expect(prompt).toBe("MASTER\n\n---\n\nreconstructed words");
   });
 
   test("uses the exported production master prompt as current", async () => {
