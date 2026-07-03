@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildReflectPrompt,
+  buildReflectPromptFromText,
   parseDotAnky,
+  PROMPT_DIP,
+  PROMPT_FULL,
+  PROMPT_SENTENCE,
   reconstructText,
   reflectDotAnkyToMarkdown,
   setReflectDotAnkyLlmStreamerForTests,
@@ -86,5 +91,35 @@ describe("dotAnky reflection helpers", () => {
     } finally {
       restore();
     }
+  });
+
+  test("builds sentence-tier prompt with sentence instructions", () => {
+    const prompt = buildReflectPrompt("open sesame", "sentence");
+
+    expect(prompt.startsWith(PROMPT_SENTENCE)).toBe(true);
+    expect(prompt).toBe(`${PROMPT_SENTENCE}\n\n---\n\nopen sesame`);
+    expect(prompt).not.toContain("RAW .ANKY");
+    expect(prompt).not.toContain("RHYTHM SUMMARY");
+    expect(prompt).not.toContain("TEXT AND RHYTHM");
+    expect(prompt).not.toContain("averageDeltaMs");
+  });
+
+  test("builds dip-tier prompt with dip instructions", () => {
+    const prompt = buildReflectPrompt("stayed a little longer", "dip");
+
+    expect(prompt.startsWith(PROMPT_DIP)).toBe(true);
+    expect(prompt).toBe(`${PROMPT_DIP}\n\n---\n\nstayed a little longer`);
+    expect(prompt).not.toContain("RAW .ANKY");
+    expect(prompt).not.toContain("RHYTHM SUMMARY");
+    expect(prompt).not.toContain("TEXT AND RHYTHM");
+    expect(prompt).not.toContain("averageDeltaMs");
+  });
+
+  test("full-tier prompt stays byte-identical to the deprecated wrapper", () => {
+    const fullPrompt = buildReflectPrompt("the full thread", "full");
+
+    expect(fullPrompt.startsWith(PROMPT_FULL)).toBe(true);
+    expect(fullPrompt).toBe(buildReflectPromptFromText("the full thread"));
+    expect(fullPrompt).toBe(`${PROMPT_FULL}\n\n---\n\nthe full thread`);
   });
 });
