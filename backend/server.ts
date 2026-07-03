@@ -37,6 +37,7 @@ import {
   verifyAnkyMirrorRequestSignature,
   type AnkyClient,
   type Hex,
+  type SessionTier,
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
 import {
@@ -181,6 +182,22 @@ async function sendAnky(ankyString) {
 // development personality, no alternate deployment story. The system is always
 // production. Tests may pass an override object, but the real server reads this.
 
+const productionOpenRouterModel = "anthropic/claude-sonnet-4.6";
+
+export const defaultReflectionModels = {
+  sentence: {
+    model: "google/gemini-2.5-flash-lite",
+    maxTokens: 60,
+  },
+  dip: {
+    model: "google/gemini-2.5-flash-lite",
+    maxTokens: 250,
+  },
+  full: {
+    model: productionOpenRouterModel,
+  },
+} as const;
+
 export const anky = {
   host: "0.0.0.0",
   port: 8080,
@@ -188,8 +205,9 @@ export const anky = {
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
   providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
-  openrouterModel: "anthropic/claude-sonnet-4.6",
+  openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
+  reflectionModels: defaultReflectionModels,
   privacyRequiresZdr: true,
   revenueCatCreditCode: "CRD",
   trialCredits: 2,
@@ -415,6 +433,7 @@ export type AnkyWorld = {
   openrouterApiKey: string;
   openrouterModel: string;
   openrouterTimeoutMs: number;
+  reflectionModels: ReflectionModelConfigByTier;
   requireZdr: boolean;
   providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
   bankrLlmGatewayUrl: string;
@@ -444,6 +463,16 @@ export type AnkyWorld = {
 
 export type Env = AnkyWorld;
 
+export type ReflectionModelConfig = {
+  model: string;
+  maxTokens?: number;
+};
+
+export type ReflectionModelConfigByTier = Record<
+  SessionTier,
+  ReflectionModelConfig
+>;
+
 export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
   return {
     port: anky.port,
@@ -453,6 +482,7 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     openrouterApiKey: privateKeys.openrouterApiKey,
     openrouterModel: anky.openrouterModel,
     openrouterTimeoutMs: anky.openrouterTimeoutMs,
+    reflectionModels: cloneReflectionModelConfig(anky.reflectionModels),
     requireZdr: anky.privacyRequiresZdr,
     providerOrder: [...anky.providerOrder],
     bankrLlmGatewayUrl: "",
@@ -481,6 +511,16 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     stripeSecretKey: privateKeys.stripeSecretKey,
     cryptoOnramp: anky.cryptoOnramp,
     ...overrides,
+  };
+}
+
+function cloneReflectionModelConfig(
+  config: ReflectionModelConfigByTier,
+): ReflectionModelConfigByTier {
+  return {
+    sentence: { ...config.sentence },
+    dip: { ...config.dip },
+    full: { ...config.full },
   };
 }
 
@@ -2136,6 +2176,7 @@ export type ReflectionProvider = {
   reflect(input: {
     env: Env;
     prompt: string;
+    tier?: SessionTier;
     fetchImpl?: ProviderFetch;
     onChunk?: AnkyReflectionChunkSink;
   }): Promise<ReflectionProviderResult>;
@@ -2144,12 +2185,14 @@ export type ReflectionProvider = {
 export async function routeReflection(input: {
   env: Env;
   prompt: string;
+  tier?: SessionTier;
   fetchImpl?: ProviderFetch;
   providers?: ReflectionProvider[];
   onChunk?: AnkyReflectionChunkSink;
 }): Promise<ReflectionProviderResult> {
   const providers = input.providers ?? providersForEnv(input.env);
   const failures: string[] = [];
+  const tier = input.tier ?? "full";
 
   for (const provider of providers) {
     if (input.env.requireZdr && !providerMeetsZdr(provider.privacy)) {
@@ -2160,6 +2203,7 @@ export async function routeReflection(input: {
       return await provider.reflect({
         env: input.env,
         prompt: input.prompt,
+        tier,
         fetchImpl: input.fetchImpl,
         onChunk: input.onChunk,
       });
@@ -2199,13 +2243,17 @@ export const openRouterProvider: ReflectionProvider = {
     trainingDisabled: true,
   },
   async reflect(input) {
-    if (!input.env.openrouterApiKey || !input.env.openrouterModel) {
+    const modelConfig = reflectionModelConfigForTier(
+      input.env,
+      input.tier ?? "full",
+    );
+    if (!input.env.openrouterApiKey || !modelConfig.model) {
       throw new Error("OPENROUTER_NOT_CONFIGURED");
     }
 
     const onChunk = input.onChunk;
     if (onChunk) {
-      return streamOpenRouterProvider({ ...input, onChunk });
+      return streamOpenRouterProvider({ ...input, modelConfig, onChunk });
     }
 
     const fetcher = input.fetchImpl ?? fetch;
@@ -2221,7 +2269,10 @@ export const openRouterProvider: ReflectionProvider = {
           "X-Title": "Anky Mirror",
         },
         body: JSON.stringify({
-          model: input.env.openrouterModel,
+          model: modelConfig.model,
+          ...(typeof modelConfig.maxTokens === "number"
+            ? { max_tokens: modelConfig.maxTokens }
+            : {}),
           messages: [{ role: "user", content: input.prompt }],
           provider: { data_collection: "deny", zdr: true },
         }),
@@ -2241,6 +2292,26 @@ export const openRouterProvider: ReflectionProvider = {
     };
   },
 };
+
+export function reflectionModelConfigForTier(
+  env: Env,
+  tier: SessionTier,
+): ReflectionModelConfig {
+  const configured = env.reflectionModels?.[tier] ?? defaultReflectionModels[tier];
+  const fallback =
+    tier === "full"
+      ? { model: env.openrouterModel }
+      : defaultReflectionModels[tier];
+  const legacyFullModelOverride =
+    tier === "full" && env.openrouterModel !== productionOpenRouterModel
+      ? { model: env.openrouterModel }
+      : {};
+  return {
+    ...fallback,
+    ...configured,
+    ...legacyFullModelOverride,
+  };
+}
 
 export const bankrProvider: ReflectionProvider = {
   name: "bankr",
@@ -2277,6 +2348,7 @@ export const poiesisProvider: ReflectionProvider = {
 async function streamOpenRouterProvider(input: {
   env: Env;
   prompt: string;
+  modelConfig: ReflectionModelConfig;
   fetchImpl?: ProviderFetch;
   onChunk: AnkyReflectionChunkSink;
 }): Promise<ReflectionProviderResult> {
@@ -2284,7 +2356,8 @@ async function streamOpenRouterProvider(input: {
 
   for await (const chunk of streamOpenRouterChatCompletion({
     apiKey: input.env.openrouterApiKey,
-    model: input.env.openrouterModel,
+    model: input.modelConfig.model,
+    maxTokens: input.modelConfig.maxTokens,
     timeoutMs: input.env.openrouterTimeoutMs,
     prompt: input.prompt,
     fetchImpl: input.fetchImpl,

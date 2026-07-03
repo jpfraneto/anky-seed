@@ -224,6 +224,7 @@ async function* streamOpenRouterReflection(input: {
 export async function* streamOpenRouterChatCompletion(input: {
   apiKey: string;
   model: string;
+  maxTokens?: number;
   timeoutMs: number;
   prompt: string;
   fetchImpl?: OpenRouterFetch;
@@ -244,6 +245,9 @@ export async function* streamOpenRouterChatCompletion(input: {
       },
       body: JSON.stringify({
         model: input.model,
+        ...(typeof input.maxTokens === "number"
+          ? { max_tokens: input.maxTokens }
+          : {}),
         stream: true,
         messages: [{ role: "user", content: input.prompt }],
         provider: { data_collection: "deny", zdr: true },
