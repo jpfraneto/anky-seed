@@ -198,6 +198,12 @@ export const defaultReflectionModels = {
   },
 } as const;
 
+export const defaultReflectionCreditCosts = {
+  sentence: 1,
+  dip: 1,
+  full: 1,
+} as const;
+
 export const anky = {
   host: "0.0.0.0",
   port: 8080,
@@ -208,6 +214,7 @@ export const anky = {
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,
+  reflectionCreditCosts: defaultReflectionCreditCosts,
   privacyRequiresZdr: true,
   revenueCatCreditCode: "CRD",
   trialCredits: 2,
@@ -434,6 +441,7 @@ export type AnkyWorld = {
   openrouterModel: string;
   openrouterTimeoutMs: number;
   reflectionModels: ReflectionModelConfigByTier;
+  reflectionCreditCosts: ReflectionCreditCostByTier;
   requireZdr: boolean;
   providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
   bankrLlmGatewayUrl: string;
@@ -473,6 +481,8 @@ export type ReflectionModelConfigByTier = Record<
   ReflectionModelConfig
 >;
 
+export type ReflectionCreditCostByTier = Record<SessionTier, number>;
+
 export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
   return {
     port: anky.port,
@@ -483,6 +493,7 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     openrouterModel: anky.openrouterModel,
     openrouterTimeoutMs: anky.openrouterTimeoutMs,
     reflectionModels: cloneReflectionModelConfig(anky.reflectionModels),
+    reflectionCreditCosts: { ...anky.reflectionCreditCosts },
     requireZdr: anky.privacyRequiresZdr,
     providerOrder: [...anky.providerOrder],
     bankrLlmGatewayUrl: "",
@@ -1091,6 +1102,7 @@ export type ReflectionCreditResult = {
     | "unavailable";
   spentCredit: boolean;
   spendIdempotencyKey?: string;
+  creditCost?: number;
 };
 
 export type ReflectionEndpointName =
@@ -1145,6 +1157,7 @@ export type PreparedReflectionCredit =
       result?: ReflectionCreditResult["result"];
       spentCredit?: boolean;
       spendIdempotencyKey?: string;
+      creditCost?: number;
       trial?: { platform: "ios" | "android"; proofHash: string };
     }
   | {
@@ -1152,6 +1165,7 @@ export type PreparedReflectionCredit =
       creditsRemaining: number | null;
       result: ReflectionCreditResult["result"];
       spendIdempotencyKey?: string;
+      creditCost?: number;
     };
 
 export type TrialEligibility =
@@ -1181,10 +1195,12 @@ export async function prepareReflectionCredit(input: {
   accountIdHash: string;
   ankyHash: string;
   client: string;
+  tier?: SessionTier;
   appVersion?: string;
   trialProof?: string;
   fetchImpl?: CreditFetch;
 }): Promise<PreparedReflectionCredit> {
+  const creditCost = reflectionCreditCostForTier(input.env, input.tier);
   const spendIdempotencyKey = await reflectionSpendIdempotencyKey(
     input.accountId,
     input.ankyHash,
@@ -1203,15 +1219,17 @@ export async function prepareReflectionCredit(input: {
       creditsRemaining: null,
       result: balance.result,
       spendIdempotencyKey,
+      creditCost,
     };
   }
 
-  if (balance.balance !== null && balance.balance >= 1) {
+  if (balance.balance !== null && balance.balance >= creditCost) {
     return {
       ok: true,
       source: "balance",
       creditsRemaining: balance.balance,
       spendIdempotencyKey,
+      creditCost,
     };
   }
 
@@ -1224,7 +1242,7 @@ export async function prepareReflectionCredit(input: {
   });
 
   if (!eligibility.eligible) {
-    return trialFailureResult(eligibility.reason, spendIdempotencyKey);
+    return trialFailureResult(eligibility.reason, spendIdempotencyKey, creditCost);
   }
 
   return {
@@ -1232,6 +1250,7 @@ export async function prepareReflectionCredit(input: {
     source: "trial",
     creditsRemaining: null,
     spendIdempotencyKey,
+    creditCost,
     trial: { platform: eligibility.platform, proofHash: eligibility.proofHash },
   };
 }
@@ -1424,6 +1443,7 @@ export async function spendPreparedReflectionCredit(input: {
   accountIdHash: string;
   ankyHash: string;
   prepared: PreparedReflectionCredit;
+  tier?: SessionTier;
   trialProof?: string;
   fetchImpl?: CreditFetch;
 }): Promise<ReflectionCreditResult> {
@@ -1438,9 +1458,13 @@ export async function spendPreparedReflectionCredit(input: {
       creditsRemaining: null,
       result: "bypassed",
       spentCredit: false,
+      creditCost: input.prepared.creditCost,
     };
   }
 
+  const creditCost =
+    input.prepared.creditCost ??
+    reflectionCreditCostForTier(input.env, input.tier);
   const spendIdempotencyKey =
     input.prepared.spendIdempotencyKey ??
     (await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash));
@@ -1455,13 +1479,18 @@ export async function spendPreparedReflectionCredit(input: {
         result: "unavailable",
         spentCredit: false,
         spendIdempotencyKey,
+        creditCost,
       };
     if (
       trial.platform === "ios" &&
       input.env.iosDeviceCheckRequired &&
       !input.trialProof
     ) {
-      return trialFailureResult("missing_trial_proof", spendIdempotencyKey);
+      return trialFailureResult(
+        "missing_trial_proof",
+        spendIdempotencyKey,
+        creditCost,
+      );
     }
 
     if (trial.platform === "ios" && input.trialProof) {
@@ -1477,6 +1506,7 @@ export async function spendPreparedReflectionCredit(input: {
             ? "invalid_trial_proof"
             : "trial_check_unavailable",
           spendIdempotencyKey,
+          creditCost,
         );
       }
     }
@@ -1506,6 +1536,7 @@ export async function spendPreparedReflectionCredit(input: {
             : "unavailable",
         spentCredit: false,
         spendIdempotencyKey,
+        creditCost,
       };
     }
   }
@@ -1515,6 +1546,7 @@ export async function spendPreparedReflectionCredit(input: {
     projectId: input.env.revenueCatProjectId,
     accountId: input.accountId,
     creditCode: input.env.revenueCatCreditCode,
+    amount: creditCost,
     idempotencyKey: spendIdempotencyKey,
     reference: spendReference,
     fetchImpl: input.fetchImpl,
@@ -1530,6 +1562,7 @@ export async function spendPreparedReflectionCredit(input: {
       : spend.result,
     spentCredit: spend.ok,
     spendIdempotencyKey,
+    creditCost,
   };
 }
 
@@ -1625,11 +1658,16 @@ export async function spendRevenueCatCredit(input: {
   projectId: string;
   accountId: string;
   creditCode: string;
+  amount?: number;
   idempotencyKey: string;
   reference: string;
   fetchImpl?: RevenueCatFetch;
 }): Promise<CreditOperationResult> {
-  return adjustRevenueCatCredits({ ...input, amount: -1, result: "spent" });
+  return adjustRevenueCatCredits({
+    ...input,
+    amount: -(input.amount ?? 1),
+    result: "spent",
+  });
 }
 
 export async function refundRevenueCatCredit(input: {
@@ -1879,6 +1917,7 @@ function trialFailureResult(
     | "already_claimed"
     | "trial_check_unavailable",
   spendIdempotencyKey: string,
+  creditCost?: number,
 ): Extract<PreparedReflectionCredit, { ok: false }> &
   Pick<ReflectionCreditResult, "spentCredit"> {
   const result = (() => {
@@ -1904,6 +1943,7 @@ function trialFailureResult(
     result,
     spentCredit: false,
     spendIdempotencyKey,
+    creditCost,
   };
 }
 
@@ -2311,6 +2351,15 @@ export function reflectionModelConfigForTier(
     ...configured,
     ...legacyFullModelOverride,
   };
+}
+
+export function reflectionCreditCostForTier(
+  env: Pick<Env, "reflectionCreditCosts">,
+  tier: SessionTier = "full",
+): number {
+  const configured =
+    env.reflectionCreditCosts?.[tier] ?? defaultReflectionCreditCosts[tier] ?? 1;
+  return Number.isFinite(configured) && configured >= 0 ? configured : 1;
 }
 
 export const bankrProvider: ReflectionProvider = {

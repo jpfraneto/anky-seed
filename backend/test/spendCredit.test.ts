@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { ankyWorld, resolveReflectionCredit } from "../server";
+import {
+  ankyWorld,
+  reflectionCreditCostForTier,
+  resolveReflectionCredit,
+} from "../server";
 
 describe("reflection credit spending", () => {
   test("iOS account trial grants two credits without DeviceCheck proof by default", async () => {
@@ -69,6 +73,52 @@ describe("reflection credit spending", () => {
     expect(grantBody.adjustments).toEqual({ CRD: 2 });
     expect(String(grantBody.reference).startsWith("anky-trial-v1:android:publicHash:")).toBe(true);
     expect(String(calls[1]?.init.body)).not.toContain("AndroidWriterAccountId");
+  });
+
+  test("tier credit cost controls the prepared spend amount", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const result = await resolveReflectionCredit({
+      env: ankyWorld({
+        autoTrialEnabled: false,
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
+        reflectionCreditCosts: {
+          sentence: 2,
+          dip: 1,
+          full: 1,
+        },
+      }),
+      accountId: "WriterAccountId",
+      accountIdHash: "publicHash",
+      ankyHash: "ankyHash",
+      client: "other",
+      tier: "sentence",
+      fetchImpl: async (url, init) => {
+        calls.push({ url: String(url), init });
+        if (calls.length === 1) {
+          return jsonResponse({ items: [{ balance: 3, currency_code: "CRD" }] });
+        }
+        return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.creditCost).toBe(2);
+    expect(result.creditsRemaining).toBe(1);
+    expect(JSON.parse(String(calls[1]?.init.body))).toMatchObject({
+      adjustments: { CRD: -2 },
+    });
+  });
+
+  test("missing tier credit cost config preserves one-credit billing", () => {
+    const env = ankyWorld({
+      reflectionCreditCosts: undefined as any,
+    });
+
+    expect(reflectionCreditCostForTier(env, "sentence")).toBe(1);
+    expect(reflectionCreditCostForTier(env, "dip")).toBe(1);
+    expect(reflectionCreditCostForTier(env, "full")).toBe(1);
   });
 
   test("Android trial stays unavailable when Play Integrity is still required", async () => {
