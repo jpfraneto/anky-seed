@@ -1,7 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseAnky, reconstructText, sha256Hex, validateAnky } from "../src";
+import {
+  parseAnky,
+  reconstructText,
+  sessionStats,
+  sessionTier,
+  sha256Hex,
+  TIER_DIP_MS,
+  TIER_FULL_MS,
+  validateAnky,
+} from "../src";
 
 const root = resolve(import.meta.dir, "../../..");
 
@@ -81,5 +90,37 @@ describe(".anky protocol", () => {
     if (!validation.isValid) return;
     expect(validation.durationMs).toBe(472000);
     expect(validation.isComplete).toBe(false);
+  });
+
+  test("session stats count user-written characters and protocol duration", () => {
+    expect(sessionStats("1770000000000 h\n42 SPACE\n8000")).toEqual({
+      chars: 2,
+      durationMs: 42,
+    });
+  });
+
+  test("session tier treats a single-character session as sentence tier", () => {
+    expect(sessionStats("1770000000000 h")).toEqual({
+      chars: 1,
+      durationMs: 0,
+    });
+    expect(sessionTier("1770000000000 h")).toBe("sentence");
+  });
+
+  test("session tier dip boundary is exact", () => {
+    expect(TIER_DIP_MS).toBe(88_000);
+    expect(sessionTier("1770000000000 h\n87999 i")).toBe("sentence");
+    expect(sessionTier("1770000000000 h\n88000 i")).toBe("dip");
+  });
+
+  test("session tier full boundary is exact", () => {
+    expect(TIER_FULL_MS).toBe(480_000);
+    expect(sessionTier("1770000000000 h\n479999 i")).toBe("dip");
+    expect(sessionTier("1770000000000 h\n480000 i")).toBe("full");
+  });
+
+  test("session tier helpers assume a validated artifact", () => {
+    expect(() => sessionStats("")).toThrow("EMPTY_ANKY");
+    expect(() => sessionTier("not an anky")).toThrow("INVALID_TIME");
   });
 });

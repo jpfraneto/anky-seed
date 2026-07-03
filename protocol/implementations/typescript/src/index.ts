@@ -28,3 +28,11 @@ export { parseAnky, type AnkyEvent, type ParsedAnky } from "./parse";
 export { reconstructText } from "./reconstruct";
 export { durationMs, writingDurationMs, COMPLETE_RITUAL_MS } from "./duration";
 export { validateAnky, type AnkyValidation } from "./validate";
+export {
+  sessionStats,
+  sessionTier,
+  TIER_DIP_MS,
+  TIER_FULL_MS,
+  type SessionStats,
+  type SessionTier,
+} from "./session";
