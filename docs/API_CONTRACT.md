@@ -6,7 +6,7 @@ The Anky mirror server has one app-facing endpoint:
 POST /anky
 ```
 
-This endpoint receives one exact `.anky` artifact, verifies a Base/EVM identity signature, mirrors the writing, spends one credit only after a real provider succeeds, returns a reflection, and forgets the writing.
+This endpoint receives one exact `.anky` artifact, verifies a Base/EVM identity signature, derives reflection depth from the artifact, mirrors the writing, spends only after a real provider succeeds, returns a reflection, and forgets the writing.
 
 The server is a mirror, not memory.
 
@@ -147,9 +147,23 @@ The body is an exact `.anky` artifact. Example shape only:
 0048 o
 ```
 
-A legacy terminal `8000` line may appear in older artifacts, but current clients should not append it to active saves. Completion is based on accumulated writing deltas only.
+A legacy terminal `8000` line may appear in older artifacts, but current clients should not append it to active saves. Reflection depth is based on accumulated writing deltas only.
 
 The API must not accept JSON writing bodies.
+
+## Reflection Tiers
+
+The client does not choose reflection depth. The server derives it from the validated `.anky` artifact before reconstructing writing text:
+
+```txt
+sentence: at least 1 written character
+dip:      durationMs >= 88_000
+full:     durationMs >= 480_000
+```
+
+Shorter tiers may use shorter prompts, lower token caps, and cheaper configured models. This does not add request headers, response headers, endpoints, auth modes, persistence, or a new response shape. Successful responses are still plain markdown/text; SSE responses still end with a `reflection` event.
+
+Known property: `.anky` timing deltas are client-authored. Tiers are claims derived from the signed artifact, not proof that a human physically wrote for that duration. This is accepted by design: the protocol records, it does not police. The app unlock flow happens on-device regardless of server reflection tier.
 
 ## Success Response
 
@@ -206,6 +220,8 @@ Trial grants require official-app/device proof. A public address alone must not 
 Development credit bypass may bypass credits only. It must not bypass request identity verification.
 
 The current tested credit contract is prepare-before-model, spend-after-chargeable-provider-success. A model failure before spend does not charge and does not need a refund. The no-charge default fallback returns safely without spending.
+
+Billing amount may be derived from the server-side reflection tier. If tier pricing is absent, all tiers bill like the historical full reflection path.
 
 Manual credit support copy:
 

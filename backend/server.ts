@@ -33,6 +33,7 @@ import {
   parseBaseAccountId,
   reconstructText as reconstructProtocolText,
   sha256Hex,
+  sessionTier,
   validateAnky,
   verifyAnkyMirrorRequestSignature,
   type AnkyClient,
@@ -41,7 +42,7 @@ import {
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
 import {
-  buildReflectPromptFromText,
+  buildReflectPrompt,
   streamOpenRouterChatCompletion,
 } from "./reflection";
 
@@ -274,6 +275,8 @@ export type AnkyRouteDeps = {
   spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
   routeReflection?: typeof routeReflection;
   callMirror?: (input: { env: AnkyWorld; prompt: string }) => Promise<string>;
+  providerFetch?: ProviderFetch;
+  creditFetch?: CreditFetch;
   idempotencyStore?: IdempotencyStore;
   diagnostics?: DiagnosticsSink;
   verifyX402Payment?: typeof verifyX402Payment;
@@ -708,6 +711,7 @@ export type SafeLogFields = {
   modelProvider?: string;
   modelFailure?: string;
   creditResult?: string;
+  reflectionTier?: SessionTier;
 };
 
 export type SafeLogger = {
@@ -735,6 +739,7 @@ export type MirrorDiagnosticEvent = {
   provider?: string;
   durationMs?: number;
   errorCode?: string;
+  reflectionTier?: SessionTier;
   startedAt: string;
   finishedAt: string;
 };
@@ -2806,6 +2811,7 @@ export async function handleAnkyReflection(
   let x402Settlement: unknown;
   let freeFallbackWithoutCredit = false;
   let requestIntent: AnkyRequestIntent = "reflection";
+  let reflectionTier: SessionTier | undefined;
 
   try {
     await deps.progress?.({
@@ -2906,18 +2912,15 @@ export async function handleAnkyReflection(
       errorCode = "INVALID_ANKY";
       return errorJson(c, "INVALID_ANKY");
     }
-    if (!validation.isComplete && requestIntent === "reflection") {
-      statusCode = 400;
-      errorCode = "INCOMPLETE_RITUAL";
-      return errorJson(c, "INCOMPLETE_RITUAL");
-    }
     durationMs = validation.durationMs;
+    reflectionTier =
+      requestIntent === "reflection" ? sessionTier(dotAnky) : undefined;
     await deps.progress?.({
       stage: "protocol_validated",
       message:
         requestIntent === "nudge"
           ? "Anky validated the current .anky fragment."
-          : "Anky validated a complete 8-minute ritual.",
+          : "Anky validated the .anky ritual.",
       durationMs,
     });
 
@@ -2971,8 +2974,10 @@ export async function handleAnkyReflection(
               accountIdHash: identityHash,
               ankyHash: billingHash,
               client: identity.client,
+              tier: reflectionTier,
               appVersion,
               trialProof,
+              fetchImpl: deps.creditFetch,
             });
       if (
         !preparedCredit.ok &&
@@ -2989,8 +2994,11 @@ export async function handleAnkyReflection(
             source: "balance",
             creditsRemaining: null,
             spendIdempotencyKey: preparedCredit.spendIdempotencyKey,
+            creditCost: preparedCredit.creditCost,
           },
+          tier: reflectionTier,
           trialProof,
+          fetchImpl: deps.creditFetch,
         });
         if (recoveredCredit.ok) {
           recoveredPreviousSpend = true;
@@ -3117,7 +3125,7 @@ export async function handleAnkyReflection(
               durationMs: validation.durationMs,
               wordCount: countPromptWords(writing),
             })
-          : buildReflectPromptFromText(writing);
+          : buildReflectPrompt(writing, reflectionTier ?? "full");
       await deps.progress?.({
         stage: "reflection_prepared",
         message:
@@ -3138,6 +3146,8 @@ export async function handleAnkyReflection(
               ? { ...env, openrouterModel: nudgeOpenRouterModel }
               : env,
           prompt,
+          tier: requestIntent === "reflection" ? reflectionTier : undefined,
+          fetchImpl: deps.providerFetch,
           onChunk:
             requestIntent === "reflection" ? deps.reflectionChunk : undefined,
         });
@@ -3201,7 +3211,9 @@ export async function handleAnkyReflection(
             accountIdHash: identityHash,
             ankyHash: billingHash,
             prepared: preparedCredit,
+            tier: reflectionTier,
             trialProof,
+            fetchImpl: deps.creditFetch,
           });
           creditResult = credit.result;
           if (!credit.ok) {
@@ -3283,6 +3295,7 @@ export async function handleAnkyReflection(
       modelProvider,
       modelFailure,
       creditResult,
+      reflectionTier,
     });
     await deps.diagnostics?.record({
       requestId,
@@ -3295,6 +3308,7 @@ export async function handleAnkyReflection(
       provider: modelProvider,
       durationMs,
       errorCode,
+      reflectionTier,
       startedAt: startedAtIso,
       finishedAt: new Date().toISOString(),
     });

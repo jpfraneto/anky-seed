@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { Buffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { signAnkyMirrorRequest } from "@anky/protocol";
 import {
+  reconstructText as reconstructProtocolText,
+  signAnkyMirrorRequest,
+  validateAnky,
+} from "@anky/protocol";
+import {
+  anky,
   clearInFlightForTests,
   clearReplayMemoryForTests,
   createApp,
@@ -10,6 +16,12 @@ import {
   ankyWorld,
   normalizeMetadataValue,
 } from "../server";
+import {
+  buildReflectPromptFromText,
+  PROMPT_DIP,
+  PROMPT_FULL,
+  PROMPT_SENTENCE,
+} from "../reflection";
 
 const fixtureRoot = resolve(import.meta.dir, "../../protocol/fixtures");
 const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -61,16 +73,18 @@ describe("POST /anky", () => {
     expect(text).toContain("Here is what I saw");
   });
 
-  test("sends the copied reflection prompt shape to the provider", async () => {
+  test("sends the byte-identical full reflection prompt to the provider", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let capturedPrompt = "";
+    let capturedTier = "";
     const app = createApp({
       env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
-        routeReflection: async ({ prompt }) => {
+        routeReflection: async ({ prompt, tier }) => {
           capturedPrompt = prompt;
+          capturedTier = tier ?? "";
           return {
             provider: "test",
             chargeable: true,
@@ -84,11 +98,15 @@ describe("POST /anky", () => {
     const response = await app.request("/anky", {
       method: "POST",
       headers: await signedHeaders(body),
-      body,
+      body: dotAnkyBody(body),
     });
 
     expect(response.status).toBe(200);
-    expect(capturedPrompt.startsWith("Take a look at this stream-of-consciousness journal entry.")).toBe(true);
+    expect(capturedTier).toBe("full");
+    expect(capturedPrompt).toBe(
+      buildReflectPromptFromText(reconstructedTextFromBody(body)),
+    );
+    expect(capturedPrompt.startsWith(PROMPT_FULL)).toBe(true);
     expect(capturedPrompt).toContain("\n\n---\n\n");
     expect(capturedPrompt).toContain("Reply with pure markdown");
     expect(capturedPrompt).not.toContain("RECONSTRUCTED ANKY");
@@ -159,6 +177,99 @@ describe("POST /anky", () => {
     expect(text.indexOf("event: reflection_chunk")).toBeLessThan(text.lastIndexOf("event: reflection"));
     expect(text).toContain("event: reflection");
     expect(text).toContain("# Live Mirror");
+  });
+
+  test("routes each tier through the same model config for text and SSE", async () => {
+    const captures: any[] = [];
+    const app = createApp({
+      env: ankyWorld({
+        autoTrialEnabled: false,
+        openrouterApiKey: "key",
+        providerOrder: ["openrouter", "default"],
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
+      }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        creditFetch: async (_url, init) => {
+          if (init.method === "GET") {
+            return jsonResponse({ items: [{ balance: 99, currency_code: "CRD" }] });
+          }
+          return jsonResponse({ items: [{ balance: 98, currency_code: "CRD" }] });
+        },
+        providerFetch: async (_url, init) => {
+          const request = JSON.parse(String(init.body));
+          captures.push(request);
+          if (request.stream) {
+            return new Response(
+              [
+                'data: {"choices":[{"delta":{"content":"# Streamed\\n\\nbody"}}]}',
+                "",
+                "data: [DONE]",
+                "",
+              ].join("\n"),
+            );
+          }
+          return Response.json({
+            choices: [{ message: { content: "# Routed\n\nbody" } }],
+          });
+        },
+      },
+    });
+    const cases = [
+      {
+        body: dotAnkyBytes("1770000000000 h"),
+        model: "google/gemini-2.5-flash-lite",
+        maxTokens: 60,
+      },
+      {
+        body: dotAnkyBytes("1770000000000 h\n88000 i"),
+        model: "google/gemini-2.5-flash-lite",
+        maxTokens: 250,
+      },
+      {
+        body: dotAnkyBytes("1770000000000 h\n480000 i"),
+        model: anky.openrouterModel,
+        maxTokens: undefined,
+      },
+    ];
+    let requestTime = Date.now();
+
+    for (const testCase of cases) {
+      const textResponse = await app.request("/anky", {
+        method: "POST",
+        headers: await signedHeaders(testCase.body, {}, String(requestTime++)),
+        body: dotAnkyBody(testCase.body),
+      });
+      const streamResponse = await app.request("/anky", {
+        method: "POST",
+        headers: await signedHeaders(
+          testCase.body,
+          { Accept: "text/event-stream" },
+          String(requestTime++),
+        ),
+        body: dotAnkyBody(testCase.body),
+      });
+
+      expect(textResponse.status).toBe(200);
+      expect(streamResponse.status).toBe(200);
+      await streamResponse.text();
+    }
+
+    expect(captures).toHaveLength(6);
+    for (let index = 0; index < cases.length; index += 1) {
+      const nonStreaming = captures[index * 2];
+      const streaming = captures[index * 2 + 1];
+      expect(nonStreaming.model).toBe(cases[index].model);
+      expect(streaming.model).toBe(cases[index].model);
+      expect(nonStreaming.max_tokens).toBe(cases[index].maxTokens);
+      expect(streaming.max_tokens).toBe(cases[index].maxTokens);
+      expect(nonStreaming.stream).toBeUndefined();
+      expect(streaming.stream).toBe(true);
+      expect(nonStreaming.provider).toEqual({ data_collection: "deny", zdr: true });
+      expect(streaming.provider).toEqual({ data_collection: "deny", zdr: true });
+    }
   });
 
   test("rejects JSON writing bodies", async () => {
@@ -343,16 +454,28 @@ describe("POST /anky", () => {
     expect(json.error.code).toBe("UNSUPPORTED_IDENTITY_VERSION");
   });
 
-  test("rejects incomplete ankys", async () => {
-    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
-    let creditCalls = 0;
+  test("sentence-tier ankys receive the sentence prompt", async () => {
+    const body = dotAnkyBytes("1770000000000 h");
+    let capturedPrompt = "";
+    let capturedTier = "";
+    let prepareCalls = 0;
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         prepareReflectionCredit: async () => {
-          creditCalls += 1;
-          return { ok: true, creditsRemaining: null, result: "bypassed", spentCredit: false };
+          prepareCalls += 1;
+          return { ok: true, source: "bypass", creditsRemaining: null };
+        },
+        routeReflection: async ({ prompt, tier }) => {
+          capturedPrompt = prompt;
+          capturedTier = tier ?? "";
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "Sentence",
+            reflection: "That little h is doing just enough to open the door.",
+          };
         },
       },
     });
@@ -360,13 +483,54 @@ describe("POST /anky", () => {
     const response = await app.request("/anky", {
       method: "POST",
       headers: await signedHeaders(body),
-      body,
+      body: dotAnkyBody(body),
     });
-    const json = await response.json();
+    const text = await response.text();
 
-    expect(response.status).toBe(400);
-    expect(json.error.code).toBe("INCOMPLETE_RITUAL");
-    expect(creditCalls).toBe(0);
+    expect(response.status).toBe(200);
+    expect(text).toContain("That little h");
+    expect(prepareCalls).toBe(1);
+    expect(capturedTier).toBe("sentence");
+    expect(capturedPrompt.startsWith(PROMPT_SENTENCE)).toBe(true);
+    expect(capturedPrompt).toBe(`${PROMPT_SENTENCE}\n\n---\n\nh`);
+    expect(capturedPrompt).not.toContain("1770000000000");
+    expect(capturedPrompt).not.toContain("RHYTHM SUMMARY");
+  });
+
+  test("dip-tier ankys receive the dip prompt", async () => {
+    const body = dotAnkyBytes("1770000000000 h\n88000 i");
+    let capturedPrompt = "";
+    let capturedTier = "";
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        prepareReflectionCredit: async () => ({ ok: true, source: "bypass", creditsRemaining: null }),
+        routeReflection: async ({ prompt, tier }) => {
+          capturedPrompt = prompt;
+          capturedTier = tier ?? "";
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "Dip",
+            reflection: "There is a small hello here that stayed.",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body: dotAnkyBody(body),
+    });
+
+    expect(response.status).toBe(200);
+    expect(capturedTier).toBe("dip");
+    expect(capturedPrompt.startsWith(PROMPT_DIP)).toBe(true);
+    expect(capturedPrompt).toBe(`${PROMPT_DIP}\n\n---\n\nhi`);
+    expect(capturedPrompt).not.toContain("88000");
+    expect(capturedPrompt).not.toContain("averageDeltaMs");
   });
 
   test("nudge intent accepts an unfinished .anky without spending a reflection credit", async () => {
@@ -449,7 +613,7 @@ describe("POST /anky", () => {
     const response = await app.request("/anky", {
       method: "POST",
       headers: await signedHeaders(body),
-      body,
+      body: dotAnkyBody(body),
     });
 
     expect(response.status).toBe(400);
@@ -611,6 +775,104 @@ describe("POST /anky", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("4");
+  });
+
+  test("tier credit cost controls endpoint billing amount", async () => {
+    const body = dotAnkyBytes("1770000000000 h");
+    const creditCalls: Array<{ url: string; init: RequestInit }> = [];
+    const app = createApp({
+      env: ankyWorld({
+        autoTrialEnabled: false,
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
+        reflectionCreditCosts: {
+          sentence: 2,
+          dip: 1,
+          full: 1,
+        },
+      }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        creditFetch: async (url, init) => {
+          creditCalls.push({ url: String(url), init });
+          if (creditCalls.length === 1) {
+            return jsonResponse({ items: [{ balance: 3, currency_code: "CRD" }] });
+          }
+          return jsonResponse({ items: [{ balance: 1, currency_code: "CRD" }] });
+        },
+        routeReflection: async ({ tier }) => {
+          expect(tier).toBe("sentence");
+          return {
+            provider: "test",
+            chargeable: true,
+            title: "Paid Sentence",
+            reflection: "That sentence cost the configured amount.",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body: dotAnkyBody(body),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Anky-Credits-Remaining")).toBe("1");
+    expect(JSON.parse(String(creditCalls[1]?.init.body))).toMatchObject({
+      adjustments: { CRD: -2 },
+    });
+  });
+
+  test("full-tier endpoint keeps the previous prompt, model, and billing defaults", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const creditCalls: Array<{ url: string; init: RequestInit }> = [];
+    let providerBody: any;
+    const app = createApp({
+      env: ankyWorld({
+        autoTrialEnabled: false,
+        openrouterApiKey: "key",
+        providerOrder: ["openrouter", "default"],
+        revenueCatSecretKey: "secret",
+        revenueCatProjectId: "project",
+        revenueCatCreditCode: "CRD",
+      }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        creditFetch: async (url, init) => {
+          creditCalls.push({ url: String(url), init });
+          if (creditCalls.length === 1) {
+            return jsonResponse({ items: [{ balance: 4, currency_code: "CRD" }] });
+          }
+          return jsonResponse({ items: [{ balance: 3, currency_code: "CRD" }] });
+        },
+        providerFetch: async (_url, init) => {
+          providerBody = JSON.parse(String(init.body));
+          return Response.json({
+            choices: [{ message: { content: "# Full\n\nbody" } }],
+          });
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(providerBody.model).toBe(anky.openrouterModel);
+    expect(providerBody.max_tokens).toBeUndefined();
+    expect(providerBody.prompt).toBeUndefined();
+    expect(providerBody.messages[0].content).toBe(
+      buildReflectPromptFromText(reconstructedTextFromBody(body)),
+    );
+    expect(JSON.parse(String(creditCalls[1]?.init.body))).toMatchObject({
+      adjustments: { CRD: -1 },
+    });
   });
 
   test("eligible iOS trial grant spends and returns zero remaining credits", async () => {
@@ -983,7 +1245,9 @@ describe("POST /anky", () => {
       body,
     });
     const logs = lines.join("\n");
+    const log = JSON.parse(lines[0] ?? "{}");
 
+    expect(log.reflectionTier).toBe("full");
     expect(logs).not.toContain("raw-proof-token");
     expect(logs).not.toContain("You are Anky");
     expect(logs).not.toContain("Here is what I saw");
@@ -1018,6 +1282,7 @@ describe("POST /anky", () => {
     expect(serialized).toContain("\"status\":200");
     expect(serialized).toContain("\"provider\":\"mock\"");
     expect(serialized).toContain("\"client\":\"ios\"");
+    expect(serialized).toContain("\"reflectionTier\":\"full\"");
     expect(serialized).not.toContain(headers["X-Anky-Account"]);
     expect(serialized).not.toContain(headers["X-Anky-Signature"]);
     expect(serialized).not.toContain("raw-proof-token");
@@ -1122,4 +1387,25 @@ async function signedHeaders(
     "X-Anky-Client": "other",
     ...extra,
   };
+}
+
+function dotAnkyBytes(value: string): Buffer {
+  return Buffer.from(value, "utf8");
+}
+
+function dotAnkyBody(value: Uint8Array): string {
+  return new TextDecoder().decode(value);
+}
+
+function reconstructedTextFromBody(body: Uint8Array): string {
+  const validation = validateAnky(new TextDecoder().decode(body));
+  if (!validation.isValid) throw new Error("INVALID_TEST_ANKY");
+  return reconstructProtocolText(validation.parsed);
+}
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
