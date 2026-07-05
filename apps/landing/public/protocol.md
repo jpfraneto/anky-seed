@@ -1,3 +1,7 @@
+# WHO THIS DOCUMENT IS FOR
+
+You are an agent reading this protocol because your mission is to code an Anky client: an interface for writing that captures forward-only keystrokes as the session itself, preserves the exact rhythm of the writer, and emits `.anky` files that other clients can parse, hash, and verify without trusting your implementation.
+
 # THE ANKY PROTOCOL
 
 ---

@@ -1,0 +1,86 @@
+{
+  "identifier" : "8A0000A4-0000-4000-8000-00000000A400",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A4000000",
+      "localizations" : [
+
+      ],
+      "name" : "Anky",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "88.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A4000001",
+          "introductoryOffer" : {
+            "internalID" : "A4000003",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "A year of writing before you scroll.",
+              "displayName" : "Anky Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "anky.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Anky Yearly",
+          "subscriptionGroupID" : "A4000000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "11.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A4000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "A month of writing before you scroll.",
+              "displayName" : "Anky Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "anky.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Anky Monthly",
+          "subscriptionGroupID" : "A4000000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

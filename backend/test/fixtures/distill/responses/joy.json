@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248490-hgRv1PZGT0TQnHsfDLUo",
+  "object": "chat.completion",
+  "created": 1783248490,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A hilltop terrace floats above a city made entirely of amber and copper, rooftops dissolving into the low sun like wax poured slowly into a river below. Anky stands at the terrace's iron railing, both arms lifted wide and tilted slightly back, mid-laugh, the whole small blue body caught between falling and flying. On the stone ledge beside the railing rests a small velvet box, its lid open to show only light inside, no stone, just warm radiance spilling out. Strung from a crumbling arch above, a handful of tiny glass lanterns sway in a wind that seems to come from no direction at all, casting looping gold rings across Anky's upturned face. A third object: two mismatched shoes abandoned at the top of a staircase, left there by someone who apparently needed to run somewhere barefoot and joyful. The river far below catches the last of the sun and returns it doubled, as if the world is insisting on its own abundance. Mood: This is the hour when the ordinary city forgets it is ordinary, and a small creature understands that the future has already begun arriving. Palette: molten amber, dusty terracotta, soft cobalt dusk, warm brass gold.\", \"title\": \"The Enormous Yes\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 731,
+    "completion_tokens": 294,
+    "total_tokens": 1025,
+    "cost": 0.00653697,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.006603,
+      "upstream_inference_prompt_cost": 0.002193,
+      "upstream_inference_completions_cost": 0.00441
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

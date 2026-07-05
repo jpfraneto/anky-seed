@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248499-Xs5p2sWcXLcQS1BW9VAM",
+  "object": "chat.completion",
+  "created": 1783248499,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A vast salt flat stretches to every horizon, pale and featureless under a sky the color of old pewter. The small blue creature sits cross-legged at the center of the flat, shoulders curved inward, both hands resting open in its lap as though whatever they once held has simply been set down. Beside it, a smooth river stone sits half-buried in the crust — worn to silence by long handling. A little distance away, a single door stands upright without any wall around it, slightly ajar, neither inviting nor refusing. The creature does not look at the door. It looks at nothing in particular, or perhaps at everything at once, the way exhaustion sometimes opens into a strange wide stillness. The air carries no wind. There is no approaching and no retreating, only the suspended weight of a moment that does not yet know what it wants to become. Mood: The quiet here is not peaceful — it is the quiet of something too heavy to name, held in the body like a stone held underwater. Palette: ash white, pewter grey, muted slate blue, bone.\", \"title\": \"The Held Stone\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 500,
+    "completion_tokens": 250,
+    "total_tokens": 750,
+    "cost": 0.0051975,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00525,
+      "upstream_inference_prompt_cost": 0.0015,
+      "upstream_inference_completions_cost": 0.00375
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

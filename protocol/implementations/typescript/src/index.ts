@@ -36,3 +36,13 @@ export {
   type SessionStats,
   type SessionTier,
 } from "./session";
+export {
+  LEVEL_BASE_SECONDS,
+  LEVEL_MAX,
+  LEVEL_RATIO,
+  levelForTotalSeconds,
+  levelRequirementSeconds,
+  progressInLevel,
+  thresholdForLevel,
+  type LevelProgress,
+} from "./level";

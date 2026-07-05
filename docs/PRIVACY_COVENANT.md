@@ -22,9 +22,9 @@ By default, the server must never persist:
 
 The server may temporarily hold writing in memory during one reflection request. That temporary handling is not storage and must not become a journal, archive, analytics corpus, or hidden memory.
 
-A new writer may receive 1 automatic trial reflection credit.
+A new writer may receive one automatic trial grant of 2 reflection credits.
 
-The automatic trial grant is device-bound, app-bound, platform-bound, and backed by RevenueCat.
+The automatic trial grant is app-bound, platform-bound, RevenueCat-backed, account-idempotent, and may use device attestation where reliable.
 
 The grant happens inside `POST /anky`, only for a valid complete `.anky` reflection request.
 
@@ -38,7 +38,7 @@ The trial grant may use:
 - platform
 - app version
 - RevenueCat customer state
-- platform attestation result
+- platform attestation result when available and reliable
 - minimal abuse-prevention metadata
 
 The trial grant must not turn Anky into a cloud journal.

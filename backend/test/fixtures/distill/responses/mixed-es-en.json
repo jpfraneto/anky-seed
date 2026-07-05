@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248480-RE3rXlOJS3qS7GxRMPTh",
+  "object": "chat.completion",
+  "created": 1783248480,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A vast tidal flat stretches in two directions at once, one half sun-warmed terracotta dust, the other pale northern slate, and the seam between them runs like a fault line neither side can cross. At the border of these two territories, a small blue creature kneels with one hand pressed flat against the cracked earth, mid-reach, as though feeling for a pulse beneath the ground, leaning forward into something just beyond arrival. Beside the creature sits a small clay cup still faintly steaming, its warmth refusing to dissipate despite the cold air pressing in from the slate side. A single lemon rests in the dust nearby, vivid and whole, glowing as though lit from within, and tangled around the creature's wrist like a bracelet is one thin root that disappears down into the earth and continues, unbroken, across the entire fault line into the warm terracotta distance. High overhead, an empty seat hangs suspended from nothing, facing the horizon where the warm half glows orange at the edge, unclaimed but finally, quietly, reserved. Mood: the ache of belonging to two skies at once, and the first morning of choosing. Palette: terracotta ember, limestone chalk, slate pewter, lemon sulfur.\", \"title\": \"The Bought Ticket\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 714,
+    "completion_tokens": 292,
+    "total_tokens": 1006,
+    "cost": 0.00645678,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.006522,
+      "upstream_inference_prompt_cost": 0.002142,
+      "upstream_inference_completions_cost": 0.00438
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

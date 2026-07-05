@@ -122,7 +122,7 @@ address + ankyHash
 
 Official mobile clients may receive one automatic trial grant of 2 credits. The trial grant is not a registration flow. It happens lazily inside `POST /anky`, only when a writer asks for reflection on a complete `.anky`.
 
-Trial grants require proof that the request came from an official app/device path. A public address alone must not grant credits.
+Trial grants require proof that the request came from an official app path and are idempotent through the RevenueCat customer account. Device attestation may assist abuse prevention where reliable, but it must not block real first-time writers.
 
 ## Database Law
 
@@ -142,4 +142,4 @@ Do not drift from the shared protocol fixtures.
 
 ## Forbidden Complexity
 
-Do not implement smart wallets, Coinbase Smart Wallet, Privy, WalletConnect, MetaMask integration, ERC-4337 UserOperations, on-chain `.anky` storage, on-chain reflections, NFTs, cloud sync, server archive, AI memory, social feed, chat threads, multi-reflection modes, analytics over writing content, automatic free credits without device-bound abuse protection, React Native, or shared cross-platform UI.
+Do not implement smart wallets, Coinbase Smart Wallet, Privy, WalletConnect, MetaMask integration, ERC-4337 UserOperations, on-chain `.anky` storage, on-chain reflections, NFTs, cloud sync, server archive, AI memory, social feed, chat threads, multi-reflection modes, analytics over writing content, automatic free credits without RevenueCat-backed idempotency, React Native, or shared cross-platform UI.

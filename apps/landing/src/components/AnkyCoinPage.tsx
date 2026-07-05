@@ -5,10 +5,28 @@ type AnkyCoinPageProps = {
   onNavigate: (href: string) => void;
 };
 
+const ANKY_CONTRACT_ADDRESS = "0x323e74c31915db296B82b032f9665924f31EFba3";
+const ANKY_DEXSCREENER_URL =
+  "https://dexscreener.com/base/0x323e74c31915db296b82b032f9665924f31efba3";
+
 const sections = [
   {
-    title: "Pre-Launch Note",
-    body: "$ANKY is not deployed yet. When it is, the only canonical Base contract address will appear here. Until then, ignore lookalike tickers, screenshots, and copied names.",
+    title: "Canonical Contract",
+    body: (
+      <>
+        The canonical $ANKY Base contract address is{" "}
+        <a
+          className="break-all font-mono text-gold-100 underline decoration-gold-200/45 underline-offset-4 transition hover:text-cream"
+          href={ANKY_DEXSCREENER_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {ANKY_CONTRACT_ADDRESS}
+        </a>
+        . Verify this exact CA from anky.app before interacting with any token,
+        pool, screenshot, or copied ticker.
+      </>
+    ),
   },
   {
     title: "What It Points To",
@@ -20,7 +38,7 @@ const sections = [
   },
   {
     title: "Verify First",
-    body: "After launch, verify the exact Base contract address from this page before interacting with any token. Nothing here is financial advice, investment advice, or an offer to buy or sell anything.",
+    body: "Always compare the full address before interacting with $ANKY. Nothing here is financial advice, investment advice, or an offer to buy or sell anything.",
   },
   {
     body: "The mirror does not care about the price. The practice remains free. The app is free to download. And you can take the practice anywhere you have a pen and a timer.",
@@ -36,15 +54,6 @@ function AnkyCoinPage({ currentPath, onNavigate }: AnkyCoinPageProps) {
       <h1 className="mt-5 font-serif text-5xl leading-tight text-cream sm:text-6xl">
         $ANKY
       </h1>
-
-      <div className="mt-6 rounded-2xl border border-gold-200/25 bg-black/20 p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-gold-200/70">
-          Canonical Base Contract
-        </p>
-        <p className="mt-3 font-mono text-sm leading-6 text-cream/82">
-          Not deployed yet. Verify on anky.app before trusting any address.
-        </p>
-      </div>
 
       <div className="mt-10 space-y-7">
         {sections.map((section, index) => (

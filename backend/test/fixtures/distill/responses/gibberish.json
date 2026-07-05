@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248508-WQbUSbM0trc4DKXQFp9L",
+  "object": "chat.completion",
+  "created": 1783248508,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A vast salt flat stretches in every direction beneath a white sky that has forgotten how to rain. Anky stands at the center of the emptiness, one small foot lifted mid-step as though testing whether the ground ahead is solid or simply more of the same pale nothing. Nearby, a blank canvas leans against a wooden post driven into the cracked earth, its surface unmarked and faintly humming with potential. Beside it rests an hourglass turned on its side, sand neither falling nor still, suspended in quiet refusal. A single feather drifts at knee height, neither rising nor descending, caught in the breath between one moment and the next. The air is not hostile. It is simply patient in the way that only emptiness can be patient, holding space for something that has not yet decided to arrive. Anky tilts their head toward the feather with an expression less like frustration and more like listening, as though the blankness itself is trying to say something in a language that has not been invented yet. Mood: the gentle heaviness of a day that offered nothing and asked nothing in return. Palette: chalk white, washed pewter, pale bone, soft ash blue.\", \"title\": \"Waiting Plain\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 644,
+    "completion_tokens": 273,
+    "total_tokens": 917,
+    "cost": 0.00596673,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.006027,
+      "upstream_inference_prompt_cost": 0.001932,
+      "upstream_inference_completions_cost": 0.004095
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

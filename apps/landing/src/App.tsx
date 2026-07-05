@@ -4,6 +4,7 @@ import AnkyCoinPage from "./components/AnkyCoinPage";
 import AnkyMode from "./components/AnkyMode";
 import ComingSoonPage from "./components/ComingSoonPage";
 import ContactPage from "./components/ContactPage";
+import DownloadPage from "./components/DownloadPage";
 import FeatureCard from "./components/FeatureCard";
 import Footer from "./components/Footer";
 import GalleryPage from "./components/GalleryPage";
@@ -185,6 +186,19 @@ function App() {
     return (
       <>
         <TikTokLandingPage onNavigate={navigate} />
+        {ankyModeLayer}
+      </>
+    );
+  }
+
+  if (path === "/download" || path === "/descargar") {
+    return (
+      <>
+        <DownloadPage
+          currentPath={path}
+          title={path === "/descargar" ? "Recuerda quién eres." : undefined}
+          onNavigate={navigate}
+        />
         {ankyModeLayer}
       </>
     );

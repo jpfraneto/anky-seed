@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <defs>
+    <linearGradient id="skin" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#45d4ff"/>
+      <stop offset="58%" stop-color="#3477ff"/>
+      <stop offset="100%" stop-color="#6f46ff"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="38%" r="58%">
+      <stop offset="0%" stop-color="#fff0b8"/>
+      <stop offset="48%" stop-color="#8d68ff"/>
+      <stop offset="100%" stop-color="#071022"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="900" fill="url(#halo)"/>
+  <g fill="none" stroke="#ffdc73" stroke-width="6" opacity=".6">
+    <circle cx="450" cy="438" r="330"/>
+    <path d="M122 438 H778 M450 108 V768"/>
+    <path d="M220 222 C360 330 540 330 680 222"/>
+  </g>
+  <g transform="translate(450 476)">
+    <path d="M-178-118 C-288-156-302-292-218-362 C-126-438 16-418 92-360 C168-304 196-196 142-122 C72-30-64-22-178-118Z" fill="#eef5ff"/>
+    <path d="M110-130 C214-178 268-92 220-20 C178 42 96 20 72-42Z" fill="#eef5ff"/>
+    <path d="M-280-80 C-350-96-392-50-376 18 C-360 86-276 84-232 28Z" fill="url(#skin)" stroke="#081224" stroke-width="7"/>
+    <path d="M280-80 C350-96 392-50 376 18 C360 86 276 84 232 28Z" fill="url(#skin)" stroke="#081224" stroke-width="7"/>
+    <path d="M-238-174 C-162-260 170-260 238-174 C298-100 284 98 202 200 C126 294-124 294-202 200 C-284 98-298-100-238-174Z" fill="url(#skin)" stroke="#081224" stroke-width="8"/>
+    <path d="M-224-192 C-150-316 142-318 226-194 C150-232-152-232-224-192Z" fill="#f4f7ff"/>
+    <circle cx="-92" cy="-54" r="44" fill="#fff4c3" stroke="#071022" stroke-width="8"/>
+    <circle cx="92" cy="-54" r="44" fill="#fff4c3" stroke="#071022" stroke-width="8"/>
+    <circle cx="-84" cy="-48" r="16" fill="#20110a"/>
+    <circle cx="84" cy="-48" r="16" fill="#20110a"/>
+    <path d="M-150-122 C-100-154-54-144-20-116 M20-116 C54-144 100-154 150-122" fill="none" stroke="#321071" stroke-width="15" stroke-linecap="round"/>
+    <path d="M-34 14 C-10 40 10 40 34 14" fill="none" stroke="#0a1631" stroke-width="8" stroke-linecap="round"/>
+    <path d="M-84 94 C-24 138 38 136 88 94" fill="none" stroke="#30103a" stroke-width="12" stroke-linecap="round"/>
+    <path d="M-70 190 C-34 246 38 246 74 190 L42 300 L-40 300Z" fill="#53148f"/>
+    <g fill="none" stroke="#ffdc73" stroke-width="7">
+      <path d="M-112 30 C-80 58-44 58-12 30"/>
+      <path d="M12 30 C44 58 80 58 112 30"/>
+      <path d="M-42-196 L0-244 L42-196"/>
+    </g>
+  </g>
+  <text x="450" y="812" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="900" fill="#ffdc73">ANKY / EINSTEIN</text>
+</svg>

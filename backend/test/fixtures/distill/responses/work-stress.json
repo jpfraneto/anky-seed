@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248524-ZVd1dspN2ZVoQjw4wFVe",
+  "object": "chat.completion",
+  "created": 1783248524,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A vast server room stretches into darkness, its ceiling lost somewhere above a forest of blinking towers that hum like a slow, mechanical tide. The small blue creature crouches before a single glowing screen, one hand raised mid-reach toward a refresh button it has already pressed a thousand times, the other hand resting flat on the cold floor as though checking whether the ground is still there. Beside the screen sits a plate of food gone lukewarm, a cheerful sticky note curling at its corner like a tiny flag planted by someone who still believes in morning, and a calendar whose weeks are buried under so many penciled hash marks they have become a kind of texture rather than time. Somewhere in the blinking dark, an enormous boulder balances on a stack of smaller boulders, all of them balanced on the creature's back without touching it yet, close enough to feel the shadow. The creature's mouth is open, rehearsing a sentence that has not yet found its moment, a shape of sound waiting for daylight to make it real. Mood: the exhaustion of a person who can see exactly what is happening to them and has not yet decided whether knowing is enough. Palette: deep server-blue, ash gray, the warm amber of a refrigerator light, one reluctant thread of dawn gold at the far edge.\", \"title\": \"The Rehearsed Sentence\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 760,
+    "completion_tokens": 300,
+    "total_tokens": 1060,
+    "cost": 0.0067122,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00678,
+      "upstream_inference_prompt_cost": 0.00228,
+      "upstream_inference_completions_cost": 0.0045
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

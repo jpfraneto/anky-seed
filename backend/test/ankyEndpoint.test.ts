@@ -533,6 +533,30 @@ describe("POST /anky", () => {
     expect(capturedPrompt).not.toContain("averageDeltaMs");
   });
 
+  test("nudge intent requires an entitled subscription", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: () => ({ entitled: false }),
+        routeReflection: async () => {
+          throw new Error("free nudges must never reach a provider");
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { "X-Anky-Intent": "nudge" }),
+      body,
+    });
+
+    expect(response.status).toBe(402);
+    const payload = (await response.json()) as { error: { code: string } };
+    expect(payload.error.code).toBe("ENTITLEMENT_REQUIRED");
+  });
+
   test("nudge intent accepts an unfinished .anky without spending a reflection credit", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
     let prepareCalls = 0;
@@ -543,6 +567,7 @@ describe("POST /anky", () => {
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
+        accountEntitlement: () => ({ entitled: true, productId: "anky.yearly" }),
         prepareReflectionCredit: async () => {
           prepareCalls += 1;
           return { ok: true, creditsRemaining: 4, result: "spent", spentCredit: true };

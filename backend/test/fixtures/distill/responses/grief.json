@@ -1,0 +1,46 @@
+{
+  "id": "gen-1783248515-rmirw87505I2a6MQ50FV",
+  "object": "chat.completion",
+  "created": 1783248515,
+  "model": "anthropic/claude-4.6-sonnet-20260217",
+  "provider": "Amazon Bedrock",
+  "system_fingerprint": null,
+  "service_tier": null,
+  "choices": [
+    {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "message": {
+        "role": "assistant",
+        "content": "{\"scene\": \"A vast tidal kitchen dissolves at its edges into open water, the countertops fading where the walls should be, as if the room has been slowly swallowed by a grey and glassine sea. Anky kneels at the center of a cold stone floor, one small blue hand pressed flat against the tiles, the other arm half-raised toward a telephone mounted on the wall whose cord unravels into mist before it reaches anything. On the counter beside a cold and empty kettle rests a small card furred at its edges from being held too many times, its ink the particular brown of cinnamon and old warmth. Floating just above the waterline nearby, a single wooden spoon turns slowly in a current that comes from nowhere, pointing toward no shore. The light is the color of late Sunday, that amber hour when expectation has not yet surrendered to silence. Anky does not stand and does not fall, only kneels in that held breath between reaching and releasing, between the last warmth of a room and the widening cold that has moved in to fill its place. Mood: tenderness with nowhere to land, hovering in the suspended hour between ritual and loss. Palette: cinnamon amber, tide grey, hearth ivory, deep aching blue.\", \"title\": \"The Waiting Kettle\"}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 728,
+    "completion_tokens": 294,
+    "total_tokens": 1022,
+    "cost": 0.00652806,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.006594,
+      "upstream_inference_prompt_cost": 0.002184,
+      "upstream_inference_completions_cost": 0.00441
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

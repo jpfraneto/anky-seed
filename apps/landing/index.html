@@ -3,12 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/anky-assets/app-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="application-name" content="Anky" />
+    <meta name="apple-mobile-web-app-title" content="Anky" />
+    <meta name="apple-itunes-app" content="app-id=6760663033" />
+    <meta name="theme-color" content="#03050b" />
+    <meta name="author" content="Anky, Inc." />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
     <meta
       name="description"
-      content="Anky is a private 8-minute writing ritual. No deleting. No performing. Just your truth."
+      content="Anky is an 8-minute writing mirror: no backspace, no editing, no performance. Stop seeking for a moment, write, and see what appears."
     />
-    <title>Anky | LET IT OUT.</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Anky" />
+    <meta property="og:title" content="Anky | 8-Minute Writing Mirror" />
+    <meta
+      property="og:description"
+      content="No prompt. No backspace. No performance. Write for 8 minutes, then meet the mirror."
+    />
+    <meta property="og:image" content="https://anky.app/anky-og-image.png" />
+    <meta
+      property="og:image:secure_url"
+      content="https://anky.app/anky-og-image.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1410" />
+    <meta property="og:image:height" content="734" />
+    <meta
+      property="og:image:alt"
+      content="Anky app preview artwork"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Anky | 8-Minute Writing Mirror" />
+    <meta
+      name="twitter:description"
+      content="No prompt. No backspace. No performance. Write for 8 minutes, then meet the mirror."
+    />
+    <meta name="twitter:image" content="https://anky.app/anky-og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Anky app preview artwork"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://anky.app/#website",
+            "name": "Anky",
+            "url": "https://anky.app/",
+            "description": "Anky is an 8-minute writing mirror: no backspace, no editing, no performance.",
+            "publisher": {
+              "@id": "https://anky.app/#organization"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://anky.app/#organization",
+            "name": "Anky, Inc.",
+            "url": "https://anky.app/",
+            "logo": "https://anky.app/anky-assets/app-icon.png"
+          },
+          {
+            "@type": "MobileApplication",
+            "@id": "https://anky.app/#app",
+            "name": "Anky",
+            "url": "https://anky.app/download",
+            "description": "Anky is a private writing and reflection app. Write for 8 minutes with no backspace, no editing, and no performance, then meet the mirror.",
+            "applicationCategory": "LifestyleApplication",
+            "operatingSystem": "iOS, Android",
+            "image": "https://anky.app/anky-og-image.png",
+            "publisher": {
+              "@id": "https://anky.app/#organization"
+            },
+            "sameAs": [
+              "https://apps.apple.com/us/app/anky-app/id6760663033",
+              "https://play.google.com/store/apps/details?id=app.anky.mobile",
+              "https://github.com/ankydotapp/monorepo"
+            ]
+          }
+        ]
+      }
+    </script>
+    <title>Anky | 8-Minute Writing Mirror</title>
   </head>
   <body>
     <div id="root"></div>

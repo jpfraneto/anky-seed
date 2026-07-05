@@ -1,0 +1,22 @@
+package inc.anky.android.core.privacy
+
+object PrivacyMessages {
+    const val AnkyCoinContractAddress = "0x323e74c31915db296B82b032f9665924f31EFba3"
+    const val RevealReminder = "Your writing stays on this device unless you tap Ask Anky."
+    const val FragmentReminder = "Fragments are local writings. They can be copied or exported, but cannot ask Anky."
+    const val DollarAnky = "\$ANKY is informational in this app. It is not required for the writing ritual."
+
+    fun freeCreditMessage(accountId: String, appVersion: String): String =
+        buildList {
+            add("hey jp, i'd love to try anky reflections.")
+            add("")
+            add("my Anky address is:")
+            add(accountId)
+            add("")
+            add("platform: android")
+            if (appVersion.isNotBlank()) {
+                add("")
+                add("app version: $appVersion")
+            }
+        }.joinToString(separator = "\n")
+}

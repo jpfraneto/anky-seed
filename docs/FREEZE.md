@@ -7,7 +7,8 @@ This repo is currently frozen around the smallest true Anky:
 - the server does not store writing
 - credits live outside the writing system
 - official mobile trial credits may be granted lazily inside `POST /anky`
-- automatic trial grants must be device-bound, app-bound, platform-bound, and RevenueCat-backed
+- automatic trial grants must be app-bound, platform-bound, RevenueCat-backed, and account-idempotent
+- device attestation may assist abuse prevention but must not block real first-time writers
 - native clients obey the protocol
 - no database until proven necessary
 

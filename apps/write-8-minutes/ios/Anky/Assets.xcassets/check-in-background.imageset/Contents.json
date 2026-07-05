@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "check-in-background.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

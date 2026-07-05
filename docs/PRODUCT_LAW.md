@@ -286,17 +286,19 @@ Official mobile clients may receive one automatic trial grant of 2 reflection cr
 
 The automatic trial grant is:
 
-- device-bound
 - app-bound
 - platform-bound
 - RevenueCat-backed
+- account-idempotent
+- device-attestation-assisted where reliable
 - not a user account
 - not a writing database
 - not a login ceremony
 
 The grant happens lazily inside `POST /anky`, only after a valid complete `.anky` reflection request.
 
-Automatic free credits without device-bound abuse protection remain forbidden.
+Automatic free credits without RevenueCat-backed idempotency remain forbidden.
+Device attestation must not block a real new writer from receiving the first two reflections.
 
 The trial grant exists only to let the writer experience Anky’s reflection.
 

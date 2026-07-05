@@ -1,7 +1,9 @@
 /**
  * ANKY
  *
- * This file is the backend of Anky. There are no more dependencies. It is the only file in the backend directory.
+ * This file is the heart of the Anky backend. The mirror lives here; the level
+ * ledger and painting pipeline live in ./level and ./painting. The ledger
+ * stores artifact hashes and seconds only — never writing.
  *
  * The mirror endpoint is POST /anky. the payload is a .anky string compliant to the protocol: https://anky.app/protocol.md
  *
@@ -41,10 +43,25 @@ import {
   type SessionTier,
 } from "@anky/protocol";
 import { Hono, type Context } from "hono";
+import { mkdirSync } from "node:fs";
+import type { Database } from "bun:sqlite";
 import {
   buildReflectPrompt,
   streamOpenRouterChatCompletion,
 } from "./reflection";
+import { openLevelDb } from "./level/db";
+import {
+  registerLevelRoutes,
+  type LevelAuthenticator,
+} from "./level/routes";
+import { registerPaintingRoutes } from "./painting/routes";
+import { registerDebugRoutes, type DebugRouteDeps } from "./debug/routes";
+import { registerEventRoutes } from "./events/routes";
+import { registerSubscriptionRoutes } from "./subscription/routes";
+import {
+  accountEntitlement as subscriptionAccountEntitlement,
+  type AccountEntitlement,
+} from "./subscription/store";
 
 // -----------------------------------------------------------------------------
 // Start Here
@@ -211,6 +228,7 @@ export const anky = {
   baseChainId: 8453,
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
+  dataDir: "/data",
   providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
@@ -218,10 +236,18 @@ export const anky = {
   reflectionCreditCosts: defaultReflectionCreditCosts,
   privacyRequiresZdr: true,
   revenueCatCreditCode: "CRD",
+  // The subscription is the door to the deepening. Reflections, nudges, and
+  // paintings beyond level 2 require an entitled account (or previously
+  // purchased credits / x402 — paid value is never clawed back).
+  appBundleId: "com.jpfraneto.Anky",
+  subscriptionProductIds: ["anky.yearly", "anky.monthly"] as const,
+  freeGenerationMaxLevel: 2,
   trialCredits: 2,
+  // Phase 3 (July 2026): device-gift trials are off. Free-tier sessions make
+  // zero LLM calls; the 3-day subscription trial is the only trial.
   automaticTrials: {
-    ios: true,
-    android: true,
+    ios: false,
+    android: false,
     iosDeviceCheckRequired: false,
     androidPlayIntegrityRequired: false,
     androidAddressTrialsConfirmed: false,
@@ -255,6 +281,7 @@ export const anky = {
 // Private material is not public law. Keep this list short.
 const privateKeys = {
   openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  adminKey: process.env.ANKY_ADMIN_KEY ?? "",
   revenueCatSecretKey: process.env.REVENUECAT_SECRET_KEY ?? "",
   revenueCatProjectId: process.env.REVENUECAT_PROJECT_ID ?? "",
   appleDeviceCheckTeamId: process.env.APPLE_DEVICECHECK_TEAM_ID ?? "",
@@ -271,6 +298,9 @@ const privateKeys = {
 // POST /anky with the required headers. Infrastructure checks GET /health. Everything that powers this is below.
 
 export type AnkyRouteDeps = {
+  accountEntitlement?: (
+    accountId: string,
+  ) => AccountEntitlement | Promise<AccountEntitlement>;
   prepareReflectionCredit?: typeof prepareReflectionCredit;
   spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
   routeReflection?: typeof routeReflection;
@@ -315,6 +345,8 @@ export function createApp(
     logger?: SafeLogger;
     ankyRouteDeps?: AnkyRouteDeps;
     diagnostics?: DiagnosticsSink;
+    levelDb?: Database;
+    debugDeps?: DebugRouteDeps;
   } = {},
 ) {
   const env = input.env ?? ankyWorld();
@@ -329,8 +361,20 @@ export function createApp(
       input.ankyRouteDeps?.createStripeOnrampSession ?? createStripeOnrampSession,
     ),
   );
+  const getLevelDb = input.levelDb
+    ? () => input.levelDb ?? null
+    : () => defaultLevelDb(env);
+  // Entitlement fails closed: without the subscription table (volume not
+  // mounted) nobody reads as subscribed, and paid gates stay shut.
+  const defaultAccountEntitlement = (accountId: string): AccountEntitlement => {
+    const db = getLevelDb();
+    if (!db) return { entitled: false };
+    return subscriptionAccountEntitlement(db, accountId, Date.now());
+  };
+
   app.post("/anky", (c) => {
     const deps = {
+      accountEntitlement: defaultAccountEntitlement,
       ...input.ankyRouteDeps,
       diagnostics: input.diagnostics,
     };
@@ -340,7 +384,95 @@ export function createApp(
     return handleAnkyReflection(c, env, logger, deps);
   });
 
+  registerLevelRoutes(app, {
+    getDb: getLevelDb,
+    authenticate: levelAuthenticator(env),
+    maxBodyBytes: env.maxBodyBytes,
+    requestTimeToleranceMs: env.requestTimeToleranceMs,
+  });
+  registerPaintingRoutes(app, {
+    getDb: getLevelDb,
+    authenticate: levelAuthenticator(env),
+    dataDir: env.dataDir,
+    openrouterApiKey: env.openrouterApiKey,
+    maxBodyBytes: env.maxBodyBytes,
+  });
+  registerDebugRoutes(app, {
+    adminKey: env.adminKey,
+    openrouterApiKey: env.openrouterApiKey,
+    maxBodyBytes: env.maxBodyBytes,
+    getDb: getLevelDb,
+    distillImpl: input.debugDeps?.distillImpl,
+  });
+  registerEventRoutes(app, {
+    authenticate: levelAuthenticator(env),
+    maxBodyBytes: env.maxBodyBytes,
+    getDb: getLevelDb,
+  });
+  registerSubscriptionRoutes(app, {
+    getDb: getLevelDb,
+    authenticate: levelAuthenticator(env),
+    maxBodyBytes: env.maxBodyBytes,
+    expectedBundleId: anky.appBundleId,
+    allowedProductIds: anky.subscriptionProductIds,
+  });
+
   return app;
+}
+
+// The level ledger opens lazily so /health and /anky never depend on the
+// volume being mounted. Without a writable data dir the level routes 503.
+let cachedLevelDb: Database | null | undefined;
+
+function defaultLevelDb(env: Env): Database | null {
+  if (cachedLevelDb !== undefined) return cachedLevelDb;
+  try {
+    mkdirSync(env.dataDir, { recursive: true });
+    cachedLevelDb = openLevelDb(`${env.dataDir}/anky.sqlite`);
+  } catch {
+    console.warn("level store unavailable: data dir is not writable");
+    cachedLevelDb = null;
+  }
+  return cachedLevelDb;
+}
+
+export function clearLevelDbCacheForTests(): void {
+  cachedLevelDb = undefined;
+}
+
+function levelAuthenticator(env: Env): LevelAuthenticator {
+  return async (c, bodyBytes) => {
+    const signature = c.req.header("x-anky-signature");
+    const requestTime = c.req.header("x-anky-request-time");
+    if (!signature || !requestTime) {
+      return { errorCode: "MISSING_SIGNATURE", status: 401 };
+    }
+    if (!isFreshRequestTime(requestTime, env.requestTimeToleranceMs)) {
+      return { errorCode: "INVALID_SIGNATURE", status: 401 };
+    }
+    if (!rememberRequest(signature, requestTime, env.requestTimeToleranceMs)) {
+      return { errorCode: "INVALID_SIGNATURE", status: 401 };
+    }
+    const identity = await verifyAnkyBaseRequest({
+      headers: {
+        identityVersion: c.req.header("x-anky-identity-version"),
+        account: c.req.header("x-anky-account"),
+        signatureType: c.req.header("x-anky-signature-type"),
+        signature,
+        requestTime,
+        client: c.req.header("x-anky-client"),
+      },
+      bodyBytes,
+      allowedChainId: env.baseChainId,
+    }).catch((error) => {
+      if (error instanceof AnkyAuthError) return error;
+      return new AnkyAuthError("INVALID_SIGNATURE");
+    });
+    if (identity instanceof AnkyAuthError) {
+      return { errorCode: identity.code, status: 401 };
+    }
+    return { accountId: identity.accountId };
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -350,6 +482,13 @@ export function createApp(
 // I am allowed to hold the artifact only while the request is alive. Every
 // exported function below keeps that promise: no raw writing, prompt, response,
 // signature, trial proof, seed phrase, or private key is ever stored or logged.
+//
+// The level painting pipeline (./painting) extends the covenant: the writing
+// a client sends to POST /level/prepare exists only inside that request. It
+// is distilled once (ZDR-enforced) into a symbolic scene and title, and then
+// forgotten. Only the distilled scene, title, palette, and the painting
+// images are kept. The level ledger (./level) stores artifact hashes and
+// seconds — never a word of writing.
 
 export type ErrorCode =
   | "INVALID_ANKY"
@@ -364,6 +503,7 @@ export type ErrorCode =
   | "INVALID_SIGNATURE"
   | "BODY_TOO_LARGE"
   | "INSUFFICIENT_CREDITS"
+  | "ENTITLEMENT_REQUIRED"
   | "TRIAL_ALREADY_CLAIMED"
   | "DUPLICATE_IN_PROGRESS"
   | "DUPLICATE_SUCCEEDED"
@@ -387,6 +527,8 @@ const errorMessages: Record<ErrorCode, string> = {
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
   INSUFFICIENT_CREDITS:
     "You need one credit to ask Anky for a reflection. Writing is still free.",
+  ENTITLEMENT_REQUIRED:
+    "Reflections open with an Anky subscription. Writing is still free, always.",
   TRIAL_ALREADY_CLAIMED:
     "This device already used its first two reflections. Buy credits to reflect more writing.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
@@ -412,6 +554,7 @@ const errorStatuses: Record<
   INVALID_SIGNATURE: 401,
   BODY_TOO_LARGE: 413,
   INSUFFICIENT_CREDITS: 402,
+  ENTITLEMENT_REQUIRED: 402,
   TRIAL_ALREADY_CLAIMED: 402,
   DUPLICATE_IN_PROGRESS: 409,
   DUPLICATE_SUCCEEDED: 409,
@@ -470,6 +613,8 @@ export type AnkyWorld = {
   x402: typeof anky.x402;
   stripeSecretKey: string;
   cryptoOnramp: typeof anky.cryptoOnramp;
+  dataDir: string;
+  adminKey: string;
 };
 
 export type Env = AnkyWorld;
@@ -524,6 +669,8 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     x402: anky.x402,
     stripeSecretKey: privateKeys.stripeSecretKey,
     cryptoOnramp: anky.cryptoOnramp,
+    dataDir: process.env.ANKY_DATA_DIR ?? anky.dataDir,
+    adminKey: privateKeys.adminKey,
     ...overrides,
   };
 }
@@ -1097,6 +1244,7 @@ export type ReflectionCreditResult = {
     | "spent"
     | "trial_granted_spent"
     | "bypassed"
+    | "subscribed"
     | "insufficient"
     | "trial_disabled"
     | "trial_already_claimed"
@@ -1157,7 +1305,7 @@ export type X402Result =
 export type PreparedReflectionCredit =
   | {
       ok: true;
-      source?: "balance" | "trial" | "bypass";
+      source?: "balance" | "trial" | "bypass" | "subscription";
       creditsRemaining: number | null;
       result?: ReflectionCreditResult["result"];
       spentCredit?: boolean;
@@ -1976,7 +2124,7 @@ function reflectionRefundIdempotencyKey(
 
 function preparedSource(
   prepared: Extract<PreparedReflectionCredit, { ok: true }>,
-): "balance" | "trial" | "bypass" {
+): "balance" | "trial" | "bypass" | "subscription" {
   if (prepared.source) return prepared.source;
   if (prepared.result === "bypassed" || prepared.spentCredit === false)
     return "bypass";
@@ -2959,6 +3107,21 @@ export async function handleAnkyReflection(
     });
 
     try {
+      // Subscription first: entitled writers reflect without touching the
+      // credit machinery. Free writers fall through to purchased credits or
+      // x402 — paid value is honored forever — and otherwise meet the veil.
+      const entitlement: AccountEntitlement = deps.accountEntitlement
+        ? await deps.accountEntitlement(accountId)
+        : { entitled: false };
+      if (
+        requestIntent === "nudge" &&
+        !entitlement.entitled &&
+        !retryingSucceededReflection
+      ) {
+        statusCode = 402;
+        errorCode = "ENTITLEMENT_REQUIRED";
+        return errorJson(c, "ENTITLEMENT_REQUIRED");
+      }
       let preparedCredit: PreparedReflectionCredit =
         requestIntent === "nudge" || retryingSucceededReflection
           ? {
@@ -2968,17 +3131,25 @@ export async function handleAnkyReflection(
               result: "bypassed",
               spentCredit: false,
             }
-          : await prepareCredit({
-              env,
-              accountId,
-              accountIdHash: identityHash,
-              ankyHash: billingHash,
-              client: identity.client,
-              tier: reflectionTier,
-              appVersion,
-              trialProof,
-              fetchImpl: deps.creditFetch,
-            });
+          : entitlement.entitled
+            ? {
+                ok: true,
+                source: "subscription",
+                creditsRemaining: null,
+                result: "subscribed",
+                spentCredit: false,
+              }
+            : await prepareCredit({
+                env,
+                accountId,
+                accountIdHash: identityHash,
+                ankyHash: billingHash,
+                client: identity.client,
+                tier: reflectionTier,
+                appVersion,
+                trialProof,
+                fetchImpl: deps.creditFetch,
+              });
       if (
         !preparedCredit.ok &&
         preparedCredit.result === "insufficient" &&
@@ -3020,9 +3191,11 @@ export async function handleAnkyReflection(
             ? "Anky will return a lightweight nudge without spending a reflection credit."
             : recoveredPreviousSpend
               ? "Anky found a previous credit spend for this artifact and will retry without spending again."
-              : preparedCredit.ok
-                ? "Anky found an available reflection credit path."
-                : "Anky did not find available credits and is checking x402.",
+              : preparedCredit.ok && preparedCredit.source === "subscription"
+                ? "Anky recognized an active subscription. The mirror is open."
+                : preparedCredit.ok
+                  ? "Anky found an available reflection credit path."
+                  : "Anky did not find available credits and is checking x402.",
       });
       if (retryingSucceededReflection) {
         creditResult = "duplicate_succeeded_retry_bypass";
@@ -3030,6 +3203,8 @@ export async function handleAnkyReflection(
         creditResult = "nudge_not_charged";
       } else if (recoveredPreviousSpend) {
         creditResult = "recovered_previous_spend";
+      } else if (preparedCredit.ok && preparedCredit.source === "subscription") {
+        creditResult = "subscription_entitled";
       }
       if (!preparedCredit.ok) {
         creditResult = preparedCredit.result;
@@ -3044,9 +3219,11 @@ export async function handleAnkyReflection(
           preparedCredit.result === "trial_proof_missing" ||
           preparedCredit.result === "trial_proof_invalid"
         ) {
+          // No subscription, no purchased credits, no device trial: this is
+          // the boundary. The client renders it as the veil.
           statusCode = 402;
-          errorCode = "INSUFFICIENT_CREDITS";
-          return errorJson(c, "INSUFFICIENT_CREDITS");
+          errorCode = "ENTITLEMENT_REQUIRED";
+          return errorJson(c, "ENTITLEMENT_REQUIRED");
         }
         x402Quote = quoteAnkyReflection(env);
         await deps.progress?.({
@@ -3101,16 +3278,20 @@ export async function handleAnkyReflection(
           errorCode = "TRIAL_ALREADY_CLAIMED";
           return errorJson(c, "TRIAL_ALREADY_CLAIMED");
         }
+        if (preparedCredit.result === "insufficient") {
+          statusCode = 402;
+          errorCode = "INSUFFICIENT_CREDITS";
+          return errorJson(c, "INSUFFICIENT_CREDITS");
+        }
         if (
-          preparedCredit.result === "insufficient" ||
           preparedCredit.result === "trial_disabled" ||
           preparedCredit.result === "trial_ineligible" ||
           preparedCredit.result === "trial_proof_missing" ||
           preparedCredit.result === "trial_proof_invalid"
         ) {
           statusCode = 402;
-          errorCode = "INSUFFICIENT_CREDITS";
-          return errorJson(c, "INSUFFICIENT_CREDITS");
+          errorCode = "ENTITLEMENT_REQUIRED";
+          return errorJson(c, "ENTITLEMENT_REQUIRED");
         }
         statusCode = 500;
         errorCode = "MIRROR_FAILED";
@@ -3166,11 +3347,14 @@ export async function handleAnkyReflection(
       let creditsRemaining = preparedCredit.ok
         ? preparedCredit.creditsRemaining
         : null;
+      const subscriptionCovered =
+        preparedCredit.ok && preparedCredit.source === "subscription";
       if (
         requestIntent === "reflection" &&
         mirror.chargeable &&
         !retryingSucceededReflection &&
-        !recoveredPreviousSpend
+        !recoveredPreviousSpend &&
+        !subscriptionCovered
       ) {
         if (x402Payment) {
           const x402Settler = deps.settleX402Payment ?? settleX402Payment;
@@ -3232,13 +3416,17 @@ export async function handleAnkyReflection(
         creditResult =
           requestIntent === "nudge"
             ? "nudge_not_charged"
-            : "not_spent_default_fallback";
+            : subscriptionCovered
+              ? "subscription_entitled"
+              : "not_spent_default_fallback";
         await deps.progress?.({
           stage: "credit_not_spent",
           message:
             requestIntent === "nudge"
               ? "Anky returned the lightweight nudge without charging."
-              : "Anky used the fallback reflection and did not charge.",
+              : subscriptionCovered
+                ? "Anky reflected within the subscription. Nothing was spent."
+                : "Anky used the fallback reflection and did not charge.",
         });
       }
 

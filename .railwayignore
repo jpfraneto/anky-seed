@@ -19,3 +19,5 @@ scripts
 *.jpeg
 *.gif
 *.p8
+# The painting pipeline needs the character-sheet reference at runtime.
+!backend/assets/*.png
