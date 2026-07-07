@@ -77,8 +77,8 @@ struct WriteView: View {
                     }
                 )
                 .padding(.horizontal, 14)
-                .padding(.top, max(54, geometry.safeAreaInsets.top + 14))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(width: geometry.size.width, height: 156, alignment: .top)
+                .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 84)
                 .zIndex(20)
 
                 // §5.4: the passive Quick Pass line — quiet, contextual, no
@@ -91,8 +91,8 @@ struct WriteView: View {
                         .padding(.vertical, 8)
                         .background(Color.ankyPaper.opacity(0.78), in: Capsule())
                         .overlay(Capsule().strokeBorder(Color.ankyGold.opacity(0.35), lineWidth: 0.5))
-                        .padding(.top, max(54, geometry.safeAreaInsets.top + 14) + 58)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .frame(maxWidth: geometry.size.width - 28)
+                        .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 154)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                         .zIndex(21)
                         .animation(.easeInOut(duration: 0.5), value: unlockLine)

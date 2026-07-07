@@ -1,5 +1,4 @@
 import SwiftUI
-import StoreKit
 import UIKit
 
 struct AppRoot: View {
@@ -11,7 +10,7 @@ struct AppRoot: View {
     /// purchases persist across onboarding re-runs, so without it QA
     /// walkthroughs jump over the paywall after the first test purchase.
     /// Both flags MUST be false before shipping.
-    private static let alwaysShowsOnboardingForQA = true
+    private static let alwaysShowsOnboardingForQA = false
 
     private enum WriteSurface {
         case home
@@ -34,6 +33,7 @@ struct AppRoot: View {
     @State private var revealAfterWriting: SavedAnky?
     @State private var sealingArtifact: SavedAnky?
     @State private var sealingUnlockGrant: UnlockGrant?
+    @State private var sealingShowsFreeTargetMoment = false
     @State private var isUnlocked = false
     @State private var isAuthenticating = false
     @State private var suppressFaceIDPrivacyPromptUntilNextActivation = false
@@ -158,14 +158,23 @@ struct AppRoot: View {
         guard let grant = writeViewModel.consumeWriteBeforeScrollAvailableUnlockGrant() ?? fallbackGrant else {
             return
         }
-        // A Quick Pass applied passively mid-session already consumed its
-        // pass and cleared the shield — never spend a second pass here.
+        defer {
+            // Completing the gate means writing through it: only a
+            // gate-originated session flips the first-gate flag.
+            if writeViewModel.isGateOriginatedSession {
+                FirstGateStore().markFirstGateCompleted()
+            }
+        }
+        // A grant applied passively mid-session (Quick Pass, or the daily
+        // upgrade over one) already consumed what it needed and cleared the
+        // shield — never spend a second pass or re-apply here.
         if grant.tier == .quick, writeViewModel.hasAppliedPassiveQuickUnlock {
-            FirstGateStore().markFirstGateCompleted()
+            return
+        }
+        if grant.tier == .daily, writeViewModel.hasAppliedPassiveDailyUnlockUpgrade {
             return
         }
         writeBeforeScrollSpike.applyUnlock(grant)
-        FirstGateStore().markFirstGateCompleted()
     }
 
     @discardableResult
@@ -223,6 +232,13 @@ struct AppRoot: View {
         revealAfterWriting = nil
         sealingArtifact = artifact
         sealingUnlockGrant = writeViewModel.writeBeforeScrollAvailableUnlockGrant
+        // Decision 2026-07-06 (option C): a free writer's target crossing is
+        // acknowledged where a subscriber's day would open. Entitlement is
+        // re-checked at seal so a mid-session purchase wins, and an earned
+        // unlock CTA (rare: re-offered quick grant) always keeps its button.
+        sealingShowsFreeTargetMoment = writeViewModel.writeBeforeScrollFreeTargetMomentPending
+            && !entitlements.isEntitledForGating
+            && sealingUnlockGrant == nil
         selectedTab = 0
         showsLaunchDialogue = false
         writeSurface = .sealing
@@ -335,14 +351,25 @@ struct AppRoot: View {
     }
 
     private func stayAfterSealing() {
+        guard let artifact = sealingArtifact else {
+            showDeepWriteInterface()
+            return
+        }
         sealingArtifact = nil
         sealingUnlockGrant = nil
         revealAfterWriting = nil
-        writeViewModel.beginBlankSessionFromWriteTab()
         showsLaunchDialogue = false
         writeSurface = .deepWrite
-        selectedTab = 0
-        ankyCompanion.hideBubble()
+        if !writeViewModel.continueSession(from: artifact) {
+            writeViewModel.beginBlankSessionFromWriteTab()
+        }
+        ankyCompanion.hideBubble(returningTo: .listening)
+        preservesContinuedSessionOnNextWriteTab = true
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            selectedTab = 0
+        }
         writeViewModel.openWritingPortal()
         syncWriteBubble()
         maybeRequestFirstSealReview()
@@ -420,6 +447,18 @@ struct AppRoot: View {
                                         artifact: sealingArtifact,
                                         unlockGrant: sealingUnlockGrant,
                                         isGateOriginated: writeViewModel.isGateOriginatedSession,
+                                        showsFreeTargetMoment: sealingShowsFreeTargetMoment,
+                                        quickPassesRemaining: writeViewModel.writeBeforeScrollQuickPassesRemaining,
+                                        onMomentShown: {
+                                            // The day's one showing is spent only
+                                            // when the moment actually renders.
+                                            writeViewModel.markFreeTargetMomentPresented()
+                                        },
+                                        onEmergency: {
+                                            withAnimation(.easeInOut(duration: 0.35)) {
+                                                showsEmergencyBreath = true
+                                            }
+                                        },
                                         onUnlock: {
                                             grantWriteBeforeScrollUnlockAndReturnToAttemptedApp()
                                         },
@@ -618,6 +657,7 @@ struct AppRoot: View {
                 viewModel: youViewModel,
                 screenTime: writeBeforeScrollSpike
             )
+            .environmentObject(entitlements)
         }
         .sheet(
             isPresented: $showsGateSetup,
@@ -665,9 +705,13 @@ struct AppRoot: View {
             }
             // §5.4: Quick Pass unlocks passively the moment the sentence
             // completes — the shield opens with no button and no stillness.
+            // The same handler carries the on-the-spot daily upgrade; the
+            // first-gate flag stays exclusive to gate-originated sessions.
             writeViewModel.bindWriteBeforeScrollPassiveUnlockHandler { grant in
                 writeBeforeScrollSpike.applyUnlock(grant)
-                FirstGateStore().markFirstGateCompleted()
+                if writeViewModel.isGateOriginatedSession {
+                    FirstGateStore().markFirstGateCompleted()
+                }
             }
             writeBeforeScrollSpike.reconcileOnAppActive()
             writeBeforeScrollSpike.handlePendingInterventionIfNeeded(showWrite: showDeepWriteInterface)
@@ -675,8 +719,15 @@ struct AppRoot: View {
             let identityStore = WriterIdentityStore()
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
             _ = try? identityStore.loadOrCreate()
+            // The one deterministic purchases bootstrap: identity is on
+            // disk by now, so RevenueCat configures under the wallet
+            // address — never anonymously, never lazily from a feature
+            // path. If identity failed, this no-ops (fail closed) and the
+            // next foreground retries.
             Task {
-                await youViewModel.preloadCredits()
+                await AnkyPurchases.identifyCurrentWriter()
+                entitlements.start()
+                await entitlements.reconcileOnForeground()
             }
             Task {
                 await authenticateIfNeeded()
@@ -707,8 +758,12 @@ struct AppRoot: View {
             switch phase {
             case .active:
                 // If the trial was cancelled in Settings, the reminder has
-                // nothing honest left to say — this removes it.
+                // nothing honest left to say — this removes it. Also the
+                // fail-closed retry path: a launch that couldn't load
+                // identity configures RevenueCat here instead.
                 Task {
+                    await AnkyPurchases.identifyCurrentWriter()
+                    entitlements.start()
                     await entitlements.reconcileOnForeground()
                     // Phase-2 §5: the honest trial surface — evaluated only
                     // once entitlement state is fresh; ends on subscribe.
@@ -731,9 +786,6 @@ struct AppRoot: View {
                 if !routedFromGate, writeSurface == .home, selectedTab == 0 {
                     presentCeremonyIfOwed(unhurried: true)
                     presentAdaptiveOfferIfNeeded()
-                }
-                Task {
-                    await youViewModel.preloadCredits()
                 }
                 if faceIDLockEnabled && !isUnlocked && !isAuthenticating {
                     Task {
@@ -772,7 +824,7 @@ struct AppRoot: View {
             GlanceSyncCoordinator.sync()
             if gated {
                 Task {
-                    await entitlements.syncEntitlementToBackendIfNeeded()
+                    await entitlements.identifyToBackendIfNeeded()
                     levelPainting.handleEntitlementConfirmed()
                     presentCeremonyIfOwed(unhurried: writeSurface == .home && selectedTab == 0)
                 }
@@ -941,7 +993,8 @@ struct AppRoot: View {
         _ = try? identityStore.loadOrCreateRecoveryPhrase()
         _ = try? identityStore.loadOrCreate()
         Task {
-            await youViewModel.preloadCredits()
+            await AnkyPurchases.identifyCurrentWriter()
+            entitlements.start()
         }
         DispatchQueue.main.async {
             syncWriteBubble()
@@ -979,7 +1032,11 @@ struct AppRoot: View {
             do {
                 _ = try ICloudBackupStore().restoreFromICloud()
                 youViewModel.refresh()
-                await youViewModel.preloadCredits()
+                // A restored backup can carry a different wallet — hand
+                // RevenueCat the adopted identity before anything gated.
+                await AnkyPurchases.identifyCurrentWriter()
+                entitlements.start()
+                await entitlements.reconcileOnForeground()
                 selectedTab = 0
                 writeSurface = .home
                 showsICloudRestorePrompt = false
@@ -1052,6 +1109,7 @@ struct AppRoot: View {
             && writeSurface == .deepWrite
             && (!faceIDLockEnabled || isUnlocked)
             && !shouldShowOnboarding
+            && !showsDayOneOverlay
             && !showsICloudRestorePrompt
     }
 
@@ -1060,6 +1118,7 @@ struct AppRoot: View {
             && writeSurface == .deepWrite
             && (!faceIDLockEnabled || isUnlocked)
             && !shouldShowOnboarding
+            && !showsDayOneOverlay
             && !showsICloudRestorePrompt
             && writeViewModel.hasStarted
             && !writeViewModel.isPausedOnDraft
@@ -1308,6 +1367,10 @@ private struct SettingsCoverView: View {
                 }
             }
         }
+        .background {
+            LazureWall(mood: .dawn)
+                .ignoresSafeArea()
+        }
         .sheet(isPresented: $showsGateSetup) {
             GateSetupView(viewModel: screenTime) {
                 showsGateSetup = false
@@ -1390,11 +1453,16 @@ private struct PostSessionSealingView: View {
     @State private var skipsSealMotion = false
     @State private var isFirstGate = false
     @State private var showsPaywallSheet = false
+    @State private var paywallOrigin = "reflection"
     @EnvironmentObject private var entitlements: EntitlementStore
 
     private let artifact: SavedAnky
     private let unlockGrant: UnlockGrant?
     private let isGateOriginated: Bool
+    private let showsFreeTargetMoment: Bool
+    private let quickPassesRemaining: Int
+    private let onMomentShown: () -> Void
+    private let onEmergency: () -> Void
     private let onUnlock: () -> Void
     private let onDone: () -> Void
     private let onStay: () -> Void
@@ -1403,6 +1471,10 @@ private struct PostSessionSealingView: View {
         artifact: SavedAnky,
         unlockGrant: UnlockGrant?,
         isGateOriginated: Bool = false,
+        showsFreeTargetMoment: Bool = false,
+        quickPassesRemaining: Int = UnlockPolicy.quickPassDailyAllowance,
+        onMomentShown: @escaping () -> Void = {},
+        onEmergency: @escaping () -> Void = {},
         onUnlock: @escaping () -> Void,
         onDone: @escaping () -> Void,
         onStay: @escaping () -> Void
@@ -1410,6 +1482,10 @@ private struct PostSessionSealingView: View {
         self.artifact = artifact
         self.unlockGrant = unlockGrant
         self.isGateOriginated = isGateOriginated
+        self.showsFreeTargetMoment = showsFreeTargetMoment
+        self.quickPassesRemaining = quickPassesRemaining
+        self.onMomentShown = onMomentShown
+        self.onEmergency = onEmergency
         self.onUnlock = onUnlock
         self.onDone = onDone
         self.onStay = onStay
@@ -1429,16 +1505,25 @@ private struct PostSessionSealingView: View {
                     .transition(.opacity)
                 } else {
                     MirrorAndGateBeatView(
-                        reflectionTitle: reflectionTitle,
                         reflectionText: reflectionText,
                         didFailReflection: didFailReflection,
                         showsReflectionVeil: reflectionVeiled,
-                        onVeilTap: { showsPaywallSheet = true },
+                        onVeilTap: {
+                            paywallOrigin = "reflection"
+                            showsPaywallSheet = true
+                        },
                         hashLine: hashLine,
                         gateTitle: gateTitle,
                         remainingTodayText: remainingTodayText,
                         firstGateLine: firstGateLine,
                         showsGate: phase == .gate,
+                        freeTargetMoment: showsFreeTargetMoment,
+                        showsEmergencyLink: quickPassesRemaining <= 0,
+                        onMomentSubscribe: {
+                            paywallOrigin = "free_target_moment"
+                            showsPaywallSheet = true
+                        },
+                        onEmergency: onEmergency,
                         onGate: unlockGrant == nil ? onDone : onUnlock,
                         onStay: onStay
                     )
@@ -1450,7 +1535,7 @@ private struct PostSessionSealingView: View {
             .ignoresSafeArea()
         }
         .sheet(isPresented: $showsPaywallSheet) {
-            PaywallSheet(store: entitlements, origin: "reflection")
+            PaywallSheet(store: entitlements, origin: paywallOrigin)
         }
         .onAppear(perform: startIfNeeded)
         .onChange(of: scenePhase) { newPhase in
@@ -1476,29 +1561,21 @@ private struct PostSessionSealingView: View {
     private var hashLine: String {
         let prefix = String(artifact.hash.prefix(4))
         let suffix = String(artifact.hash.suffix(4))
-        return "sealed · \(prefix)...\(suffix)"
-    }
-
-    private var reflectionTitle: String? {
-        guard let title = mirrorViewModel.reflection?.title.trimmingCharacters(in: .whitespacesAndNewlines),
-              !title.isEmpty else {
-            return nil
-        }
-        return title
+        return "Sealed · \(prefix)...\(suffix)"
     }
 
     private var reflectionText: String {
         if let reflection = mirrorViewModel.reflection?.reflection.trimmingCharacters(in: .whitespacesAndNewlines),
            !reflection.isEmpty {
-            return reflection
+            return Self.removingRepeatedOpening(from: reflection)
         }
 
         let streaming = mirrorViewModel.streamingReflectionMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
         if !streaming.isEmpty {
-            return streaming
+            return Self.removingRepeatedOpening(from: streaming)
         }
 
-        return "sealed. words kept."
+        return "Sealed. Words kept."
     }
 
     private var didFailReflection: Bool {
@@ -1517,24 +1594,24 @@ private struct PostSessionSealingView: View {
 
     private var gateTitle: String {
         guard unlockGrant != nil else {
-            return "done"
+            return "Done"
         }
         // Contextual only when the session came through the gate — closing
         // the loop fast. Organic sessions keep the normal copy.
         return isGateOriginated
             ? WriteBeforeScrollReturnTarget.gateLabel()
-            : "continue"
+            : "Continue"
     }
 
     private var remainingTodayText: String {
-        "or stay · \(Self.remainingWritingTimeToday()) left today"
+        "or stay · \(Self.remainingWritingTime(for: artifact)) to complete your daily target"
     }
 
     private var firstGateLine: String? {
         guard isFirstGate, unlockGrant != nil else {
             return nil
         }
-        return "you just wrote before you scrolled.\nthat is the whole practice."
+        return "You just wrote before you scrolled.\nThat is the whole practice."
     }
 
     private func startIfNeeded() {
@@ -1585,6 +1662,9 @@ private struct PostSessionSealingView: View {
                 withAnimation(.easeInOut(duration: 0.78)) {
                     phase = .gate
                 }
+                if showsFreeTargetMoment {
+                    onMomentShown()
+                }
             }
         }
     }
@@ -1593,18 +1673,13 @@ private struct PostSessionSealingView: View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
-    private static func remainingWritingTimeToday(
+    private static func remainingWritingTime(
+        for artifact: SavedAnky,
         now: Date = Date(),
-        calendar: Calendar = .current,
-        sessionIndexStore: SessionIndexStore = SessionIndexStore()
+        calendar: Calendar = .current
     ) -> String {
         let targetMs = DailyTargetStore().effectiveTargetMs(now: now, calendar: calendar)
-        let writtenMs = sessionIndexStore.load()
-            .filter { calendar.isDate($0.createdAt, inSameDayAs: now) }
-            .reduce(Int64(0)) { total, summary in
-                total + summary.durationMs
-            }
-        return clock(max(0, targetMs - writtenMs))
+        return clock(max(0, targetMs - artifact.durationMs))
     }
 
     private static func clock(_ durationMs: Int64) -> String {
@@ -1612,6 +1687,25 @@ private struct PostSessionSealingView: View {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return "\(String(format: "%02d", minutes)):\(String(format: "%02d", seconds))"
+    }
+
+    private static func removingRepeatedOpening(from text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 40 else { return trimmed }
+
+        let maxPrefixLength = min(trimmed.count / 2, 140)
+        guard maxPrefixLength >= 20 else { return trimmed }
+
+        for length in stride(from: maxPrefixLength, through: 20, by: -1) {
+            let firstEnd = trimmed.index(trimmed.startIndex, offsetBy: length)
+            let prefix = String(trimmed[..<firstEnd])
+            let rest = String(trimmed[firstEnd...])
+            if rest.hasPrefix(prefix) {
+                return rest.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+
+        return trimmed
     }
 }
 
@@ -1693,7 +1787,6 @@ private struct SealingThreadTangle: View {
 }
 
 private struct MirrorAndGateBeatView: View {
-    let reflectionTitle: String?
     let reflectionText: String
     let didFailReflection: Bool
     var showsReflectionVeil: Bool = false
@@ -1703,6 +1796,10 @@ private struct MirrorAndGateBeatView: View {
     let remainingTodayText: String
     let firstGateLine: String?
     let showsGate: Bool
+    var freeTargetMoment: Bool = false
+    var showsEmergencyLink: Bool = false
+    var onMomentSubscribe: () -> Void = {}
+    var onEmergency: () -> Void = {}
     let onGate: () -> Void
     let onStay: () -> Void
 
@@ -1724,26 +1821,17 @@ private struct MirrorAndGateBeatView: View {
                     .frame(height: 235)
                     .frame(maxWidth: .infinity)
                 } else {
-                    VStack(alignment: .leading, spacing: 16) {
-                        if let reflectionTitle {
-                            Text(reflectionTitle)
-                                .font(.system(size: 31, weight: .semibold, design: .serif))
-                                .foregroundStyle(Color.ankyViolet)
-                                .lineSpacing(3)
-                                .transition(.opacity)
-                        }
-
-                        Text(reflectionText)
-                            .font(.system(size: didFailReflection ? 22 : 25, weight: .regular, design: .serif))
-                            .foregroundStyle(didFailReflection ? Color.ankyInkSoft : Color.ankyInk)
-                            .lineSpacing(8)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity)
-                    }
+                    RawReflectionMarkdownText(
+                        markdown: reflectionText,
+                        didFailReflection: didFailReflection
+                    )
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
                 }
 
-                if showsGate {
+                if showsGate, freeTargetMoment {
+                    freeTargetMomentBlock
+                } else if showsGate {
                     VStack(spacing: 13) {
                         if let firstGateLine {
                             Text(firstGateLine)
@@ -1804,6 +1892,94 @@ private struct MirrorAndGateBeatView: View {
             .frame(maxWidth: 620)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    /// Decision 2026-07-06 (option C): the free writer's target moment —
+    /// acknowledgment first, the subscriber fact second, the trial as an
+    /// open door. Dismissible in one tap; with no passes left the emergency
+    /// breath stays quietly visible so there is always a free way forward.
+    private var freeTargetMomentBlock: some View {
+        VStack(spacing: 14) {
+            Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentTitle))
+                .font(.system(size: 22, weight: .semibold, design: .serif))
+                .foregroundStyle(Color.ankyInk)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+
+            Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentLine))
+                .font(.system(size: 15, weight: .regular, design: .serif))
+                .foregroundStyle(Color.ankyInkSoft)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .frame(maxWidth: .infinity)
+
+            Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentSubscriberLine))
+                .font(.system(size: 15, weight: .medium, design: .serif))
+                .foregroundStyle(Color.ankyViolet.opacity(0.92))
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .frame(maxWidth: .infinity)
+
+            Button(action: onMomentSubscribe) {
+                Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentCTA))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.ankyInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, 22)
+                    .frame(minHeight: 46)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.ankyGoldLight, Color.ankyGold],
+                            startPoint: .top, endPoint: .bottom
+                        ),
+                        in: Capsule()
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            if showsEmergencyLink {
+                Button(action: onEmergency) {
+                    Text(AnkyLocalization.ui(AnkyCopyRegistry.emergencyLink))
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.75))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button(action: onGate) {
+                Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentDismiss))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.ankyInkSoft)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 10)
+        .transition(.opacity)
+    }
+}
+
+private struct RawReflectionMarkdownText: View {
+    let markdown: String
+    let didFailReflection: Bool
+
+    private var attributed: AttributedString {
+        (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
+    }
+
+    var body: some View {
+        Text(attributed)
+            .font(.system(size: didFailReflection ? 22 : 25, weight: .regular, design: .serif))
+            .foregroundStyle(didFailReflection ? Color.ankyInkSoft : Color.ankyInk)
+            .lineSpacing(8)
+            .fixedSize(horizontal: false, vertical: true)
+            .textSelection(.enabled)
     }
 }
 

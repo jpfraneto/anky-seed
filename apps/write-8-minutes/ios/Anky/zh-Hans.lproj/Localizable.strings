@@ -288,3 +288,20 @@
 "Hide delete account action" = "隐藏删除帐户操作";
 "Show delete account action" = "显示删除帐户操作";
 "Legal document unavailable. Please contact support@anky.app." = "法律文档不可用。请联系 support@anky.app。";
+
+/* Free-tier target moment + emergency door (2026-07-06) */
+"your target, reached." = "你的目标，达成了。";
+"you wrote what you set out to write today. that is the whole practice." = "你写完了今天为自己定下的目标。这就是练习的全部。";
+"for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened." = "对订阅者来说，这一刻整天就此敞开——手机解锁直到午夜，因为书写已经完成。";
+"start 3 free days" = "开始 3 天免费体验";
+"not now" = "暂时不用";
+"emergency? open without writing" = "紧急情况？无需书写直接打开";
+"Emergency: open your apps without writing" = "紧急情况：无需书写即可打开你的应用";
+
+/* Gate off-switch (2026-07-06) */
+"turn the gate off" = "关闭这道门";
+"take the door down?" = "要撤下这道门吗？";
+"your apps open freely again. the gate waits here whenever you want it back." = "你的应用将重新自由打开。想要回这道门时，它一直在这里等你。";
+"turn it off" = "关闭";
+"keep the gate" = "保留这道门";
+"the gate is off. your apps are open." = "门已关闭。你的应用是开放的。";

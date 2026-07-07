@@ -288,3 +288,20 @@
 "Hide delete account action" = "Hide delete account action";
 "Show delete account action" = "Show delete account action";
 "Legal document unavailable. Please contact support@anky.app." = "Legal document unavailable. Please contact support@anky.app.";
+
+/* Free-tier target moment + emergency door (2026-07-06) */
+"your target, reached." = "your target, reached.";
+"you wrote what you set out to write today. that is the whole practice." = "you wrote what you set out to write today. that is the whole practice.";
+"for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened." = "for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened.";
+"start 3 free days" = "start 3 free days";
+"not now" = "not now";
+"emergency? open without writing" = "emergency? open without writing";
+"Emergency: open your apps without writing" = "Emergency: open your apps without writing";
+
+/* Gate off-switch (2026-07-06) */
+"turn the gate off" = "turn the gate off";
+"take the door down?" = "take the door down?";
+"your apps open freely again. the gate waits here whenever you want it back." = "your apps open freely again. the gate waits here whenever you want it back.";
+"turn it off" = "turn it off";
+"keep the gate" = "keep the gate";
+"the gate is off. your apps are open." = "the gate is off. your apps are open.";

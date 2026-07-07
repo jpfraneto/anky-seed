@@ -57,7 +57,7 @@ enum AnkyCopyRegistry {
     }
 
     static let ceremonyBegin = "Begin"
-    static let generationWait = "anky is painting…"
+    static let generationWait = "Anky is painting…"
 
     // MARK: Journey
 
@@ -84,6 +84,30 @@ enum AnkyCopyRegistry {
     static let emergencyLink = "emergency? open without writing"
     static let emergencyNotificationTitle = "the emergency door"
     static let emergencyNotificationBody = "tap to take one slow breath. everything opens after."
+
+    // MARK: Gate off-switch (2026-07-06)
+    // One honest exit, one honest confirmation — no dark patterns in
+    // either direction.
+
+    static let gateOffLink = "turn the gate off"
+    static let gateOffConfirmTitle = "take the door down?"
+    static let gateOffConfirmBody =
+        "your apps open freely again. the gate waits here whenever you want it back."
+    static let gateOffConfirm = "turn it off"
+    static let gateOffCancel = "keep the gate"
+    static let gateOffStandingCaption = "the gate is off. your apps are open."
+
+    // MARK: Free-tier target moment (decision 2026-07-06, option C)
+    // Companion, not ransom: no countdowns, no guilt. Shown once per day
+    // at seal when a free writer crosses their target.
+
+    static let freeTargetMomentTitle = "your target, reached."
+    static let freeTargetMomentLine =
+        "you wrote what you set out to write today. that is the whole practice."
+    static let freeTargetMomentSubscriberLine =
+        "for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened."
+    static let freeTargetMomentCTA = "start 3 free days"
+    static let freeTargetMomentDismiss = "not now"
 
     // MARK: Reflection loading (phase-2 §7)
 

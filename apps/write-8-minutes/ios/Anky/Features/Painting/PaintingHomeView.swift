@@ -36,6 +36,7 @@ struct PaintingHomeView: View {
     @State private var ceremonyOwed = false
     @State private var recentSessions: [SessionSummary] = []
     @State private var blockedSelection = FamilyActivitySelection()
+    @State private var avatarImage = AvatarStore().loadImage()
     @State private var atBoundary = false
     @State private var showsBoundaryVeil = false
     @State private var showsJourneyPaywall = false
@@ -81,6 +82,7 @@ struct PaintingHomeView: View {
             }
         }
         .onAppear {
+            avatarImage = AvatarStore().loadImage()
             screenTime.refresh()
             refreshEverything()
             playStrokeBeatIfOwed()
@@ -112,7 +114,7 @@ struct PaintingHomeView: View {
                 paintingPage(side: side)
                     .tag(0)
                 if entitlements.isEntitledForGating {
-                    JourneyMapView(side: side)
+                    JourneyCardView(side: side)
                         .tag(1)
                 } else {
                     // Phase-3 §3: the journey misted, Anky waiting at tile 1.
@@ -121,7 +123,7 @@ struct PaintingHomeView: View {
                         message: AnkyCopyRegistry.veilJourney,
                         onTap: { showsJourneyPaywall = true }
                     ) {
-                        JourneyMapView(side: side, heldAtFirstTile: true)
+                        JourneyCardView(side: side, heldAtFirstTile: true)
                     }
                     .frame(width: side, height: side)
                     .frame(maxWidth: .infinity)
@@ -246,13 +248,26 @@ struct PaintingHomeView: View {
                 .frame(maxWidth: .infinity)
             }
 
+            // Phase-2 §2: the emergency door must be reachable from inside
+            // the app whenever the shield stands — the notification hop is
+            // never the only route (it doesn't exist with notifications
+            // denied).
+            if phase == .ready, signal.isShieldActive, !signal.isCurrentlyUnlocked {
+                Button(action: onEmergency) {
+                    Text(AnkyLocalization.ui(AnkyCopyRegistry.emergencyLink))
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.75))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel(AnkyLocalization.ui("Emergency: open your apps without writing"))
+            }
+
             if !blockedSelection.applicationTokens.isEmpty {
                 blockedAppsRow
             }
 
             historyCard
-
-            footerLinks
         }
     }
 
@@ -276,7 +291,11 @@ struct PaintingHomeView: View {
             .frame(height: 54)
             .background(
                 LinearGradient(
-                    colors: [Color.ankyGoldLight, theme.buttonWarmth.opacity(0.9)],
+                    colors: [
+                        Color.ankyGoldLight.opacity(0.98),
+                        Color.ankyGold.opacity(0.96),
+                        theme.buttonWarmth.opacity(0.98),
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 ),
@@ -308,49 +327,61 @@ struct PaintingHomeView: View {
         .accessibilityLabel(AnkyLocalization.ui("Apps waiting behind the door"))
     }
 
-    /// Dates and times only — never the writing's words. Words stay behind
-    /// a tap into history.
     private var historyCard: some View {
         Button(action: onHistory) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(AnkyLocalization.ui("History"))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.ankyInkSoft.opacity(0.9))
-                    .textCase(.uppercase)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 9) {
+                    Image("you-icon-feather-stat")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .opacity(0.72)
+
+                    Text(AnkyLocalization.ui("History"))
+                        .font(.system(size: 20, weight: .semibold, design: .serif))
+                        .foregroundStyle(Color.ankyInk)
+                }
+                .padding(.bottom, recentSessions.isEmpty ? 10 : 8)
 
                 if recentSessions.isEmpty {
                     Text(AnkyLocalization.ui("Your first page is waiting."))
                         .font(.system(size: 15, weight: .regular, design: .serif))
                         .foregroundStyle(Color.ankyInkSoft)
+                        .padding(.bottom, 2)
                 } else {
-                    ForEach(recentSessions.prefix(3), id: \.hash) { session in
-                        HStack {
-                            Text(session.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                .font(.system(size: 15, weight: .medium, design: .serif))
-                                .foregroundStyle(Color.ankyInk)
-                            Spacer()
-                            Text(AnkyDuration.formatted(session.durationMs))
-                                .font(.system(size: 13, weight: .regular, design: .monospaced))
-                                .foregroundStyle(Color.ankyInkSoft)
+                    let visibleSessions = Array(recentSessions.prefix(5))
+                    ForEach(Array(visibleSessions.enumerated()), id: \.element.hash) { offset, session in
+                        HistoryPreviewRow(
+                            session: session,
+                            thumbnail: revealAssets?.final
+                        )
+                        if offset < visibleSessions.count - 1 {
+                            LazureDivider()
+                                .padding(.leading, 46)
                         }
                     }
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [Color.ankyPaper.opacity(0.80), Color.ankyPaper.opacity(0.55)],
+                            colors: [
+                                Color.ankyPaper.opacity(0.86),
+                                Color.ankyPaperDeep.opacity(0.62),
+                                Color.ankyPaper.opacity(0.56),
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(Color.ankyGold.opacity(0.18), lineWidth: 0.7)
                     )
             }
             .shadow(color: Color.ankyViolet.opacity(0.14), radius: 18, y: 6)
@@ -361,9 +392,20 @@ struct PaintingHomeView: View {
     private var header: some View {
         HStack {
             if let writerName = WritingAnchorStore().writerName {
-                Text(writerName)
-                    .font(.system(size: 20, weight: .semibold, design: .serif))
-                    .foregroundStyle(Color.ankyInk)
+                HStack(spacing: 10) {
+                    if let avatarImage {
+                        Image(uiImage: avatarImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 34, height: 34)
+                            .clipShape(Circle())
+                            .overlay(Circle().strokeBorder(Color.ankyGold.opacity(0.45), lineWidth: 0.8))
+                    }
+
+                    Text(writerName)
+                        .font(.system(size: 20, weight: .semibold, design: .serif))
+                        .foregroundStyle(Color.ankyInk)
+                }
             }
             Spacer()
             Button(action: onSettings) {
@@ -376,31 +418,6 @@ struct PaintingHomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(AnkyLocalization.ui("Settings"))
-        }
-    }
-
-    private var footerLinks: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 22) {
-                Button(action: onYou) {
-                    Label(AnkyLocalization.ui("You"), systemImage: "person.crop.circle")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                }
-                .buttonStyle(.plain)
-                Spacer()
-            }
-
-            // Phase-2 §2: the emergency door — permanently visible, very
-            // quiet, near the "waiting behind the door" chrome. Also the
-            // App Review escape hatch.
-            Button(action: onEmergency) {
-                Text(AnkyLocalization.ui(AnkyCopyRegistry.emergencyLink))
-                    .font(.system(size: 12, weight: .regular, design: .serif))
-                    .foregroundStyle(Color.ankyInkSoft.opacity(0.55))
-                    .underline(false)
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -490,6 +507,85 @@ struct PaintingHomeView: View {
     }
 }
 
+private struct HistoryPreviewRow: View {
+    let session: SessionSummary
+    let thumbnail: UIImage?
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d  ·  h:mm a"
+        return formatter
+    }()
+
+    var body: some View {
+        HStack(spacing: 10) {
+            thumbnailView
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.dateFormatter.string(from: session.createdAt))
+                    .font(.system(size: 12, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInkSoft.opacity(0.78))
+                    .lineLimit(1)
+
+                Text(session.preview)
+                    .font(.system(size: 14, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInk)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(AnkyDuration.clock(session.durationMs))
+                    .font(.system(size: 15, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInk)
+                    .monospacedDigit()
+                Text("mins")
+                    .font(.system(size: 10, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInkSoft.opacity(0.76))
+            }
+            .frame(width: 42, alignment: .trailing)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.ankyInkSoft.opacity(0.72))
+        }
+        .padding(.vertical, 7)
+    }
+
+    @ViewBuilder
+    private var thumbnailView: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 34, height: 34)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(Color.ankyGold.opacity(0.28), lineWidth: 0.7))
+        } else {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.ankyGoldLight.opacity(0.52),
+                            Color.ankyViolet.opacity(0.42),
+                            Color.ankyInk.opacity(0.18),
+                        ],
+                        center: .topLeading,
+                        startRadius: 2,
+                        endRadius: 28
+                    )
+                )
+                .frame(width: 34, height: 34)
+                .overlay(
+                    AnkySunGlyph(size: 16, color: .ankyPaper.opacity(0.88))
+                        .frame(width: 16, height: 16)
+                )
+        }
+    }
+}
+
 /// Phase-3 §2: the pending moment at the boundary. The level-2 painting is
 /// complete and stays theirs; the *next* canvas waits under the veil, one
 /// tap from the paywall. Serene, never broken — the bar behind reads 100%.
@@ -544,4 +640,3 @@ private struct BoundaryCeremonyVeilView: View {
         }
     }
 }
-

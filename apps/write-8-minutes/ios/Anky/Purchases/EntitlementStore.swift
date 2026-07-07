@@ -1,53 +1,67 @@
-import CryptoKit
 import Foundation
-import StoreKit
+import RevenueCat
 
 /// The single source of truth for whether the practice is paid for.
-/// Listens to `Transaction.updates` for renewals, revocations, and
-/// Ask-to-Buy approvals, and derives `isEntitled` from
-/// `Transaction.currentEntitlements`.
+/// Watches RevenueCat's `customerInfoStream` and derives everything from
+/// the `pro` entitlement — purchased on any store, granted promotionally,
+/// or in trial. RevenueCat owns the StoreKit transaction queue end to end;
+/// nothing else in the app observes or finishes transactions.
 ///
 /// Local testing: select Anky.storekit in the scheme (Product → Scheme →
 /// Edit Scheme… → Run → Options → StoreKit Configuration). Purchases then
-/// go through the local config — no App Store Connect, works on device.
-/// To reset test purchases: Xcode menu Debug → StoreKit → Manage
-/// Transactions…, select the transactions and delete them.
+/// go through the local config and validate with RevenueCat as sandbox
+/// data — no App Store Connect needed. To reset test purchases: Xcode
+/// menu Debug → StoreKit → Manage Transactions…, delete them there.
 @MainActor
 final class EntitlementStore: ObservableObject {
     /// QA override: treats the writer as NOT entitled everywhere gating
     /// decisions are made, so the paywall shows even after a test
     /// purchase (purchases persist across onboarding re-runs). MUST be
     /// set back to false before shipping a build.
-    static let ignoresEntitlementForQA = false
+    nonisolated static let ignoresEntitlementForQA = false
 
     @Published private(set) var isEntitled = false
-    @Published private(set) var products: [Product] = []
+    @Published private(set) var packages: [Package] = []
     @Published private(set) var isPurchasing = false
+    @Published private(set) var activeProductID: String?
+    @Published private(set) var activeRenewalDate: Date?
 
-    /// The signed StoreKit 2 representation of the current entitlement —
-    /// what the backend verifies against Apple's certificate chain.
-    private(set) var latestTransactionJws: String?
+    /// Where the active entitlement came from — `.appStore`, `.promotional`
+    /// (granted, not bought), etc. Nil while not entitled.
+    @Published private(set) var activeStore: Store?
+    /// A granted entitlement: complimentary access, never a store charge.
+    @Published private(set) var isPromotionalEntitlement = false
+    /// `.trial` / `.intro` while inside an introductory period.
+    @Published private(set) var activePeriodType: PeriodType?
+    /// When the entitlement lapses unless renewed. Nil is valid — lifetime
+    /// and open-ended promotional grants stay entitled without one.
+    @Published private(set) var activeExpirationDate: Date?
 
-    private var updatesTask: Task<Void, Never>?
+    /// One quiet line for the paywall when a purchase genuinely failed
+    /// (never set for a cancel). Cleared on the next attempt.
+    @Published private(set) var purchaseErrorLine: String?
 
-    private static let wasEntitledKey = "anky.subscription.wasEntitled"
-    private static let lastSyncedJwsHashKey = "anky.subscription.lastSyncedJwsHash"
-    private static let lastSyncedAtKey = "anky.subscription.lastSyncedAt"
+    /// Set when the store's offerings can't be reached (offline, App Store
+    /// down, SDK unconfigured) — the paywall shows it with a retry link.
+    /// Cleared the moment a load succeeds.
+    @Published private(set) var offeringsErrorLine: String?
+    @Published private(set) var isLoadingPackages = false
 
-    init() {
-        updatesTask = Task { [weak self] in
-            for await update in Transaction.updates {
-                await self?.handle(update)
-            }
-        }
-        Task {
-            await refreshEntitlement()
-            await loadProducts()
-        }
-    }
+    /// Restore outcome, always set when a restore finishes: restored,
+    /// nothing found, or failed. Never silent.
+    @Published private(set) var restoreStatusLine: String?
+    @Published private(set) var isRestoring = false
+
+    private static let storeUnreachableLine =
+        "The App Store can't be reached right now. Check your connection and try again."
+
+    private var customerInfoTask: Task<Void, Never>?
+    private var hasIdentifiedToBackendThisLaunch = false
+
+    private nonisolated static let wasEntitledKey = "anky.subscription.wasEntitled"
 
     deinit {
-        updatesTask?.cancel()
+        customerInfoTask?.cancel()
     }
 
     /// What gates should consult — `isEntitled` filtered through the QA
@@ -63,36 +77,235 @@ final class EntitlementStore: ObservableObject {
         ignoresEntitlementForQA ? false : UserDefaults.standard.bool(forKey: wasEntitledKey)
     }
 
-    var yearlyProduct: Product? {
-        products.first { $0.id == PurchaseConstants.yearlyProductID }
+    /// True while the writer is inside the free trial (or a paid intro
+    /// period — the same honesty applies).
+    var isInIntroTrial: Bool {
+        isEntitled && (activePeriodType == .trial || activePeriodType == .intro)
     }
 
-    var monthlyProduct: Product? {
-        products.first { $0.id == PurchaseConstants.monthlyProductID }
+    var yearlyPackage: Package? {
+        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.yearlyProductID }
     }
 
-    func loadProducts() async {
-        guard products.isEmpty else {
+    var monthlyPackage: Package? {
+        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.monthlyProductID }
+    }
+
+    var activePackage: Package? {
+        guard let activeProductID else {
+            return nil
+        }
+        return packages.first { $0.storeProduct.productIdentifier == activeProductID }
+    }
+
+    /// Begins watching entitlement truth. Called from AppRoot right after
+    /// `AnkyPurchases.identifyCurrentWriter()` configures the SDK — never
+    /// before, and harmless to call again after an identity change.
+    func start() {
+        guard AnkyPurchases.isConfigured, customerInfoTask == nil else {
             return
         }
-        products = (try? await Product.products(for: PurchaseConstants.allProductIDs)) ?? []
+        customerInfoTask = Task { [weak self] in
+            for await info in Purchases.shared.customerInfoStream {
+                self?.apply(info)
+            }
+        }
+        Task {
+            await loadPackages()
+        }
     }
 
-    func refreshEntitlement() async {
-        var entitled = false
-        var jws: String?
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  PurchaseConstants.allProductIDs.contains(transaction.productID),
-                  transaction.revocationDate == nil else {
-                continue
-            }
-            entitled = true
-            jws = result.jwsRepresentation
+    func loadPackages() async {
+        guard packages.isEmpty, !isLoadingPackages else {
+            return
         }
-        latestTransactionJws = jws
+        guard await ensureConfigured() else {
+            offeringsErrorLine = Self.storeUnreachableLine
+            return
+        }
+        isLoadingPackages = true
+        defer { isLoadingPackages = false }
+        do {
+            let offerings = try await Purchases.shared.offerings()
+            let offering = offerings.offering(identifier: AnkyPurchasesConfig.offeringID) ?? offerings.current
+            packages = offering?.availablePackages ?? []
+            offeringsErrorLine = packages.isEmpty ? Self.storeUnreachableLine : nil
+        } catch {
+            offeringsErrorLine = Self.storeUnreachableLine
+        }
+    }
+
+    /// Retries RevenueCat configuration when the launch-time identify
+    /// failed (identity unavailable in that moment) — purchase, restore,
+    /// and redeem must never be silent no-ops because of a missed launch
+    /// window. Returns false only when identity is still unavailable.
+    func ensureConfigured() async -> Bool {
+        if !AnkyPurchases.isConfigured {
+            guard await AnkyPurchases.identifyCurrentWriter() != nil else {
+                return false
+            }
+        }
+        start()
+        return true
+    }
+
+    /// Trial eligibility for the yearly plan's introductory offer, asked
+    /// of the store through RevenueCat.
+    func yearlyTrialEligibility() async -> Bool {
+        guard AnkyPurchases.isConfigured else {
+            return false
+        }
+        let eligibility = await Purchases.shared.checkTrialOrIntroDiscountEligibility(
+            productIdentifiers: [AnkyPurchasesConfig.yearlyProductID]
+        )
+        switch eligibility[AnkyPurchasesConfig.yearlyProductID]?.status {
+        case .eligible, .unknown, .none:
+            // Unknown (no ASC data yet, fresh sandbox) reads as eligible —
+            // the timeline promises nothing that Apple won't honor at the
+            // confirmation sheet.
+            return true
+        case .ineligible, .noIntroOfferExists:
+            return false
+        @unknown default:
+            return true
+        }
+    }
+
+    /// Runs the purchase through RevenueCat, which finishes the
+    /// transaction and refreshes entitlement truth. Returns true only when
+    /// the writer is entitled when it finishes. A cancel is silent; a real
+    /// failure sets one gentle line for the paywall.
+    @discardableResult
+    func purchase(_ package: Package) async -> Bool {
+        guard !isPurchasing else {
+            return false
+        }
+        purchaseErrorLine = nil
+        guard await ensureConfigured() else {
+            purchaseErrorLine = Self.storeUnreachableLine
+            return false
+        }
+        isPurchasing = true
+        defer { isPurchasing = false }
+
+        do {
+            let result = try await Purchases.shared.purchase(package: package)
+            if result.userCancelled {
+                return false
+            }
+            apply(result.customerInfo)
+            // Race-safe pay → confirm → generate: the server must know
+            // before any gated work (painting generation) is attempted.
+            // Offline here is fine — gates fail closed and the next
+            // foreground identify heals it.
+            await identifyToBackend()
+            return isEntitled
+        } catch {
+            if (error as? RevenueCat.ErrorCode) == .purchaseCancelledError {
+                return false
+            }
+            purchaseErrorLine = "The App Store couldn't finish that. Nothing was charged — the door is still here when you're ready."
+            return false
+        }
+    }
+
+    /// Always reports how it went — restored, nothing to restore, or
+    /// failed — via `restoreStatusLine`.
+    func restore() async {
+        guard !isRestoring else {
+            return
+        }
+        restoreStatusLine = nil
+        guard await ensureConfigured() else {
+            restoreStatusLine = Self.storeUnreachableLine
+            return
+        }
+        isRestoring = true
+        defer { isRestoring = false }
+        do {
+            let info = try await Purchases.shared.restorePurchases()
+            apply(info)
+            if isEntitled {
+                restoreStatusLine = "Restored. Your practice is active."
+                AnkyFunnel.report(AnkyFunnel.restored)
+                await identifyToBackend()
+            } else {
+                restoreStatusLine = "No purchases to restore on this Apple ID."
+            }
+        } catch {
+            restoreStatusLine = "Restore didn't finish. Check your connection and try again."
+        }
+    }
+
+    /// The paywall's guard for the rare offering that loads without the
+    /// selected plan — never a silent tap.
+    func noteSelectedPackageUnavailable() {
+        purchaseErrorLine = "That plan isn't available right now. Try the other one, or come back in a moment."
+    }
+
+    /// For surfaces (redeem) that need the SDK but found it unreachable.
+    func noteStoreUnreachable() {
+        purchaseErrorLine = Self.storeUnreachableLine
+    }
+
+    /// Foreground reconcile: fetch fresh truth (renewal, cancellation, a
+    /// promotional grant landing) and re-tell the backend when entitled.
+    func reconcileOnForeground() async {
+        guard AnkyPurchases.isConfigured else {
+            return
+        }
+        if let info = try? await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent) {
+            apply(info)
+        }
+        await identifyToBackendIfNeeded()
+    }
+
+    // MARK: - Server truth
+
+    /// Tells the mirror which appUserID this wallet is — the signed
+    /// EIP-712 headers prove the wallet, the body carries nothing the
+    /// server doesn't already know. The server answers from its
+    /// webhook-maintained entitlement state. Nil when unreachable.
+    @discardableResult
+    func identifyToBackend() async -> Bool? {
+        guard let identity = try? WriterIdentityStore().loadOrCreate() else {
+            return nil
+        }
+        guard let state = try? await LevelSyncClient().identifySubscription(identity: identity) else {
+            return nil
+        }
+        hasIdentifiedToBackendThisLaunch = true
+        return state.entitled
+    }
+
+    /// Launch/foreground-time identify, deduped to once per launch while
+    /// entitled — purchases and restores always push explicitly.
+    func identifyToBackendIfNeeded() async {
+        guard isEntitled, !hasIdentifiedToBackendThisLaunch else {
+            return
+        }
+        await identifyToBackend()
+    }
+
+    // MARK: - Entitlement truth
+
+    private func apply(_ info: CustomerInfo) {
+        let entitlement = info.entitlements[AnkyPurchasesConfig.entitlementID]
+        let entitled = entitlement?.isActive == true
+
+        activeProductID = entitled ? entitlement?.productIdentifier : nil
+        activeExpirationDate = entitled ? entitlement?.expirationDate : nil
+        activeRenewalDate = activeExpirationDate
+        activeStore = entitled ? entitlement?.store : nil
+        isPromotionalEntitlement = entitled && entitlement?.store == .promotional
+        activePeriodType = entitled ? entitlement?.periodType : nil
+
         noteEntitlementTransition(entitled: entitled)
         isEntitled = entitled
+
+        Task {
+            await syncTrialReminder()
+        }
     }
 
     /// Fires the `lapsed` funnel event exactly once per narrowing — the
@@ -105,169 +318,23 @@ final class EntitlementStore: ObservableObject {
         UserDefaults.standard.set(entitled, forKey: Self.wasEntitledKey)
     }
 
-    /// Runs the StoreKit purchase. Returns true only when the writer is
-    /// entitled when it finishes. `.pending` (Ask to Buy / SCA) returns
-    /// false — `Transaction.updates` will land the entitlement if it is
-    /// later approved. `.userCancelled` returns false, silently.
-    @discardableResult
-    func purchase(_ product: Product) async -> Bool {
-        guard !isPurchasing else {
-            return false
-        }
-        isPurchasing = true
-        defer { isPurchasing = false }
-
-        // The appAccountToken binds the receipt to the writer's wallet in
-        // App Store Server Notifications, so refunds and renewals map back
-        // to the account even if the app never opens again.
-        var options: Set<Product.PurchaseOption> = []
-        if let token = Self.walletAppAccountToken() {
-            options.insert(.appAccountToken(token))
-        }
-        guard let result = try? await product.purchase(options: options) else {
-            return false
-        }
-        switch result {
-        case .success(let verification):
-            guard case .verified(let transaction) = verification else {
-                return false
-            }
-            await transaction.finish()
-            await refreshEntitlement()
-            // Race-safe pay → confirm → generate: the server must know
-            // before any gated work (painting generation) is attempted.
-            // Offline here is fine — gates fail closed and the next
-            // foreground sync heals it.
-            await syncEntitlementToBackend()
-            return isEntitled
-        case .pending, .userCancelled:
-            return false
-        @unknown default:
-            return false
-        }
-    }
-
-    func restore() async {
-        try? await AppStore.sync()
-        await refreshEntitlement()
-        if isEntitled {
-            AnkyFunnel.report(AnkyFunnel.restored)
-            await syncEntitlementToBackend()
-        }
-    }
-
-    // MARK: - Server truth (phase-3 §4)
-
-    /// Deterministic UUID derived from the wallet address, so the same
-    /// writer always presents the same appAccountToken to the App Store.
-    static func walletAppAccountToken(
-        identityStore: WriterIdentityStore = WriterIdentityStore()
-    ) -> UUID? {
-        guard let identity = try? identityStore.loadOrCreate() else {
-            return nil
-        }
-        let digest = SHA256.hash(data: Data(identity.address.lowercased().utf8))
-        let bytes = Array(digest.prefix(16))
-        return UUID(uuid: (
-            bytes[0], bytes[1], bytes[2], bytes[3],
-            bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11],
-            bytes[12], bytes[13], bytes[14], bytes[15]
-        ))
-    }
-
-    /// Pushes the current entitlement JWS to the mirror, which verifies it
-    /// against Apple's certificate chain and caches entitlement for every
-    /// gated endpoint. Returns the server's answer, nil when unreachable.
-    @discardableResult
-    func syncEntitlementToBackend() async -> Bool? {
-        guard let jws = latestTransactionJws,
-              let identity = try? WriterIdentityStore().loadOrCreate() else {
-            return nil
-        }
-        guard let state = try? await LevelSyncClient().syncSubscription(
-            signedTransaction: jws,
-            identity: identity
-        ) else {
-            return nil
-        }
-        let defaults = UserDefaults.standard
-        defaults.set(Self.hash(of: jws), forKey: Self.lastSyncedJwsHashKey)
-        defaults.set(Date(), forKey: Self.lastSyncedAtKey)
-        return state.entitled
-    }
-
-    /// Foreground-time sync, deduped: only when the entitlement JWS changed
-    /// (purchase, renewal, revocation) or the last push is over a day old.
-    func syncEntitlementToBackendIfNeeded() async {
-        guard let jws = latestTransactionJws else {
-            return
-        }
-        let defaults = UserDefaults.standard
-        let lastHash = defaults.string(forKey: Self.lastSyncedJwsHashKey)
-        let lastAt = defaults.object(forKey: Self.lastSyncedAtKey) as? Date
-        let fresh = lastAt.map { Date().timeIntervalSince($0) < 24 * 60 * 60 } ?? false
-        if lastHash == Self.hash(of: jws), fresh {
-            return
-        }
-        await syncEntitlementToBackend()
-    }
-
-    private static func hash(of jws: String) -> String {
-        SHA256.hash(data: Data(jws.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
-    }
-
     // MARK: - The honest reminder
 
-    /// Called when a purchase that includes the 3-day free trial succeeds.
-    func recordTrialStarted(at date: Date = Date()) {
-        UserDefaults.standard.set(date, forKey: PurchaseConstants.trialStartedAtKey)
-        Task {
-            await syncTrialReminder()
-        }
-    }
-
-    /// Places (or re-places) the trial-ending notification at
-    /// trialStart + 44h. Safe to call any time — it is a no-op without a
-    /// recorded trial, and re-scheduling replaces the pending request.
-    /// Called again after notification permission is granted, since the
-    /// paywall comes one screen before the permission ask.
+    /// Places the trial-ending notification 28 hours before the trial
+    /// converts, from the entitlement's own expiration date — no local
+    /// timestamp heuristics. Re-run on every customerInfo change: a
+    /// cancelled or converted trial removes the reminder, a fresher end
+    /// date moves it. Called again after notification permission is
+    /// granted, since the paywall comes one screen before the ask.
     func syncTrialReminder() async {
-        guard let startedAt = UserDefaults.standard.object(forKey: PurchaseConstants.trialStartedAtKey) as? Date else {
-            return
-        }
-        guard isEntitled else {
+        guard isInIntroTrial, let endDate = activeExpirationDate else {
             LocalNotificationScheduler().cancelTrialEndingReminder()
             return
         }
-        let fireDate = startedAt.addingTimeInterval(PurchaseConstants.trialReminderDelay)
+        let fireDate = endDate.addingTimeInterval(-AnkyPurchasesConfig.trialReminderLeadTime)
         guard fireDate > Date() else {
             return
         }
         try? await LocalNotificationScheduler().scheduleTrialEndingReminder(at: fireDate)
-    }
-
-    /// Foreground check: if the trial (or subscription) was cancelled in
-    /// Settings, the reminder has nothing honest left to say — remove it.
-    func reconcileOnForeground() async {
-        await refreshEntitlement()
-        if !isEntitled {
-            LocalNotificationScheduler().cancelTrialEndingReminder()
-        }
-        await syncEntitlementToBackendIfNeeded()
-    }
-
-    private func handle(_ update: VerificationResult<Transaction>) async {
-        guard case .verified(let transaction) = update else {
-            return
-        }
-        await transaction.finish()
-        await refreshEntitlement()
-        await syncTrialReminder()
-        // Renewals, Ask-to-Buy approvals, and revocations land here — push
-        // the fresh truth so server gates match what StoreKit just learned.
-        await syncEntitlementToBackendIfNeeded()
     }
 }

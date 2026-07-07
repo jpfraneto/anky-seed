@@ -7,6 +7,7 @@ import Foundation
 struct WritingAnchorStore {
     static let writerNameKey = "anky.writerName"
     static let anchorSentenceKey = "anky.wbs.anchorSentence"
+    static let defaultWriterName = "You"
 
     private let defaults: UserDefaults
 
@@ -15,7 +16,7 @@ struct WritingAnchorStore {
     }
 
     var writerName: String? {
-        normalized(defaults.string(forKey: Self.writerNameKey))
+        normalized(defaults.string(forKey: Self.writerNameKey)) ?? Self.defaultWriterName
     }
 
     var anchorSentence: String? {

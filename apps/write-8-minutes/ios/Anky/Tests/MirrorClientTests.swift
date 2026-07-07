@@ -21,7 +21,6 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Intent"), "reflection")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
-            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Trial-Proof"), "trial-proof")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Identity-Version"), "anky.base.eoa.v1")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Account"), identity.accountId)
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Signature-Type"), "eip712")
@@ -44,7 +43,6 @@ final class MirrorClientTests: XCTestCase {
             payload.append(sseReflection(
                 markdown: "# Small Thread\n\nHere is what I saw.",
                 hash: expectedHash,
-                creditsRemaining: "null",
                 tags: ["steady thread"]
             ))
             return (response, payload)
@@ -59,7 +57,6 @@ final class MirrorClientTests: XCTestCase {
         let response = try await client.askAnky(
             bytes: body,
             identity: identity,
-            trialProof: "trial-proof",
             appVersion: "1.0(1)",
             reflectionChunk: { event in
                 streamedChunks.append(event)
@@ -70,7 +67,6 @@ final class MirrorClientTests: XCTestCase {
         XCTAssertEqual(response.title, "Small Thread")
         XCTAssertEqual(response.reflection, "# Small Thread\n\nHere is what I saw.")
         XCTAssertEqual(response.tags, ["steady thread"])
-        XCTAssertNil(response.creditsRemaining)
         XCTAssertEqual(streamedChunks, [
             MirrorReflectionChunkEvent(chunk: "# Small ", generatedCharacters: 8),
             MirrorReflectionChunkEvent(chunk: "Thread", generatedCharacters: 14)
@@ -96,8 +92,7 @@ final class MirrorClientTests: XCTestCase {
             )!
             let payload = sseReflection(
                 markdown: "follow the warm sentence.",
-                hash: expectedHash,
-                creditsRemaining: "6"
+                hash: expectedHash
             )
             return (response, payload)
         }
@@ -111,57 +106,24 @@ final class MirrorClientTests: XCTestCase {
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.reflection, "follow the warm sentence.")
-        XCTAssertEqual(response.creditsRemaining, 6)
-    }
-
-    func testMirrorResponseParsesUpdatedCreditBalance() async throws {
-        let body = Data("1770000000000 h\n480000 i".utf8)
-        let expectedHash = AnkyHasher.sha256Hex(body)
-        let identity = WriterIdentity.generate()
-
-        MockURLProtocol.handler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: [
-                    "Content-Type": "text/event-stream; charset=utf-8"
-                ]
-            )!
-            let payload = sseReflection(
-                markdown: "# Small Thread\n\nHere is what I saw.",
-                hash: expectedHash,
-                creditsRemaining: "7"
-            )
-            return (response, payload)
-        }
-
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockURLProtocol.self]
-        let session = URLSession(configuration: configuration)
-        let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
-
-        let response = try await client.askAnky(bytes: body, identity: identity)
-
-        XCTAssertEqual(response.creditsRemaining, 7)
     }
 
     func testMirrorClientPreservesServerErrorCode() async throws {
         let body = Data("1770000000000 h\n480000 i".utf8)
         let identity = WriterIdentity.generate()
-        let message = "This device already used its first two reflections. Buy credits to reflect more writing."
+        let message = "The mirror is resting."
 
         MockURLProtocol.handler = { request in
             let response = HTTPURLResponse(
                 url: request.url!,
-                statusCode: 402,
+                statusCode: 503,
                 httpVersion: nil,
                 headerFields: [
                     "Content-Type": "application/json; charset=utf-8"
                 ]
             )!
             let payload = Data("""
-            {"error":{"code":"TRIAL_ALREADY_CLAIMED","message":"\(message)"}}
+            {"error":{"code":"MIRROR_FAILED","message":"\(message)"}}
             """.utf8)
             return (response, payload)
         }
@@ -175,18 +137,45 @@ final class MirrorClientTests: XCTestCase {
             _ = try await client.askAnky(bytes: body, identity: identity)
             XCTFail("Expected the mirror client to throw the server error.")
         } catch let error as MirrorClientError {
-            XCTAssertEqual(error.serverPayload?.code, "TRIAL_ALREADY_CLAIMED")
+            XCTAssertEqual(error.serverPayload?.code, "MIRROR_FAILED")
             XCTAssertEqual(error.serverPayload?.message, message)
-            XCTAssertTrue(error.serverPayload?.isTrialAlreadyClaimed == true)
-            XCTAssertTrue(error.serverPayload?.isCreditDenied == true)
+            XCTAssertFalse(error.serverPayload?.isEntitlementDenied == true)
             XCTAssertEqual(error.errorDescription, message)
         }
     }
 
-    func testDeviceCheckProofProviderDoesNotCrashWhenUnavailable() async {
-        let token = await DeviceCheckTrialProofProvider.makeToken()
-        if token != nil {
-            XCTAssertFalse(token!.isEmpty)
+    func testEntitlementRequiredDenyReadsAsEntitlementDenied() async throws {
+        let body = Data("1770000000000 h\n480000 i".utf8)
+        let identity = WriterIdentity.generate()
+        let message = "Reflections require an active subscription."
+
+        MockURLProtocol.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 402,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": "application/json; charset=utf-8"
+                ]
+            )!
+            let payload = Data("""
+            {"error":{"code":"ENTITLEMENT_REQUIRED","message":"\(message)"}}
+            """.utf8)
+            return (response, payload)
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = MirrorClient(baseURL: URL(string: "http://127.0.0.1:3000")!, session: session)
+
+        do {
+            _ = try await client.askAnky(bytes: body, identity: identity)
+            XCTFail("Expected the mirror client to throw the server error.")
+        } catch let error as MirrorClientError {
+            XCTAssertEqual(error.serverPayload?.code, "ENTITLEMENT_REQUIRED")
+            XCTAssertTrue(error.serverPayload?.isEntitlementDenied == true)
+            XCTAssertEqual(error.errorDescription, message)
         }
     }
 }
@@ -194,15 +183,13 @@ final class MirrorClientTests: XCTestCase {
 private func sseReflection(
     markdown: String,
     hash: String,
-    creditsRemaining: String,
     tags: [String] = []
 ) -> Data {
     let object: [String: Any] = [
         "markdown": markdown,
         "tags": tags,
         "headers": [
-            "X-Anky-Hash": hash,
-            "X-Anky-Credits-Remaining": creditsRemaining
+            "X-Anky-Hash": hash
         ]
     ]
     let json = String(data: try! JSONSerialization.data(withJSONObject: object), encoding: .utf8)!

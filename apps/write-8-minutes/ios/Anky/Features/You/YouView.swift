@@ -27,9 +27,7 @@ struct YouView: View {
     @State private var activePrompt: YouPrompt?
     @State private var isShowingSystemPrompt = false
     @State private var path: [YouRoute] = []
-    @State private var didCopyAnkyContract = false
     @State private var showsAccountDeletion = false
-    @State private var showsReflectionCreditsSheet = false
     @State private var promptAutoDismissTask: Task<Void, Never>?
     @State private var dailyTargetMinutes = DailyTargetStore.defaultMinutes
     @State private var pendingDailyTargetMinutes: Int?
@@ -76,10 +74,6 @@ struct YouView: View {
 
                         YouDivider()
 
-                        promptButton(.credits, icon: "you-icon-credits", title: "Credits", subtitle: creditsMenuSubtitle)
-
-                        YouDivider()
-
                         promptButton(.support, icon: "you-icon-support", title: "Support / Feedback", subtitle: "Email support@anky.app")
 
                         YouDivider()
@@ -103,9 +97,6 @@ struct YouView: View {
                             )
                         }
 
-                        YouDivider()
-
-                        ankyContractRow
                     }
 
                     if showsAccountDeletion {
@@ -183,18 +174,6 @@ struct YouView: View {
                         reminderDate: reminderDate,
                         reminderBinding: reminderBinding
                     )
-                case .token:
-                    TokenPage(
-                        viewModel: viewModel,
-                        contractAddress: ankyContractAddress,
-                        contractDisplayAddress: ankyContractDisplayAddress,
-                        didCopyContract: didCopyAnkyContract,
-                        onBuy: openAnkyOnramp,
-                        onCopyContract: copyAnkyContract,
-                        onExportWallet: {
-                            path.append(.account)
-                        }
-                    )
                 case .settings:
                     AnkySettingsView(
                         viewModel: viewModel,
@@ -232,25 +211,6 @@ struct YouView: View {
                 .presentationDragIndicator(.visible)
                 .ankySheetBackground(PrivacySheetPalette.ink)
         }
-        .ankyReflectionCreditsSheet(
-            isPresented: $showsReflectionCreditsSheet,
-            availableCredits: viewModel.presentedCreditBalance,
-            packs: viewModel.creditPackages,
-            isRefreshing: viewModel.creditsLoading,
-            purchasingPackId: viewModel.purchasingCreditPackageID,
-            onRefresh: {
-                AnkyHaptics.light()
-                Task {
-                    await viewModel.refreshCredits()
-                }
-            },
-            onSelectPack: { creditPackage in
-                AnkyHaptics.light()
-                Task {
-                    await viewModel.purchaseCredits(creditPackage)
-                }
-            }
-        )
         .sheet(isPresented: $isImportingRecoveryPhrase) {
             ImportRecoveryPhraseSheet(
                 viewModel: viewModel,
@@ -290,24 +250,11 @@ struct YouView: View {
             guard statusMessage != nil else { return }
             isShowingSystemPrompt = true
             presentCurrentPromptIfNeeded()
-            dismissCreditUpdateMessageIfNeeded(statusMessage)
         }
         .onChange(of: viewModel.errorMessage) { errorMessage in
             guard errorMessage != nil else { return }
             isShowingSystemPrompt = true
             presentCurrentPromptIfNeeded()
-        }
-        .onChange(of: viewModel.creditsLoading) { _ in
-            refreshCreditsBubbleIfNeeded()
-        }
-        .onChange(of: viewModel.purchasingCreditPackageID) { _ in
-            refreshCreditsBubbleIfNeeded()
-        }
-        .onChange(of: viewModel.creditBalance) { _ in
-            refreshCreditsBubbleIfNeeded()
-        }
-        .onChange(of: viewModel.creditPackages.count) { _ in
-            refreshCreditsBubbleIfNeeded()
         }
         .onChange(of: viewModel.isICloudBackupEnabled) { _ in
             if activePrompt == .export, !isShowingSystemPrompt {
@@ -329,11 +276,7 @@ struct YouView: View {
     private func promptButton(_ prompt: YouPrompt, icon: String, title: String, subtitle: String) -> some View {
         Button {
             AnkyHaptics.light()
-            if prompt == .credits {
-                openCreditsSheet()
-            } else {
-                openPrompt(prompt)
-            }
+            openPrompt(prompt)
         } label: {
             YouMenuRow(icon: icon, title: title, subtitle: subtitle, showsDisclosure: false)
         }
@@ -420,21 +363,6 @@ struct YouView: View {
         activePrompt = prompt
         isShowingSystemPrompt = false
         presentCurrentPromptIfNeeded()
-        if prompt == .credits {
-            Task {
-                await viewModel.refreshCredits(showError: false)
-            }
-        }
-    }
-
-    private func openCreditsSheet() {
-        activePrompt = nil
-        isShowingSystemPrompt = false
-        ankyCompanion.hideBubble()
-        showsReflectionCreditsSheet = true
-        Task {
-            await viewModel.refreshCredits(showError: false)
-        }
     }
 
     private func legalButton(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
@@ -456,9 +384,7 @@ struct YouView: View {
         }
 
         let mood: AnkyCompanionMood
-        if isConversationThinking {
-            mood = .thinking
-        } else if viewModel.errorMessage != nil {
+        if viewModel.errorMessage != nil {
             mood = .concerned
         } else {
             mood = .guiding
@@ -469,7 +395,6 @@ struct YouView: View {
             bubble: AnkyBubble(
                 text: conversationMessage,
                 actions: conversationActions,
-                isThinking: isConversationThinking,
                 close: dismissCurrentPrompt
             )
         )
@@ -496,23 +421,9 @@ struct YouView: View {
         }
     }
 
-    private func refreshCreditsBubbleIfNeeded() {
-        guard activePrompt == .credits, !isShowingSystemPrompt else {
-            return
-        }
-        presentCurrentPromptIfNeeded()
-    }
-
     private var conversationMessage: String {
         if isShowingSystemPrompt {
             return viewModel.errorMessage ?? viewModel.statusMessage ?? activePrompt?.message ?? ""
-        }
-
-        if activePrompt == .credits {
-            if viewModel.creditsLoading {
-                    return AnkyLocalization.ui("Anky is checking the credit gate.")
-            }
-            return creditsPromptMessage
         }
 
         if activePrompt == .export {
@@ -535,17 +446,8 @@ struct YouView: View {
         if isShowingSystemPrompt && (viewModel.errorMessage != nil || viewModel.statusMessage != nil) {
             return []
         }
-        if isConversationThinking {
-            return []
-        }
 
         return promptActions
-    }
-
-    private var isConversationThinking: Bool {
-        activePrompt == .credits
-            && !isShowingSystemPrompt
-            && viewModel.creditsLoading
     }
 
     private var promptActions: [AnkyChatAction] {
@@ -568,39 +470,6 @@ struct YouView: View {
                     }
                 }
             ]
-        case .credits:
-            if viewModel.hasUnspentGiftCredit {
-                return [
-                    AnkyChatAction(AnkyLocalization.text(.writeEightMinutes), isPrimary: true) {
-                        dismissCurrentPrompt()
-                        onWriteRequested()
-                    }
-                ]
-            }
-
-            let packages = Array(viewModel.creditPackages.prefix(3))
-            if packages.isEmpty {
-                return [
-                    AnkyChatAction(AnkyLocalization.ui(viewModel.creditsLoading ? "Loading packs" : "Refresh credits"), isPrimary: true) {
-                        Task { await viewModel.refreshCredits() }
-                    }
-                ]
-            }
-
-            return packages.map { creditPackage in
-                let isRecommended = creditPackage.title == "11 reflections"
-                    || creditPackage.id.hasSuffix(".credits.11")
-                let isPurchasing = viewModel.purchasingCreditPackageID == creditPackage.id
-                return AnkyChatAction(
-                    AnkyLocalization.ui(isPurchasing ? "Loading" : creditPackage.title),
-                    subtitle: creditPackage.price,
-                    badge: isRecommended ? AnkyLocalization.ui("recommended") : nil,
-                    isPrimary: isRecommended
-                ) {
-                    AnkyHaptics.light()
-                    Task { await viewModel.purchaseCredits(creditPackage) }
-                }
-            }
         case .support:
             return [
                 AnkyChatAction(AnkyLocalization.ui("Open email"), isPrimary: true) {
@@ -610,14 +479,6 @@ struct YouView: View {
                 }
             ]
         }
-    }
-
-    private var creditsMenuSubtitle: String {
-        if viewModel.creditsLoading && viewModel.creditBalance == nil {
-            return AnkyLocalization.ui("Loading balance")
-        }
-
-        return viewModel.creditSummaryText
     }
 
     private var dataMenuSubtitle: String {
@@ -667,97 +528,6 @@ struct YouView: View {
         } set: { isEnabled in
             AnkyHaptics.light()
             setFaceID(isEnabled)
-        }
-    }
-
-    private var creditsPromptMessage: String {
-        if viewModel.hasUnspentGiftCredit {
-            return AnkyLocalization.text(.creditGiftPrompt)
-        }
-
-        let balance: String
-        if viewModel.creditsLoading && viewModel.creditBalance == nil {
-            balance = AnkyLocalization.ui("Loading...")
-        } else if let creditBalance = viewModel.presentedCreditBalance {
-            balance = "\(creditBalance)"
-        } else {
-            balance = AnkyLocalization.ui("unknown")
-        }
-
-        return AnkyLocalization.ui(
-            "You have %@ reflection %@. Choose a pack to add more.",
-            balance,
-            AnkyLocalization.ui(balance == "1" ? "credit" : "credits")
-        )
-    }
-
-    private var ankyContractAddress: String {
-        "0x323e74c31915db296B82b032f9665924f31EFba3"
-    }
-
-    private var hasCanonicalAnkyContractAddress: Bool {
-        ankyContractAddress.hasPrefix("0x") && ankyContractAddress.count == 42
-    }
-
-    private var ankyContractDisplayAddress: String {
-        guard hasCanonicalAnkyContractAddress else { return ankyContractAddress }
-        let prefix = ankyContractAddress.prefix(6)
-        let suffix = ankyContractAddress.suffix(6)
-        return "\(prefix)...\(suffix)"
-    }
-
-    private var ankyContractRow: some View {
-        Button {
-            AnkyHaptics.light()
-            path.append(.token)
-        } label: {
-            YouMenuRow(
-                icon: "you-icon-anky-token",
-                title: "$ANKY",
-                subtitle: didCopyAnkyContract ? "Copied to clipboard" : ankyContractDisplayAddress,
-                showsDisclosure: false
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func copyAnkyContract() {
-        guard hasCanonicalAnkyContractAddress else { return }
-        ClipboardClient().copy(ankyContractAddress)
-        AnkyHaptics.light()
-        withAnimation(.easeInOut(duration: 0.18)) {
-            didCopyAnkyContract = true
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            withAnimation(.easeInOut(duration: 0.18)) {
-                didCopyAnkyContract = false
-            }
-        }
-    }
-
-    private func openAnkyOnramp() {
-        Task {
-            guard let url = await viewModel.createAnkyOnrampURL() else {
-                isShowingSystemPrompt = true
-                presentCurrentPromptIfNeeded()
-                return
-            }
-            openURL(url)
-        }
-    }
-
-    private func dismissCreditUpdateMessageIfNeeded(_ statusMessage: String?) {
-        guard statusMessage?.localizedCaseInsensitiveContains("credits updated") == true else {
-            return
-        }
-
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard viewModel.statusMessage == statusMessage else {
-                return
-            }
-            dismissCurrentPrompt()
         }
     }
 
@@ -838,7 +608,6 @@ struct YouView: View {
 private enum YouPrompt: Hashable {
     case privacy
     case export
-    case credits
     case support
 
     var message: String {
@@ -847,8 +616,6 @@ private enum YouPrompt: Hashable {
             return AnkyLocalization.ui("Writing stays local unless you export or ask for a reflection.")
         case .export:
             return AnkyLocalization.ui("Your archive is yours. Export readable writings or keep an encrypted iCloud backup.")
-        case .credits:
-            return AnkyLocalization.ui("Credits are only for reflections. Writing is free.")
         case .support:
             return AnkyLocalization.ui("Send us an email! We want to evolve this app based on your feedback.")
         }
@@ -858,7 +625,6 @@ private enum YouPrompt: Hashable {
 private enum YouRoute: Hashable {
     case allAnkys
     case account
-    case token
     case settings
 }
 
@@ -973,60 +739,6 @@ private struct YouAllAnkysHistoryView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-    }
-}
-
-private struct TokenPage: View {
-    @ObservedObject var viewModel: YouViewModel
-    let contractAddress: String
-    let contractDisplayAddress: String
-    let didCopyContract: Bool
-    let onBuy: () -> Void
-    let onCopyContract: () -> Void
-    let onExportWallet: () -> Void
-
-    var body: some View {
-        YouDetailShell(title: "$ANKY", subtitle: "the memetic layer") {
-            YouPanel {
-                Text(AnkyLocalization.ui("$ANKY"))
-                    .youCaption()
-                Text(AnkyLocalization.ui("Stripe opens a regulated onramp for supported crypto into your Anky Base wallet. If $ANKY is not available directly in Stripe, this funds the same wallet on Base."))
-                    .youBody()
-
-                YouActionButton(AnkyLocalization.ui(viewModel.isOpeningAnkyOnramp ? "Opening Stripe" : "Buy $ANKY")) {
-                    onBuy()
-                }
-
-                Text(AnkyLocalization.ui("Anky does not provide in-app selling. To sell or move funds, export your wallet and use a compatible external service."))
-                    .youBody()
-            }
-
-            YouPanel {
-                Text(AnkyLocalization.ui("Contract"))
-                    .youCaption()
-                Text(contractDisplayAddress)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(YouPalette.paper)
-                Text(contractAddress)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(YouPalette.paperMuted)
-                    .textSelection(.enabled)
-
-                YouActionButton(AnkyLocalization.ui(didCopyContract ? "Copied to clipboard" : "Copy contract address")) {
-                    onCopyContract()
-                }
-            }
-
-            YouPanel {
-                Text(AnkyLocalization.ui("Wallet export"))
-                    .youCaption()
-                Text(AnkyLocalization.ui("Your recovery words unlock this wallet. Reveal them only somewhere private; anyone with those words can move your funds."))
-                    .youBody()
-                YouActionButton(AnkyLocalization.ui("Export wallet")) {
-                    onExportWallet()
-                }
-            }
-        }
     }
 }
 
@@ -1561,106 +1273,6 @@ private struct ExportDataPage: View {
                 viewModel.disableICloudBackup()
             }
         }
-    }
-}
-
-struct CreditsPage: View {
-    @ObservedObject var viewModel: YouViewModel
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        YouDetailShell(title: "credits", subtitle: "reflection fuel") {
-            YouPanel {
-                Text(viewModel.creditDetailTitle)
-                    .font(.system(size: 62, weight: .bold))
-                    .foregroundStyle(YouPalette.gold)
-                    .shadow(color: YouPalette.gold.opacity(0.35), radius: 18)
-                Text(viewModel.creditDetailCaption)
-                    .youCaption()
-            }
-
-            YouPanel {
-                YouRuleRow(AnkyLocalization.ui("1 credit = reflection"))
-                YouRuleRow(AnkyLocalization.ui("ask anky spends one credit"))
-                YouRuleRow(AnkyLocalization.ui("writing is always free"))
-            }
-
-            YouPanel {
-                if viewModel.hasUnspentGiftCredit {
-                    YouDisabledRow(AnkyLocalization.text(.creditPacksLocked))
-                    Text(AnkyLocalization.text(.creditGiftDetail))
-                        .youBody()
-                } else if viewModel.creditsLoading && viewModel.creditPackages.isEmpty {
-                    YouDisabledRow(AnkyLocalization.ui("loading credit packs"))
-                } else if viewModel.creditPackages.isEmpty {
-                    YouDisabledRow(AnkyLocalization.ui("no credit packs available"))
-                } else {
-                    ForEach(viewModel.creditPackages) { creditPackage in
-                        CreditPackageButton(
-                            creditPackage: creditPackage,
-                            isPurchasing: viewModel.purchasingCreditPackageID == creditPackage.id
-                        ) {
-                            AnkyHaptics.light()
-                            Task {
-                                await viewModel.purchaseCredits(creditPackage)
-                            }
-                        }
-                    }
-                }
-
-                YouActionButton(AnkyLocalization.ui("refresh credits")) {
-                    Task {
-                        await viewModel.refreshCredits()
-                    }
-                }
-            }
-
-            YouPanel {
-                YouActionButton(AnkyLocalization.ui("support / feedback")) {
-                    if let emailURL = viewModel.supportFeedbackEmailURL {
-                        openURL(emailURL)
-                    }
-                }
-
-                Text(AnkyLocalization.ui("email support@anky.app. include only what you choose to write."))
-                    .youBody()
-            }
-        }
-    }
-}
-
-private struct CreditPackageButton: View {
-    let creditPackage: RevenueCatCreditPackage
-    let isPurchasing: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(AnkyLocalization.ui(creditPackage.title))
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(YouPalette.paper)
-                    Text(AnkyLocalization.ui(creditPackage.subtitle))
-                        .youCaption()
-                }
-
-                Spacer()
-
-                Text(isPurchasing ? "..." : creditPackage.price)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(YouPalette.gold)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(YouPalette.buttonFill, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(YouPalette.gold.opacity(0.32), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(isPurchasing)
     }
 }
 
@@ -2286,7 +1898,7 @@ private struct ImportRecoveryPhraseSheet: View {
                         .background(YouPalette.panel, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(YouPalette.goldDim, lineWidth: 1))
 
-                    Text(AnkyLocalization.ui("recovering replaces the private access used for Ask Anky and future credit balances. local .anky files stay on this device."))
+                    Text(AnkyLocalization.ui("recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device."))
                         .youBody()
 
                     Spacer()
@@ -2596,14 +2208,10 @@ private struct YouMenuIcon: View {
             return "doc.text"
         case "you-icon-export":
             return "square.and.arrow.down"
-        case "you-icon-credits":
-            return "sparkles"
         case "you-icon-support":
             return "ellipsis.message"
         case "you-icon-faceid":
             return "faceid"
-        case "you-icon-anky-token":
-            return "dollarsign.circle"
         default:
             return "circle"
         }

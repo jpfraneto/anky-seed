@@ -5,6 +5,11 @@ struct WriterIdentityStore {
     private let legacyRawKeyAccount = "writer-ed25519-v1"
     private let recoveryPhraseAccount = "writer-base-eoa-recovery-phrase-v1"
     private let iCloudRecoveryPhraseBackupAccount = "writer-base-eoa-recovery-phrase-icloud-backup-v1"
+    /// Import staging: the incoming phrase lands here first, the outgoing
+    /// phrase is snapshotted here — the primary account is only ever
+    /// switched after both writes verified.
+    private let pendingImportAccount = "writer-base-eoa-recovery-phrase-import-pending-v1"
+    private let previousRecoveryPhraseAccount = "writer-base-eoa-recovery-phrase-previous-v1"
 
     init(keychain: KeychainClient = KeychainClient()) {
         self.keychain = keychain
@@ -14,31 +19,73 @@ struct WriterIdentityStore {
         if let phrase = try loadRecoveryPhrase() {
             return try WriterIdentity(recoveryPhrase: phrase)
         }
-
-        let generated = try WriterIdentity.generateRecoveryIdentity()
-        try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: legacyRawKeyAccount)
-        return generated.identity
+        return try adoptICloudBackupOrGenerate().identity
     }
 
     func loadOrCreateRecoveryPhrase() throws -> RecoveryPhrase {
         if let phrase = try loadRecoveryPhrase() {
             return phrase
         }
+        return try adoptICloudBackupOrGenerate().phrase
+    }
+
+    /// A fresh install whose iCloud Keychain still carries the opt-in
+    /// backup is the SAME writer — adopt that phrase instead of minting a
+    /// stranger wallet that detaches the subscription and server history.
+    private func adoptICloudBackupOrGenerate() throws -> (identity: WriterIdentity, phrase: RecoveryPhrase) {
+        if let data = try? keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true),
+           let phraseText = String(data: data, encoding: .utf8),
+           let phrase = try? RecoveryPhrase(text: phraseText),
+           let identity = try? WriterIdentity(recoveryPhrase: phrase) {
+            try keychain.save(Data(phrase.text.utf8), account: recoveryPhraseAccount)
+            try? keychain.delete(account: legacyRawKeyAccount)
+            return (identity, phrase)
+        }
 
         let generated = try WriterIdentity.generateRecoveryIdentity()
         try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
         try? keychain.delete(account: legacyRawKeyAccount)
-        return generated.phrase
+        return (generated.identity, generated.phrase)
     }
 
     @discardableResult
     func importRecoveryPhrase(_ phraseText: String) throws -> WriterIdentity {
-        let phrase = try RecoveryPhrase(text: phraseText)
+        try switchToPhrase(try RecoveryPhrase(text: phraseText, validatingChecksum: true))
+    }
+
+    @discardableResult
+    private func switchToPhrase(_ phrase: RecoveryPhrase) throws -> WriterIdentity {
         let identity = try WriterIdentity(recoveryPhrase: phrase)
-        try keychain.save(Data(phrase.text.utf8), account: recoveryPhraseAccount)
+        let incoming = Data(phrase.text.utf8)
+
+        // Stage the incoming phrase and snapshot the current one before the
+        // switch — the wallet being replaced must survive any failure here.
+        try keychain.save(incoming, account: pendingImportAccount)
+        guard try keychain.data(for: pendingImportAccount) == incoming else {
+            throw WriterIdentityStoreError.importVerificationFailed
+        }
+        if let current = try keychain.data(for: recoveryPhraseAccount), current != incoming {
+            try keychain.save(current, account: previousRecoveryPhraseAccount)
+            guard try keychain.data(for: previousRecoveryPhraseAccount) == current else {
+                throw WriterIdentityStoreError.importVerificationFailed
+            }
+        }
+        try keychain.save(incoming, account: recoveryPhraseAccount)
+        guard try keychain.data(for: recoveryPhraseAccount) == incoming else {
+            throw WriterIdentityStoreError.importVerificationFailed
+        }
+        try? keychain.delete(account: pendingImportAccount)
         try? keychain.delete(account: legacyRawKeyAccount)
         return identity
+    }
+
+    /// The phrase that was active before the most recent import, if any —
+    /// the escape hatch from an import that replaced the wrong wallet.
+    func previousRecoveryPhraseText() -> String? {
+        guard let data = try? keychain.data(for: previousRecoveryPhraseAccount) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
     }
 
     private func loadRecoveryPhrase() throws -> RecoveryPhrase? {
@@ -63,7 +110,10 @@ struct WriterIdentityStore {
               let phraseText = String(data: data, encoding: .utf8) else {
             throw WriterIdentityStoreError.missingICloudBackup
         }
-        return try importRecoveryPhrase(phraseText)
+        // The backup holds an existing identity, not keyboard input — no
+        // checksum strictness, matching the fresh-install adoption path, so
+        // a pre-validation import stays recoverable here too.
+        return try switchToPhrase(try RecoveryPhrase(text: phraseText))
     }
 
     func backUpRecoveryPhraseToICloudKeychain() throws {
@@ -83,20 +133,14 @@ struct WriterIdentityStore {
         guard try loadRecoveryPhrase() == nil else {
             return
         }
-        let generated = try WriterIdentity.generateRecoveryIdentity()
-        try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: legacyRawKeyAccount)
+        _ = try adoptICloudBackupOrGenerate()
     }
 
     func loadLegacyOrCreateRecoveryIdentity() throws -> WriterIdentity {
         if let phrase = try loadRecoveryPhrase() {
             return try WriterIdentity(recoveryPhrase: phrase)
         }
-
-        let generated = try WriterIdentity.generateRecoveryIdentity()
-        try keychain.save(Data(generated.phrase.text.utf8), account: recoveryPhraseAccount)
-        try? keychain.delete(account: legacyRawKeyAccount)
-        return generated.identity
+        return try adoptICloudBackupOrGenerate().identity
     }
 
     func resetForDevelopment(includeICloudBackup: Bool = false) throws {
@@ -111,4 +155,5 @@ struct WriterIdentityStore {
 enum WriterIdentityStoreError: Error, Equatable {
     case missingICloudBackup
     case iCloudBackupVerificationFailed
+    case importVerificationFailed
 }

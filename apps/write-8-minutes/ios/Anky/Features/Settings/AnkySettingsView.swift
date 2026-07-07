@@ -1,4 +1,5 @@
 import SwiftUI
+import RevenueCat
 
 #if canImport(UIKit)
 import UIKit
@@ -10,6 +11,7 @@ import UIKit
 struct AnkySettingsView: View {
     @ObservedObject var viewModel: YouViewModel
     let onGateSetupRequested: () -> Void
+    @EnvironmentObject private var entitlements: EntitlementStore
 
     @AppStorage("anky.biometricIdentityConfirmation") private var biometricIdentityConfirmation = false
     @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
@@ -22,38 +24,52 @@ struct AnkySettingsView: View {
     @State private var writingPreferences = WritingPreferencesStore().load()
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
+    @State private var showsSubscriptionPaywall = false
 
     private static let founderChatURL = URL(string: "https://t.me/ankytheapp")!
     private static let shareURL = URL(string: "https://anky.app")!
 
     var body: some View {
-        ZStack {
-            LazureWall(mood: .dawn)
+        GeometryReader { geometry in
+            ZStack {
+                LazureWall(mood: .dawn)
+                    .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 26) {
-                    Text(AnkyLocalization.ui("Customize your Anky experience"))
-                        .font(.ankyTitle)
-                        .foregroundStyle(Color.ankyInk)
-                        .padding(.top, 18)
-                        .padding(.horizontal, 4)
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 26) {
+                        Text(AnkyLocalization.ui("Customize your Anky experience"))
+                            .font(.ankyTitle)
+                            .foregroundStyle(Color.ankyInk)
+                            .padding(.top, 8)
+                            .padding(.horizontal, 4)
 
-                    dailyTargetSection
-                    nameSection
-                    writingSection
-                    typefaceSection
-                    protectionSection
-                    paintingsSection
-                    supportSection
-                    legalSection
-                    aboutSection
-                    #if DEBUG
-                    LevelDebugSection()
-                    #endif
+                        subscriptionSection
+                        dailyTargetSection
+                        nameSection
+                        writingSection
+                        typefaceSection
+                        protectionSection
+                        paintingsSection
+                        supportSection
+                        legalSection
+                        aboutSection
+                        #if DEBUG
+                        LevelDebugSection()
+                        #endif
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 60)
+                    .frame(width: min(geometry.size.width, 620), alignment: .leading)
+                    .frame(width: geometry.size.width, alignment: .center)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 60)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .background {
+            LazureWall(mood: .dawn)
+                .ignoresSafeArea()
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -62,6 +78,9 @@ struct AnkySettingsView: View {
             refreshDailyTarget()
             writerName = WritingAnchorStore().writerName ?? ""
             writingPreferences = WritingPreferencesStore().load()
+            Task {
+                await entitlements.loadPackages()
+            }
         }
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
@@ -75,9 +94,137 @@ struct AnkySettingsView: View {
                 .presentationDragIndicator(.visible)
                 .ankySheetBackground(PrivacySheetPalette.ink)
         }
+        .sheet(isPresented: $showsSubscriptionPaywall) {
+            PaywallSheet(store: entitlements, origin: "settings")
+        }
     }
 
     // MARK: Daily target
+
+    private var subscriptionSection: some View {
+        section(title: "Subscription") {
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    AnkyHaptics.light()
+                    showsSubscriptionPaywall = true
+                } label: {
+                    VeilCard {
+                        HStack(alignment: .top, spacing: 14) {
+                            Image(systemName: subscriptionStatusSymbol)
+                                .font(.system(size: 22, weight: .regular))
+                                .foregroundStyle(entitlements.isEntitled ? Color.ankyGold : Color.ankyInkSoft)
+                                .frame(width: 28)
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(subscriptionStatusTitle)
+                                    .font(.ankyLabel)
+                                    .foregroundStyle(Color.ankyInk)
+                                Text(subscriptionStatusDetail)
+                                    .font(.ankyCaption)
+                                    .foregroundStyle(Color.ankyInkSoft)
+                                    .lineSpacing(3)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.ankyInkSoft.opacity(0.75))
+                                .padding(.top, 4)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    guard !entitlements.isRestoring else {
+                        return
+                    }
+                    AnkyHaptics.light()
+                    Task {
+                        await entitlements.restore()
+                    }
+                } label: {
+                    Text(AnkyLocalization.ui(entitlements.isRestoring ? "Restoring…" : "Restore Purchases"))
+                        .font(.system(size: 13, weight: .regular, design: .serif))
+                        .foregroundStyle(Color.ankySlate)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 4)
+
+                if let restoreLine = entitlements.restoreStatusLine {
+                    Text(AnkyLocalization.ui(restoreLine))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .padding(.leading, 4)
+                }
+            }
+        }
+    }
+
+    private var subscriptionStatusSymbol: String {
+        guard entitlements.isEntitled else {
+            return "seal"
+        }
+        return entitlements.isPromotionalEntitlement ? "gift" : "checkmark.seal.fill"
+    }
+
+    private var subscriptionStatusTitle: String {
+        if entitlements.isEntitled {
+            if entitlements.isPromotionalEntitlement {
+                return "Complimentary access"
+            }
+            if entitlements.isInIntroTrial {
+                return "Free trial"
+            }
+            switch entitlements.activeProductID {
+            case AnkyPurchasesConfig.yearlyProductID:
+                return "Yearly subscription"
+            case AnkyPurchasesConfig.monthlyProductID:
+                return "Monthly subscription"
+            default:
+                return "Active subscription"
+            }
+        }
+        return "Free"
+    }
+
+    private var subscriptionStatusDetail: String {
+        if entitlements.isEntitled {
+            if entitlements.isPromotionalEntitlement {
+                guard let endDate = entitlements.activeExpirationDate else {
+                    return "Granted access, open-ended. Nothing is charged and nothing renews."
+                }
+                let date = endDate.formatted(date: .abbreviated, time: .omitted)
+                return "Granted access through \(date). Nothing is charged — when it ends, the practice simply asks again."
+            }
+            if let renewalDate = entitlements.activeRenewalDate {
+                let price = activeSubscriptionPriceLine
+                let date = renewalDate.formatted(date: .abbreviated, time: .omitted)
+                if entitlements.isInIntroTrial {
+                    return "Trial ends \(date). You will be charged \(price) that day unless you cancel in App Store subscriptions."
+                }
+                return "Renews \(date). You will be charged \(price) unless you cancel in App Store subscriptions."
+            }
+            return "Anky is unlocked on this Apple ID. \(activeSubscriptionPriceLine) on the active plan. Manage renewal from your App Store subscriptions."
+        }
+        if entitlements.packages.isEmpty {
+            return "Plans are loading. You can still write for free."
+        }
+        return "Writing is free. The full practice starts at \(yearlySubscriptionPriceLine)."
+    }
+
+    private var activeSubscriptionPriceLine: String {
+        let product = (entitlements.activePackage ?? entitlements.yearlyPackage)?.storeProduct
+        if entitlements.activeProductID == AnkyPurchasesConfig.monthlyProductID {
+            return "\(SubscriptionPriceFormatter.price(product, fallback: "$11.99"))/month"
+        }
+        return "\(SubscriptionPriceFormatter.price(product, fallback: "$88"))/year"
+    }
+
+    private var yearlySubscriptionPriceLine: String {
+        "\(SubscriptionPriceFormatter.price(entitlements.yearlyPackage?.storeProduct, fallback: "$88"))/year"
+    }
 
     private var dailyTargetSection: some View {
         section(title: "Your daily writing") {

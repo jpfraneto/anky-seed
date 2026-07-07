@@ -118,3 +118,93 @@ struct UnlockPolicy {
             ?? date.addingTimeInterval(24 * 60 * 60)
     }
 }
+
+/// What the writing surface does with the grant computed on an accepted
+/// keystroke.
+enum WriteBeforeScrollUnlockLadderAction: Equatable {
+    /// Hold the grant for the sealing screen's gate button.
+    case offer(UnlockGrant)
+    /// §5.4: the Quick Pass applies by itself the moment the sentence
+    /// completes — no button, no stillness.
+    case applyQuickPassively(UnlockGrant)
+    /// Crossing the daily target while a Quick Pass window is open replaces
+    /// the 15-minute window with the rest of the day, on the spot.
+    case upgradeToDaily(UnlockGrant)
+    /// A free (or lapsed) writer crossed their daily target: hold the
+    /// moment screen for the sealing flow — never a silent nothing
+    /// (decision 2026-07-06, option C). At most once per day.
+    case offerFreeTargetMoment
+    /// Nothing to hold — clear any previously offered grant.
+    case withdraw
+}
+
+/// Resolves the unlock ladder for one accepted keystroke.
+///
+/// Three rules beyond `UnlockPolicy.grant`:
+/// - Quick Passes belong to the gate. An organic session never surfaces or
+///   spends one — it still counts toward the daily target and level progress.
+/// - The Daily Unlock is never discarded because a Quick Pass already opened
+///   the shield: while the pass window is active it upgrades in place, and
+///   otherwise it is offered as usual.
+/// - A free writer's target crossing is acknowledged with the moment screen
+///   (once per day) instead of resolving to nothing.
+struct WriteBeforeScrollUnlockLadder {
+    func action(
+        grant: UnlockGrant?,
+        unlockState: UnlockState,
+        isGateOriginatedSession: Bool,
+        hasAppliedPassiveQuickUnlock: Bool,
+        hasAppliedDailyUnlockUpgrade: Bool,
+        dailyUnlockEntitled: Bool = true,
+        hasReachedDailyTarget: Bool = false,
+        hasOfferedFreeTargetMoment: Bool = true,
+        at now: Date = Date()
+    ) -> WriteBeforeScrollUnlockLadderAction {
+        if !dailyUnlockEntitled, hasReachedDailyTarget, !hasOfferedFreeTargetMoment {
+            return .offerFreeTargetMoment
+        }
+        guard let grant else {
+            return .withdraw
+        }
+        let isUnlocked = unlockState.isUnlocked(at: now)
+        switch grant.tier {
+        case .quick:
+            guard isGateOriginatedSession, !isUnlocked else {
+                return .withdraw
+            }
+            return hasAppliedPassiveQuickUnlock ? .offer(grant) : .applyQuickPassively(grant)
+        case .daily:
+            if isUnlocked,
+               unlockState.grant?.tier == .quick,
+               !hasAppliedDailyUnlockUpgrade {
+                return .upgradeToDaily(grant)
+            }
+            return .offer(grant)
+        }
+    }
+}
+
+/// Once-per-local-day ledger for the free-tier target moment: however many
+/// sessions cross the target, the moment screen shows at most once a day.
+/// Main-app presentation state only — never App Group.
+struct FreeTargetMomentLedger {
+    private let key = "anky.freeTargetMoment.lastShownDay"
+    private let defaults: UserDefaults
+    private let calendar: Calendar
+
+    init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
+        self.defaults = defaults
+        self.calendar = calendar
+    }
+
+    func wasShown(on date: Date = Date()) -> Bool {
+        guard let lastShown = defaults.object(forKey: key) as? Date else {
+            return false
+        }
+        return calendar.isDate(lastShown, inSameDayAs: date)
+    }
+
+    func markShown(on date: Date = Date()) {
+        defaults.set(date, forKey: key)
+    }
+}

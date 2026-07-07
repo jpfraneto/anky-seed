@@ -118,6 +118,14 @@ final class LevelPaintingCoordinator: ObservableObject {
         return (completedPackage, assetStore.installedPackage(forLevel: level))
     }
 
+    func paintingGenerationExcerpts(limit: Int = 4) -> [String] {
+        LevelTriggerTuning.loadingExcerpts(
+            artifacts: archive.list(),
+            sinceMs: progressStore.lastLevelUpAtMs,
+            limit: limit
+        )
+    }
+
     // MARK: Machine internals
 
     private func refreshOwedCeremony() {

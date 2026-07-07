@@ -39,8 +39,7 @@ final class StorageTests: XCTestCase {
             hash: "abc123",
             title: "Small Thread",
             reflection: "Here is what I saw.",
-            createdAt: Date(timeIntervalSince1970: 1_770_000_000),
-            creditsRemaining: nil
+            createdAt: Date(timeIntervalSince1970: 1_770_000_000)
         )
 
         try store.save(reflection)
@@ -162,8 +161,7 @@ final class StorageTests: XCTestCase {
             hash: complete.hash,
             title: "Reflected Title",
             reflection: "Private reflection",
-            createdAt: Date(timeIntervalSince1970: 1_770_001_000),
-            creditsRemaining: 2
+            createdAt: Date(timeIntervalSince1970: 1_770_001_000)
         ))
 
         let sessions = try index.rebuild(archive: archive, reflectionStore: reflections)
@@ -184,8 +182,7 @@ final class StorageTests: XCTestCase {
             title: "Reflected Title",
             reflection: "Private reflection",
             tags: ["truth", "body"],
-            createdAt: anky.createdAt,
-            creditsRemaining: 2
+            createdAt: anky.createdAt
         ))
 
         try index.rebuild(archive: archive, reflectionStore: reflections)
@@ -204,8 +201,7 @@ final class StorageTests: XCTestCase {
             hash: anky.hash,
             title: "Reflected Title",
             reflection: "Private reflection",
-            createdAt: anky.createdAt,
-            creditsRemaining: 2
+            createdAt: anky.createdAt
         ))
         try index.rebuild(archive: archive, reflectionStore: reflections)
 
@@ -406,7 +402,7 @@ final class StorageTests: XCTestCase {
         try Data("Imported Thread".utf8).write(to: files.appendingPathComponent("\(backupHash).title.txt"))
         try Data("Imported reflection body".utf8).write(to: files.appendingPathComponent("\(backupHash).reflection.md"))
         try Data("""
-        {"created_at":"2026-05-14T15:44:58.914Z","credits_remaining":3}
+        {"created_at":"2026-05-14T15:44:58.914Z"}
         """.utf8).write(to: files.appendingPathComponent("\(backupHash).processing.json"))
         try Data("{\"exportVersion\":1}".utf8).write(to: sourceRoot.appendingPathComponent("manifest.json"))
 
@@ -437,7 +433,6 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(archive.list().first?.reconstructedText, "h i")
         XCTAssertEqual(reflections.load(hash: localHash)?.title, "Imported Thread")
         XCTAssertEqual(reflections.load(hash: localHash)?.reflection, "Imported reflection body")
-        XCTAssertEqual(reflections.load(hash: localHash)?.creditsRemaining, 3)
         XCTAssertEqual(index.load().first?.reflectionTitle, "Imported Thread")
         XCTAssertEqual(appOpenStore.loadOrCreate(), Calendar.current.startOfDay(for: Date(timeIntervalSince1970: 1_770_000_000)))
     }
@@ -451,8 +446,7 @@ final class StorageTests: XCTestCase {
             hash: anky.hash,
             title: "Exported Thread",
             reflection: "Exported reflection body",
-            createdAt: anky.createdAt,
-            creditsRemaining: 2
+            createdAt: anky.createdAt
         ))
 
         let backupURL = try XCTUnwrap(BackupExporter(

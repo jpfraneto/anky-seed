@@ -288,3 +288,20 @@
 "Hide delete account action" = "खाता हटाएँ कार्रवाई छिपाएँ";
 "Show delete account action" = "खाता हटाएँ कार्रवाई दिखाएँ";
 "Legal document unavailable. Please contact support@anky.app." = "कानूनी दस्तावेज़ उपलब्ध नहीं है। कृपया support@anky.app से संपर्क करें।";
+
+/* Free-tier target moment + emergency door (2026-07-06) */
+"your target, reached." = "तुम्हारा लक्ष्य, पूरा हुआ।";
+"you wrote what you set out to write today. that is the whole practice." = "आज तुमने वही लिखा जो लिखने का तुमने तय किया था। यही पूरा अभ्यास है।";
+"for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened." = "सदस्यों के लिए यही वह क्षण है जब दिन खुल जाता है — फ़ोन आधी रात तक खुला रहता है, क्योंकि लेखन पहले ही हो चुका है।";
+"start 3 free days" = "3 मुफ़्त दिन शुरू करो";
+"not now" = "अभी नहीं";
+"emergency? open without writing" = "आपात स्थिति? बिना लिखे खोलो";
+"Emergency: open your apps without writing" = "आपात स्थिति: बिना लिखे अपने ऐप खोलो";
+
+/* Gate off-switch (2026-07-06) */
+"turn the gate off" = "द्वार बंद करो";
+"take the door down?" = "क्या द्वार हटा दें?";
+"your apps open freely again. the gate waits here whenever you want it back." = "तुम्हारे ऐप फिर से खुलकर चलेंगे। जब भी चाहो, द्वार यहीं तुम्हारा इंतज़ार करेगा।";
+"turn it off" = "बंद करो";
+"keep the gate" = "द्वार बनाए रखो";
+"the gate is off. your apps are open." = "द्वार बंद है। तुम्हारे ऐप खुले हैं।";

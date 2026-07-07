@@ -85,4 +85,53 @@ enum LevelTriggerTuning {
         // Chronological order reads as the chapter it was.
         return pieces.reversed().joined(separator: "\n\n---\n\n")
     }
+
+    static func loadingExcerpts(
+        artifacts: [SavedAnky],
+        sinceMs: Int64?,
+        limit: Int = 4
+    ) -> [String] {
+        let cutoff = sinceMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+        let chapter = artifacts
+            .filter { artifact in
+                guard let cutoff else { return true }
+                return artifact.createdAt > cutoff
+            }
+            .sorted { $0.createdAt < $1.createdAt }
+
+        let candidates = chapter.compactMap { excerpt(from: $0.reconstructedText) }
+        guard candidates.count > limit, limit > 0 else {
+            return Array(candidates.prefix(max(0, limit)))
+        }
+
+        return (0..<limit).map { index in
+            let position = Double(index) / Double(max(1, limit - 1))
+            let candidateIndex = Int((position * Double(candidates.count - 1)).rounded())
+            return candidates[min(candidates.count - 1, max(0, candidateIndex))]
+        }
+    }
+
+    private static func excerpt(from text: String, maxCharacters: Int = 180) -> String? {
+        let normalized = text
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized.count >= 24 else {
+            return nil
+        }
+        guard normalized.count > maxCharacters else {
+            return normalized
+        }
+
+        var excerpt = ""
+        for word in normalized.split(separator: " ") {
+            let next = excerpt.isEmpty ? String(word) : "\(excerpt) \(word)"
+            guard next.count <= maxCharacters else {
+                break
+            }
+            excerpt = next
+        }
+        return excerpt.isEmpty ? String(normalized.prefix(maxCharacters)) : "\(excerpt)..."
+    }
 }

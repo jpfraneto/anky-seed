@@ -134,8 +134,7 @@ struct BackupImporter {
                 hash: localHash,
                 title: title?.isEmpty == false ? title! : "Imported reflection",
                 reflection: reflectionText,
-                createdAt: createdAt,
-                creditsRemaining: processing?.creditsRemaining
+                createdAt: createdAt
             ))
             reflectionCount += 1
         }
@@ -347,7 +346,6 @@ private struct ImportedBackupData {
 
 private struct BackupProcessingInfo: Decodable {
     let createdAt: String?
-    let creditsRemaining: Int?
 
     var createdAtDate: Date? {
         guard let createdAt else {
@@ -358,7 +356,6 @@ private struct BackupProcessingInfo: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case createdAt = "created_at"
-        case creditsRemaining = "credits_remaining"
     }
 }
 

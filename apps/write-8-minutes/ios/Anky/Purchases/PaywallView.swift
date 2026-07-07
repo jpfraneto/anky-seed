@@ -1,5 +1,5 @@
 import SwiftUI
-import StoreKit
+import RevenueCat
 
 /// The ask. One screen, two prices, no tricks — the trial timeline says
 /// exactly what will happen and when, in Anky's voice.
@@ -15,8 +15,9 @@ import StoreKit
 /// - Switching plans updates only the selector, the payment line, and the
 ///   CTA label. It never opens a sheet, never shows a discount, never
 ///   counts down.
-/// - Purchase failure or cancellation changes nothing on screen. The
-///   screen itself is the ask; asking twice in the same breath is off-canon.
+/// - Purchase failure or cancellation changes nothing on screen beyond
+///   one quiet line. The screen itself is the ask; asking twice in the
+///   same breath is off-canon.
 struct PaywallView: View {
     /// Which words the room speaks. Copy only — one palette, one layout.
     enum Context {
@@ -62,11 +63,13 @@ struct PaywallView: View {
                 .multilineTextAlignment(.center)
                 .lineSpacing(5)
 
-            if isTrialEligible {
+            if !store.isEntitled, isTrialEligible {
                 trialTimeline
             }
 
-            planSelector
+            if !store.isEntitled {
+                planSelector
+            }
 
             // Full body legibility, deliberately — never fine print.
             Text(AnkyLocalization.ui(paymentLine))
@@ -74,19 +77,67 @@ struct PaywallView: View {
                 .foregroundStyle(Color.ankyInkSoft)
                 .multilineTextAlignment(.center)
 
+            if let errorLine = store.purchaseErrorLine, !store.isEntitled {
+                Text(AnkyLocalization.ui(errorLine))
+                    .font(.system(size: 14, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(Color.ankyMadder.opacity(0.9))
+                    .multilineTextAlignment(.center)
+            }
+
+            // Offline / store-unreachable is a visible state with a way
+            // back, never a silently dead buy button.
+            if let offeringsLine = store.offeringsErrorLine, !store.isEntitled, store.packages.isEmpty {
+                VStack(spacing: 8) {
+                    Text(AnkyLocalization.ui(offeringsLine))
+                        .font(.system(size: 14, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(Color.ankyMadder.opacity(0.9))
+                        .multilineTextAlignment(.center)
+
+                    Button {
+                        AnkyHaptics.light()
+                        Task {
+                            await store.loadPackages()
+                            isTrialEligible = await store.yearlyTrialEligibility()
+                        }
+                    } label: {
+                        if store.isLoadingPackages {
+                            ProgressView()
+                                .tint(Color.ankyInkSoft)
+                        } else {
+                            Text(AnkyLocalization.ui("Try again"))
+                                .font(.system(size: 14, weight: .medium, design: .serif))
+                                .foregroundStyle(Color.ankyGold)
+                                .underline()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.isLoadingPackages)
+                }
+            }
+
+            if let restoreLine = store.restoreStatusLine, !store.isEntitled {
+                Text(AnkyLocalization.ui(restoreLine))
+                    .font(.system(size: 14, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .multilineTextAlignment(.center)
+            }
+
             cta
 
             footer
         }
-        .task(id: store.products.count) {
-            await store.loadProducts()
-            if let subscription = store.yearlyProduct?.subscription {
-                isTrialEligible = await subscription.isEligibleForIntroOffer
-            }
+        .task(id: store.packages.count) {
+            await store.loadPackages()
+            isTrialEligible = await store.yearlyTrialEligibility()
         }
         .onAppear {
-            AnkyFunnel.report(AnkyFunnel.paywallShown, origin: funnelOrigin)
-            PaywallPressureLedger.recordPaywallShown()
+            if !store.isEntitled {
+                AnkyFunnel.report(AnkyFunnel.paywallShown, origin: funnelOrigin)
+                PaywallPressureLedger.recordPaywallShown()
+            }
         }
         .sheet(isPresented: $showsTerms) {
             TermsAndConditionsReflectionSheet()
@@ -105,6 +156,12 @@ struct PaywallView: View {
     // MARK: - Copy
 
     private var titleText: String {
+        if store.isEntitled {
+            if store.isPromotionalEntitlement {
+                return "Anky is open — a gift"
+            }
+            return store.isInIntroTrial ? "Your trial is open" : "Anky is open"
+        }
         switch context {
         case .onboarding:
             return isTrialEligible ? "Try Anky for $0" : "Write before you scroll."
@@ -116,6 +173,14 @@ struct PaywallView: View {
     }
 
     private var voiceLine: String {
+        if store.isEntitled {
+            if store.isPromotionalEntitlement {
+                return "Your access was granted — nothing is charged, nothing renews. The mirror, the paintings, the journey, and the daily door are open."
+            }
+            return store.isInIntroTrial
+                ? "You are already inside the deepening. The door stays open until your trial ends."
+                : "Your practice is active. The mirror, the paintings, the journey, and the daily door are open."
+        }
         switch context {
         case .onboarding:
             return "Walk the first three days of the gate with me. If it isn't yours, leave freely."
@@ -138,13 +203,21 @@ struct PaywallView: View {
     }
 
     private var paymentLine: String {
-        if plan == .yearly && isTrialEligible {
-            return "No payment due today."
+        if store.isEntitled {
+            return activeSubscriptionLine
         }
-        return "Billed today. Cancel anytime."
+        if plan == .yearly && isTrialEligible {
+            // 3.1.2: the conversion is spelled out under the trial CTA, not
+            // only in the plan card above.
+            return "No payment due today. Then \(yearlyPriceText)/year — auto-renews until you cancel."
+        }
+        return "Billed today. Auto-renews until you cancel."
     }
 
     private var ctaTitle: String {
+        if store.isEntitled {
+            return "Done"
+        }
         switch plan {
         case .yearly:
             if isTrialEligible {
@@ -157,19 +230,42 @@ struct PaywallView: View {
     }
 
     private var yearlyPriceText: String {
-        store.yearlyProduct?.displayPrice ?? "$88.00"
+        SubscriptionPriceFormatter.price(store.yearlyPackage?.storeProduct, fallback: "$88")
     }
 
     private var monthlyPriceText: String {
-        store.monthlyProduct?.displayPrice ?? "$11.99"
+        SubscriptionPriceFormatter.price(store.monthlyPackage?.storeProduct, fallback: "$11.99")
     }
 
     private var yearlyWeeklyText: String {
-        guard let yearly = store.yearlyProduct else {
-            return "$1.69/wk"
+        "\(SubscriptionPriceFormatter.weekly(of: store.yearlyPackage?.storeProduct, fallback: "$1.69"))/wk"
+    }
+
+    private var activeSubscriptionLine: String {
+        if store.isPromotionalEntitlement {
+            guard let endDate = store.activeExpirationDate else {
+                return "Complimentary access, open-ended. Nothing will ever be charged for it."
+            }
+            let date = endDate.formatted(date: .abbreviated, time: .omitted)
+            return "Complimentary access through \(date). Nothing will be charged — when it ends, the door simply asks again."
         }
-        let weekly = yearly.price / 52
-        return "\(weekly.formatted(yearly.priceFormatStyle))/wk"
+        let price = activeSubscriptionPriceLine
+        guard let renewalDate = store.activeRenewalDate else {
+            return "Your subscription is active on this Apple ID. Manage it from App Store subscriptions."
+        }
+        let date = renewalDate.formatted(date: .abbreviated, time: .omitted)
+        if store.isInIntroTrial {
+            return "Your free trial is active. You will be charged \(price) on \(date) unless you cancel in App Store subscriptions."
+        }
+        return "Your subscription is active. You will be charged \(price) on \(date) unless you cancel in App Store subscriptions."
+    }
+
+    private var activeSubscriptionPriceLine: String {
+        let product = store.activePackage?.storeProduct ?? store.yearlyPackage?.storeProduct
+        if store.activeProductID == AnkyPurchasesConfig.monthlyProductID {
+            return "\(SubscriptionPriceFormatter.price(product, fallback: "$11.99"))/month"
+        }
+        return "\(SubscriptionPriceFormatter.price(product, fallback: "$88"))/year"
     }
 
     // MARK: - Timeline
@@ -333,7 +429,7 @@ struct PaywallView: View {
     private var footer: some View {
         VStack(spacing: 12) {
             HStack(spacing: 18) {
-                footerLink("Restore Purchases") {
+                footerLink(store.isRestoring ? "Restoring…" : "Restore Purchases") {
                     restore()
                 }
                 footerDot
@@ -343,6 +439,12 @@ struct PaywallView: View {
                 footerDot
                 footerLink("Privacy") {
                     showsPrivacy = true
+                }
+            }
+
+            if !store.isEntitled {
+                footerLink("Have a code?") {
+                    redeemCode()
                 }
             }
 
@@ -382,23 +484,30 @@ struct PaywallView: View {
         guard !store.isPurchasing else {
             return
         }
+        if store.isEntitled {
+            onCompleted()
+            return
+        }
         AnkyHaptics.light()
         let startedTrialEligible = isTrialEligible
         Task {
-            await store.loadProducts()
-            guard let product = plan == .yearly ? store.yearlyProduct : store.monthlyProduct else {
+            await store.loadPackages()
+            guard let package = plan == .yearly ? store.yearlyPackage : store.monthlyPackage else {
+                // Offerings unreachable: loadPackages surfaced the line and
+                // the retry link. Loaded but missing this plan: say so.
+                if !store.packages.isEmpty {
+                    store.noteSelectedPackageUnavailable()
+                }
                 return
             }
-            let purchased = await store.purchase(product)
+            let purchased = await store.purchase(package)
             guard purchased else {
-                // Cancelled or failed: the screen stays as it is. No guilt
-                // copy, no modal — the ask was already made.
+                // Cancelled or failed: the screen stays as it is (plus at
+                // most one quiet line). No guilt copy, no modal — the ask
+                // was already made.
                 return
             }
             let startedTrial = plan == .yearly && startedTrialEligible
-            if startedTrial {
-                store.recordTrialStarted()
-            }
             AnkyFunnel.report(
                 startedTrial ? AnkyFunnel.trialStarted : AnkyFunnel.subscribed,
                 origin: funnelOrigin
@@ -410,12 +519,30 @@ struct PaywallView: View {
     }
 
     private func restore() {
+        guard !store.isRestoring else {
+            return
+        }
         AnkyHaptics.light()
         Task {
             await store.restore()
             if store.isEntitled {
                 onCompleted()
             }
+        }
+    }
+
+    /// Offer-code redemption. Until the products exist in App Store
+    /// Connect the sheet has nothing to redeem against — presenting it is
+    /// harmless. An unconfigured SDK retries configuration first and says
+    /// so if the store stays unreachable.
+    private func redeemCode() {
+        AnkyHaptics.light()
+        Task {
+            guard await store.ensureConfigured() else {
+                store.noteStoreUnreachable()
+                return
+            }
+            Purchases.shared.presentCodeRedemptionSheet()
         }
     }
 }

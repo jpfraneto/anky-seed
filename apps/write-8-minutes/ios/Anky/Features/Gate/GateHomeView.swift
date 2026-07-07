@@ -479,7 +479,6 @@ struct GateHomeView: View {
     private var footerLinks: some View {
         HStack(spacing: 22) {
             footerLink(title: "Archive", systemImage: "books.vertical", action: onArchive)
-            footerLink(title: "You", systemImage: "person.crop.circle", action: onYou)
             Spacer()
         }
         .padding(.top, 4)

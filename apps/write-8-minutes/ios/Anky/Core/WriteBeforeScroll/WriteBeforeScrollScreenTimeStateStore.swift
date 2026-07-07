@@ -81,3 +81,48 @@ struct WriteBeforeScrollScreenTimeStateStore {
         save(state)
     }
 }
+
+/// The explicit gate off-switch (2026-07-06): once the writer turns the
+/// gate off, nothing re-arms it — not the foreground reconcile, not the
+/// monitor's relock, not saving a new app selection — until they turn it
+/// back on. App Group storage so the app and the extensions agree.
+struct WriteBeforeScrollGateSwitchStore {
+    private let key = "writeBeforeScroll.gateOff.v1"
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = AnkyAppGroupStorage.userDefaults()) {
+        self.defaults = defaults
+    }
+
+    var isGateOff: Bool {
+        defaults.bool(forKey: key)
+    }
+
+    func setGateOff(_ isOff: Bool) {
+        defaults.set(isOff, forKey: key)
+    }
+}
+
+/// The reconcile decision, kept pure so the off-switch behavior is
+/// testable without ManagedSettings: while the gate is off the only legal
+/// move is clearing — the shield must never re-arm behind the writer's back.
+enum WriteBeforeScrollShieldReconciler {
+    enum Decision: Equatable {
+        case clearShield
+        case applyShield
+    }
+
+    static func decision(
+        gateOff: Bool,
+        state: WriteBeforeScrollScreenTimeState,
+        at now: Date = Date()
+    ) -> Decision {
+        if gateOff {
+            return .clearShield
+        }
+        if state.isUnlocked(at: now) {
+            return .clearShield
+        }
+        return .applyShield
+    }
+}

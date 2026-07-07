@@ -28,6 +28,47 @@ struct RecoveryPhrase: Hashable {
         try self.init(words: words)
     }
 
+    /// For phrases typed by a human (import): a dictionary-valid one-word
+    /// typo must fail here instead of silently deriving a stranger wallet.
+    /// Stored phrases keep loading through the non-validating inits so a
+    /// pre-validation import can never brick an existing identity.
+    init(text: String, validatingChecksum: Bool) throws {
+        try self.init(text: text)
+        if validatingChecksum, !hasValidChecksum {
+            throw RecoveryPhraseError.invalidChecksum
+        }
+    }
+
+    /// BIP39: the final 4 bits of a 12-word phrase are the top 4 bits of
+    /// SHA256 over its 128 entropy bits.
+    var hasValidChecksum: Bool {
+        guard words.count == 12 else {
+            return false
+        }
+        var bits = [Bool]()
+        bits.reserveCapacity(132)
+        for word in words {
+            guard let index = BIP39WordList.english.firstIndex(of: word) else {
+                return false
+            }
+            for bit in 0..<11 {
+                bits.append((index >> (10 - bit)) & 1 == 1)
+            }
+        }
+        var entropy = Data(count: 16)
+        for (position, bit) in bits.prefix(128).enumerated() where bit {
+            entropy[position / 8] |= 1 << (7 - (position % 8))
+        }
+        let checksumByte = Data(SHA256.hash(data: entropy))[0]
+        for (offset, bit) in bits.suffix(4).enumerated() {
+            let expected = (checksumByte >> (7 - offset)) & 1 == 1
+            if bit != expected {
+                return false
+            }
+        }
+        return true
+    }
+
     static func generate() throws -> RecoveryPhrase {
         var entropy = Data(count: 16)
         let status = entropy.withUnsafeMutableBytes { buffer in
@@ -61,5 +102,6 @@ struct RecoveryPhrase: Hashable {
 enum RecoveryPhraseError: Error, Equatable {
     case invalidWordCount
     case unknownWord
+    case invalidChecksum
     case randomFailed
 }

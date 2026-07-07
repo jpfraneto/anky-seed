@@ -17,15 +17,9 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var completeAnkySessions: [SessionSummary] = []
     @Published private(set) var totalWritingMinutes = 0
     @Published private(set) var currentStreak = 0
-    @Published private(set) var creditBalance: Int?
-    @Published private(set) var creditPackages: [RevenueCatCreditPackage] = []
-    @Published private(set) var creditsLoading = false
-    @Published private(set) var purchasingCreditPackageID: String?
-    @Published private(set) var hasClaimedFreeCredits = false
     @Published private(set) var isICloudBackupEnabled = false
     @Published private(set) var iCloudBackupLastDate: Date?
     @Published private(set) var isICloudBackupWorking = false
-    @Published private(set) var isOpeningAnkyOnramp = false
 
     private let identityStore: WriterIdentityStore
     private let archive: LocalAnkyArchive
@@ -36,9 +30,7 @@ final class YouViewModel: ObservableObject {
     private let appOpenStore: AppOpenStore
     private let biometricAuth: BiometricAuthClient
     private let notifications: LocalNotificationScheduler
-    private let creditsClient: RevenueCatCreditsClient
     private let iCloudBackupStore: ICloudBackupStore
-    private let stripeOnrampClient: StripeOnrampClient
     private let defaults: UserDefaults
 
     init(
@@ -51,9 +43,7 @@ final class YouViewModel: ObservableObject {
         backupExporter: BackupExporter? = nil,
         biometricAuth: BiometricAuthClient = BiometricAuthClient(),
         notifications: LocalNotificationScheduler = LocalNotificationScheduler(),
-        creditsClient: RevenueCatCreditsClient = RevenueCatCreditsClient(),
         iCloudBackupStore: ICloudBackupStore? = nil,
-        stripeOnrampClient: StripeOnrampClient = StripeOnrampClient(),
         defaults: UserDefaults = .standard
     ) {
         self.identityStore = identityStore
@@ -74,14 +64,12 @@ final class YouViewModel: ObservableObject {
         self.backupExporter = resolvedBackupExporter
         self.biometricAuth = biometricAuth
         self.notifications = notifications
-        self.creditsClient = creditsClient
         self.iCloudBackupStore = iCloudBackupStore ?? ICloudBackupStore(
             identityStore: identityStore,
             backupExporter: resolvedBackupExporter,
             backupImporter: resolvedBackupImporter,
             defaults: defaults
         )
-        self.stripeOnrampClient = stripeOnrampClient
         self.defaults = defaults
         refresh()
     }
@@ -98,8 +86,6 @@ final class YouViewModel: ObservableObject {
             let iCloudStatus = iCloudBackupStore.status
             isICloudBackupEnabled = iCloudStatus.isEnabled
             iCloudBackupLastDate = iCloudStatus.lastBackupDate
-            hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: accountId, defaults: defaults)
-            creditBalance = ReflectionCreditCache.balance(accountId: accountId, defaults: defaults)
             updateStats()
             errorMessage = nil
         } catch {
@@ -199,6 +185,12 @@ final class YouViewModel: ObservableObject {
         } catch RecoveryPhraseError.unknownWord {
             errorMessage = AnkyLocalization.ui("Recovery words contain an unrecognized word.")
             return false
+        } catch RecoveryPhraseError.invalidChecksum {
+            errorMessage = AnkyLocalization.ui("These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed.")
+            return false
+        } catch WriterIdentityStoreError.importVerificationFailed {
+            errorMessage = AnkyLocalization.ui("The import could not be confirmed. Your current access is unchanged — try again.")
+            return false
         } catch {
             errorMessage = AnkyLocalization.ui("Could not recover access.")
             return false
@@ -223,27 +215,6 @@ final class YouViewModel: ObservableObject {
             errorMessage = AnkyLocalization.ui("No Anky recovery backup was found in iCloud Keychain.")
         } catch {
             errorMessage = AnkyLocalization.ui("Could not recover Anky access from iCloud Keychain.")
-        }
-    }
-
-    func createAnkyOnrampURL() async -> URL? {
-        guard !isOpeningAnkyOnramp else { return nil }
-        isOpeningAnkyOnramp = true
-        defer { isOpeningAnkyOnramp = false }
-
-        do {
-            let identity = try identityStore.loadOrCreate()
-            accountId = identity.accountId
-            let baseURL = URL(string: MirrorConfiguration.currentBaseURL(defaults: defaults)) ?? URL(string: MirrorConfiguration.defaultBaseURL)!
-            let url = try await stripeOnrampClient.createOnrampURL(
-                baseURL: baseURL,
-                walletAddress: identity.accountId
-            )
-            errorMessage = nil
-            return url
-        } catch {
-            errorMessage = AnkyLocalization.ui("The $ANKY purchase flow is not available right now.")
-            return nil
         }
     }
 
@@ -352,7 +323,6 @@ final class YouViewModel: ObservableObject {
             appOpenStore.clear()
             try? iCloudBackupStore.deleteRemoteBackupAndDisable()
             try identityStore.resetForDevelopment(includeICloudBackup: true)
-            await creditsClient.logOutIfConfigured()
             clearDevelopmentDefaults()
             accountId = ""
             ankyFileURLs = []
@@ -364,120 +334,11 @@ final class YouViewModel: ObservableObject {
             isIdentityBackedUpToICloud = false
             isICloudBackupEnabled = false
             iCloudBackupLastDate = nil
-            ReflectionCreditCache.clear(defaults: defaults)
-            creditBalance = nil
-            creditPackages = []
-            hasClaimedFreeCredits = false
             statusMessage = AnkyLocalization.ui("Account and data deleted from this device and Anky iCloud backup.")
             errorMessage = nil
         } catch {
             errorMessage = AnkyLocalization.ui("Could not delete all account data.")
         }
-    }
-
-    func preloadCredits() async {
-        await refreshCredits(showError: false)
-    }
-
-    func refreshCredits(showError: Bool = true) async {
-        creditsLoading = true
-        defer { creditsLoading = false }
-
-        do {
-            if accountId.isEmpty {
-                accountId = try identityStore.loadOrCreate().accountId
-            }
-            try await creditsClient.identify(accountId: accountId)
-            let packages = try await creditsClient.fetchCreditPackages()
-            let balance = try await creditsClient.fetchCreditBalance()
-            creditPackages = packages
-            creditBalance = balance
-            ReflectionCreditCache.storeBalance(balance, accountId: accountId, defaults: defaults)
-            errorMessage = nil
-        } catch {
-            if showError {
-                errorMessage = AnkyLocalization.ui("Could not load credits.")
-            }
-        }
-    }
-
-    func purchaseCredits(_ creditPackage: RevenueCatCreditPackage) async {
-        guard canPurchaseCredits else {
-            statusMessage = AnkyLocalization.text(.spendGiftBeforeBuying)
-            errorMessage = nil
-            return
-        }
-        guard purchasingCreditPackageID == nil else {
-            return
-        }
-        purchasingCreditPackageID = creditPackage.id
-        statusMessage = nil
-        errorMessage = nil
-        defer { purchasingCreditPackageID = nil }
-
-        do {
-            try await creditsClient.identify(accountId: accountId)
-            let result = try await creditsClient.purchase(creditPackage)
-            guard result == .purchased else {
-                return
-            }
-            let balance = try await creditsClient.fetchCreditBalance()
-            creditBalance = balance
-            ReflectionCreditCache.storeBalance(balance, accountId: accountId, defaults: defaults)
-            if let balance {
-                statusMessage = AnkyLocalization.ui("Credits updated. You have %d %@.", balance, AnkyLocalization.ui(balance == 1 ? "credit" : "credits"))
-            } else {
-                statusMessage = AnkyLocalization.ui("Credits updated.")
-            }
-            errorMessage = nil
-        } catch {
-            errorMessage = AnkyLocalization.ui("Payment did not finish. No credits were added.")
-        }
-    }
-
-    var presentedCreditBalance: Int? {
-        guard !hasClaimedFreeCredits else {
-            return creditBalance
-        }
-        return ReflectionCreditPresentation.firstGiftCount
-    }
-
-    var hasUnspentGiftCredit: Bool {
-        !hasClaimedFreeCredits
-    }
-
-    var canPurchaseCredits: Bool {
-        hasClaimedFreeCredits
-    }
-
-    var creditSummaryText: String {
-        if hasUnspentGiftCredit {
-            return AnkyLocalization.text(.creditGiftSummary)
-        }
-        guard let creditBalance else {
-            return AnkyLocalization.ui("reflection balance")
-        }
-        return "\(creditBalance) \(AnkyLocalization.ui(creditBalance == 1 ? "credit" : "credits"))"
-    }
-
-    var creditDetailTitle: String {
-        if hasUnspentGiftCredit {
-            return "\(ReflectionCreditPresentation.firstGiftCount)"
-        }
-        return creditBalance.map(String.init) ?? "..."
-    }
-
-    var creditDetailCaption: String {
-        hasUnspentGiftCredit ? AnkyLocalization.text(.creditGiftCaption) : AnkyLocalization.ui("credits")
-    }
-
-    var freeCreditMessage: String {
-        FreeCreditMessage.make(accountId: accountId, appVersion: appVersion)
-    }
-
-    var freeCreditWhatsAppURL: URL? {
-        let encoded = freeCreditMessage.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "https://wa.me/56985491126?text=\(encoded)")
     }
 
     var supportFeedbackEmailURL: URL? {
@@ -544,32 +405,3 @@ final class YouViewModel: ObservableObject {
     }
 }
 
-struct StripeOnrampClient {
-    var session: URLSession = .shared
-
-    struct ResponsePayload: Decodable {
-        let redirectUrl: String
-    }
-
-    func createOnrampURL(baseURL: URL, walletAddress: String) async throws -> URL {
-        var request = URLRequest(url: baseURL.appendingPathComponent("crypto/onramp-session"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "walletAddress": walletAddress
-        ])
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse,
-              (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-
-        let payload = try JSONDecoder().decode(ResponsePayload.self, from: data)
-        guard let url = URL(string: payload.redirectUrl) else {
-            throw URLError(.badURL)
-        }
-        return url
-    }
-}

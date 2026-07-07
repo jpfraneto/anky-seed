@@ -134,6 +134,27 @@ final class LevelProgressStoreTests: XCTestCase {
         XCTAssertEqual(store.phase(forLevel: 3), .accumulating)
     }
 
+    func testLoadingExcerptsComeFromCurrentChapterWriting() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("anky-excerpts-\(UUID().uuidString)", isDirectory: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let old = try archive.save("1770000000000 o\n0 l\n0 d\n8000")
+        let currentOne = try archive.save("1770000100000 T\n0 h\n0 i\n0 s\n0 SPACE\n0 i\n0 s\n0 SPACE\n0 t\n0 h\n0 e\n0 SPACE\n0 f\n0 i\n0 r\n0 s\n0 t\n0 SPACE\n0 p\n0 a\n0 i\n0 n\n0 t\n0 i\n0 n\n0 g\n0 SPACE\n0 s\n0 e\n0 e\n0 d\n0 .\n8000")
+        let currentTwo = try archive.save("1770000200000 A\n0 n\n0 o\n0 t\n0 h\n0 e\n0 r\n0 SPACE\n0 p\n0 i\n0 e\n0 c\n0 e\n0 SPACE\n0 f\n0 r\n0 o\n0 m\n0 SPACE\n0 t\n0 h\n0 e\n0 SPACE\n0 c\n0 h\n0 a\n0 p\n0 t\n0 e\n0 r\n0 .\n8000")
+
+        let excerpts = LevelTriggerTuning.loadingExcerpts(
+            artifacts: [old, currentTwo, currentOne],
+            sinceMs: Int64(old.createdAt.addingTimeInterval(1).timeIntervalSince1970 * 1000),
+            limit: 3
+        )
+
+        XCTAssertFalse(excerpts.contains { $0.contains("old") })
+        XCTAssertTrue(excerpts.contains { $0.contains("first painting seed") })
+        XCTAssertTrue(excerpts.contains { $0.contains("Another piece") })
+    }
+
     private func makeSummary(hash: String, durationMs: Int64) -> SessionSummary {
         SessionSummary(
             hash: hash,

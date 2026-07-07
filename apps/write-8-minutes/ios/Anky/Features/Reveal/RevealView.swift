@@ -1,5 +1,4 @@
 import SwiftUI
-import StoreKit
 import UIKit
 
 struct RevealView: View {
@@ -16,7 +15,6 @@ struct RevealView: View {
     @State private var didScrollToStreamingStart = false
     @State private var isReflectionVisible = false
     @State private var didSeeReflection = false
-    @State private var isShowingCreditPurchaseSheet = false
     @State private var isShowingPaywallSheet = false
     @EnvironmentObject private var entitlements: EntitlementStore
     @State private var privacyDisclosure = PrivacyLockDisclosure()
@@ -272,25 +270,6 @@ struct RevealView: View {
         } message: {
             Text(AnkyLocalization.ui("This permanently deletes this writing session. This cannot be undone."))
         }
-        .ankyReflectionCreditsSheet(
-            isPresented: $isShowingCreditPurchaseSheet,
-            availableCredits: viewModel.creditBalance,
-            packs: viewModel.creditPackages,
-            isRefreshing: viewModel.creditsLoading,
-            purchasingPackId: viewModel.purchasingCreditPackageID,
-            onRefresh: {
-                AnkyHaptics.light()
-                Task {
-                    await viewModel.refreshCredits()
-                }
-            },
-            onSelectPack: { creditPackage in
-                AnkyHaptics.light()
-                Task {
-                    await viewModel.purchaseCredits(creditPackage)
-                }
-            }
-        )
         .sheet(isPresented: $isShowingPaywallSheet) {
             PaywallSheet(store: entitlements, origin: "reflection")
         }
@@ -488,29 +467,13 @@ struct RevealView: View {
         if !entitlements.isEntitledForGating {
             return AnkyLocalization.ui("SEE WHAT ANKY SAW")
         }
-        if viewModel.needsCreditsToReflect {
-            return AnkyLocalization.ui("GET MORE CREDITS")
-        }
         if viewModel.isComplete {
-            return reflectButtonTitle
+            return AnkyLocalization.ui("REFLECT THIS ANKY")
         }
         if viewModel.canContinueWriting {
             return AnkyLocalization.ui("CONTINUE - %@ LEFT", viewModel.remainingWritingTime)
         }
         return AnkyLocalization.ui("WRITE %d MINUTES", AnkyDuration.completeRitualMinutes)
-    }
-
-    private var reflectButtonTitle: String {
-        switch viewModel.creditPromptState {
-        case .available(let count):
-            return AnkyLocalization.ui("REFLECT THIS ANKY - %d LEFT", count)
-        case .freeGift:
-            return AnkyLocalization.ui("REFLECT THIS ANKY - DEVICE GIFT")
-        case .unknown:
-            return AnkyLocalization.ui("REFLECT THIS ANKY")
-        case .unavailable:
-            return AnkyLocalization.ui("GET MORE CREDITS")
-        }
     }
 
     private var revealBottomBarSnapshot: RevealBottomBarSnapshot {
@@ -535,9 +498,6 @@ struct RevealView: View {
             return false
         }
         if viewModel.reflection != nil {
-            return true
-        }
-        if viewModel.needsCreditsToReflect {
             return true
         }
         return viewModel.isComplete ? viewModel.canSubmitReflectionRequest : true
@@ -567,12 +527,6 @@ struct RevealView: View {
             AnkyHaptics.light()
             AnkyFunnel.report(AnkyFunnel.veilTapped, origin: "reflection")
             isShowingPaywallSheet = true
-        } else if viewModel.needsCreditsToReflect {
-            AnkyHaptics.light()
-            isShowingCreditPurchaseSheet = true
-            Task {
-                await viewModel.refreshCredits(showError: false)
-            }
         } else if viewModel.isComplete {
             AnkyHaptics.light()
             beginInlineReflection()
@@ -640,207 +594,6 @@ private struct WriteBeforeScrollSealedUnlockButton: View {
         case .daily:
             return "unlock apps · rest of day"
         }
-    }
-}
-
-private struct RevealCreditPurchaseSheet: View {
-    @ObservedObject var viewModel: RevealViewModel
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(AnkyLocalization.ui("Reflection credits"))
-                            .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle(RevealPalette.gold)
-                    }
-
-                    Spacer()
-
-                    Button {
-                        AnkyHaptics.light()
-                        Task {
-                            await viewModel.refreshCredits()
-                        }
-                    } label: {
-                        ZStack {
-                            if viewModel.creditsLoading {
-                                ProgressView()
-                                    .tint(RevealPalette.goldSoft)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(RevealPalette.goldSoft)
-                            }
-                        }
-                        .frame(width: 38, height: 38)
-                        .background(Color.ankyPaperDeep.opacity(0.55), in: Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(RevealPalette.gold.opacity(0.26), lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.creditsLoading)
-                    .accessibilityLabel(AnkyLocalization.ui("Refresh credits"))
-                }
-
-                RevealCreditBalancePanel(balance: viewModel.creditBalance)
-
-                VStack(spacing: 10) {
-                    if viewModel.creditsLoading && viewModel.creditPackages.isEmpty {
-                        RevealCreditDisabledRow("loading credit packs")
-                    } else if viewModel.creditPackages.isEmpty {
-                        RevealCreditDisabledRow("no credit packs available")
-                    } else {
-                        ForEach(viewModel.creditPackages.prefix(3)) { creditPackage in
-                            RevealCreditPackageRow(
-                                creditPackage: creditPackage,
-                                isRecommended: creditPackage.title == "11 reflections" || creditPackage.id.hasSuffix(".credits.11"),
-                                isPurchasing: viewModel.purchasingCreditPackageID == creditPackage.id
-                            ) {
-                                AnkyHaptics.light()
-                                Task {
-                                    await viewModel.purchaseCredits(creditPackage)
-                                }
-                            }
-                        }
-                    }
-
-                }
-
-                Text(AnkyLocalization.ui("Writing is free. One credit = one reflection."))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RevealPalette.paper.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.ankyMadder.opacity(0.82))
-                }
-            }
-            .padding(.horizontal, 22)
-            .padding(.top, 18)
-            .padding(.bottom, 42)
-        }
-        .background(RevealPalette.ink)
-    }
-}
-
-private struct RevealCreditBalancePanel: View {
-    let balance: Int?
-
-    var body: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 10) {
-            Text(balance.map(String.init) ?? "...")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundStyle(RevealPalette.gold)
-                .shadow(color: RevealPalette.gold.opacity(0.28), radius: 14)
-            Text(AnkyLocalization.ui(balance == 1 ? "credit" : "credits"))
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(RevealPalette.paper.opacity(0.62))
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            LinearGradient(
-                colors: [Color.ankyPaper.opacity(0.80), Color.ankyPaperDeep.opacity(0.55)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-        )
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
-        )
-        .shadow(color: Color.ankyViolet.opacity(0.12), radius: 12, y: 4)
-    }
-}
-
-private struct RevealCreditPackageRow: View {
-    let creditPackage: RevenueCatCreditPackage
-    let isRecommended: Bool
-    let isPurchasing: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(AnkyLocalization.ui(creditPackage.title))
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(RevealPalette.paper)
-                        if isRecommended {
-                            Text(AnkyLocalization.ui("recommended"))
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .foregroundStyle(Color.ankyInk)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(RevealPalette.gold, in: Capsule())
-                        }
-                    }
-                    Text(AnkyLocalization.ui(creditPackage.subtitle))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(RevealPalette.paper.opacity(0.58))
-                }
-
-                Spacer()
-
-                if isPurchasing {
-                    ProgressView()
-                        .tint(RevealPalette.gold)
-                        .frame(width: 22, height: 22)
-                } else {
-                    Text(creditPackage.price)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(RevealPalette.gold)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                LinearGradient(
-                    colors: [Color.ankyPaper.opacity(0.80), Color.ankyPaperDeep.opacity(0.55)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-            )
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(RevealPalette.gold.opacity(isRecommended ? 0.52 : 0.28), lineWidth: 1)
-            )
-            .shadow(color: Color.ankyViolet.opacity(0.10), radius: 12, y: 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(isPurchasing)
-    }
-}
-
-private struct RevealCreditDisabledRow: View {
-    let text: String
-
-    init(_ text: String) {
-        self.text = text
-    }
-
-    var body: some View {
-        Text(AnkyLocalization.ui(text))
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(RevealPalette.paper.opacity(0.58))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .background(Color.ankyPaperDeep.opacity(0.45), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
-            )
     }
 }
 

@@ -16,13 +16,7 @@ enum AnkyLocalizedKey: String, CaseIterable {
     case stepWriteOneCharacter
     case stepKeepThreadAlive
     case stepLetSilenceCloseIt
-    case creditGiftSummary
-    case creditGiftCaption
-    case creditGiftPrompt
     case writeEightMinutes
-    case creditPacksLocked
-    case creditGiftDetail
-    case spendGiftBeforeBuying
 }
 
 enum AnkyLocalization {
@@ -98,13 +92,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Write one character",
             .stepKeepThreadAlive: "Keep the thread alive",
             .stepLetSilenceCloseIt: "Let silence close it",
-            .creditGiftSummary: "2 reflections - This device",
-            .creditGiftCaption: "device gift",
-            .creditGiftPrompt: "This device has two free reflections from Anky. Use them before buying more credits.",
-            .writeEightMinutes: "Write 8 minutes",
-            .creditPacksLocked: "Credit packs unlock after this device spends its first two reflections",
-            .creditGiftDetail: "Your first two reflections are tied to this device. After they are used, this screen will let you buy more credits.",
-            .spendGiftBeforeBuying: "Use this device's first two reflections before buying more credits."
+            .writeEightMinutes: "Write 8 minutes"
         ],
         "es": [
             .tabWrite: "Escribir",
@@ -122,13 +110,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Escribe un caracter",
             .stepKeepThreadAlive: "Mantiene vivo el hilo",
             .stepLetSilenceCloseIt: "Deja que el silencio lo cierre",
-            .creditGiftSummary: "2 creditos - Regalo de Anky",
-            .creditGiftCaption: "creditos - Regalo de Anky",
-            .creditGiftPrompt: "Tienes 2 creditos - Regalo de Anky. Usa estas primeras reflexiones antes de comprar mas creditos.",
-            .writeEightMinutes: "Escribir 8 minutos",
-            .creditPacksLocked: "Los paquetes de creditos se desbloquean despues de usar tus dos regalos de Anky",
-            .creditGiftDetail: "Tus primeras dos reflexiones estan cubiertas. Despues de usarlas, esta pantalla te dejara comprar mas creditos.",
-            .spendGiftBeforeBuying: "Usa tus dos regalos de Anky antes de comprar mas creditos."
+            .writeEightMinutes: "Escribir 8 minutos"
         ],
         "pt": [
             .tabWrite: "Escrever",
@@ -146,13 +128,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Escreva um caractere",
             .stepKeepThreadAlive: "Mantenha o fio vivo",
             .stepLetSilenceCloseIt: "Deixe o silencio fechar",
-            .creditGiftSummary: "2 creditos - Presente da Anky",
-            .creditGiftCaption: "creditos - Presente da Anky",
-            .creditGiftPrompt: "Voce tem 2 creditos - Presente da Anky. Use estas primeiras reflexoes antes de comprar mais creditos.",
-            .writeEightMinutes: "Escrever 8 minutos",
-            .creditPacksLocked: "Os pacotes de creditos desbloqueiam depois que voce usar seus dois presentes da Anky",
-            .creditGiftDetail: "Suas duas primeiras reflexoes estao cobertas. Depois de usa-las, esta tela deixara voce comprar mais creditos.",
-            .spendGiftBeforeBuying: "Use seus dois presentes da Anky antes de comprar mais creditos."
+            .writeEightMinutes: "Escrever 8 minutos"
         ],
         "fr": [
             .tabWrite: "Ecrire",
@@ -170,13 +146,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Ecrivez un caractere",
             .stepKeepThreadAlive: "Gardez le fil vivant",
             .stepLetSilenceCloseIt: "Laissez le silence le fermer",
-            .creditGiftSummary: "2 credits - Cadeau d'Anky",
-            .creditGiftCaption: "credit - Cadeau d'Anky",
-            .creditGiftPrompt: "Vous avez 2 credits - Cadeau d'Anky. Utilisez ces deux premieres reflexions avant d'acheter plus de credits.",
-            .writeEightMinutes: "Ecrire 8 minutes",
-            .creditPacksLocked: "Les packs de credits se debloquent apres avoir utilise vos deux cadeaux d'Anky",
-            .creditGiftDetail: "Vos deux premieres reflexions sont couvertes. Apres les avoir utilisees, cet ecran vous permettra d'acheter plus de credits.",
-            .spendGiftBeforeBuying: "Utilisez vos deux cadeaux d'Anky avant d'acheter plus de credits."
+            .writeEightMinutes: "Ecrire 8 minutes"
         ],
         "de": [
             .tabWrite: "Schreiben",
@@ -194,13 +164,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Schreibe ein Zeichen",
             .stepKeepThreadAlive: "Halte den Faden lebendig",
             .stepLetSilenceCloseIt: "Lass die Stille ihn schliessen",
-            .creditGiftSummary: "2 Guthaben - Geschenk von Anky",
-            .creditGiftCaption: "Guthaben - Geschenk von Anky",
-            .creditGiftPrompt: "Du hast 2 Guthaben - Geschenk von Anky. Nutze diese ersten zwei Reflexionen, bevor du mehr Guthaben kaufst.",
-            .writeEightMinutes: "8 Minuten schreiben",
-            .creditPacksLocked: "Guthabenpakete werden freigeschaltet, nachdem du deine zwei Geschenke von Anky genutzt hast",
-            .creditGiftDetail: "Deine ersten zwei Reflexionen sind abgedeckt. Danach kannst du auf diesem Bildschirm mehr Guthaben kaufen.",
-            .spendGiftBeforeBuying: "Nutze deine zwei Geschenke von Anky, bevor du mehr Guthaben kaufst."
+            .writeEightMinutes: "8 Minuten schreiben"
         ],
         "it": [
             .tabWrite: "Scrivi",
@@ -218,13 +182,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "Scrivi un carattere",
             .stepKeepThreadAlive: "Tieni vivo il filo",
             .stepLetSilenceCloseIt: "Lascia che il silenzio lo chiuda",
-            .creditGiftSummary: "2 crediti - Regalo di Anky",
-            .creditGiftCaption: "credito - Regalo di Anky",
-            .creditGiftPrompt: "Hai 2 crediti - Regalo di Anky. Usa queste prime due riflessioni prima di comprare altri crediti.",
-            .writeEightMinutes: "Scrivi 8 minuti",
-            .creditPacksLocked: "I pacchetti di crediti si sbloccano dopo aver usato i tuoi due Regali di Anky",
-            .creditGiftDetail: "Le tue prime due riflessioni sono coperte. Dopo averle usate, questa schermata ti permettera di comprare altri crediti.",
-            .spendGiftBeforeBuying: "Usa i tuoi due regali di Anky prima di comprare altri crediti."
+            .writeEightMinutes: "Scrivi 8 minuti"
         ],
         "ja": [
             .tabWrite: "書く",
@@ -242,13 +200,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "1文字を書く",
             .stepKeepThreadAlive: "流れを生かしておく",
             .stepLetSilenceCloseIt: "沈黙に閉じさせる",
-            .creditGiftSummary: "2クレジット - Ankyからのギフト",
-            .creditGiftCaption: "クレジット - Ankyからのギフト",
-            .creditGiftPrompt: "2クレジット - Ankyからのギフトがあります。追加購入の前に、最初の2回のリフレクションで使ってください。",
-            .writeEightMinutes: "8分書く",
-            .creditPacksLocked: "Ankyからの2つのギフトを使うと、クレジットパックが購入できます",
-            .creditGiftDetail: "最初の2回のリフレクションはカバーされています。使った後、この画面で追加クレジットを購入できます。",
-            .spendGiftBeforeBuying: "追加購入の前にAnkyからの2つのギフトを使ってください。"
+            .writeEightMinutes: "8分書く"
         ],
         "ko": [
             .tabWrite: "쓰기",
@@ -266,13 +218,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "한 글자 쓰기",
             .stepKeepThreadAlive: "흐름을 살려 두기",
             .stepLetSilenceCloseIt: "침묵이 닫게 두기",
-            .creditGiftSummary: "2 크레딧 - Anky의 선물",
-            .creditGiftCaption: "크레딧 - Anky의 선물",
-            .creditGiftPrompt: "2 크레딧 - Anky의 선물이 있습니다. 추가 크레딧을 사기 전에 첫 두 번의 리플렉션에 사용하세요.",
-            .writeEightMinutes: "8분 쓰기",
-            .creditPacksLocked: "Anky의 선물 두 개를 사용하면 크레딧 팩이 열립니다",
-            .creditGiftDetail: "첫 두 번의 리플렉션은 이미 제공됩니다. 사용한 뒤 이 화면에서 크레딧을 더 살 수 있습니다.",
-            .spendGiftBeforeBuying: "크레딧을 더 사기 전에 Anky의 선물 두 개를 사용하세요."
+            .writeEightMinutes: "8분 쓰기"
         ],
         "zh": [
             .tabWrite: "书写",
@@ -290,13 +236,7 @@ enum AnkyLocalization {
             .stepWriteOneCharacter: "写下一个字符",
             .stepKeepThreadAlive: "让线索保持活着",
             .stepLetSilenceCloseIt: "让沉默完成收束",
-            .creditGiftSummary: "2 个额度 - Anky 的礼物",
-            .creditGiftCaption: "个额度 - Anky 的礼物",
-            .creditGiftPrompt: "你有 2 个额度 - Anky 的礼物。请先用它们完成前两次 reflection，再购买更多额度。",
-            .writeEightMinutes: "书写 8 分钟",
-            .creditPacksLocked: "使用 Anky 的两个礼物后，额度包才会解锁",
-            .creditGiftDetail: "前两次 reflection 已经包含在内。使用之后，你就可以在这里购买更多额度。",
-            .spendGiftBeforeBuying: "购买更多额度前，请先使用 Anky 的两个礼物。"
+            .writeEightMinutes: "书写 8 分钟"
         ]
     ]
 }

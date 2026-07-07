@@ -14,12 +14,6 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var isAskingAnky = false
     @Published private(set) var isDeleting = false
     @Published private(set) var isDeleted = false
-    @Published private(set) var creditBalance: Int?
-    @Published private(set) var creditPackages: [RevenueCatCreditPackage] = []
-    @Published private(set) var creditsLoading = false
-    @Published private(set) var purchasingCreditPackageID: String?
-    @Published private(set) var hasClaimedFreeCredits = false
-    @Published private(set) var creditsDenied = false
     @Published private(set) var reflectionStatusMessage: String = ""
     @Published private(set) var streamingReflectionMarkdown: String = ""
     @Published private(set) var reflectionStreamTick = 0
@@ -44,7 +38,6 @@ final class RevealViewModel: ObservableObject {
     private let reflectionStore: ReflectionStore
     private let sessionIndexStore: SessionIndexStore
     private let identityStore: WriterIdentityStore
-    private let creditsClient: RevenueCatCreditsClient
     private let requestStore: ReflectionRequestStore
     private let userDefaults: UserDefaults
     private var reflectionWatcherTask: Task<Void, Never>?
@@ -55,7 +48,6 @@ final class RevealViewModel: ObservableObject {
     private var streamingReflectionBuffer = ""
     private var streamingReflectionPublishTask: Task<Void, Never>?
     private let reflectionRetryLimit: TimeInterval = 120
-    private var accountId = ""
     private var didPrepareAfterFirstRender = false
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
     private static let localTimeFormatter: DateFormatter = {
@@ -74,7 +66,6 @@ final class RevealViewModel: ObservableObject {
         reflectionStore: ReflectionStore = ReflectionStore(),
         sessionIndexStore: SessionIndexStore = SessionIndexStore(),
         identityStore: WriterIdentityStore = WriterIdentityStore(),
-        creditsClient: RevenueCatCreditsClient = RevenueCatCreditsClient(),
         requestStore: ReflectionRequestStore? = nil,
         userDefaults: UserDefaults = .standard
     ) {
@@ -105,7 +96,6 @@ final class RevealViewModel: ObservableObject {
         self.reflectionStore = reflectionStore
         self.sessionIndexStore = sessionIndexStore
         self.identityStore = identityStore
-        self.creditsClient = creditsClient
         self.requestStore = requestStore ?? ReflectionRequestStore(defaults: userDefaults)
         self.userDefaults = userDefaults
 
@@ -123,32 +113,8 @@ final class RevealViewModel: ObservableObject {
         streamingReflectionMarkdown.count
     }
 
-    var creditPromptState: ReflectionCreditPromptState {
-        ReflectionCreditPresentation.state(
-            creditsRemaining: creditBalance,
-            hasClaimedFreeCredits: hasClaimedFreeCredits,
-            creditsDenied: creditsDenied
-        )
-    }
-
     var canSubmitReflectionRequest: Bool {
-        guard canAskAnky, !isAskingAnky else {
-            return false
-        }
-        if case .unavailable = creditPromptState {
-            return false
-        }
-        return true
-    }
-
-    var needsCreditsToReflect: Bool {
-        guard canAskAnky, !isAskingAnky else {
-            return false
-        }
-        if case .unavailable = creditPromptState {
-            return true
-        }
-        return false
+        canAskAnky && !isAskingAnky
     }
 
     var shouldRequestReviewAfterReadingFirstReflection: Bool {
@@ -205,7 +171,7 @@ final class RevealViewModel: ObservableObject {
     }
 
     func askAnkyForSealedSession() async {
-        await submitReflectionRequest(allowWhileAsking: true, ignoresCreditPresentation: true)
+        await submitReflectionRequest(allowWhileAsking: true)
     }
 
     func prepareAfterFirstRender() async {
@@ -222,14 +188,6 @@ final class RevealViewModel: ObservableObject {
             appOpenStore: AppOpenStore(defaults: userDefaults)
         )
         refreshLocalReflection()
-
-        if let identity = try? identityStore.loadOrCreate() {
-            accountId = identity.accountId
-            hasClaimedFreeCredits = ReflectionCreditCache.hasClaimedFreeCredits(accountId: identity.accountId, defaults: userDefaults)
-            creditBalance = ReflectionCreditCache.balance(accountId: identity.accountId, defaults: userDefaults)
-        }
-
-        await refreshCredits(showError: false)
     }
 
     private static func ctaAccentColor(
@@ -264,10 +222,7 @@ final class RevealViewModel: ObservableObject {
         return "\(String(format: "%02d", minutes)):\(String(format: "%02d", seconds))"
     }
 
-    private func submitReflectionRequest(
-        allowWhileAsking: Bool,
-        ignoresCreditPresentation: Bool = false
-    ) async {
+    private func submitReflectionRequest(allowWhileAsking: Bool) async {
         guard !reflectionRequestInFlight else {
             return
         }
@@ -278,8 +233,6 @@ final class RevealViewModel: ObservableObject {
             guard canSubmitReflectionRequest else {
                 return
             }
-        } else if !ignoresCreditPresentation, case .unavailable = creditPromptState {
-            return
         }
 
         guard let baseURL = URL(string: MirrorConfiguration.currentBaseURL(defaults: userDefaults)) else {
@@ -314,14 +267,11 @@ final class RevealViewModel: ObservableObject {
             }
 
             let identity = try identityStore.loadOrCreate()
-            accountId = identity.accountId
             reflectionStatusMessage = AnkyLocalization.ui("i am preparing your reflection.")
-            let trialProof = await DeviceCheckTrialProofProvider.makeToken()
             reflectionStatusMessage = AnkyLocalization.ui("i am carrying the thread to the mirror.")
             let response = try await MirrorClient(baseURL: baseURL).askAnky(
                 bytes: Data(artifact.text.utf8),
                 identity: identity,
-                trialProof: trialProof,
                 appVersion: AnkyAppVersion.headerValue,
                 progress: { [weak self] event in
                     await MainActor.run {
@@ -357,19 +307,11 @@ final class RevealViewModel: ObservableObject {
                 title: response.title,
                 reflection: response.reflection,
                 tags: response.tags,
-                createdAt: Date(),
-                creditsRemaining: response.creditsRemaining
+                createdAt: Date()
             )
             try reflectionStore.save(saved)
             try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title, tags: response.tags)
             requestStore.clear(hash: response.hash)
-            markFreeCreditsClaimedOrUnavailable()
-            creditsDenied = false
-            if response.creditsRemaining != nil {
-                creditBalance = response.creditsRemaining
-                ReflectionCreditCache.storeBalance(response.creditsRemaining, accountId: accountId, defaults: userDefaults)
-            }
-            await refreshCreditsAfterReflectionSuccess()
             reflection = saved
             resetStreamingReflectionBuffer()
             streamingReflectionMarkdown = response.reflection
@@ -418,11 +360,6 @@ final class RevealViewModel: ObservableObject {
                 startPendingReflectionWatcher()
                 schedulePendingReflectionRetry()
                 return
-            }
-            if serverPayload?.isCreditDenied == true || message.localizedCaseInsensitiveContains("credit") {
-                creditsDenied = true
-                creditBalance = 0
-                markFreeCreditsClaimedOrUnavailable()
             }
             requestStore.clear(hash: artifact.hash)
             errorMessage = Self.reflectionErrorMessage(message: message, serverPayload: serverPayload)
@@ -489,24 +426,18 @@ final class RevealViewModel: ObservableObject {
             return AnkyLocalization.ui("opening the way...")
         case "protocol_validated":
             return AnkyLocalization.ui("validating the ritual...")
-        case "credit_checked":
-            return AnkyLocalization.ui("checking reflection access...")
         case "reflection_prepared":
             return AnkyLocalization.ui("preparing the reflection...")
         case "provider_started":
             return AnkyLocalization.ui("anky is writing...")
         case "provider_finished":
             return AnkyLocalization.ui("bringing it back...")
-        case "credit_spent":
-            return AnkyLocalization.ui("settling...")
         case "x402_quote_created":
             return AnkyLocalization.ui("checking payment options...")
         case "x402_verified":
             return AnkyLocalization.ui("payment verified...")
         case "x402_settled":
             return AnkyLocalization.ui("settling...")
-        case "credit_not_spent":
-            return AnkyLocalization.ui("no credit spent...")
         case "complete":
             return AnkyLocalization.ui("opening the scroll...")
         default:
@@ -519,18 +450,10 @@ final class RevealViewModel: ObservableObject {
     }
 
     private static func reflectionErrorMessage(message: String, serverPayload: MirrorServerErrorPayload?) -> String {
-        if serverPayload?.isTrialAlreadyClaimed == true {
-            return AnkyLocalization.ui("This device already used its first two reflections. Add credits to ask Anky again. Writing is still free.")
-        }
-        if serverPayload?.isCreditDenied == true || message.localizedCaseInsensitiveContains("credit") {
-            return AnkyLocalization.ui("You need one reflection credit to ask Anky. Writing is still free.")
+        if serverPayload?.isEntitlementDenied == true {
+            return AnkyLocalization.ui("Reflections open with the subscription. Writing is still free.")
         }
         return message
-    }
-
-    private func markFreeCreditsClaimedOrUnavailable() {
-        ReflectionCreditCache.markFreeCreditsClaimed(accountId: accountId, defaults: userDefaults)
-        hasClaimedFreeCredits = true
     }
 
     private func shouldKeepPendingAfterInterruptedReflection(error: Error) -> Bool {
@@ -538,19 +461,6 @@ final class RevealViewModel: ObservableObject {
             return true
         }
         return !streamingReflectionMarkdown.isEmpty
-    }
-
-    private func refreshCreditsAfterReflectionSuccess() async {
-        do {
-            let identity = try identityStore.loadOrCreate()
-            accountId = identity.accountId
-            try await creditsClient.identify(accountId: identity.accountId)
-            creditPackages = try await creditsClient.fetchCreditPackages()
-            creditBalance = try await creditsClient.fetchCreditBalance()
-            ReflectionCreditCache.storeBalance(creditBalance, accountId: identity.accountId, defaults: userDefaults)
-        } catch {
-            // Keep the authoritative balance returned by the mirror if RevenueCat is slow.
-        }
     }
 
     private func beginReflectionBackgroundTask() {
@@ -572,59 +482,6 @@ final class RevealViewModel: ObservableObject {
 
         UIApplication.shared.endBackgroundTask(reflectionBackgroundTask)
         reflectionBackgroundTask = .invalid
-    }
-
-    func refreshCredits(showError: Bool = true) async {
-        refreshLocalReflection()
-        guard canAskAnky else {
-            return
-        }
-
-        creditsLoading = true
-        defer { creditsLoading = false }
-
-        do {
-            let identity = try identityStore.loadOrCreate()
-            accountId = identity.accountId
-            try await creditsClient.identify(accountId: identity.accountId)
-            creditPackages = try await creditsClient.fetchCreditPackages()
-            creditBalance = try await creditsClient.fetchCreditBalance()
-            ReflectionCreditCache.storeBalance(creditBalance, accountId: identity.accountId, defaults: userDefaults)
-            creditsDenied = false
-            if showError {
-                errorMessage = nil
-            }
-        } catch {
-            if showError {
-                errorMessage = AnkyLocalization.ui("Could not load reflections.")
-            }
-        }
-    }
-
-    func purchaseCredits(_ creditPackage: RevenueCatCreditPackage) async {
-        guard purchasingCreditPackageID == nil else {
-            return
-        }
-
-        purchasingCreditPackageID = creditPackage.id
-        errorMessage = nil
-        defer { purchasingCreditPackageID = nil }
-
-        do {
-            let identity = try identityStore.loadOrCreate()
-            accountId = identity.accountId
-            try await creditsClient.identify(accountId: identity.accountId)
-            let result = try await creditsClient.purchase(creditPackage)
-            guard result == .purchased else {
-                return
-            }
-            creditPackages = try await creditsClient.fetchCreditPackages()
-            creditBalance = try await creditsClient.fetchCreditBalance()
-            ReflectionCreditCache.storeBalance(creditBalance, accountId: identity.accountId, defaults: userDefaults)
-            creditsDenied = false
-        } catch {
-            errorMessage = AnkyLocalization.ui("Payment did not finish. No credits were added.")
-        }
     }
 
     private func refreshLocalReflection() {

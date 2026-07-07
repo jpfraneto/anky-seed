@@ -10,16 +10,24 @@ struct WriteBeforeScrollShieldController {
     private let managedSettingsStore = ManagedSettingsStore(named: Self.storeName)
     private let selectionStore: WriteBeforeScrollScreenTimeSelectionStore
     private let stateStore: WriteBeforeScrollScreenTimeStateStore
+    private let gateSwitchStore: WriteBeforeScrollGateSwitchStore
     private let eventLog: WriteBeforeScrollEventLogStore
 
     init(defaults: UserDefaults = AnkyAppGroupStorage.userDefaults()) {
         self.selectionStore = WriteBeforeScrollScreenTimeSelectionStore(defaults: defaults)
         self.stateStore = WriteBeforeScrollScreenTimeStateStore(defaults: defaults)
+        self.gateSwitchStore = WriteBeforeScrollGateSwitchStore(defaults: defaults)
         self.eventLog = WriteBeforeScrollEventLogStore(defaults: defaults)
     }
 
     @discardableResult
     func applyShield(now: Date = Date()) -> Bool {
+        // The off-switch outranks every apply path — including the monitor
+        // extension's relock, which calls applyShield directly.
+        guard !gateSwitchStore.isGateOff else {
+            clearShield(now: now)
+            return false
+        }
         guard AuthorizationCenter.shared.authorizationStatus == .approved else {
             clearShield(now: now)
             stateStore.update { state in
@@ -98,16 +106,22 @@ struct WriteBeforeScrollShieldController {
     @discardableResult
     func reconcileShield(now: Date = Date()) -> Bool {
         let state = stateStore.load()
-        if state.isUnlocked(at: now) {
+        switch WriteBeforeScrollShieldReconciler.decision(
+            gateOff: gateSwitchStore.isGateOff,
+            state: state,
+            at: now
+        ) {
+        case .clearShield:
             clearShield(now: now)
             return false
+        case .applyShield:
+            let hadExpiredUnlock = state.unlockedUntil != nil
+            let applied = applyShield(now: now)
+            if hadExpiredUnlock, applied {
+                eventLog.append(.relockApplied, at: now)
+            }
+            return applied
         }
-        let hadExpiredUnlock = state.unlockedUntil != nil
-        let applied = applyShield(now: now)
-        if hadExpiredUnlock, applied {
-            eventLog.append(.relockApplied, at: now)
-        }
-        return applied
     }
 
     private func hasShieldTargets(in selection: FamilyActivitySelection) -> Bool {

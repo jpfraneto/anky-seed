@@ -1,4 +1,4 @@
-Anky, Inc. - Effective June 7, 2026
+Anky, Inc. - Effective July 6, 2026
 
 > The short version: Anky is local-first. Your writing stays on your device unless you choose to export it, back it up, contact support, or ask Anky for a reflection. When you ask for a reflection, your writing is sent to Anky's mirror service and AI providers so a reflection can be generated. We use providers that don't store your writing. We do not sell your data, use it for advertising, or use your writing to train our own models.
 
@@ -31,7 +31,7 @@ The following data is stored locally on your device unless you choose to export 
 - Daily reminder settings
 - Local Anky access information
 - Private recovery material stored in secure device storage
-- Local credit balance cache
+- Local subscription entitlement cache
 - Local export/import files you create
 
 Writing, saving, revealing, copying, browsing Map, and viewing local history do not require sending your writing to Anky's server.
@@ -52,27 +52,25 @@ The mirror service:
 - Sends the reconstructed writing and prompt to AI service providers
 - Receives the generated reflection or nudge
 - Returns the result to your device
-- Checks credits for reflections and spends one reflection credit after a successful reflection
+- Checks that an active subscription or trial covers the reflection
 
 The returned reflection is stored locally on your device.
 
-### Purchases and credits
+### Purchases and subscriptions
 
-If you buy reflection credits, purchases are processed by Apple and managed through RevenueCat. We do not receive or store your credit card number.
+If you subscribe to Anky, purchases are processed by Apple and managed through RevenueCat. We do not receive or store your credit card number.
 
-Anky uses purchase-related records, credit balances, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Apple and RevenueCat to grant and manage reflection credits.
+Anky offers an auto-renewing yearly subscription ($88/year, with a 3-day free trial for new subscribers) and a monthly subscription ($11.99/month). Subscriptions renew automatically until you cancel them in your App Store subscription settings; the yearly free trial converts to a paid subscription when it ends unless cancelled at least 24 hours before.
+
+Anky uses purchase-related records, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Apple and RevenueCat to recognize and manage your subscription.
 
 ### Local access and request safety
 
-Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and return credits to the right profile.
+Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and attribute it to the right profile.
 
-Credit operations identify your RevenueCat customer with your Anky profile so credits can be loaded, purchased, and spent correctly.
+Subscription checks identify your RevenueCat customer record with your Anky profile so your subscription is recognized by the mirror service.
 
 Your private recovery material is not sent to Anky.
-
-### Device trial and abuse prevention
-
-For free trials, abuse prevention, fraud prevention, and request safety, the app asks Apple DeviceCheck for a token when DeviceCheck is supported. Reflection and nudge requests send that token to the mirror service as trial proof. The mirror service also uses timestamps, hashes, app version, platform/client, and request intent.
 
 ### iCloud, Keychain, backup, export, and import
 
@@ -108,8 +106,8 @@ Anky does not use your writing to train Anky-owned AI models.
 
 Anky uses the following third-party services for the app features described in this policy:
 
-- **Apple** - App Store purchases, refunds, device services, iCloud, iCloud Keychain, device backup, DeviceCheck, notifications, and platform services.
-- **RevenueCat** - purchase management, credit balances, entitlements, and transaction-related records.
+- **Apple** - App Store purchases, refunds, device services, iCloud, iCloud Keychain, device backup, notifications, and platform services.
+- **RevenueCat** - purchase management, subscription entitlements, and transaction-related records.
 - **OpenRouter** - routing reflection requests to AI model providers.
 - **AI model providers** - generating reflections from the text you choose to send.
 - **Cloud hosting / infrastructure providers** - operating Anky's mirror service, logs, security, and reliability.
@@ -136,38 +134,36 @@ To operate Anky, we collect and process limited metadata, such as:
 - Request hashes
 - App version
 - Platform
-- Credit balance and credit transaction records
+- Subscription entitlement state and transaction records
 - Purchase product identifiers
 - Error states
 - Provider usage metadata
 - Security and abuse-prevention signals
 - Support request metadata
 
-We use this data to provide reflections, manage credits, prevent abuse, debug issues, respond to support, comply with law, and operate the service.
+We use this data to provide reflections, manage subscriptions, prevent abuse, debug issues, respond to support, comply with law, and operate the service.
 
 ## 9. Payments
 
 Payments are handled by Apple through the App Store and managed with RevenueCat.
 
+Anky's plans are auto-renewing subscriptions ($88/year with a 3-day free trial, or $11.99/month). They renew until cancelled in your App Store subscription settings; cancel at least 24 hours before the current period ends to avoid the next charge.
+
 We do not receive your full payment card details.
 
 Refunds, billing disputes, and purchase history are handled according to Apple's policies.
 
-## 10. Tokens And Public References
-
-Anky may display token or public-reference information when those features are available.
+## 10. Recovery Words
 
 Your private recovery material remains on your device unless you export, reveal, back up, or otherwise share it.
 
 Never share your recovery words. If you lose them, Anky cannot restore access without a backup you control.
 
-Some token, transaction, and public-reference information can be public by nature. Anky cannot delete information written to public networks.
-
 ## 11. Data Retention
 
 Local data remains on your device until you delete it, delete the app, reset the app, or remove backups.
 
-Reflection-related operational metadata is retained as long as needed to operate the service, manage credits, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security.
+Reflection-related operational metadata is retained as long as needed to operate the service, manage subscriptions, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security.
 
 Purchase records are retained by Apple, RevenueCat, and Anky as needed for billing, accounting, fraud prevention, tax, legal, and support purposes.
 
@@ -184,7 +180,7 @@ Deleting the app does not delete data outside the app, including:
 - App Store purchase records
 - RevenueCat purchase records
 - Support emails you sent
-- Backend metadata needed for security, credit accounting, fraud prevention, legal compliance, or dispute resolution
+- Backend metadata needed for security, subscription accounting, fraud prevention, legal compliance, or dispute resolution
 - Public network data
 
 To request deletion of data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**.

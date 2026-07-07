@@ -15,7 +15,6 @@ struct MirrorClient {
     func askAnky(
         bytes: Data,
         identity: WriterIdentity,
-        trialProof: String? = nil,
         appVersion: String? = nil,
         intent: Intent = .reflection,
         progress: ((MirrorProgressEvent) async -> Void)? = nil,
@@ -24,7 +23,6 @@ struct MirrorClient {
         let request = try makeRequest(
             bytes: bytes,
             identity: identity,
-            trialProof: trialProof,
             appVersion: appVersion,
             intent: intent
         )
@@ -74,9 +72,6 @@ struct MirrorClient {
                     throw MirrorClientError.invalidResponse
                 }
                 let hash = event.headers.value(forHTTPHeaderField: "X-Anky-Hash") ?? AnkyHasher.sha256Hex(bytes)
-                let creditsRemaining = event.headers
-                    .value(forHTTPHeaderField: "X-Anky-Credits-Remaining")
-                    .flatMap(Self.creditsRemaining)
                 let tags = event.tags ?? event.headers
                     .value(forHTTPHeaderField: "X-Anky-Tags")
                     .flatMap(Self.tags)
@@ -85,8 +80,7 @@ struct MirrorClient {
                     hash: hash,
                     title: Self.title(fromMarkdown: reflection),
                     reflection: reflection,
-                    tags: tags,
-                    creditsRemaining: creditsRemaining
+                    tags: tags
                 )
             case "error":
                 throw MirrorClientError.server(Self.errorPayload(fromSSEPayload: payload))
@@ -125,7 +119,6 @@ struct MirrorClient {
     private func makeRequest(
         bytes: Data,
         identity: WriterIdentity,
-        trialProof: String?,
         appVersion: String?,
         intent: Intent
     ) throws -> URLRequest {
@@ -145,9 +138,6 @@ struct MirrorClient {
         if let appVersion {
             request.setValue(appVersion, forHTTPHeaderField: "X-Anky-App-Version")
         }
-        if let trialProof {
-            request.setValue(trialProof, forHTTPHeaderField: "X-Anky-Trial-Proof")
-        }
         return request
     }
 
@@ -157,10 +147,6 @@ struct MirrorClient {
             data.append(contentsOf: [byte])
         }
         return data
-    }
-
-    private static func creditsRemaining(_ value: String) -> Int? {
-        value == "null" ? nil : Int(value)
     }
 
     private static func tags(_ value: String) -> [String]? {
@@ -213,7 +199,6 @@ struct MirrorResponsePayload: Codable, Equatable {
     let title: String
     let reflection: String
     let tags: [String]
-    let creditsRemaining: Int?
 }
 
 struct MirrorServerErrorPayload: Equatable {
@@ -225,15 +210,12 @@ struct MirrorServerErrorPayload: Equatable {
         message: "Anky could not return a reflection right now."
     )
 
-    var isTrialAlreadyClaimed: Bool {
-        code == "TRIAL_ALREADY_CLAIMED"
-    }
-
-    var isCreditDenied: Bool {
-        // ENTITLEMENT_REQUIRED is phase-3's boundary answer. Free clients
-        // never ask, so this is the defensive mapping for stale state: it
-        // reads as the veil, never as an error.
-        code == "INSUFFICIENT_CREDITS" || code == "ENTITLEMENT_REQUIRED" || isTrialAlreadyClaimed
+    var isEntitlementDenied: Bool {
+        // ENTITLEMENT_REQUIRED is the boundary's only denial for a
+        // non-entitled account. Free clients never ask, so this is the
+        // defensive mapping for stale state: it reads as the veil, never
+        // as an error.
+        code == "ENTITLEMENT_REQUIRED"
     }
 }
 

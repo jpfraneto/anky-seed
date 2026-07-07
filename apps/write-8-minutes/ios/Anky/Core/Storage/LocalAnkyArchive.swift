@@ -56,6 +56,17 @@ struct LocalAnkyArchive {
         return artifact
     }
 
+    static func reopenableDraftText(from sealedText: String) -> String {
+        var lines = sealedText.components(separatedBy: .newlines)
+        while lines.last?.isEmpty == true {
+            lines.removeLast()
+        }
+        if lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) == "\(AnkyDuration.terminalSilenceMs)" {
+            lines.removeLast()
+        }
+        return lines.joined(separator: "\n")
+    }
+
     func importArtifact(_ ankyText: String) throws -> SavedAnky {
         for candidate in Self.importCandidates(from: ankyText) {
             let validation = AnkyValidator.validate(candidate)

@@ -36,6 +36,7 @@ struct UnveilCeremonyView: View {
     @State private var glowOvershoot: Double = 0
     @State private var contentOpacity: Double = 1
     @State private var theme = LevelTheme.fallback
+    @State private var generationExcerpts: [String] = []
 
     var body: some View {
         GeometryReader { geometry in
@@ -48,7 +49,7 @@ struct UnveilCeremonyView: View {
                     .opacity(darkness)
 
                 if beat == .waitingForGlimpse {
-                    WatercolorVeilView(message: "anky is painting…", register: .aubergine)
+                    PaintingGenerationWaitView(excerpts: generationExcerpts)
                         .transition(.opacity)
                 }
 
@@ -151,6 +152,7 @@ struct UnveilCeremonyView: View {
         completedAssets = packages.completed.flatMap(PaintingRevealAssets.init)
         completedTitle = packages.completed?.title ?? ""
         glimpseAssets = packages.glimpse.flatMap(PaintingRevealAssets.init)
+        generationExcerpts = coordinator.paintingGenerationExcerpts()
         theme = LevelTheme(package: packages.glimpse ?? packages.completed)
 
         // 1. The final strokes land. The painting view is inserted in this
@@ -257,5 +259,60 @@ struct UnveilCeremonyView: View {
 
     private func after(_ seconds: Double, _ action: @escaping () -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: action)
+    }
+}
+
+private struct PaintingGenerationWaitView: View {
+    let excerpts: [String]
+
+    var body: some View {
+        ZStack {
+            WatercolorVeilView(register: .aubergine)
+
+            VStack(spacing: 18) {
+                Spacer(minLength: 0)
+
+                Text("Anky is painting...")
+                    .font(.system(size: 17, weight: .medium, design: .serif))
+                    .foregroundStyle(Color.ankyGoldLight)
+
+                if !excerpts.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("from your writing")
+                            .font(.system(size: 11, weight: .semibold, design: .serif))
+                            .textCase(.uppercase)
+                            .tracking(2.8)
+                            .foregroundStyle(Color.ankyGold.opacity(0.78))
+
+                        VStack(spacing: 10) {
+                            ForEach(Array(excerpts.prefix(3).enumerated()), id: \.offset) { index, excerpt in
+                                Text("“\(excerpt)”")
+                                    .font(.system(size: index == 0 ? 17 : 15, weight: .regular, design: .serif))
+                                    .foregroundStyle(Color.ankyPaperDeep.opacity(index == 0 ? 0.92 : 0.72))
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(4)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.horizontal, 22)
+                                    .padding(.vertical, index == 0 ? 15 : 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(Color.ankyInk.opacity(index == 0 ? 0.18 : 0.10))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                    .strokeBorder(Color.ankyGold.opacity(index == 0 ? 0.28 : 0.16), lineWidth: 0.6)
+                                            )
+                                    )
+                            }
+                        }
+                    }
+                    .frame(maxWidth: 360)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 56)
+        }
+        .allowsHitTesting(false)
     }
 }

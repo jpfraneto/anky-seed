@@ -1,11 +1,11 @@
 import Foundation
-import StoreKit
+import RevenueCat
 #if canImport(ActivityKit)
 import ActivityKit
 
 /// Phase-2 §5: starts the lock-screen trial presence for writers who have
 /// completed at least one session and not subscribed. Honesty rules:
-/// real StoreKit price or nothing, start at most once per rolling week,
+/// real store price or nothing, start at most once per rolling week,
 /// end the moment they subscribe, and a dismissal counts as an answer.
 @available(iOS 16.1, *)
 enum TrialActivityController {
@@ -21,7 +21,7 @@ enum TrialActivityController {
         }
         guard !SessionIndexStore().load().isEmpty else { return }
         // Real values or no surface at all.
-        guard let product = entitlements.yearlyProduct else { return }
+        guard let product = entitlements.yearlyPackage?.storeProduct else { return }
         guard Activity<TrialActivityAttributes>.activities.isEmpty else { return }
         if let last = UserDefaults.standard.object(forKey: lastStartedAtKey) as? Date,
            Date().timeIntervalSince(last) < weekSeconds {
@@ -33,15 +33,15 @@ enum TrialActivityController {
         guard !PaywallPressureLedger.isWithinQuietWindow() else { return }
 
         let trialLine: String
-        if let offer = product.subscription?.introductoryOffer,
+        if let offer = product.introductoryDiscount,
            offer.paymentMode == .freeTrial,
-           let trialDays = Self.days(of: offer.period) {
+           let trialDays = Self.days(of: offer.subscriptionPeriod) {
             trialLine = AnkyCopyRegistry.trialSurfaceTrialLine(
                 days: trialDays,
-                price: product.displayPrice
+                price: product.localizedPriceString
             )
         } else {
-            trialLine = AnkyCopyRegistry.trialSurfacePriceLine(price: product.displayPrice)
+            trialLine = AnkyCopyRegistry.trialSurfacePriceLine(price: product.localizedPriceString)
         }
         let attributes = TrialActivityAttributes(
             headline: AnkyCopyRegistry.trialSurfaceHeadline,
@@ -56,7 +56,7 @@ enum TrialActivityController {
         UserDefaults.standard.set(Date(), forKey: lastStartedAtKey)
     }
 
-    private static func days(of period: Product.SubscriptionPeriod) -> Int? {
+    private static func days(of period: RevenueCat.SubscriptionPeriod) -> Int? {
         switch period.unit {
         case .day: return period.value
         case .week: return period.value * 7

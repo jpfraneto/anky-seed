@@ -44,6 +44,7 @@ struct AnkyOnboardingView: View {
     @State private var avatarImage: UIImage? = AvatarStore().loadImage()
 
     private static let dawnStartScreen = 6
+    private static let targetScreenIndex = 8
     private static let paywallScreenIndex = 10
     private static let screenCount = 11
 
@@ -61,10 +62,10 @@ struct AnkyOnboardingView: View {
                 Group {
                     switch screen {
                     case 1: problemScreen
-                    case 2: hoursScreen
-                    case 3: mathScreen
-                    case 4: solutionScreen
-                    case 5: mechanismScreen
+                    case 2: solutionScreen
+                    case 3: mechanismScreen
+                    case 4: hoursScreen
+                    case 5: mathScreen
                     case 6: meetAnkyScreen
                     case 7: nameScreen
                     case 8: targetScreen
@@ -86,13 +87,14 @@ struct AnkyOnboardingView: View {
             .animation(.easeOut(duration: 0.25), value: keyboardHeight)
         }
         .ignoresSafeArea()
+        .simultaneousGesture(onboardingSwipeGesture)
         .animation(.easeInOut(duration: 0.35), value: screen)
         .onAppear {
             OnboardingFlowProgress.mark(screen)
         }
         .onChange(of: screen) { newScreen in
             OnboardingFlowProgress.mark(newScreen)
-            if newScreen == 3 {
+            if newScreen == 5 {
                 revealMathBeats()
             }
         }
@@ -160,17 +162,57 @@ struct AnkyOnboardingView: View {
     // MARK: - Screen 1 · The problem
 
     private var problemScreen: some View {
-        VStack(spacing: 14) {
-            nightTitle("The feed gets your first thought.")
-            nightBody("Every morning, someone else decides what you think about.")
+        VStack(spacing: 13) {
+            onboardingImage("onboarding-1")
+            nightTitle("The world is thinking for you.")
+            nightBody("Every morning, someone else decides what will shape your day.")
             nightCTA("I know.") { advance() }
         }
     }
 
-    // MARK: - Screen 2 · Make it personal
+    // MARK: - Screen 2 · The solution
+
+    private var solutionScreen: some View {
+        VStack(spacing: 13) {
+            onboardingImage("onboarding-2")
+            nightTitle("Anky puts a door before the noise.")
+            nightBody("Your apps stay locked until you've heard from yourself first.")
+            nightCTA("How does it work?") { advance() }
+        }
+    }
+
+    // MARK: - Screen 3 · The mechanism
+
+    private var mechanismScreen: some View {
+        VStack(spacing: 13) {
+            onboardingImage("onboarding-3")
+            nightTitle("Write before you scroll.")
+            VStack(spacing: 8) {
+                nightBody("One sentence opens your apps for 15 minutes.")
+                nightBody("Your daily writing opens them for the rest of the day.")
+            }
+            nightCTA("Show me the cost.") { advance() }
+        }
+    }
+
+    private func onboardingImage(_ name: String, maxWidth: CGFloat = 400, height: CGFloat = 480) -> some View {
+        Image(name)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: maxWidth)
+            .frame(height: height)
+            .shadow(color: Color.ankyGold.opacity(0.16), radius: 18, y: 8)
+            .offset(y: -20)
+            .padding(.bottom, -20)
+            .padding(.bottom, 4)
+            .accessibilityHidden(true)
+    }
+
+    // MARK: - Screen 4 · Make it personal
 
     private var hoursScreen: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
+            onboardingImage("onboarding-4", maxWidth: 368, height: 336)
             nightTitle("How many hours a day are you on your phone?")
             nightBody("Be honest.")
 
@@ -201,10 +243,12 @@ struct AnkyOnboardingView: View {
         }
     }
 
-    // MARK: - Screen 3 · The visceral math
+    // MARK: - Screen 5 · The visceral math
 
     private var mathScreen: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
+            onboardingImage("onboarding-5", maxWidth: 344, height: 304)
+
             VStack(spacing: 6) {
                 Text(AnkyLocalization.ui("That's \(wakingYears) years"))
                     .font(.system(size: 52, weight: .medium, design: .serif))
@@ -217,7 +261,7 @@ struct AnkyOnboardingView: View {
             .opacity(mathBeatOneVisible ? 1 : 0)
             .offset(y: mathBeatOneVisible ? 0 : 10)
 
-            Text(AnkyLocalization.ui("8 minutes of writing a day is two novels' worth of yourself, every year."))
+            Text(AnkyLocalization.ui("What if you used a small part of that to connect with yourself first?"))
                 .font(.system(size: 21, weight: .medium, design: .serif))
                 .foregroundStyle(Color.ankyUmber)
                 .multilineTextAlignment(.center)
@@ -245,29 +289,6 @@ struct AnkyOnboardingView: View {
         withAnimation(.easeOut(duration: 0.6).delay(0.15)) { mathBeatOneVisible = true }
         withAnimation(.easeOut(duration: 0.6).delay(0.95)) { mathBeatTwoVisible = true }
         withAnimation(.easeOut(duration: 0.5).delay(1.7)) { mathCTAVisible = true }
-    }
-
-    // MARK: - Screen 4 · The solution
-
-    private var solutionScreen: some View {
-        VStack(spacing: 14) {
-            nightTitle("Anky puts a door before the noise.")
-            nightBody("Your feeds stay locked until you've heard from yourself first.")
-            nightCTA("How does it work?") { advance() }
-        }
-    }
-
-    // MARK: - Screen 5 · The mechanism
-
-    private var mechanismScreen: some View {
-        VStack(spacing: 14) {
-            nightTitle("Write before you scroll.")
-            VStack(spacing: 8) {
-                nightBody("One sentence opens your apps for 15 minutes — three times a day.")
-                nightBody("Your daily writing opens them until midnight.")
-            }
-            nightCTA("Deal.") { advance() }
-        }
     }
 
     // MARK: - Screen 6 · Meet Anky (dawn)
@@ -308,7 +329,13 @@ struct AnkyOnboardingView: View {
             }
 
             VeilCard {
-                TextField(AnkyLocalization.ui("your name"), text: $writerName)
+                TextField(
+                    text: $writerName,
+                    prompt: Text(AnkyLocalization.ui("Your name"))
+                        .foregroundColor(Color.ankyInkSoft.opacity(0.72))
+                ) {
+                    EmptyView()
+                }
                     .font(.ankyProse)
                     .foregroundStyle(Color.ankyInk)
                     .textInputAutocapitalization(.words)
@@ -326,6 +353,7 @@ struct AnkyOnboardingView: View {
 
             Button {
                 writerName = ""
+                AnkyHaptics.light()
                 advance()
             } label: {
                 Text(AnkyLocalization.ui("later"))
@@ -386,7 +414,7 @@ struct AnkyOnboardingView: View {
         VStack(spacing: 18) {
             AnkySpriteView(sequence: .seated, size: 110)
 
-            Text(AnkyLocalization.ui("What's your target writing for each day?"))
+            Text(AnkyLocalization.ui("Choose a daily writing target."))
                 .font(.ankyTitle)
                 .foregroundStyle(Color.ankyInk)
                 .multilineTextAlignment(.center)
@@ -432,7 +460,7 @@ struct AnkyOnboardingView: View {
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
 
-            dawnCTA("That's our time.") {
+            dawnCTA("Commit to \(targetMinutes.formatted(.number.precision(.fractionLength(0)))) minutes a day.") {
                 let chosenMinutes = Int(targetMinutes)
                 DailyTargetStore().setInitialTarget(chosenMinutes)
                 WriteBeforeScrollEventLogStore().append(
@@ -565,7 +593,50 @@ struct AnkyOnboardingView: View {
 
     // MARK: - Shared pieces
 
-    private func advance(haptic: Bool = true) {
+    private var onboardingSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 36, coordinateSpace: .local)
+            .onEnded { value in
+                guard screen != Self.targetScreenIndex else {
+                    return
+                }
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) > 70, abs(horizontal) > abs(vertical) * 1.35 else {
+                    return
+                }
+                if horizontal < 0 {
+                    advanceFromSwipe()
+                } else {
+                    retreatFromSwipe()
+                }
+            }
+    }
+
+    private func advanceFromSwipe() {
+        guard screen < Self.screenCount else {
+            return
+        }
+        guard screen != Self.paywallScreenIndex else {
+            return
+        }
+        advance(haptic: true)
+    }
+
+    private func retreatFromSwipe() {
+        var previous = screen - 1
+        if previous == Self.paywallScreenIndex && entitlements.isEntitledForGating {
+            previous -= 1
+        }
+        guard previous >= 1 else {
+            return
+        }
+        AnkyHaptics.light()
+        withAnimation(.easeInOut(duration: 0.35)) {
+            screen = previous
+        }
+    }
+
+    private func advance(haptic: Bool = false) {
         if haptic {
             AnkyHaptics.light()
         }
@@ -610,7 +681,10 @@ struct AnkyOnboardingView: View {
     /// Pre-dawn CTA: the golden thread as a thin outline on parchment —
     /// at dawn (ThreadButtonStyle) it fills with light.
     private func nightCTA(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            AnkyHaptics.light()
+            action()
+        } label: {
             Text(AnkyLocalization.ui(title))
                 .font(.system(size: 20, weight: .semibold, design: .serif))
                 .foregroundStyle(Color.ankyInk)
@@ -641,7 +715,10 @@ struct AnkyOnboardingView: View {
     }
 
     private func dawnCTA(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            AnkyHaptics.light()
+            action()
+        } label: {
             Text(AnkyLocalization.ui(title))
                 .frame(maxWidth: .infinity)
         }
@@ -694,27 +771,27 @@ private struct OnboardingJourneyDay {
             return secondPerson
         }
         return [
-            .init(day: 1, line: "\(name) writes before opening Instagram for the first time. Something feels new.", isMilestone: true),
-            .init(day: 2, line: "\(name) shows up again. Anky reads the words and writes back — the first reflection.", isMilestone: false),
-            .init(day: 3, line: "One session opens the whole day. \(name) is inside the feed less, and watching it more.", isMilestone: true),
-            .init(day: 4, line: "\(name) rereads day one and hears a voice that is close — but no longer the one doing the scrolling.", isMilestone: false),
-            .init(day: 5, line: "The morning belongs to \(name) now. The feed waits at the door.", isMilestone: false),
-            .init(day: 6, line: "Anky's reflections start to sound like someone who has been listening all along.", isMilestone: false),
-            .init(day: 7, line: "\(name) writes past the target. Not for the unlock — to see what's further in.", isMilestone: true),
-            .init(day: 8, line: "The gate is \(name)'s. Between \(name) and the noise there is now a small, honest distance.", isMilestone: true)
+            .init(day: 1, line: "\(name) picks the apps you want Anky to guard.", isMilestone: true),
+            .init(day: 2, line: "When you try to open one, you write what is on your mind first. Your target is \(DailyTargetStore.defaultMinutes) minutes.", isMilestone: false),
+            .init(day: 3, line: "The first block may feel annoying. Good. You found the hook.", isMilestone: true),
+            .init(day: 4, line: "You write about that. Or whatever you want. You feel something new.", isMilestone: false),
+            .init(day: 5, line: "Anky reflects something back. Not advice — a mirror.", isMilestone: false),
+            .init(day: 6, line: "The feed is still there. But there was a pause before it. You discover you were there.", isMilestone: false),
+            .init(day: 7, line: "Some days you enter anyway. Some days you do not need to.", isMilestone: true),
+            .init(day: 8, line: "The gate becomes yours. Anky was only holding it until you could feel the choice.", isMilestone: true)
         ]
     }
 
     /// Fallback when no name was given.
     private static let secondPerson: [OnboardingJourneyDay] = [
-        .init(day: 1, line: "You write before opening Instagram for the first time. Something feels new.", isMilestone: true),
-        .init(day: 2, line: "You show up again. Anky reads your words and writes back — your first reflection.", isMilestone: false),
-        .init(day: 3, line: "One session opens the whole day. You're inside the feed less, and watching it more.", isMilestone: true),
-        .init(day: 4, line: "You reread day one and hear a voice that is close — but no longer the one doing the scrolling.", isMilestone: false),
-        .init(day: 5, line: "The morning is yours now. The feed waits at the door.", isMilestone: false),
-        .init(day: 6, line: "Anky's reflections start to sound like someone who has been listening all along.", isMilestone: false),
-        .init(day: 7, line: "You write past your target. Not for the unlock — to see what's further in.", isMilestone: true),
-        .init(day: 8, line: "The gate is yours. Between you and the noise there is now a small, honest distance.", isMilestone: true)
+        .init(day: 1, line: "You pick the apps you want Anky to guard.", isMilestone: true),
+        .init(day: 2, line: "When you try to open one, you write what is on your mind first. Your target is \(DailyTargetStore.defaultMinutes) minutes.", isMilestone: false),
+        .init(day: 3, line: "The first block may feel annoying. Good. You found the hook.", isMilestone: true),
+        .init(day: 4, line: "Instead of pushing through, you write what is happening. You feel something new.", isMilestone: false),
+        .init(day: 5, line: "Anky reflects something back. Not advice — a mirror.", isMilestone: false),
+        .init(day: 6, line: "The feed is still there. But now there is a pause before it.", isMilestone: false),
+        .init(day: 7, line: "Some days you enter anyway. Some days you do not need to.", isMilestone: true),
+        .init(day: 8, line: "The gate becomes yours. Anky was only holding it until you could feel the choice.", isMilestone: true)
     ]
 }
 
@@ -804,33 +881,31 @@ struct DayOneThresholdOverlay: View {
             Color.ankyPaper.opacity(0.55)
                 .ignoresSafeArea()
 
-            // Keyboard-aware: the writing surface beneath already has the
-            // keyboard rising — the CTA must never hide behind it.
-            KeyboardAwareContainer {
-                VStack(spacing: 20) {
-                    AnkySunGlyph(size: 44, color: .ankyGold)
+            VStack(spacing: 20) {
+                AnkySunGlyph(size: 44, color: .ankyGold)
 
-                    Text(AnkyLocalization.ui("Day 1."))
-                        .font(.system(size: 44, weight: .medium, design: .serif))
-                        .foregroundStyle(Color.ankyInk)
+                Text(AnkyLocalization.ui("Day 1."))
+                    .font(.system(size: 44, weight: .medium, design: .serif))
+                    .foregroundStyle(Color.ankyInk)
 
-                    Text(AnkyLocalization.ui("Write with me."))
-                        .font(.ankyHeading)
-                        .foregroundStyle(Color.ankyInkSoft)
+                Text(AnkyLocalization.ui("Write whatever is in your mind."))
+                    .font(.ankyHeading)
+                    .foregroundStyle(Color.ankyInkSoft)
 
-                    Button {
-                        AnkyHaptics.success()
-                        AnkyHaptics.medium()
-                        onStartWriting()
-                    } label: {
-                        Text(AnkyLocalization.ui("Start writing"))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(ThreadButtonStyle())
-                    .padding(.top, 10)
+                Button {
+                    AnkyHaptics.success()
+                    AnkyHaptics.medium()
+                    onStartWriting()
+                } label: {
+                    Text(AnkyLocalization.ui("Start writing"))
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 44)
+                .buttonStyle(ThreadButtonStyle())
+                .padding(.top, 10)
             }
+            .padding(.horizontal, 44)
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .onAppear {
             OnboardingFlowProgress.mark(13)

@@ -139,29 +139,30 @@ struct LevelSyncClient {
         try Self.ensureSuccess(response)
     }
 
-    // MARK: Phase-3 — subscription truth and the funnel
+    // MARK: Subscription truth and the funnel
 
-    /// The server's answer after a subscription sync: its cached entitlement.
+    /// The server's answer after an identify: its webhook-maintained
+    /// entitlement for this wallet. `expiresAtMs` nil is a valid entitled
+    /// state (open-ended promotional or lifetime grants).
     struct SubscriptionServerState: Codable, Equatable {
         let entitled: Bool
         let productId: String?
         let expiresAtMs: Int64?
-        let isTrial: Bool
+        let store: String?
+        let periodType: String?
     }
 
-    /// Pushes the current StoreKit 2 entitlement JWS to the mirror so every
-    /// gated endpoint can check it server-side. The EIP-712 headers bind the
-    /// wallet; Apple's signature inside the JWS binds the receipt.
+    /// Tells the mirror that this wallet is the RevenueCat appUserID. The
+    /// EIP-712 headers prove the wallet; RevenueCat webhooks carry the
+    /// entitlement truth server-side. The server rejects any attempt to
+    /// attach a different appUserID to the authenticated account.
     @discardableResult
-    func syncSubscription(
-        signedTransaction: String,
-        identity: WriterIdentity
-    ) async throws -> SubscriptionServerState {
-        struct SyncBody: Encodable {
-            let signedTransaction: String
+    func identifySubscription(identity: WriterIdentity) async throws -> SubscriptionServerState {
+        struct IdentifyBody: Encodable {
+            let appUserId: String
         }
-        let body = try JSONEncoder().encode(SyncBody(signedTransaction: signedTransaction))
-        var request = try signedRequest(path: "subscription/sync", body: body, identity: identity)
+        let body = try JSONEncoder().encode(IdentifyBody(appUserId: identity.address))
+        var request = try signedRequest(path: "subscription/identify", body: body, identity: identity)
         request.httpMethod = "POST"
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -1,4 +1,4 @@
-Anky, Inc. - Efectivo a partir del 7 de junio de 2026
+Anky, Inc. - Efectivo a partir del 6 de julio de 2026
 
 > La versión corta: Anky es local primero. Su escritura permanece en su dispositivo a menos que elija exportarla, hacer una copia de seguridad, comunicarse con el soporte técnico o pedirle a Anky una reflexión. Cuando solicita un reflejo, su escritura se envía al servicio espejo de Anky y a los proveedores de AI para que se pueda generar un reflejo. Utilizamos proveedores que no almacenan sus escritos. No vendemos sus datos, no los utilizamos para publicidad ni utilizamos sus escritos para entrenar nuestros propios modelos.
 
@@ -31,7 +31,7 @@ Los siguientes datos se almacenan localmente en su dispositivo a menos que elija
 - Configuración de recordatorio diario
 - Información de acceso local Anky
 - Material de recuperación privado almacenado en un dispositivo de almacenamiento seguro
-- Caché de saldo de crédito local
+- Caché local de derechos de suscripción
 - Archivos locales de exportación/importación que usted cree
 
 Escribir, guardar, revelar, copiar, explorar mapas y ver el historial local no requiere enviar su escritura al servidor de Anky.
@@ -52,27 +52,25 @@ El servicio espejo:
 - Envía la escritura reconstruida y el mensaje a los proveedores de servicios AI
 - Recibe el reflejo o empujón generado
 - Devuelve el resultado a tu dispositivo
-- Comprueba los créditos de reflexiones y gasta un crédito de reflexión después de una reflexión exitosa.
+- Comprueba que una suscripción o prueba activa cubra la reflexión
 
 El reflejo devuelto se almacena localmente en su dispositivo.
 
-### Compras y créditos
+### Compras y suscripciones
 
-Si compras créditos de reflexión, Apple procesa las compras y las gestiona a través de RevenueCat. No recibimos ni almacenamos su número de tarjeta de crédito.
+Si te suscribes a Anky, Apple procesa las compras y se gestionan a través de RevenueCat. No recibimos ni almacenamos su número de tarjeta de crédito.
 
-Anky utiliza registros relacionados con compras, saldos de crédito, identificadores de productos, información de derechos, identificadores de usuarios de aplicaciones, estados de transacciones y metadatos relacionados de Apple y RevenueCat para otorgar y administrar créditos de reflexión.
+Anky ofrece una suscripción anual con renovación automática ($88 USD/año, con una prueba gratuita de 3 días para nuevos suscriptores) y una suscripción mensual ($11.99 USD/mes). Las suscripciones se renuevan automáticamente hasta que las cancele en la configuración de suscripciones de su App Store; la prueba gratuita anual se convierte en una suscripción de pago cuando termina, a menos que se cancele al menos 24 horas antes.
+
+Anky utiliza registros relacionados con compras, identificadores de productos, información de derechos, identificadores de usuarios de aplicaciones, estados de transacciones y metadatos relacionados de Apple y RevenueCat para reconocer y administrar su suscripción.
 
 ### Acceso local y seguridad de solicitudes.
 
-Anky crea un perfil local privado para su dispositivo. Las solicitudes de reflexión y empujón incluyen metadatos de verificación limitados para que el servicio espejo pueda aceptar la solicitud, evitar abusos y devolver créditos al perfil correcto.
+Anky crea un perfil local privado para su dispositivo. Las solicitudes de reflexión y empujón incluyen metadatos de verificación limitados para que el servicio espejo pueda aceptar la solicitud, evitar abusos y atribuirla al perfil correcto.
 
-Las operaciones de crédito identifican a su cliente RevenueCat con su perfil Anky para que los créditos puedan cargarse, comprarse y gastarse correctamente.
+Las comprobaciones de suscripción identifican su registro de cliente RevenueCat con su perfil Anky para que el servicio espejo reconozca su suscripción.
 
 Su material de recuperación privado no se envía a Anky.
-
-### Prueba de dispositivos y prevención de abusos
-
-Para pruebas gratuitas, prevención de abuso, prevención de fraude y seguridad de solicitudes, la aplicación solicita un token a Apple DeviceCheck cuando se admite DeviceCheck. Las solicitudes de reflexión y empujón envían ese token al servicio espejo como prueba de prueba. El servicio espejo también utiliza marcas de tiempo, hashes, versión de la aplicación, plataforma/cliente e intención de solicitud.
 
 ### iCloud, Keychain, copia de seguridad, exportación e importación
 
@@ -108,8 +106,8 @@ Anky no utiliza su escritura para entrenar modelos AI propiedad de Anky.
 
 Anky utiliza los siguientes servicios de terceros para las funciones de la aplicación descritas en esta política:
 
-- ** Apple **- Compras App Store, reembolsos, servicios de dispositivos, iCloud, iCloud Keychain, copia de seguridad de dispositivos, DeviceCheck, notificaciones y servicios de plataforma.
-- ** RevenueCat **: gestión de compras, saldos de crédito, derechos y registros relacionados con transacciones.
+- ** Apple **- Compras App Store, reembolsos, servicios de dispositivos, iCloud, iCloud Keychain, copia de seguridad de dispositivos, notificaciones y servicios de plataforma.
+- ** RevenueCat **: gestión de compras, derechos de suscripción y registros relacionados con transacciones.
 - ** OpenRouter **: enrutamiento de solicitudes de reflexión a proveedores de modelos AI.
 - ** AI model providers **: genera reflexiones a partir del texto que eliges enviar.
 - ** Cloud hosting / infrastructure providers **: operación del servicio espejo, registros, seguridad y confiabilidad de Anky.
@@ -136,38 +134,36 @@ Para operar Anky, recopilamos y procesamos metadatos limitados, como:
 - Solicitar hashes
 - Versión de la aplicación
 - Plataforma
-- Saldo de crédito y registros de transacciones de crédito
+- Estado de derechos de suscripción y registros de transacciones
 - Comprar identificadores de productos
 - Estados de error
 - Metadatos de uso del proveedor
 - Señales de seguridad y prevención de abusos
 - Metadatos de solicitud de soporte
 
-Usamos estos datos para proporcionar reflexiones, administrar créditos, prevenir abusos, depurar problemas, responder al soporte, cumplir con la ley y operar el servicio.
+Usamos estos datos para proporcionar reflexiones, administrar suscripciones, prevenir abusos, depurar problemas, responder al soporte, cumplir con la ley y operar el servicio.
 
 ## 9. Pagos
 
 Apple maneja los pagos a través de App Store y los administra con RevenueCat.
 
+Los planes de Anky son suscripciones con renovación automática ($88 USD/año con una prueba gratuita de 3 días, u $11.99 USD/mes). Se renuevan hasta que las cancele en la configuración de suscripciones de su App Store; cancele al menos 24 horas antes de que termine el período actual para evitar el siguiente cargo.
+
 No recibimos los datos completos de su tarjeta de pago.
 
 Los reembolsos, las disputas de facturación y el historial de compras se manejan de acuerdo con las políticas de Apple.
 
-## 10. Fichas y referencias públicas
-
-Anky puede mostrar token o información de referencia pública cuando esas funciones estén disponibles.
+## 10. Palabras de recuperación
 
 Su material de recuperación privado permanece en su dispositivo a menos que lo exporte, lo revele, haga una copia de seguridad o lo comparta de otro modo.
 
-Nunca compartas tus palabras de recuperación. Si los pierde, Anky no podrá restaurar el acceso sin una copia de seguridad que usted controle.
-
-Parte de la información sobre tokens, transacciones y referencia pública puede ser pública por naturaleza. Anky no puede eliminar información escrita en redes públicas.
+Nunca compartas tus palabras de recuperación. Si las pierde, Anky no podrá restaurar el acceso sin una copia de seguridad que usted controle.
 
 ## 11. Retención de datos
 
 Los datos locales permanecen en su dispositivo hasta que los elimine, elimine la aplicación, restablezca la aplicación o elimine las copias de seguridad.
 
-Los metadatos operativos relacionados con Reflection se conservan durante el tiempo necesario para operar el servicio, administrar créditos, prevenir fraudes o abusos, cumplir con obligaciones legales, resolver disputas y mantener la seguridad.
+Los metadatos operativos relacionados con Reflection se conservan durante el tiempo necesario para operar el servicio, administrar suscripciones, prevenir fraudes o abusos, cumplir con obligaciones legales, resolver disputas y mantener la seguridad.
 
 Apple, RevenueCat y Anky conservan los registros de compras según sea necesario para fines de facturación, contabilidad, prevención de fraude, impuestos, legales y de soporte.
 
@@ -184,7 +180,7 @@ Eliminar la aplicación no elimina los datos fuera de la aplicación, incluidos:
 - Registros de compra App Store
 - Registros de compra RevenueCat
 - Correos electrónicos de soporte que enviaste
-- Metadatos de backend necesarios para seguridad, contabilidad crediticia, prevención de fraude, cumplimiento legal o resolución de disputas.
+- Metadatos de backend necesarios para seguridad, contabilidad de suscripciones, prevención de fraude, cumplimiento legal o resolución de disputas.
 - Datos de la red pública
 
 Para solicitar la eliminación de datos de los controles Anky, comuníquese con **[support@anky.app](mailto:support@anky.app)**.

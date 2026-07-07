@@ -1,4 +1,4 @@
-Anky, Inc. - Effective June 7, 2026
+Anky, Inc. - Effective July 6, 2026
 
 > Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery words, your purchases, and how you use AI-generated reflections.
 
@@ -19,7 +19,7 @@ Anky lets you:
 - Revisit local writing history
 - Export or import writing files
 - Manage private Anky access
-- Buy or use reflection credits
+- Subscribe to the full practice
 - Ask Anky for AI-generated reflections
 - Use related features we provide over time
 
@@ -73,25 +73,23 @@ You are responsible for protecting your recovery words, device passcode, biometr
 
 Never share your recovery words.
 
-If you lose your recovery words, Anky may not be able to restore your credits, profile state, or related data.
+If you lose your recovery words, Anky may not be able to restore your profile state, subscription linkage, or related data.
 
 Anky is not responsible for losses caused by lost recovery words, compromised devices, shared credentials, or unauthorized access to your device or accounts.
 
-## 8. Purchases, Credits, and Refunds
+## 8. Purchases, Subscriptions, and Refunds
 
-Writing in Anky is free.
+Everything you have written always stays readable on your device, subscribed or not.
 
-Reflections may require credits.
+The full practice — the gate, Anky's reflections, the paintings past the free boundary, and the daily unlock — requires an auto-renewing subscription (see Section 10).
 
-Credits are digital app credits used only inside Anky for reflection requests. Credits are not money, not cryptocurrency, not stored value, not withdrawable, not redeemable for cash, and not transferable unless we explicitly say otherwise.
-
-Purchases are processed through Apple's App Store and may be managed by RevenueCat.
+Purchases are processed through Apple's App Store and managed with RevenueCat.
 
 We do not handle or store your full payment card details.
 
 Refunds are handled by Apple according to Apple's policies.
 
-We may change pricing, credit packs, free trials, or credit rules at any time, subject to applicable law and App Store rules.
+We may change pricing or plans at any time, subject to applicable law and App Store rules. Price changes never apply retroactively to a period you already paid for.
 
 ## 9. AI-Generated Reflections
 
@@ -111,19 +109,24 @@ You remain responsible for interpreting and using any reflection.
 
 Anky, Inc. is not responsible for decisions you make based on AI-generated content.
 
-## 10. Token References
+## 10. Auto-Renewing Subscriptions
 
-Anky may display token references, public references, or related information.
+Anky offers two subscription plans:
 
-These references are informational only.
+- **Yearly** — $88 USD per year, with a 3-day free trial for new subscribers.
+- **Monthly** — $11.99 USD per month, with no free trial.
 
-Nothing in Anky is financial advice, investment advice, tax advice, legal advice, or an offer to buy or sell any token, security, or asset.
+Prices may vary by country; the App Store shows the exact price in your currency before you confirm.
 
-Using Anky does not require buying, holding, or trading any token.
+Unless cancelled, subscriptions renew automatically at the end of each period, and the yearly free trial converts to a paid yearly subscription when the trial ends.
 
-Public-network transactions may be public, irreversible, volatile, risky, and outside Anky's control.
+Payment is charged to your Apple ID account. Your account is charged for renewal within 24 hours before the end of the current period.
 
-You are responsible for your own purchases, transactions, taxes, and financial decisions.
+You can cancel anytime in your device's App Store subscription settings (Settings → your name → Subscriptions). To avoid a charge, cancel at least 24 hours before the trial or current period ends. Cancelling stops future renewals; access continues until the end of the period already paid for (or the trial).
+
+You can restore previous purchases on any device signed into the same Apple ID with "Restore Purchases" in Anky.
+
+Deleting the app does not cancel a subscription.
 
 ## 11. User Conduct
 
@@ -132,7 +135,7 @@ You agree not to:
 - Use Anky if you do not meet the age requirements
 - Use Anky for illegal activity
 - Abuse, attack, disrupt, or overload Anky's systems
-- Circumvent credits, paywalls, trials, app attestation, or security controls
+- Circumvent subscriptions, paywalls, trials, or security controls
 - Reverse engineer, scrape, extract, or publish Anky's private prompts, model instructions, or backend systems
 - Use bots, scripts, or automation to abuse the app
 - Attempt to access another person's data, recovery words, private access, or account
@@ -174,7 +177,7 @@ Apple is not responsible for Anky, its content, support, warranties, or claims, 
 
 Anky may be unavailable, delayed, interrupted, inaccurate, or discontinued.
 
-We do not guarantee that Anky will always work, that reflections will always be available, that credits will always sync instantly, or that local data will never be lost.
+We do not guarantee that Anky will always work, that reflections will always be available, that subscription state will always sync instantly, or that local data will never be lost.
 
 Back up anything important.
 
@@ -196,7 +199,7 @@ YOUR USE OF ANKY IS AT YOUR OWN RISK.
 
 ## 19. Limitation of Liability
 
-TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST CREDITS, LOST TOKENS, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT.
+TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST SUBSCRIPTION TIME, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT.
 
 TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.'S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:
 
@@ -216,7 +219,7 @@ You agree to defend, indemnify, and hold harmless Anky, Inc. and its owners, dir
 - Your violation of law
 - Your violation of another person's rights
 - Your misuse of AI-generated reflections
-- Your token, transaction, or recovery activity
+- Your recovery, backup, or export activity
 
 ## 21. Governing Law
 

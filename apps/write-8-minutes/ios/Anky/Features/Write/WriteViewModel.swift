@@ -38,6 +38,12 @@ final class WriteViewModel: ObservableObject {
     /// True once this session's Quick Pass unlock was applied passively —
     /// no button, no confirmation; the door is already open.
     private(set) var hasAppliedPassiveQuickUnlock = false
+    /// True once this session's daily-target crossing upgraded an active
+    /// Quick Pass window to the full-day unlock.
+    private(set) var hasAppliedPassiveDailyUnlockUpgrade = false
+    /// A free writer crossed their target this session: the sealing flow
+    /// shows the moment screen (decision 2026-07-06, once per day).
+    @Published private(set) var writeBeforeScrollFreeTargetMomentPending = false
     private(set) var isGateOriginatedSession = false
     /// Phase-3: the Daily Unlock belongs to the subscription. Kept fresh by
     /// AppRoot from EntitlementStore; Quick Passes are untouched by this.
@@ -364,7 +370,8 @@ final class WriteViewModel: ObservableObject {
         }
 
         do {
-            let restoredEngine = try WritingSessionEngine(draftText: artifact.text)
+            let draftText = LocalAnkyArchive.reopenableDraftText(from: artifact.text)
+            let restoredEngine = try WritingSessionEngine(draftText: draftText)
             guard !restoredEngine.isClosed else {
                 showPersistentError("This writing session cannot be continued.")
                 return false
@@ -539,11 +546,9 @@ final class WriteViewModel: ObservableObject {
         do {
             let bytes = Data(text.utf8)
             let identity = try identityStore.loadOrCreate()
-            let trialProof = await DeviceCheckTrialProofProvider.makeToken()
             let response = try await MirrorClient(baseURL: baseURL).askAnky(
                 bytes: bytes,
                 identity: identity,
-                trialProof: trialProof,
                 appVersion: AnkyAppVersion.headerValue,
                 intent: .nudge
             )
@@ -568,7 +573,8 @@ final class WriteViewModel: ObservableObject {
                 showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: true)
             } else {
                 let message = (error as? LocalizedError)?.errorDescription ?? "anky could not return a nudge right now."
-                showTransientNudge(Self.nudgeErrorMessage(from: message))
+                let serverPayload = (error as? MirrorClientError)?.serverPayload
+                showTransientNudge(Self.nudgeErrorMessage(from: message, serverPayload: serverPayload))
             }
         }
     }
@@ -697,6 +703,8 @@ final class WriteViewModel: ObservableObject {
         writeBeforeScrollAvailableUnlockGrant = nil
         quickPassUnlockLine = nil
         hasAppliedPassiveQuickUnlock = false
+        hasAppliedPassiveDailyUnlockUpgrade = false
+        writeBeforeScrollFreeTargetMomentPending = false
         isGateOriginatedSession = false
         gateOriginAppDisplayName = nil
         keyboardFocusID = UUID()
@@ -745,23 +753,56 @@ final class WriteViewModel: ObservableObject {
             quickPassesRemaining: passesRemaining,
             dailyUnlockEntitled: dailyUnlockEntitled
         )
-        if let grant = currentGrant, shouldOfferWriteBeforeScrollUnlock(at: now) {
-            let previousTier = writeBeforeScrollAvailableUnlockGrant?.tier
-            writeBeforeScrollAvailableUnlockGrant = grant
-            if previousTier != grant.tier {
-                writeBeforeScrollUnlockAvailabilityHandler?(grant)
-            }
-            applyPassiveQuickUnlockIfNeeded(grant)
-        } else {
+        let action = WriteBeforeScrollUnlockLadder().action(
+            grant: currentGrant,
+            unlockState: writeBeforeScrollUnlockStateStore.load(),
+            isGateOriginatedSession: isGateOriginatedSession,
+            hasAppliedPassiveQuickUnlock: hasAppliedPassiveQuickUnlock,
+            hasAppliedDailyUnlockUpgrade: hasAppliedPassiveDailyUnlockUpgrade,
+            dailyUnlockEntitled: dailyUnlockEntitled,
+            hasReachedDailyTarget: sessionEngine.snapshot.elapsedMs >= dailyTargetMs,
+            hasOfferedFreeTargetMoment: writeBeforeScrollFreeTargetMomentPending
+                || FreeTargetMomentLedger().wasShown(on: now),
+            at: now
+        )
+        switch action {
+        case .offer(let grant):
+            offerWriteBeforeScrollUnlock(grant)
+        case .applyQuickPassively(let grant):
+            offerWriteBeforeScrollUnlock(grant)
+            applyPassiveQuickUnlock(grant)
+        case .upgradeToDaily(let grant):
+            offerWriteBeforeScrollUnlock(grant)
+            applyPassiveDailyUnlockUpgrade(grant)
+        case .offerFreeTargetMoment:
+            // Held for the sealing flow; any pending grant is untouched —
+            // the next keystroke resolves it normally.
+            writeBeforeScrollFreeTargetMomentPending = true
+        case .withdraw:
             writeBeforeScrollAvailableUnlockGrant = nil
         }
     }
 
+    /// Called by the sealing flow the moment the screen actually presents —
+    /// this is what starts the once-per-day clock.
+    func markFreeTargetMomentPresented(at now: Date = Date()) {
+        FreeTargetMomentLedger().markShown(on: now)
+    }
+
+    private func offerWriteBeforeScrollUnlock(_ grant: UnlockGrant) {
+        let previousTier = writeBeforeScrollAvailableUnlockGrant?.tier
+        writeBeforeScrollAvailableUnlockGrant = grant
+        if previousTier != grant.tier {
+            writeBeforeScrollUnlockAvailabilityHandler?(grant)
+        }
+    }
+
     /// §5.4: the moment the sentence completes, the Quick Pass unlock applies
-    /// by itself. Gate-originated sessions get the quiet contextual line;
-    /// organic sessions get nothing at all. The writer may leave immediately.
-    private func applyPassiveQuickUnlockIfNeeded(_ grant: UnlockGrant) {
-        guard grant.tier == .quick, !hasAppliedPassiveQuickUnlock else {
+    /// by itself — no button, no stillness. The ladder only routes here for
+    /// gate-originated sessions; organic sessions never surface or spend a
+    /// pass.
+    private func applyPassiveQuickUnlock(_ grant: UnlockGrant) {
+        guard !hasAppliedPassiveQuickUnlock else {
             return
         }
         hasAppliedPassiveQuickUnlock = true
@@ -771,11 +812,24 @@ final class WriteViewModel: ObservableObject {
         }
     }
 
-    private func refreshWriteBeforeScrollUnlockOffer(at now: Date = Date()) {
-        guard writeBeforeScrollAvailableUnlockGrant != nil else {
+    /// Crossing the daily target while a Quick Pass window is open upgrades
+    /// the writer to the full-day unlock on the spot — the sealing screen
+    /// already promises the day.
+    private func applyPassiveDailyUnlockUpgrade(_ grant: UnlockGrant) {
+        guard !hasAppliedPassiveDailyUnlockUpgrade else {
             return
         }
-        if !shouldOfferWriteBeforeScrollUnlock(at: now) {
+        hasAppliedPassiveDailyUnlockUpgrade = true
+        writeBeforeScrollPassiveUnlockHandler?(grant)
+    }
+
+    private func refreshWriteBeforeScrollUnlockOffer(at now: Date = Date()) {
+        guard let grant = writeBeforeScrollAvailableUnlockGrant else {
+            return
+        }
+        // A held daily grant stays valid while the shield is already open
+        // (the upgrade path); a quick offer is withdrawn once unlocked.
+        if grant.tier == .quick, !shouldOfferWriteBeforeScrollUnlock(at: now) {
             writeBeforeScrollAvailableUnlockGrant = nil
         }
     }
@@ -888,9 +942,9 @@ final class WriteViewModel: ObservableObject {
         return withoutHeading.isEmpty ? "stay with the next true sentence." : withoutHeading
     }
 
-    private static func nudgeErrorMessage(from message: String) -> String {
-        if message.localizedCaseInsensitiveContains("credit") {
-            return AnkyLocalization.ui("that nudge needs one credit.")
+    private static func nudgeErrorMessage(from message: String, serverPayload: MirrorServerErrorPayload? = nil) -> String {
+        if serverPayload?.isEntitlementDenied == true {
+            return AnkyLocalization.ui("nudges open with anky's subscription. the writing is still yours.")
         }
         if message.localizedCaseInsensitiveContains("incomplete") {
             return AnkyLocalization.ui("the mirror is not ready to nudge unfinished ankys yet.")

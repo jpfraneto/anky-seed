@@ -14,11 +14,15 @@ final class WriteBeforeScrollSpikeViewModel: ObservableObject {
     @Published private(set) var state = WriteBeforeScrollScreenTimeState()
     @Published private(set) var authorizationStatusText = "unknown"
     @Published private(set) var recentEvents: [WriteBeforeScrollEvent] = []
+    /// The explicit off-switch (2026-07-06): true means nothing re-arms the
+    /// shield until the writer turns the gate back on.
+    @Published private(set) var isGateOff = false
 
     private let selectionStore = WriteBeforeScrollScreenTimeSelectionStore()
     private let stateStore = WriteBeforeScrollScreenTimeStateStore()
     private let unlockStateStore = UnlockStateStore()
     private let shieldController = WriteBeforeScrollShieldController()
+    private let gateSwitchStore = WriteBeforeScrollGateSwitchStore()
     private let unlockScheduler = WriteBeforeScrollUnlockScheduler()
     private let eventLog = WriteBeforeScrollEventLogStore()
 
@@ -94,6 +98,7 @@ final class WriteBeforeScrollSpikeViewModel: ObservableObject {
         selection = selectionStore.loadSelection()
         state = stateStore.load()
         recentEvents = eventLog.recent(limit: 20)
+        isGateOff = gateSwitchStore.isGateOff
         authorizationStatusText = "\(AuthorizationCenter.shared.authorizationStatus)"
     }
 
@@ -139,12 +144,26 @@ final class WriteBeforeScrollSpikeViewModel: ObservableObject {
     }
 
     func forceLock() {
+        // "Turn on the gate" is also the way back from the off-switch.
+        gateSwitchStore.setGateOff(false)
         unlockStateStore.clearUnlock()
         unlockScheduler.stopRelockMonitoring()
         stateStore.update { state in
             state = WriteBeforeScrollUnlockStateMachine.forcingLock(state, at: Date())
         }
         _ = shieldController.applyShield()
+        refresh()
+    }
+
+    /// The explicit gate off-switch (2026-07-06): clears the shield, stops
+    /// the relock schedule, and — via the persisted App Group flag — keeps
+    /// every reconcile and relock path from re-arming until the writer
+    /// turns the gate back on. No selection is lost.
+    func turnGateOff() {
+        gateSwitchStore.setGateOff(true)
+        unlockScheduler.stopRelockMonitoring()
+        shieldController.clearShield()
+        eventLog.append(.shieldCleared, metadata: ["reason": "gateSwitchOff"])
         refresh()
     }
 
@@ -239,11 +258,13 @@ final class WriteBeforeScrollSpikeViewModel: ObservableObject {
     let pendingShieldActionText = "unavailable"
     let lastErrorText = "Screen Time APIs are only available on iOS."
     let recentEvents: [WriteBeforeScrollEvent] = []
+    let isGateOff = false
 
     func refresh() {}
     func requestAuthorization() {}
     func saveSelection() {}
     func forceLock() {}
+    func turnGateOff() {}
     func forceUnlockForTesting() {}
     func applyUnlock(_ grant: UnlockGrant) {}
     func reconcileOnAppActive() {}

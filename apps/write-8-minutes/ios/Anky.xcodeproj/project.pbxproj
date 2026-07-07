@@ -20,47 +20,6 @@
 		8A000001000000000000000B /* AnkyHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100B /* AnkyHasher.swift */; };
 		8A000001000000000000000C /* AnkyDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100C /* AnkyDuration.swift */; };
 		8A000001000000000000000D /* AnkyValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100D /* AnkyValidator.swift */; };
-		8A0000B00000000000000001 /* AnkyLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001001 /* AnkyLevel.swift */; };
-		8A0000B00000000000000002 /* LevelProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001002 /* LevelProgressStore.swift */; };
-		8A0000B00000000000000003 /* LevelSyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001003 /* LevelSyncClient.swift */; };
-		8A0000B0000000000000001C /* HomeQuickActionPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */; };
-		8A0000B0000000000000001D /* GlanceSharedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101B /* GlanceSharedState.swift */; };
-		8A0000B0000000000000001E /* GlanceSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */; };
-		8A0000A40000000000000004 /* TrialActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001005 /* TrialActivityAttributes.swift */; };
-		8A0000A40000000000000005 /* TrialActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001006 /* TrialActivityController.swift */; };
-		8A0000D00000000000000001 /* AnkyGlanceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		8A0000D00000000000000010 /* AnkyGlanceWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */; };
-		8A0000D00000000000000011 /* PaintingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001005 /* PaintingWidget.swift */; };
-		8A0000D00000000000000012 /* TrialLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001006 /* TrialLiveActivity.swift */; };
-		8A0000D00000000000000013 /* GlanceSharedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101B /* GlanceSharedState.swift */; };
-		8A0000D00000000000000014 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
-		8A0000D00000000000000015 /* TrialActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001005 /* TrialActivityAttributes.swift */; };
-		8A0000D00000000000000016 /* StarterPainting in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100A /* StarterPainting */; };
-		8A0000D00000000000000017 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
-		8A0000B00000000000000004 /* PaintingReveal.metal in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001004 /* PaintingReveal.metal */; };
-		8A0000B00000000000000005 /* PaintingRevealModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001005 /* PaintingRevealModifier.swift */; };
-		8A0000B00000000000000006 /* PaintingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001006 /* PaintingView.swift */; };
-		8A0000B00000000000000007 /* PaintingFrameMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001007 /* PaintingFrameMetrics.swift */; };
-		8A0000B00000000000000008 /* LevelTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001008 /* LevelTheme.swift */; };
-		8A0000B00000000000000009 /* PaintingAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001009 /* PaintingAssetStore.swift */; };
-		8A0000B0000000000000000A /* StarterPainting in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100A /* StarterPainting */; };
-		8A0000B0000000000000000B /* PaintingHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100B /* PaintingHomeView.swift */; };
-		8A0000B0000000000000000C /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100C /* GalleryView.swift */; };
-		8A0000B0000000000000000D /* AnkyAppIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100D /* AnkyAppIcon.swift */; };
-		8A0000B0000000000000000E /* LevelTriggerTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100E /* LevelTriggerTuning.swift */; };
-		8A0000B0000000000000000F /* LevelPaintingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */; };
-		8A0000B00000000000000010 /* WatercolorVeilView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001010 /* WatercolorVeilView.swift */; };
-		8A0000B00000000000000011 /* CeremonyTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001011 /* CeremonyTiming.swift */; };
-		8A0000B00000000000000012 /* UnveilCeremonyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001012 /* UnveilCeremonyView.swift */; };
-		8A0000B00000000000000013 /* LevelDebugSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001013 /* LevelDebugSection.swift */; };
-		8A0000B00000000000000014 /* JourneyTilePositions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001014 /* JourneyTilePositions.swift */; };
-		8A0000B00000000000000015 /* JourneyMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001015 /* JourneyMapView.swift */; };
-		8A0000B00000000000000016 /* TileAuthoringView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001016 /* TileAuthoringView.swift */; };
-		8A0000B00000000000000017 /* JourneyKingdoms in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001017 /* JourneyKingdoms */; };
-		8A0000B00000000000000018 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
-		8A0000B00000000000000019 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
-		8A0000B0000000000000001A /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
-		8A0000B0000000000000001B /* KeyboardAwareContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001019 /* KeyboardAwareContainer.swift */; };
 		8A000001000000000000000E /* ActiveDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100E /* ActiveDraftStore.swift */; };
 		8A000001000000000000000F /* LocalAnkyArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100F /* LocalAnkyArchive.swift */; };
 		8A0000010000000000000010 /* ClipboardClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001010 /* ClipboardClient.swift */; };
@@ -72,7 +31,7 @@
 		8A0000020000000000000006 /* MirrorConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001006 /* MirrorConfiguration.swift */; };
 		8A0000020000000000000007 /* MirrorEligibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001007 /* MirrorEligibility.swift */; };
 		8A0000020000000000000008 /* MirrorClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001008 /* MirrorClient.swift */; };
-		8A0000020000000000000009 /* FreeCreditMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001009 /* FreeCreditMessage.swift */; };
+		8A0000020000000000000009 /* PrivacyLockDisclosure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001009 /* PrivacyLockDisclosure.swift */; };
 		8A000002000000000000000A /* ReflectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100A /* ReflectionStore.swift */; };
 		8A000002000000000000000B /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100B /* MapView.swift */; };
 		8A000002000000000000000C /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100C /* MapViewModel.swift */; };
@@ -93,17 +52,14 @@
 		8A0000050000000000000004 /* AnkyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001004 /* AnkyTheme.swift */; };
 		8A0000050000000000000005 /* AnkyTabBarCTAOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001005 /* AnkyTabBarCTAOverlay.swift */; };
 		8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001006 /* AnkyverseDayPalette.swift */; };
-		8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000060000000000001001 /* RevenueCatCreditsClient.swift */; };
 		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
-		8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */; };
+		8A0000070000000000000002 /* AnkyAppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001002 /* AnkyAppVersion.swift */; };
 		8A0000080000000000000001 /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000080000000000009002 /* web3swift */; };
-		8A0000080000000000000002 /* CreditIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000080000000000001001 /* CreditIdentity.swift */; };
 		8A0000090000000000000001 /* TagSessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000090000000000001001 /* TagSessionsListView.swift */; };
 		8A00000A0000000000000001 /* AnkyNudgeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */; };
 		8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000B0000000000001001 /* AnkyLocalization.swift */; };
 		8A00000C0000000000000001 /* ICloudBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000C0000000000001001 /* ICloudBackupStore.swift */; };
 		8A00000D0000000000000001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000D0000000000001001 /* OnboardingView.swift */; };
-		8A00000E0000000000000001 /* AnkyReflectionCreditsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */; };
 		8A00000F0000000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A00000F0000000000003001 /* Localizable.strings */; };
 		8A0000100000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000100000000000001001 /* PrivacyInfo.xcprivacy */; };
 		8A0000110000000000000001 /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000110000000000003001 /* PrivacyPolicy.md */; };
@@ -117,25 +73,6 @@
 		8A0000150000000000000003 /* UnlockPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001003 /* UnlockPolicy.swift */; };
 		8A0000150000000000000004 /* UnlockStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001004 /* UnlockStateStore.swift */; };
 		8A0000150000000000000005 /* BlockedAppSelectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001005 /* BlockedAppSelectionStore.swift */; };
-		8A0000A10000000000000001 /* FirstGateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001001 /* FirstGateStore.swift */; };
-		8A0000A10000000000000002 /* WritingAnchorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001002 /* WritingAnchorStore.swift */; };
-		8A0000A10000000000000003 /* GateSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001003 /* GateSetupView.swift */; };
-		8A0000A10000000000000004 /* SignalState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001004 /* SignalState.swift */; };
-		8A0000A10000000000000005 /* GateHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001005 /* GateHomeView.swift */; };
-		8A0000A10000000000000006 /* EightDayGateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001006 /* EightDayGateStore.swift */; };
-		8A0000A10000000000000007 /* DailyTargetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001007 /* DailyTargetStore.swift */; };
-		8A0000A10000000000000008 /* QuickPassStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001008 /* QuickPassStore.swift */; };
-		8A0000A10000000000000009 /* AdaptiveTargetPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001009 /* AdaptiveTargetPolicy.swift */; };
-		8A0000A1000000000000000A /* AdaptiveTargetOfferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */; };
-		8A0000A1000000000000000B /* EmergencyBreathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A1000000000000100B /* EmergencyBreathView.swift */; };
-		8A0000A10000000000000108 /* QuickPassStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001008 /* QuickPassStore.swift */; };
-		8A0000A20000000000000001 /* AnkyLazure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001001 /* AnkyLazure.swift */; };
-		8A0000A20000000000000002 /* WritingPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001002 /* WritingPreferencesStore.swift */; };
-		8A0000A20000000000000003 /* AnkySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001003 /* AnkySettingsView.swift */; };
-		8A0000A30000000000000001 /* AvatarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A30000000000001001 /* AvatarStore.swift */; };
-		8A0000A40000000000000001 /* PurchaseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001001 /* PurchaseConstants.swift */; };
-		8A0000A40000000000000002 /* EntitlementStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001002 /* EntitlementStore.swift */; };
-		8A0000A40000000000000003 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001003 /* PaywallView.swift */; };
 		8A0000160000000000000001 /* WriteBeforeScrollScreenTimeStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001001 /* WriteBeforeScrollScreenTimeStateStore.swift */; };
 		8A0000160000000000000002 /* ScreenTimeSelectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001002 /* ScreenTimeSelectionStore.swift */; };
 		8A0000160000000000000003 /* ScreenTimeShieldController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001003 /* ScreenTimeShieldController.swift */; };
@@ -162,6 +99,7 @@
 		8A0000180000000000000004 /* WriteBeforeScrollEventLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001007 /* WriteBeforeScrollEventLogStore.swift */; };
 		8A0000180000000000000005 /* WriteBeforeScrollLaunchBridgeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100A /* WriteBeforeScrollLaunchBridgeStore.swift */; };
 		8A0000180000000000000006 /* WriteBeforeScrollLaunchBridgeModeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100B /* WriteBeforeScrollLaunchBridgeModeResolver.swift */; };
+		8A0000180000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001005 /* Assets.xcassets */; };
 		8A0000190000000000000001 /* AnkyWriteBeforeScrollMonitor.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8A0000190000000000000002 /* DeviceActivityMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */; };
 		8A0000190000000000000003 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
@@ -172,6 +110,67 @@
 		8A0000190000000000000008 /* ScreenTimeUnlockScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001004 /* ScreenTimeUnlockScheduler.swift */; };
 		8A0000190000000000000009 /* WriteBeforeScrollEventLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001007 /* WriteBeforeScrollEventLogStore.swift */; };
 		8A000019000000000000000A /* WriteBeforeScrollUnlockStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001009 /* WriteBeforeScrollUnlockStateMachine.swift */; };
+		8A0000A10000000000000001 /* FirstGateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001001 /* FirstGateStore.swift */; };
+		8A0000A10000000000000002 /* WritingAnchorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001002 /* WritingAnchorStore.swift */; };
+		8A0000A10000000000000003 /* GateSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001003 /* GateSetupView.swift */; };
+		8A0000A10000000000000004 /* SignalState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001004 /* SignalState.swift */; };
+		8A0000A10000000000000005 /* GateHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001005 /* GateHomeView.swift */; };
+		8A0000A10000000000000006 /* EightDayGateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001006 /* EightDayGateStore.swift */; };
+		8A0000A10000000000000007 /* DailyTargetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001007 /* DailyTargetStore.swift */; };
+		8A0000A10000000000000008 /* QuickPassStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001008 /* QuickPassStore.swift */; };
+		8A0000A10000000000000009 /* AdaptiveTargetPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001009 /* AdaptiveTargetPolicy.swift */; };
+		8A0000A1000000000000000A /* AdaptiveTargetOfferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */; };
+		8A0000A1000000000000000B /* EmergencyBreathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A1000000000000100B /* EmergencyBreathView.swift */; };
+		8A0000A10000000000000108 /* QuickPassStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001008 /* QuickPassStore.swift */; };
+		8A0000A20000000000000001 /* AnkyLazure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001001 /* AnkyLazure.swift */; };
+		8A0000A20000000000000002 /* WritingPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001002 /* WritingPreferencesStore.swift */; };
+		8A0000A20000000000000003 /* AnkySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001003 /* AnkySettingsView.swift */; };
+		8A0000A30000000000000001 /* AvatarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A30000000000001001 /* AvatarStore.swift */; };
+		8A0000A40000000000000001 /* PurchaseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001001 /* PurchaseConstants.swift */; };
+		8A0000A40000000000000002 /* EntitlementStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001002 /* EntitlementStore.swift */; };
+		8A0000A40000000000000003 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001003 /* PaywallView.swift */; };
+		8A0000A40000000000000004 /* TrialActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001005 /* TrialActivityAttributes.swift */; };
+		8A0000A40000000000000005 /* TrialActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001006 /* TrialActivityController.swift */; };
+		8A0000A40000000000000006 /* AnkyPurchasesConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001007 /* AnkyPurchasesConfig.swift */; };
+		8A0000B00000000000000001 /* AnkyLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001001 /* AnkyLevel.swift */; };
+		8A0000B00000000000000002 /* LevelProgressStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001002 /* LevelProgressStore.swift */; };
+		8A0000B00000000000000003 /* LevelSyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001003 /* LevelSyncClient.swift */; };
+		8A0000B00000000000000004 /* PaintingReveal.metal in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001004 /* PaintingReveal.metal */; };
+		8A0000B00000000000000005 /* PaintingRevealModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001005 /* PaintingRevealModifier.swift */; };
+		8A0000B00000000000000006 /* PaintingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001006 /* PaintingView.swift */; };
+		8A0000B00000000000000007 /* PaintingFrameMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001007 /* PaintingFrameMetrics.swift */; };
+		8A0000B00000000000000008 /* LevelTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001008 /* LevelTheme.swift */; };
+		8A0000B00000000000000009 /* PaintingAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001009 /* PaintingAssetStore.swift */; };
+		8A0000B0000000000000000A /* StarterPainting in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100A /* StarterPainting */; };
+		8A0000B0000000000000000B /* PaintingHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100B /* PaintingHomeView.swift */; };
+		8A0000B0000000000000000C /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100C /* GalleryView.swift */; };
+		8A0000B0000000000000000D /* AnkyAppIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100D /* AnkyAppIcon.swift */; };
+		8A0000B0000000000000000E /* LevelTriggerTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100E /* LevelTriggerTuning.swift */; };
+		8A0000B0000000000000000F /* LevelPaintingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */; };
+		8A0000B00000000000000010 /* WatercolorVeilView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001010 /* WatercolorVeilView.swift */; };
+		8A0000B00000000000000011 /* CeremonyTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001011 /* CeremonyTiming.swift */; };
+		8A0000B00000000000000012 /* UnveilCeremonyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001012 /* UnveilCeremonyView.swift */; };
+		8A0000B00000000000000013 /* LevelDebugSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001013 /* LevelDebugSection.swift */; };
+		8A0000B00000000000000014 /* JourneyTilePositions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001014 /* JourneyTilePositions.swift */; };
+		8A0000B00000000000000015 /* JourneyMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001015 /* JourneyMapView.swift */; };
+		8A0000B00000000000000016 /* TileAuthoringView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001016 /* TileAuthoringView.swift */; };
+		8A0000B00000000000000017 /* JourneyKingdoms in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001017 /* JourneyKingdoms */; };
+		8A0000B00000000000000018 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
+		8A0000B00000000000000019 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
+		8A0000B0000000000000001A /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
+		8A0000B0000000000000001B /* KeyboardAwareContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001019 /* KeyboardAwareContainer.swift */; };
+		8A0000B0000000000000001C /* HomeQuickActionPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */; };
+		8A0000B0000000000000001D /* GlanceSharedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101B /* GlanceSharedState.swift */; };
+		8A0000B0000000000000001E /* GlanceSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */; };
+		8A0000D00000000000000001 /* AnkyGlanceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A0000D00000000000000010 /* AnkyGlanceWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */; };
+		8A0000D00000000000000011 /* PaintingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001005 /* PaintingWidget.swift */; };
+		8A0000D00000000000000012 /* TrialLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001006 /* TrialLiveActivity.swift */; };
+		8A0000D00000000000000013 /* GlanceSharedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101B /* GlanceSharedState.swift */; };
+		8A0000D00000000000000014 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
+		8A0000D00000000000000015 /* TrialActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001005 /* TrialActivityAttributes.swift */; };
+		8A0000D00000000000000016 /* StarterPainting in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100A /* StarterPainting */; };
+		8A0000D00000000000000017 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -236,42 +235,6 @@
 		8A000001000000000000100B /* AnkyHasher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyHasher.swift; sourceTree = "<group>"; };
 		8A000001000000000000100C /* AnkyDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyDuration.swift; sourceTree = "<group>"; };
 		8A000001000000000000100D /* AnkyValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyValidator.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001001 /* AnkyLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLevel.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001002 /* LevelProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelProgressStore.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001003 /* LevelSyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelSyncClient.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeQuickActionPublisher.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000101B /* GlanceSharedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSharedState.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSyncCoordinator.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001005 /* TrialActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialActivityAttributes.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001006 /* TrialActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialActivityController.swift; sourceTree = "<group>"; };
-		8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyGlanceWidgetsBundle.swift; sourceTree = "<group>"; };
-		8A0000D00000000000001002 /* AnkyGlanceWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyGlanceWidgets.entitlements; sourceTree = "<group>"; };
-		8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyGlanceWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		8A0000D00000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		8A0000D00000000000001005 /* PaintingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingWidget.swift; sourceTree = "<group>"; };
-		8A0000D00000000000001006 /* TrialLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialLiveActivity.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001004 /* PaintingReveal.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PaintingReveal.metal; sourceTree = "<group>"; };
-		8A0000B00000000000001005 /* PaintingRevealModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingRevealModifier.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001006 /* PaintingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingView.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001007 /* PaintingFrameMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingFrameMetrics.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001008 /* LevelTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelTheme.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001009 /* PaintingAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingAssetStore.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000100A /* StarterPainting */ = {isa = PBXFileReference; lastKnownFileType = folder; path = StarterPainting; sourceTree = "<group>"; };
-		8A0000B0000000000000100B /* PaintingHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingHomeView.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000100C /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000100D /* AnkyAppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyAppIcon.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000100E /* LevelTriggerTuning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelTriggerTuning.swift; sourceTree = "<group>"; };
-		8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelPaintingCoordinator.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001010 /* WatercolorVeilView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatercolorVeilView.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001011 /* CeremonyTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CeremonyTiming.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001012 /* UnveilCeremonyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnveilCeremonyView.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001013 /* LevelDebugSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelDebugSection.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001014 /* JourneyTilePositions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyTilePositions.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001015 /* JourneyMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyMapView.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001016 /* TileAuthoringView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileAuthoringView.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001017 /* JourneyKingdoms */ = {isa = PBXFileReference; lastKnownFileType = folder; path = JourneyKingdoms; sourceTree = "<group>"; };
-		8A0000B00000000000001018 /* AnkyCopyRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyCopyRegistry.swift; sourceTree = "<group>"; };
-		8A0000B00000000000001019 /* KeyboardAwareContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardAwareContainer.swift; sourceTree = "<group>"; };
 		8A000001000000000000100E /* ActiveDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveDraftStore.swift; sourceTree = "<group>"; };
 		8A000001000000000000100F /* LocalAnkyArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnkyArchive.swift; sourceTree = "<group>"; };
 		8A0000010000000000001010 /* ClipboardClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardClient.swift; sourceTree = "<group>"; };
@@ -284,7 +247,7 @@
 		8A0000020000000000001006 /* MirrorConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorConfiguration.swift; sourceTree = "<group>"; };
 		8A0000020000000000001007 /* MirrorEligibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorEligibility.swift; sourceTree = "<group>"; };
 		8A0000020000000000001008 /* MirrorClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorClient.swift; sourceTree = "<group>"; };
-		8A0000020000000000001009 /* FreeCreditMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeCreditMessage.swift; sourceTree = "<group>"; };
+		8A0000020000000000001009 /* PrivacyLockDisclosure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyLockDisclosure.swift; sourceTree = "<group>"; };
 		8A000002000000000000100A /* ReflectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReflectionStore.swift; sourceTree = "<group>"; };
 		8A000002000000000000100B /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		8A000002000000000000100C /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
@@ -305,15 +268,12 @@
 		8A0000050000000000001004 /* AnkyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTheme.swift; sourceTree = "<group>"; };
 		8A0000050000000000001005 /* AnkyTabBarCTAOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyTabBarCTAOverlay.swift; sourceTree = "<group>"; };
 		8A0000050000000000001006 /* AnkyverseDayPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyverseDayPalette.swift; sourceTree = "<group>"; };
-		8A0000060000000000001001 /* RevenueCatCreditsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatCreditsClient.swift; sourceTree = "<group>"; };
-		8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCheckTrialProofProvider.swift; sourceTree = "<group>"; };
-		8A0000080000000000001001 /* CreditIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditIdentity.swift; sourceTree = "<group>"; };
+		8A0000070000000000001002 /* AnkyAppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyAppVersion.swift; sourceTree = "<group>"; };
 		8A0000090000000000001001 /* TagSessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSessionsListView.swift; sourceTree = "<group>"; };
 		8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyNudgeGenerator.swift; sourceTree = "<group>"; };
 		8A00000B0000000000001001 /* AnkyLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLocalization.swift; sourceTree = "<group>"; };
 		8A00000C0000000000001001 /* ICloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudBackupStore.swift; sourceTree = "<group>"; };
 		8A00000D0000000000001001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyReflectionCreditsSheet.swift; sourceTree = "<group>"; };
 		8A00000F0000000000001001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8A00000F0000000000001002 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8A00000F0000000000001003 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -342,25 +302,6 @@
 		8A0000150000000000001003 /* UnlockPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockPolicy.swift; sourceTree = "<group>"; };
 		8A0000150000000000001004 /* UnlockStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockStateStore.swift; sourceTree = "<group>"; };
 		8A0000150000000000001005 /* BlockedAppSelectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedAppSelectionStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001001 /* FirstGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstGateStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001002 /* WritingAnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingAnchorStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001003 /* GateSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateSetupView.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001004 /* SignalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalState.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001005 /* GateHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateHomeView.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001006 /* EightDayGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EightDayGateStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001007 /* DailyTargetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTargetStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001008 /* QuickPassStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPassStore.swift; sourceTree = "<group>"; };
-		8A0000A10000000000001009 /* AdaptiveTargetPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetPolicy.swift; sourceTree = "<group>"; };
-		8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetOfferView.swift; sourceTree = "<group>"; };
-		8A0000A1000000000000100B /* EmergencyBreathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyBreathView.swift; sourceTree = "<group>"; };
-		8A0000A20000000000001001 /* AnkyLazure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLazure.swift; sourceTree = "<group>"; };
-		8A0000A20000000000001002 /* WritingPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingPreferencesStore.swift; sourceTree = "<group>"; };
-		8A0000A20000000000001003 /* AnkySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySettingsView.swift; sourceTree = "<group>"; };
-		8A0000A30000000000001001 /* AvatarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarStore.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001001 /* PurchaseConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseConstants.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001002 /* EntitlementStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementStore.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001003 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
-		8A0000A40000000000001004 /* Anky.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Anky.storekit; sourceTree = "<group>"; };
 		8A0000160000000000001001 /* WriteBeforeScrollScreenTimeStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteBeforeScrollScreenTimeStateStore.swift; sourceTree = "<group>"; };
 		8A0000160000000000001002 /* ScreenTimeSelectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTimeSelectionStore.swift; sourceTree = "<group>"; };
 		8A0000160000000000001003 /* ScreenTimeShieldController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTimeShieldController.swift; sourceTree = "<group>"; };
@@ -381,10 +322,67 @@
 		8A0000180000000000001002 /* AnkyWriteBeforeScrollShieldConfiguration.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyWriteBeforeScrollShieldConfiguration.entitlements; sourceTree = "<group>"; };
 		8A0000180000000000001003 /* AnkyWriteBeforeScrollShieldConfiguration.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyWriteBeforeScrollShieldConfiguration.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000180000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8A0000180000000000001005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActivityMonitorExtension.swift; sourceTree = "<group>"; };
 		8A0000190000000000001002 /* AnkyWriteBeforeScrollMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyWriteBeforeScrollMonitor.entitlements; sourceTree = "<group>"; };
 		8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyWriteBeforeScrollMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000190000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8A0000A10000000000001001 /* FirstGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstGateStore.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001002 /* WritingAnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingAnchorStore.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001003 /* GateSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateSetupView.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001004 /* SignalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalState.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001005 /* GateHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateHomeView.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001006 /* EightDayGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EightDayGateStore.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001007 /* DailyTargetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTargetStore.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001008 /* QuickPassStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPassStore.swift; sourceTree = "<group>"; };
+		8A0000A10000000000001009 /* AdaptiveTargetPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetPolicy.swift; sourceTree = "<group>"; };
+		8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetOfferView.swift; sourceTree = "<group>"; };
+		8A0000A1000000000000100B /* EmergencyBreathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyBreathView.swift; sourceTree = "<group>"; };
+		8A0000A20000000000001001 /* AnkyLazure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLazure.swift; sourceTree = "<group>"; };
+		8A0000A20000000000001002 /* WritingPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingPreferencesStore.swift; sourceTree = "<group>"; };
+		8A0000A20000000000001003 /* AnkySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySettingsView.swift; sourceTree = "<group>"; };
+		8A0000A30000000000001001 /* AvatarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarStore.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001001 /* PurchaseConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseConstants.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001002 /* EntitlementStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementStore.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001003 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001004 /* storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = storekit; sourceTree = "<group>"; };
+		8A0000A40000000000001005 /* TrialActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialActivityAttributes.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001006 /* TrialActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialActivityController.swift; sourceTree = "<group>"; };
+		8A0000A40000000000001007 /* AnkyPurchasesConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyPurchasesConfig.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001001 /* AnkyLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLevel.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001002 /* LevelProgressStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelProgressStore.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001003 /* LevelSyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelSyncClient.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001004 /* PaintingReveal.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PaintingReveal.metal; sourceTree = "<group>"; };
+		8A0000B00000000000001005 /* PaintingRevealModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingRevealModifier.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001006 /* PaintingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingView.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001007 /* PaintingFrameMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingFrameMetrics.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001008 /* LevelTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelTheme.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001009 /* PaintingAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingAssetStore.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000100A /* StarterPainting */ = {isa = PBXFileReference; lastKnownFileType = folder; path = StarterPainting; sourceTree = "<group>"; };
+		8A0000B0000000000000100B /* PaintingHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingHomeView.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000100C /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000100D /* AnkyAppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyAppIcon.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000100E /* LevelTriggerTuning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelTriggerTuning.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelPaintingCoordinator.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001010 /* WatercolorVeilView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatercolorVeilView.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001011 /* CeremonyTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CeremonyTiming.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001012 /* UnveilCeremonyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnveilCeremonyView.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001013 /* LevelDebugSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelDebugSection.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001014 /* JourneyTilePositions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyTilePositions.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001015 /* JourneyMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyMapView.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001016 /* TileAuthoringView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileAuthoringView.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001017 /* JourneyKingdoms */ = {isa = PBXFileReference; lastKnownFileType = folder; path = JourneyKingdoms; sourceTree = "<group>"; };
+		8A0000B00000000000001018 /* AnkyCopyRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyCopyRegistry.swift; sourceTree = "<group>"; };
+		8A0000B00000000000001019 /* KeyboardAwareContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardAwareContainer.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeQuickActionPublisher.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000101B /* GlanceSharedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSharedState.swift; sourceTree = "<group>"; };
+		8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSyncCoordinator.swift; sourceTree = "<group>"; };
+		8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyGlanceWidgetsBundle.swift; sourceTree = "<group>"; };
+		8A0000D00000000000001002 /* AnkyGlanceWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyGlanceWidgets.entitlements; sourceTree = "<group>"; };
+		8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyGlanceWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A0000D00000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8A0000D00000000000001005 /* PaintingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingWidget.swift; sourceTree = "<group>"; };
+		8A0000D00000000000001006 /* TrialLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialLiveActivity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -411,14 +409,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8A0000D00000000000002001 /* Frameworks */ = {
+		8A0000190000000000002001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8A0000190000000000002001 /* Frameworks */ = {
+		8A0000D00000000000002001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -436,7 +434,7 @@
 				8A0000180000000000003001 /* AnkyWriteBeforeScrollShieldConfiguration */,
 				8A0000190000000000003001 /* AnkyWriteBeforeScrollMonitor */,
 				8A0000D00000000000003001 /* AnkyGlanceWidgets */,
-				8A0000A40000000000001004 /* Anky.storekit */,
+				8A0000A40000000000001004 /* storekit */,
 				8A0000010000000000003003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -483,71 +481,11 @@
 				8A0000160000000000003001 /* WriteBeforeScrollDebug */,
 				8A0000130000000000003001 /* CheckIn */,
 				8A00000D0000000000003001 /* Onboarding */,
-				8A00000E0000000000003001 /* Credits */,
 				8A0000A10000000000003001 /* Gate */,
 				8A0000A20000000000003001 /* Settings */,
 				8A0000B00000000000003002 /* Painting */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		8A0000B00000000000003002 /* Painting */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000B00000000000001004 /* PaintingReveal.metal */,
-				8A0000B00000000000001005 /* PaintingRevealModifier.swift */,
-				8A0000B00000000000001006 /* PaintingView.swift */,
-				8A0000B00000000000001007 /* PaintingFrameMetrics.swift */,
-				8A0000B00000000000001008 /* LevelTheme.swift */,
-				8A0000B0000000000000100B /* PaintingHomeView.swift */,
-				8A0000B0000000000000100C /* GalleryView.swift */,
-				8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */,
-				8A0000B00000000000001011 /* CeremonyTiming.swift */,
-				8A0000B00000000000001012 /* UnveilCeremonyView.swift */,
-				8A0000B00000000000001013 /* LevelDebugSection.swift */,
-				8A0000B00000000000003003 /* Journey */,
-			);
-			path = Painting;
-			sourceTree = "<group>";
-		};
-		8A0000B00000000000003003 /* Journey */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000B00000000000001014 /* JourneyTilePositions.swift */,
-				8A0000B00000000000001015 /* JourneyMapView.swift */,
-				8A0000B00000000000001016 /* TileAuthoringView.swift */,
-			);
-			path = Journey;
-			sourceTree = "<group>";
-		};
-		8A0000A20000000000003001 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000A20000000000001003 /* AnkySettingsView.swift */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
-		8A0000A40000000000003001 /* Purchases */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000A40000000000001001 /* PurchaseConstants.swift */,
-				8A0000A40000000000001002 /* EntitlementStore.swift */,
-				8A0000A40000000000001003 /* PaywallView.swift */,
-				8A0000A40000000000001005 /* TrialActivityAttributes.swift */,
-				8A0000A40000000000001006 /* TrialActivityController.swift */,
-			);
-			path = Purchases;
-			sourceTree = "<group>";
-		};
-		8A0000A10000000000003001 /* Gate */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000A10000000000001005 /* GateHomeView.swift */,
-				8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */,
-				8A0000A1000000000000100B /* EmergencyBreathView.swift */,
-			);
-			path = Gate;
 			sourceTree = "<group>";
 		};
 		8A0000010000000000003005 /* Write */ = {
@@ -600,20 +538,6 @@
 			path = Protocol;
 			sourceTree = "<group>";
 		};
-		8A0000B00000000000003001 /* Level */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000B00000000000001002 /* LevelProgressStore.swift */,
-				8A0000B00000000000001003 /* LevelSyncClient.swift */,
-				8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */,
-				8A0000B0000000000000101B /* GlanceSharedState.swift */,
-				8A0000B00000000000001009 /* PaintingAssetStore.swift */,
-				8A0000B0000000000000100E /* LevelTriggerTuning.swift */,
-				8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */,
-			);
-			path = Level;
-			sourceTree = "<group>";
-		};
 		8A0000010000000000003009 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
@@ -655,7 +579,6 @@
 			children = (
 				8A000002000000000000100D /* YouView.swift */,
 				8A000002000000000000100E /* YouViewModel.swift */,
-				8A0000060000000000001001 /* RevenueCatCreditsClient.swift */,
 			);
 			path = You;
 			sourceTree = "<group>";
@@ -664,7 +587,6 @@
 			isa = PBXGroup;
 			children = (
 				8A0000020000000000001002 /* WriterIdentity.swift */,
-				8A0000080000000000001001 /* CreditIdentity.swift */,
 				8A0000020000000000001003 /* KeychainClient.swift */,
 				8A0000020000000000001004 /* WriterIdentityStore.swift */,
 				8A0000030000000000001004 /* BiometricAuthClient.swift */,
@@ -681,7 +603,7 @@
 				8A0000020000000000001006 /* MirrorConfiguration.swift */,
 				8A0000020000000000001007 /* MirrorEligibility.swift */,
 				8A0000020000000000001008 /* MirrorClient.swift */,
-				8A0000070000000000001001 /* DeviceCheckTrialProofProvider.swift */,
+				8A0000070000000000001002 /* AnkyAppVersion.swift */,
 				8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */,
 			);
 			path = Mirror;
@@ -690,7 +612,7 @@
 		8A0000020000000000003005 /* Privacy */ = {
 			isa = PBXGroup;
 			children = (
-				8A0000020000000000001009 /* FreeCreditMessage.swift */,
+				8A0000020000000000001009 /* PrivacyLockDisclosure.swift */,
 			);
 			path = Privacy;
 			sourceTree = "<group>";
@@ -728,14 +650,6 @@
 				8A0000A10000000000001003 /* GateSetupView.swift */,
 			);
 			path = Onboarding;
-			sourceTree = "<group>";
-		};
-		8A00000E0000000000003001 /* Credits */ = {
-			isa = PBXGroup;
-			children = (
-				8A00000E0000000000001001 /* AnkyReflectionCreditsSheet.swift */,
-			);
-			path = Credits;
 			sourceTree = "<group>";
 		};
 		8A0000130000000000003001 /* CheckIn */ = {
@@ -801,6 +715,7 @@
 			isa = PBXGroup;
 			children = (
 				8A0000180000000000001001 /* ShieldConfigurationExtension.swift */,
+				8A0000180000000000001005 /* Assets.xcassets */,
 				8A0000180000000000001004 /* Info.plist */,
 				8A0000180000000000001002 /* AnkyWriteBeforeScrollShieldConfiguration.entitlements */,
 			);
@@ -815,6 +730,80 @@
 				8A0000190000000000001002 /* AnkyWriteBeforeScrollMonitor.entitlements */,
 			);
 			path = AnkyWriteBeforeScrollMonitor;
+			sourceTree = "<group>";
+		};
+		8A0000A10000000000003001 /* Gate */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000A10000000000001005 /* GateHomeView.swift */,
+				8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */,
+				8A0000A1000000000000100B /* EmergencyBreathView.swift */,
+			);
+			path = Gate;
+			sourceTree = "<group>";
+		};
+		8A0000A20000000000003001 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000A20000000000001003 /* AnkySettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		8A0000A40000000000003001 /* Purchases */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000A40000000000001007 /* AnkyPurchasesConfig.swift */,
+				8A0000A40000000000001001 /* PurchaseConstants.swift */,
+				8A0000A40000000000001002 /* EntitlementStore.swift */,
+				8A0000A40000000000001003 /* PaywallView.swift */,
+				8A0000A40000000000001005 /* TrialActivityAttributes.swift */,
+				8A0000A40000000000001006 /* TrialActivityController.swift */,
+			);
+			path = Purchases;
+			sourceTree = "<group>";
+		};
+		8A0000B00000000000003001 /* Level */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000B00000000000001002 /* LevelProgressStore.swift */,
+				8A0000B00000000000001003 /* LevelSyncClient.swift */,
+				8A0000B0000000000000101A /* HomeQuickActionPublisher.swift */,
+				8A0000B0000000000000101B /* GlanceSharedState.swift */,
+				8A0000B00000000000001009 /* PaintingAssetStore.swift */,
+				8A0000B0000000000000100E /* LevelTriggerTuning.swift */,
+				8A0000B0000000000000100F /* LevelPaintingCoordinator.swift */,
+			);
+			path = Level;
+			sourceTree = "<group>";
+		};
+		8A0000B00000000000003002 /* Painting */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000B00000000000001004 /* PaintingReveal.metal */,
+				8A0000B00000000000001005 /* PaintingRevealModifier.swift */,
+				8A0000B00000000000001006 /* PaintingView.swift */,
+				8A0000B00000000000001007 /* PaintingFrameMetrics.swift */,
+				8A0000B00000000000001008 /* LevelTheme.swift */,
+				8A0000B0000000000000100B /* PaintingHomeView.swift */,
+				8A0000B0000000000000100C /* GalleryView.swift */,
+				8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */,
+				8A0000B00000000000001011 /* CeremonyTiming.swift */,
+				8A0000B00000000000001012 /* UnveilCeremonyView.swift */,
+				8A0000B00000000000001013 /* LevelDebugSection.swift */,
+				8A0000B00000000000003003 /* Journey */,
+			);
+			path = Painting;
+			sourceTree = "<group>";
+		};
+		8A0000B00000000000003003 /* Journey */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000B00000000000001014 /* JourneyTilePositions.swift */,
+				8A0000B00000000000001015 /* JourneyMapView.swift */,
+				8A0000B00000000000001016 /* TileAuthoringView.swift */,
+			);
+			path = Journey;
 			sourceTree = "<group>";
 		};
 		8A0000D00000000000003001 /* AnkyGlanceWidgets */ = {
@@ -836,6 +825,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8A0000010000000000007002 /* Build configuration list for PBXNativeTarget "Anky" */;
 			buildPhases = (
+				8A0000C00000000000006001 /* Verify Journey Assets */,
 				8A0000010000000000005001 /* Sources */,
 				8A0000010000000000002001 /* Frameworks */,
 				8A0000010000000000005002 /* Resources */,
@@ -857,25 +847,6 @@
 			productName = Anky;
 			productReference = 8A0000010000000000001011 /* Anky.app */;
 			productType = "com.apple.product-type.application";
-		};
-		8A0000D00000000000004001 /* AnkyGlanceWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 8A0000D00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyGlanceWidgets" */;
-			buildPhases = (
-				8A0000D00000000000005001 /* Sources */,
-				8A0000D00000000000002001 /* Frameworks */,
-				8A0000D00000000000005002 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = AnkyGlanceWidgets;
-			packageProductDependencies = (
-			);
-			productName = AnkyGlanceWidgets;
-			productReference = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		8A0000170000000000004001 /* AnkyWriteBeforeScrollShieldAction */ = {
 			isa = PBXNativeTarget;
@@ -932,6 +903,25 @@
 			);
 			productName = AnkyWriteBeforeScrollMonitor;
 			productReference = 8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		8A0000D00000000000004001 /* AnkyGlanceWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A0000D00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyGlanceWidgets" */;
+			buildPhases = (
+				8A0000D00000000000005001 /* Sources */,
+				8A0000D00000000000002001 /* Frameworks */,
+				8A0000D00000000000005002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AnkyGlanceWidgets;
+			packageProductDependencies = (
+			);
+			productName = AnkyGlanceWidgets;
+			productReference = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -1026,6 +1016,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A0000180000000000000007 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1045,6 +1036,33 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8A0000C00000000000006001 /* Verify Journey Assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom1.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom2.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom3.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom4.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom5.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom6.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom7.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/kingdom8.png",
+				"$(SRCROOT)/Anky/JourneyKingdoms/journey_positions.json",
+			);
+			name = "Verify Journey Assets";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/journey-assets-verified.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nDIR=\"${SRCROOT}/Anky/JourneyKingdoms\"\nfor i in 1 2 3 4 5 6 7 8; do\n  if [ ! -f \"$DIR/kingdom$i.png\" ]; then\n    echo \"error: JourneyKingdoms/kingdom$i.png is missing - the 96-day journey map needs all 8 kingdom paintings\" >&2\n    exit 1\n  fi\ndone\nif [ ! -f \"$DIR/journey_positions.json\" ]; then\n  echo \"error: JourneyKingdoms/journey_positions.json is missing - author it with TileAuthoringView\" >&2\n  exit 1\nfi\nCOUNT=$(grep -o '\"index\"' \"$DIR/journey_positions.json\" | wc -l | tr -d ' ')\nif [ \"$COUNT\" -ne 96 ]; then\n  echo \"error: journey_positions.json holds $COUNT days; expected 96\" >&2\n  exit 1\nfi\necho ok > \"${DERIVED_FILE_DIR}/journey-assets-verified.txt\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8A0000010000000000005001 /* Sources */ = {
@@ -1103,14 +1121,14 @@
 				8A0000020000000000000006 /* MirrorConfiguration.swift in Sources */,
 				8A0000020000000000000007 /* MirrorEligibility.swift in Sources */,
 				8A0000020000000000000008 /* MirrorClient.swift in Sources */,
-				8A0000020000000000000009 /* FreeCreditMessage.swift in Sources */,
+				8A0000070000000000000002 /* AnkyAppVersion.swift in Sources */,
+				8A0000020000000000000009 /* PrivacyLockDisclosure.swift in Sources */,
 				8A000002000000000000000A /* ReflectionStore.swift in Sources */,
 				8A000002000000000000000B /* MapView.swift in Sources */,
 				8A000002000000000000000C /* MapViewModel.swift in Sources */,
 				8A000002000000000000000D /* YouView.swift in Sources */,
 				8A000002000000000000000E /* YouViewModel.swift in Sources */,
 				8A00000D0000000000000001 /* OnboardingView.swift in Sources */,
-				8A00000E0000000000000001 /* AnkyReflectionCreditsSheet.swift in Sources */,
 				8A0000130000000000000001 /* CheckInFlowView.swift in Sources */,
 				8A0000130000000000000002 /* CheckInViewModel.swift in Sources */,
 				8A0000130000000000000003 /* HomeDailyChamberView.swift in Sources */,
@@ -1157,6 +1175,7 @@
 				8A0000A20000000000000003 /* AnkySettingsView.swift in Sources */,
 				8A0000A30000000000000001 /* AvatarStore.swift in Sources */,
 				8A0000A40000000000000001 /* PurchaseConstants.swift in Sources */,
+				8A0000A40000000000000006 /* AnkyPurchasesConfig.swift in Sources */,
 				8A0000A40000000000000002 /* EntitlementStore.swift in Sources */,
 				8A0000A40000000000000003 /* PaywallView.swift in Sources */,
 				8A0000050000000000000001 /* AnkyPresenceOverlay.swift in Sources */,
@@ -1166,9 +1185,6 @@
 				8A0000050000000000000005 /* AnkyTabBarCTAOverlay.swift in Sources */,
 				8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */,
 				8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */,
-				8A0000060000000000000001 /* RevenueCatCreditsClient.swift in Sources */,
-				8A0000070000000000000001 /* DeviceCheckTrialProofProvider.swift in Sources */,
-				8A0000080000000000000002 /* CreditIdentity.swift in Sources */,
 				8A0000090000000000000001 /* TagSessionsListView.swift in Sources */,
 				8A00000A0000000000000001 /* AnkyNudgeGenerator.swift in Sources */,
 			);
@@ -1423,27 +1439,27 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Anky/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Anky;
-				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Anky can reflect on an image you choose to share.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Privacy is the most important feature of Anky.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Anky uses Face ID to lock access to your writing on this device.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Anky uses the microphone to transcribe what you say.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Anky can reflect on an image you choose from your library.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Anky uses speech recognition to turn your spoken check-in into text.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1461,27 +1477,27 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Anky/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Anky;
-				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Anky can reflect on an image you choose to share.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Privacy is the most important feature of Anky.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Anky uses Face ID to lock access to your writing on this device.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Anky uses the microphone to transcribe what you say.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Anky can reflect on an image you choose from your library.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Anky uses speech recognition to turn your spoken check-in into text.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1498,12 +1514,12 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1520,57 +1536,13 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		8A0000D00000000000008001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
-				DEVELOPMENT_TEAM = 84V63LKV45;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 1.2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		8A0000D00000000000008002 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
-				DEVELOPMENT_TEAM = 84V63LKV45;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 1.2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1586,12 +1558,12 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1608,12 +1580,12 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1630,12 +1602,12 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1652,13 +1624,57 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 50;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8A0000D00000000000008001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 50;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MARKETING_VERSION = 1.2.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8A0000D00000000000008002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 50;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MARKETING_VERSION = 1.2.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1689,15 +1705,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		8A0000D00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyGlanceWidgets" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				8A0000D00000000000008001 /* Debug */,
-				8A0000D00000000000008002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		8A0000170000000000007001 /* Build configuration list for PBXNativeTarget "AnkyWriteBeforeScrollShieldAction" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1721,6 +1728,15 @@
 			buildConfigurations = (
 				8A0000190000000000008001 /* Debug */,
 				8A0000190000000000008002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8A0000D00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyGlanceWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A0000D00000000000008001 /* Debug */,
+				8A0000D00000000000008002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

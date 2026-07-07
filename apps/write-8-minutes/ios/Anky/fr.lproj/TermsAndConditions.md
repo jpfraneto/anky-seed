@@ -1,4 +1,4 @@
-Anky, Inc. - En vigueur le 7 juin 2026
+Anky, Inc. - En vigueur le 6 juillet 2026
 
 > Important: Anky est une application d'écriture et de réflexion. Il ne s’agit pas de thérapie, de soins médicaux, de soutien en cas de crise, de conseils financiers, de conseils juridiques ou d’autorité spirituelle. En utilisant Anky, vous acceptez de rester responsable de votre écriture, de vos décisions, de votre appareil, de vos mots de récupération, de vos achats et de la façon dont vous utilisez les réflexions générées par AI.
 
@@ -19,7 +19,7 @@ Anky vous permet:
 - Revisitez l’histoire de l’écriture locale
 - Exporter ou importer des fichiers d'écriture
 - Gérer l'accès privé Anky
-- Acheter ou utiliser des crédits de réflexion
+- S'abonner à la pratique complète
 - Demandez à Anky les réflexions générées par AI
 - Utiliser les fonctionnalités associées que nous fournissons au fil du temps
 
@@ -73,25 +73,23 @@ Vous êtes responsable de la protection de vos mots de récupération, du code d
 
 Ne partagez jamais vos mots de rétablissement.
 
-Si vous perdez vos mots de récupération, Anky ne pourra peut-être pas restaurer vos crédits, votre état de profil ou vos données associées.
+Si vous perdez vos mots de récupération, Anky ne pourra peut-être pas restaurer votre état de profil, le lien avec votre abonnement ou vos données associées.
 
 Anky n'est pas responsable des pertes causées par la perte de mots de récupération, d'appareils compromis, d'informations d'identification partagées ou d'accès non autorisé à votre appareil ou à vos comptes.
 
-## 8. Achats, crédits et remboursements
+## 8. Achats, abonnements et remboursements
 
-L'écriture en Anky est gratuite.
+Tout ce que vous avez écrit reste toujours lisible sur votre appareil, que vous soyez abonné ou non.
 
-Les réflexions peuvent nécessiter des crédits.
+La pratique complète — le portail, les réflexions de Anky, les peintures au-delà de la limite gratuite et le déverrouillage quotidien — nécessite un abonnement à renouvellement automatique (voir la section 10).
 
-Les crédits sont des crédits d'application numérique utilisés uniquement dans Anky pour les demandes de réflexion. Les crédits ne sont pas de l’argent, ni des cryptomonnaies, ni de la valeur stockée, ni retirables, ni échangeables contre de l’argent, ni transférables, sauf indication contraire explicite de notre part.
-
-Les achats sont traités via le App Store d' Apple et peuvent être gérés par RevenueCat.
+Les achats sont traités via le App Store d' Apple et gérés avec RevenueCat.
 
 Nous ne traitons ni ne stockons les détails complets de votre carte de paiement.
 
 Les remboursements sont traités par Apple conformément aux politiques d' Apple.
 
-Nous pouvons modifier les prix, les packs de crédits, les essais gratuits ou les règles de crédit à tout moment, sous réserve de la loi applicable et des règles App Store.
+Nous pouvons modifier les prix ou les formules à tout moment, sous réserve de la loi applicable et des règles App Store. Les changements de prix ne s'appliquent jamais rétroactivement à une période que vous avez déjà payée.
 
 ## 9. AI-Réflexions générées
 
@@ -111,19 +109,24 @@ Vous restez responsable de l’interprétation et de l’utilisation de toute r�
 
 Anky, Inc. n'est pas responsable des décisions que vous prenez sur la base du contenu généré par AI.
 
-## 10. Références de jetons
+## 10. Abonnements à renouvellement automatique
 
-Anky peut afficher des références de jetons, des références publiques ou des informations connexes.
+Anky propose deux formules d'abonnement:
 
-Ces références sont fournies uniquement à titre informatif.
+- **Annuel** — $88 USD par an, avec un essai gratuit de 3 jours pour les nouveaux abonnés.
+- **Mensuel** — $11.99 USD par mois, sans essai gratuit.
 
-Rien dans Anky n'est un conseil financier, un conseil en investissement, un conseil fiscal, un conseil juridique ou une offre d'achat ou de vente d'un jeton, d'un titre ou d'un actif.
+Les prix peuvent varier selon les pays; le App Store affiche le prix exact dans votre devise avant que vous ne confirmiez.
 
-L'utilisation de Anky ne nécessite pas d'acheter, de détenir ou d'échanger un jeton.
+Sauf annulation, les abonnements se renouvellent automatiquement à la fin de chaque période, et l'essai gratuit annuel se convertit en abonnement annuel payant à la fin de l'essai.
 
-Les transactions sur les réseaux publics peuvent être publiques, irréversibles, volatiles, risquées et hors du contrôle de Anky.
+Le paiement est débité sur votre compte Apple ID. Votre compte est débité pour le renouvellement dans les 24 heures précédant la fin de la période en cours.
 
-Vous êtes responsable de vos propres achats, transactions, taxes et décisions financières.
+Vous pouvez annuler à tout moment dans les paramètres d'abonnement App Store de votre appareil (Réglages → votre nom → Abonnements). Pour éviter un débit, annulez au moins 24 heures avant la fin de l'essai ou de la période en cours. L'annulation arrête les renouvellements futurs; l'accès continue jusqu'à la fin de la période déjà payée (ou de l'essai).
+
+Vous pouvez restaurer des achats précédents sur tout appareil connecté au même Apple ID avec « Restaurer les achats » dans Anky.
+
+La suppression de l'application n'annule pas un abonnement.
 
 ## 11. Comportement de l'utilisateur
 
@@ -132,7 +135,7 @@ Vous vous engagez à ne pas:
 - Utilisez Ankys i vous ne remplissez pas les conditions d'âge
 - Utilisez Anky pour des activités illégales
 - Abuser, attaquer, perturber ou surcharger les systèmes de Anky
-- Contourner les crédits, les paywalls, les essais, l'attestation d'application ou les contrôles de sécurité
+- Contourner les abonnements, les paywalls, les essais ou les contrôles de sécurité
 - Faites de l'ingénierie inverse, grattez, extrayez ou publiez les invites privées, les instructions de modèle ou les systèmes backend de Anky
 - Utiliser des robots, des scripts ou des automatisations pour abuser de l'application
 - Tentative d'accès aux données, aux mots de récupération, à l'accès privé ou au compte d'une autre personne
@@ -174,7 +177,7 @@ Apple n'est pas responsable de Anky, de son contenu, de son support, de ses gara
 
 Anky peut être indisponible, retardé, interrompu, inexact ou interrompu.
 
-Nous ne garantissons pas que Anky fonctionnera toujours, que les réflexions seront toujours disponibles, que les crédits seront toujours synchronisés instantanément ou que les données locales ne seront jamais perdues.
+Nous ne garantissons pas que Anky fonctionnera toujours, que les réflexions seront toujours disponibles, que l'état de l'abonnement sera toujours synchronisé instantanément ou que les données locales ne seront jamais perdues.
 
 Sauvegardez tout ce qui est important.
 
@@ -196,7 +199,7 @@ VOTRE UTILISATION DEANKYEST À VOS PROPRES RISQUES.
 
 ## 19. Limitation de responsabilité
 
-DANS TOUTE LA MESURE PERMISE PAR LA LOI,ANKY, INC. ET SES PROPRIÉT AI RES, DIRECTEURS, DIRIGEANTS, EMPLOYÉS, ENTREPRENEURS, FOURNISSEURS DE SERVICES ET AFFILIÉS NE SERONT PAS RESPONSABLES DES DOMMAGES INDIRECTS, ACCESSOIRES, SPÉCIAUX, CONSÉCUTIFS, EXEMPL AI RES OU PUNITIFS, OU DE LA PERTE DE BÉNÉFICES, DE DONNÉES, D'ÉCRITURE PERTE, PERTE DE CRÉDITS, PERTE DE JETONS, PERTE D'ACCÈS À LA RÉCUPÉRATION, COMPROMIS DE L'APPAREIL, DÉTRESSE ÉMOTIONNELLE OU DÉCISIONS PRISES SUR LA BASE DU CONTENU GÉNÉRÉ PAR AI.
+DANS TOUTE LA MESURE PERMISE PAR LA LOI,ANKY, INC. ET SES PROPRIÉT AI RES, DIRECTEURS, DIRIGEANTS, EMPLOYÉS, ENTREPRENEURS, FOURNISSEURS DE SERVICES ET AFFILIÉS NE SERONT PAS RESPONSABLES DES DOMMAGES INDIRECTS, ACCESSOIRES, SPÉCIAUX, CONSÉCUTIFS, EXEMPL AI RES OU PUNITIFS, OU DE LA PERTE DE BÉNÉFICES, DE DONNÉES, D'ÉCRITURE PERTE, PERTE DE TEMPS D'ABONNEMENT, PERTE D'ACCÈS À LA RÉCUPÉRATION, COMPROMIS DE L'APPAREIL, DÉTRESSE ÉMOTIONNELLE OU DÉCISIONS PRISES SUR LA BASE DU CONTENU GÉNÉRÉ PAR AI.
 
 DANS TOUTE LA MESURE PERMISE PAR LA LOI, LA RESPONSABILITÉ TOTALE DEANKY, INC. POUR TOUT CL AI M NE DÉPASSERA PAS LE PLUS GRAND DES ENTRE:
 
@@ -216,7 +219,7 @@ Vous acceptez de défendre, d'indemniser et de dégager Anky, Inc. et ses propri
 - Votre violation de la loi
 - Votre violation des droits d'autrui
 - Votre utilisation abusive des réflexions générées par AI
-- Votre jeton, transaction ou activité de récupération
+- Votre activité de récupération, de sauvegarde ou d'exportation
 
 ## 21. Loi applicable
 

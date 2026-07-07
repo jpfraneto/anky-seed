@@ -1,4 +1,4 @@
-Anky, Inc. - Efectivo a partir del 7 de junio de 2026
+Anky, Inc. - Efectivo a partir del 6 de julio de 2026
 
 > Importante: Anky es una aplicación de escritura y reflexión. No es terapia, atención médica, apoyo en crisis, asesoramiento financiero, asesoramiento legal o autoridad espiritual. Al utilizar Anky, usted acepta que sigue siendo responsable de sus escritos, sus decisiones, su dispositivo, sus palabras de recuperación, sus compras y cómo utiliza los reflejos generados por AI.
 
@@ -19,7 +19,7 @@ Anky te permite:
 - Revisar la historia de la escritura local.
 - Exportar o importar archivos de escritura
 - Administrar el acceso privado a Anky
-- Comprar o utilizar créditos de reflexión
+- Suscribirse a la práctica completa
 - Pregunte a Anky por los reflejos generados por AI
 - Utilice funciones relacionadas que proporcionamos a lo largo del tiempo
 
@@ -73,25 +73,23 @@ Usted es responsable de proteger sus palabras de recuperación, la contraseña d
 
 Nunca compartas tus palabras de recuperación.
 
-Si pierde sus palabras de recuperación, es posible que Anky no pueda restaurar sus créditos, el estado de su perfil o los datos relacionados.
+Si pierde sus palabras de recuperación, es posible que Anky no pueda restaurar el estado de su perfil, la vinculación de su suscripción o los datos relacionados.
 
 Anky no es responsable de las pérdidas causadas por la pérdida de palabras de recuperación, dispositivos comprometidos, credenciales compartidas o acceso no autorizado a su dispositivo o cuentas.
 
-## 8. Compras, créditos y reembolsos
+## 8. Compras, suscripciones y reembolsos
 
-Escribir en Anky es gratis.
+Todo lo que haya escrito permanece siempre legible en su dispositivo, tenga o no una suscripción.
 
-Las reflexiones pueden requerir créditos.
+La práctica completa — la puerta, las reflexiones de Anky, las pinturas más allá del límite gratuito y el desbloqueo diario — requiere una suscripción con renovación automática (consulte la Sección 10).
 
-Los créditos son créditos de aplicaciones digitales que se utilizan únicamente dentro de Anky para solicitudes de reflexión. Los créditos no son dinero, no son criptomonedas, no son valor almacenado, no son retirables, no canjeables por efectivo y no son transferibles a menos que indiquemos explícitamente lo contrario.
-
-Las compras se procesan a través del App Store de Apple y pueden ser gestionadas por RevenueCat.
+Las compras se procesan a través del App Store de Apple y se gestionan con RevenueCat.
 
 No manejamos ni almacenamos los datos completos de su tarjeta de pago.
 
 Apple gestiona los reembolsos de acuerdo con las políticas de Apple.
 
-Podemos cambiar los precios, los paquetes de crédito, las pruebas gratuitas o las reglas de crédito en cualquier momento, sujeto a la ley aplicable y a las reglas App Store.
+Podemos cambiar los precios o los planes en cualquier momento, sujeto a la ley aplicable y a las reglas del App Store. Los cambios de precio nunca se aplican retroactivamente a un período que usted ya pagó.
 
 ## 9. AI-Reflejos generados
 
@@ -111,19 +109,24 @@ Usted sigue siendo responsable de interpretar y utilizar cualquier reflexión.
 
 Anky, Inc. no es responsable de las decisiones que usted tome basándose en el contenido generado por AI.
 
-## 10. Referencias de tokens
+## 10. Suscripciones con renovación automática
 
-Anky puede mostrar referencias simbólicas, referencias públicas o información relacionada.
+Anky ofrece dos planes de suscripción:
 
-Estas referencias son sólo informativas.
+- **Anual** — $88 USD al año, con una prueba gratuita de 3 días para nuevos suscriptores.
+- **Mensual** — $11.99 USD al mes, sin prueba gratuita.
 
-Nada en Anky es asesoramiento financiero, asesoramiento de inversión, asesoramiento fiscal, asesoramiento legal o una oferta para comprar o vender cualquier token, valor o activo.
+Los precios pueden variar según el país; el App Store muestra el precio exacto en su moneda antes de que confirme.
 
-El uso de Anky no requiere comprar, mantener ni intercambiar ningún token.
+A menos que se cancelen, las suscripciones se renuevan automáticamente al final de cada período, y la prueba gratuita anual se convierte en una suscripción anual de pago cuando termina la prueba.
 
-Las transacciones de la red pública pueden ser públicas, irreversibles, volátiles, riesgosas y fuera del control de Anky.
+El pago se carga a su cuenta de Apple ID. El cargo por renovación se realiza a su cuenta dentro de las 24 horas anteriores al final del período actual.
 
-Usted es responsable de sus propias compras, transacciones, impuestos y decisiones financieras.
+Puede cancelar en cualquier momento en la configuración de suscripciones del App Store de su dispositivo (Ajustes → su nombre → Suscripciones). Para evitar un cargo, cancele al menos 24 horas antes de que termine la prueba o el período actual. Cancelar detiene las renovaciones futuras; el acceso continúa hasta el final del período ya pagado (o de la prueba).
+
+Puede restaurar compras anteriores en cualquier dispositivo con sesión iniciada en el mismo Apple ID usando "Restaurar compras" en Anky.
+
+Eliminar la aplicación no cancela una suscripción.
 
 ## 11. Conducta del usuario
 
@@ -132,7 +135,7 @@ Usted acepta no:
 - Utilice Ankys i no cumple con los requisitos de edad
 - Utilice Anky para actividades ilegales
 - Abusar, atacar, interrumpir o sobrecargar los sistemas de Anky
-- Eludir créditos, muros de pago, pruebas, certificación de aplicaciones o controles de seguridad
+- Eludir suscripciones, muros de pago, pruebas o controles de seguridad
 - Realizar ingeniería inversa, extraer, extraer o publicar mensajes privados, instrucciones de modelo o sistemas backend de Anky.
 - Utilice bots, scripts o automatización para abusar de la aplicación
 - Intentar acceder a los datos, palabras de recuperación, acceso privado o cuenta de otra persona
@@ -174,7 +177,7 @@ Apple no es responsable de Anky, su contenido, soporte, garantías o reclamos, e
 
 Anky puede no estar disponible, retrasarse, interrumpirse, ser inexacto o descontinuarse.
 
-No garantizamos que Ankys iempre funcionará, que los reflejos siempre estarán disponibles, que los créditos siempre se sincronizarán instantáneamente o que los datos locales nunca se perderán.
+No garantizamos que Ankys iempre funcionará, que los reflejos siempre estarán disponibles, que el estado de la suscripción siempre se sincronizará instantáneamente o que los datos locales nunca se perderán.
 
 Haga una copia de seguridad de todo lo importante.
 
@@ -196,7 +199,7 @@ SU USO DEANKYES BAJO SU PROPIO RIESGO.
 
 ## 19. Limitación de responsabilidad
 
-EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY,ANKY, INC. Y SUS PROPIETARIOS, DIRECTORES, FUNCIONARIOS, EMPLEADOS, CONTRATISTAS, PROVEEDORES DE SERVICIOS Y AFILIADOS NO SERÁN RESPONSABLES POR DAÑOS INDIRECTOS, INCIDENTALES, ESPECIALES, CONSECUENCIALES, EJEMPLARES O PUNITIVOS, NI POR PÉRDIDA DE GANANCIAS, DATOS, PÉRDIDA ESCRITURA, PÉRDIDA DE CRÉDITOS, PÉRDIDA DE TOKENS, PÉRDIDA DE ACCESO DE RECUPERACIÓN, COMPROMISO DEL DISPOSITIVO, ANGUSTIA EMOCIONAL O DECISIONES TOMADAS EN FUNCIÓN DEL CONTENIDO GENERADO POR AI.
+EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY,ANKY, INC. Y SUS PROPIETARIOS, DIRECTORES, FUNCIONARIOS, EMPLEADOS, CONTRATISTAS, PROVEEDORES DE SERVICIOS Y AFILIADOS NO SERÁN RESPONSABLES POR DAÑOS INDIRECTOS, INCIDENTALES, ESPECIALES, CONSECUENCIALES, EJEMPLARES O PUNITIVOS, NI POR PÉRDIDA DE GANANCIAS, DATOS, PÉRDIDA ESCRITURA, PÉRDIDA DE TIEMPO DE SUSCRIPCIÓN, PÉRDIDA DE ACCESO DE RECUPERACIÓN, COMPROMISO DEL DISPOSITIVO, ANGUSTIA EMOCIONAL O DECISIONES TOMADAS EN FUNCIÓN DEL CONTENIDO GENERADO POR AI.
 
 EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY, LA RESPONSABILIDAD TOTAL DEANKY, INC. POR CUALQUIER CL AI M NO EXCEDERÁ EL MAYOR DE:
 
@@ -216,7 +219,7 @@ Usted acepta defender, indemnizar y eximir de responsabilidad a Anky, Inc. y sus
 - Su violación de la ley
 - Su violación de los derechos de otra persona
 - Su mal uso de los reflejos generados por AI
-- Su token, transacción o actividad de recuperación
+- Su actividad de recuperación, copia de seguridad o exportación
 
 ## 21. Ley aplicable
 

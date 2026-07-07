@@ -5,6 +5,10 @@
 	<!-- Merged with the generated Info.plist (GENERATE_INFOPLIST_FILE stays
 	     YES). Only keys the INFOPLIST_KEY_ build settings cannot express
 	     live here. -->
+	<!-- Standard-exempt crypto only (HTTPS, keychain, AES-GCM backups):
+	     answers export compliance up front so uploads never stall on it. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

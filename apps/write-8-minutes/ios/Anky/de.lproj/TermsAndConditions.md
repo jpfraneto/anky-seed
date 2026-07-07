@@ -1,4 +1,4 @@
-Anky, Inc. – Gültig ab 7. Juni 2026
+Anky, Inc. – Gültig ab 6. Juli 2026
 
 > Wichtig: Anky ist eine Schreib- und Reflexions-App. Es handelt sich nicht um Therapie, medizinische Versorgung, Krisenunterstützung, Finanzberatung, Rechtsberatung oder spirituelle Autorität. Durch die Verwendung von Anky erklären Sie sich damit einverstanden, dass Sie weiterhin für Ihr Schreiben, Ihre Entscheidungen, Ihr Gerät, Ihre Wiederherstellungswörter, Ihre Einkäufe und die Art und Weise, wie Sie von AI generierte Reflexionen verwenden, verantwortlich bleiben.
 
@@ -19,7 +19,7 @@ Mit Anky können Sie:
 - Besuchen Sie die lokale Schreibgeschichte noch einmal
 - Schreibdateien exportieren oder importieren
 - Verwalten Sie den privaten Anky-Zugriff
-- Kaufen oder nutzen Sie Reflection Credits
+- Abonnieren Sie die vollständige Praxis
 - Fragen Sie Anky nach durch AI erzeugten Reflexionen
 - Nutzen Sie verwandte Funktionen, die wir im Laufe der Zeit bereitstellen
 
@@ -73,25 +73,23 @@ Sie sind für den Schutz Ihrer Wiederherstellungswörter, Ihres Gerätepasscodes
 
 Teilen Sie niemals Ihre Genesungsworte.
 
-Wenn Sie Ihre Wiederherstellungswörter verlieren, ist Anky möglicherweise nicht in der Lage, Ihr Guthaben, Ihren Profilstatus oder zugehörige Daten wiederherzustellen.
+Wenn Sie Ihre Wiederherstellungswörter verlieren, ist Anky möglicherweise nicht in der Lage, Ihren Profilstatus, Ihre Abonnementverknüpfung oder zugehörige Daten wiederherzustellen.
 
 Anky ist nicht verantwortlich für Verluste, die durch verlorene Wiederherstellungswörter, kompromittierte Geräte, gemeinsame Anmeldeinformationen oder unbefugten Zugriff auf Ihr Gerät oder Ihre Konten verursacht werden.
 
-## 8. Käufe, Gutschriften und Rückerstattungen
+## 8. Käufe, Abonnements und Rückerstattungen
 
-Das Schreiben in Anky ist kostenlos.
+Alles, was Sie geschrieben haben, bleibt immer auf Ihrem Gerät lesbar, mit oder ohne Abonnement.
 
-Für Reflexionen sind möglicherweise Credits erforderlich.
+Die vollständige Praxis – das Gate, Ankys Reflexionen, die Gemälde jenseits der kostenlosen Grenze und die tägliche Freischaltung – erfordert ein sich automatisch verlängerndes Abonnement (siehe Abschnitt 10).
 
-Credits sind digitale App-Credits, die nur innerhalb von Anky für Reflexionsanfragen verwendet werden. Gutschriften sind kein Geld, keine Kryptowährung, kein gespeicherter Wert, nicht abhebbar, nicht gegen Bargeld einlösbar und nicht übertragbar, es sei denn, wir sagen ausdrücklich etwas anderes.
-
-Einkäufe werden über App Store von Apple abgewickelt und können von RevenueCat verwaltet werden.
+Einkäufe werden über den App Store von Apple abgewickelt und mit RevenueCat verwaltet.
 
 Wir verarbeiten oder speichern Ihre vollständigen Zahlungskartendaten nicht.
 
 Rückerstattungen werden von Apple gemäß den Richtlinien von Apple abgewickelt.
 
-Wir können Preise, Guthabenpakete, kostenlose Testversionen oder Guthabenregeln jederzeit ändern, vorbehaltlich geltender Gesetze und App Store-Regeln.
+Wir können Preise oder Tarife jederzeit ändern, vorbehaltlich geltender Gesetze und App Store-Regeln. Preisänderungen gelten niemals rückwirkend für einen bereits bezahlten Zeitraum.
 
 ## 9. AI-Generierte Reflexionen
 
@@ -111,19 +109,24 @@ Sie bleiben für die Interpretation und Verwendung jeglicher Reflexion verantwor
 
 Anky, Inc. ist nicht verantwortlich für Entscheidungen, die Sie auf der Grundlage von AI-generierten Inhalten treffen.
 
-## 10. Token-Referenzen
+## 10. Sich automatisch verlängernde Abonnements
 
-Anky kann Token-Referenzen, öffentliche Referenzen oder verwandte Informationen anzeigen.
+Anky bietet zwei Abonnement-Tarife an:
 
-Diese Referenzen dienen nur der Information.
+- **Jährlich** – $88 USD pro Jahr, mit einer 3-tägigen kostenlosen Testphase für neue Abonnenten.
+- **Monatlich** – $11.99 USD pro Monat, ohne kostenlose Testphase.
 
-Nichts in Anky ist eine Finanzberatung, Anlageberatung, Steuerberatung, Rechtsberatung oder ein Angebot zum Kauf oder Verkauf von Token, Wertpapieren oder Vermögenswerten.
+Die Preise können je nach Land variieren; der App Store zeigt Ihnen den genauen Preis in Ihrer Währung an, bevor Sie bestätigen.
 
-Für die Nutzung von Anky ist kein Kauf, Besitz oder Handel von Token erforderlich.
+Sofern sie nicht gekündigt werden, verlängern sich Abonnements am Ende jedes Zeitraums automatisch, und die jährliche kostenlose Testphase geht nach ihrem Ende in ein kostenpflichtiges Jahresabonnement über.
 
-Transaktionen im öffentlichen Netzwerk können öffentlich, irreversibel, volatil, riskant und außerhalb der Kontrolle von Ankys ein.
+Die Zahlung wird über Ihr Apple-ID-Konto abgerechnet. Die Verlängerung wird Ihrem Konto innerhalb von 24 Stunden vor dem Ende des laufenden Zeitraums belastet.
 
-Sie sind für Ihre Einkäufe, Transaktionen, Steuern und finanziellen Entscheidungen selbst verantwortlich.
+Sie können jederzeit in den App Store-Abonnementeinstellungen Ihres Geräts kündigen (Einstellungen → Ihr Name → Abonnements). Um eine Belastung zu vermeiden, kündigen Sie mindestens 24 Stunden vor dem Ende der Testphase oder des laufenden Zeitraums. Eine Kündigung stoppt zukünftige Verlängerungen; der Zugriff bleibt bis zum Ende des bereits bezahlten Zeitraums (oder der Testphase) bestehen.
+
+Sie können frühere Käufe auf jedem Gerät, das mit derselben Apple-ID angemeldet ist, über „Käufe wiederherstellen“ in Anky wiederherstellen.
+
+Das Löschen der App kündigt ein Abonnement nicht.
 
 ## 11. Nutzerverhalten
 
@@ -132,7 +135,7 @@ Sie stimmen zu, Folgendes nicht zu tun:
 - Verwenden Sie Anky, wenn Sie die Altersanforderungen nicht erfüllen
 - Verwenden Sie Anky für illegale Aktivitäten
 - Die Systeme von Anky missbrauchen, angreifen, stören oder überlasten
-- Umgehen Sie Gutschriften, Paywalls, Testversionen, App-Bescheinigungen oder Sicherheitskontrollen
+- Umgehen Sie Abonnements, Paywalls, Testversionen oder Sicherheitskontrollen
 - Reverse Engineering, Scraping, Extrahieren oder Veröffentlichen privater Eingabeaufforderungen, Modellanweisungen oder Backend-Systeme von Anky
 - Verwenden Sie Bots, Skripte oder Automatisierung, um die App zu missbrauchen
 - Versuchen Sie, auf die Daten, Wiederherstellungswörter, den privaten Zugang oder das Konto einer anderen Person zuzugreifen
@@ -174,7 +177,7 @@ Apple ist nicht verantwortlich für Anky, seinen Inhalt, Support, Garantien oder
 
 Anky ist möglicherweise nicht verfügbar, verzögert, unterbrochen, ungenau oder wird eingestellt.
 
-Wir garantieren nicht, dass Anky immer funktioniert, dass Reflexionen immer verfügbar sind, dass Credits immer sofort synchronisiert werden oder dass lokale Daten niemals verloren gehen.
+Wir garantieren nicht, dass Anky immer funktioniert, dass Reflexionen immer verfügbar sind, dass der Abonnementstatus immer sofort synchronisiert wird oder dass lokale Daten niemals verloren gehen.
 
 Sichern Sie alles Wichtige.
 
@@ -196,7 +199,7 @@ IHRE NUTZUNG VONANKYERFOLGT AUF EIGENE GEFAHR.
 
 ## 19. Haftungsbeschränkung
 
-ANKY, INC. UND SEINE EIGENTÜMER, DIREKTOREN, ANGESTELLTEN, ANGESTELLTEN, AUFTRAGNEHMER, DIENSTLEISTER UND VERBUNDENEN UNTERNEHMEN HAFTEN SOWEIT GESETZLICH ZULÄSSIG NICHT FÜR INDIREKTE, ZUFÄLLIGE, BESONDERE, FOLGESCHÄDEN, EXEMPLARISCHE ODER STRAFSCHÄDEN ODER FÜR ENTGANGENEN GEWINN DATEN, VERLORENE SCHREIBEN, VERLORENE KREDITE, VERLORENE TOKEN, VERLORENER WIEDERHERSTELLUNGSZUGRIFF, GERÄTEKOMPROMITÄT, EMOTIONALE BELASTUNG ODER ENTSCHEIDUNGEN, DIE AUF DER GRUNDLAGE VON AI-GENERIERTEN INHALTEN GEFALLEN WERDEN.
+ANKY, INC. UND SEINE EIGENTÜMER, DIREKTOREN, ANGESTELLTEN, ANGESTELLTEN, AUFTRAGNEHMER, DIENSTLEISTER UND VERBUNDENEN UNTERNEHMEN HAFTEN SOWEIT GESETZLICH ZULÄSSIG NICHT FÜR INDIREKTE, ZUFÄLLIGE, BESONDERE, FOLGESCHÄDEN, EXEMPLARISCHE ODER STRAFSCHÄDEN ODER FÜR ENTGANGENEN GEWINN DATEN, VERLORENE SCHREIBEN, VERLORENE ABONNEMENTZEIT, VERLORENER WIEDERHERSTELLUNGSZUGRIFF, GERÄTEKOMPROMITÄT, EMOTIONALE BELASTUNG ODER ENTSCHEIDUNGEN, DIE AUF DER GRUNDLAGE VON AI-GENERIERTEN INHALTEN GEFALLEN WERDEN.
 
 SOWEIT GESETZLICH ZULÄSSIG, ÜBERSTEIGT DIE GESAMTHAFTUNG VONANKY, INC. FÜR JEGLICHE CL AI M NICHT DEN HÖHEREN BETRAG VON:
 
@@ -216,7 +219,7 @@ Sie erklären sich damit einverstanden, Anky, Inc. und seine Eigentümer, Direkt
 - Ihr Verstoß gegen das Gesetz
 - Ihre Verletzung der Rechte einer anderen Person
 - Ihr Missbrauch von durch AI erzeugten Reflexionen
-- Ihre Token-, Transaktions- oder Wiederherstellungsaktivität
+- Ihre Wiederherstellungs-, Sicherungs- oder Exportaktivität
 
 ## 21. Anwendbares Recht
 

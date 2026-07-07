@@ -288,3 +288,20 @@
 "Hide delete account action" = "Masquer l'action de suppression de compte";
 "Show delete account action" = "Afficher l'action de suppression de compte";
 "Legal document unavailable. Please contact support@anky.app." = "Document juridique indisponible. Contactez support@anky.app.";
+
+/* Free-tier target moment + emergency door (2026-07-06) */
+"your target, reached." = "ton objectif, atteint.";
+"you wrote what you set out to write today. that is the whole practice." = "tu as écrit ce que tu t'étais fixé aujourd'hui. c'est toute la pratique.";
+"for subscribers, this is the moment the day opens — the phone unlocks until midnight, because the writing already happened." = "pour les abonnés, c'est le moment où la journée s'ouvre — le téléphone se déverrouille jusqu'à minuit, parce que l'écriture a déjà eu lieu.";
+"start 3 free days" = "commencer 3 jours gratuits";
+"not now" = "pas maintenant";
+"emergency? open without writing" = "urgence ? ouvrir sans écrire";
+"Emergency: open your apps without writing" = "Urgence : ouvre tes apps sans écrire";
+
+/* Gate off-switch (2026-07-06) */
+"turn the gate off" = "désactiver la porte";
+"take the door down?" = "enlever la porte ?";
+"your apps open freely again. the gate waits here whenever you want it back." = "tes apps s'ouvrent à nouveau librement. la porte attend ici quand tu voudras la remettre.";
+"turn it off" = "la désactiver";
+"keep the gate" = "garder la porte";
+"the gate is off. your apps are open." = "la porte est désactivée. tes apps sont ouvertes.";

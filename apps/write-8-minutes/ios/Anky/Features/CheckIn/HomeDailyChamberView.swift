@@ -601,6 +601,7 @@ struct ArchiveChamberView: View {
     @State private var searchableText: [String: String] = [:]
     @State private var dateFilter: Date?
     @State private var searchQuery = ""
+    @State private var exportURL: URL?
 
     init(
         selectedDate: Date? = nil,
@@ -684,12 +685,18 @@ struct ArchiveChamberView: View {
 
                     Spacer()
 
-                    AnkySunGlyph(size: 20, color: .ankyGold)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(Color.ankyGold.opacity(0.14)))
+                    Button {
+                        exportURL = makeWritingExportURL()
+                    } label: {
+                        AnkySunGlyph(size: 20, color: .ankyGold)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(Color.ankyGold.opacity(0.14)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(AnkyLocalization.ui("Export all writings"))
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 68)
+                .padding(.top, 18)
                 .padding(.bottom, 16)
 
                 searchBar
@@ -766,6 +773,20 @@ struct ArchiveChamberView: View {
             dateFilter = newValue
             reload()
         }
+        .sheet(
+            isPresented: Binding(
+                get: { exportURL != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        exportURL = nil
+                    }
+                }
+            )
+        ) {
+            if let exportURL {
+                ActivityShareSheet(items: [exportURL])
+            }
+        }
     }
 
     private var searchBar: some View {
@@ -817,6 +838,36 @@ struct ArchiveChamberView: View {
             }
         )
     }
+
+    private func makeWritingExportURL() -> URL? {
+        let all = ankys.sorted { $0.createdAt > $1.createdAt }
+        guard !all.isEmpty else { return nil }
+        let body = all.map { anky in
+            let date = anky.createdAt.formatted(.dateTime.year().month(.wide).day().hour().minute())
+            let writing = anky.reconstructedText.trimmingCharacters(in: .whitespacesAndNewlines)
+            return "\(date)\n\n\(writing)"
+        }
+        .joined(separator: "\n\n----\n\n")
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("anky-writings-\(Int(Date().timeIntervalSince1970)).txt")
+        do {
+            try body.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            return nil
+        }
+    }
+}
+
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 /// One archived writing, matching the design: sigil in a soft gold

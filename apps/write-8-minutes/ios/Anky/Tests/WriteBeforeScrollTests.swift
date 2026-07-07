@@ -162,7 +162,7 @@ final class WriteBeforeScrollTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let store = WritingAnchorStore(defaults: defaults)
 
-        XCTAssertNil(store.writerName)
+        XCTAssertEqual(store.writerName, "You")
         XCTAssertNil(store.anchorSentence)
         XCTAssertNil(store.anchorReminderLine)
 
@@ -175,10 +175,11 @@ final class WriteBeforeScrollTests: XCTestCase {
         )
 
         store.save(writerName: "   ", anchorSentence: "Stay here.")
-        XCTAssertNil(store.writerName)
-        XCTAssertEqual(store.anchorReminderLine, "remember: “Stay here.”")
+        XCTAssertEqual(store.writerName, "You")
+        XCTAssertEqual(store.anchorReminderLine, "You, remember: “Stay here.”")
 
         store.save(writerName: nil, anchorSentence: nil)
+        XCTAssertEqual(store.writerName, "You")
         XCTAssertNil(store.anchorSentence)
         XCTAssertNil(store.anchorReminderLine)
     }
@@ -216,6 +217,36 @@ final class WriteBeforeScrollTests: XCTestCase {
                 .count,
             1
         )
+    }
+
+    func testIncompleteSealedSessionCanBeReopenedForContinuation() throws {
+        var engine = WritingSessionEngine()
+        _ = engine.accept("I am here.", at: 1_770_000_000_000)
+        _ = engine.accept(" Still here.", at: 1_770_000_030_000)
+        engine.closeWithTerminalSilence()
+
+        let sealedText = engine.protocolText
+        XCTAssertTrue(try WritingSessionEngine(draftText: sealedText).isClosed)
+
+        let reopenedText = LocalAnkyArchive.reopenableDraftText(from: sealedText)
+        var reopened = try WritingSessionEngine(draftText: reopenedText)
+
+        XCTAssertFalse(reopened.isClosed)
+        XCTAssertEqual(reopened.reconstructedText, "I am here. Still here.")
+        XCTAssertEqual(reopened.elapsedMs, 30_000)
+
+        reopened.prepareToResume(at: 1_770_000_040_000)
+        _ = reopened.accept(" More.", at: 1_770_000_041_000)
+        reopened.closeWithTerminalSilence()
+
+        XCTAssertEqual(
+            reopened.protocolText
+                .split(separator: "\n")
+                .filter { $0 == "\(AnkyDuration.terminalSilenceMs)" }
+                .count,
+            1
+        )
+        XCTAssertEqual(reopened.reconstructedText, "I am here. Still here. More.")
     }
 
     func testUnlockPolicyDoesNotGrantSentenceUnlockForFirstCharacter() {
