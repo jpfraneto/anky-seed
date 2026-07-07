@@ -52,6 +52,7 @@ export type LevelStatus = {
 export function openLevelDb(path: string): Database {
   const db = new Database(path, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
+  migrateSubscriptionStateToRevenueCat(db);
   db.exec(`
     CREATE TABLE IF NOT EXISTS session_ledger (
       account TEXT NOT NULL,
@@ -98,20 +99,25 @@ export function openLevelDb(path: string): Database {
 
     CREATE TABLE IF NOT EXISTS subscription_state (
       account TEXT PRIMARY KEY,
-      original_transaction_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      purchased_at_ms INTEGER,
+      app_user_id TEXT NOT NULL,
+      entitlement_id TEXT NOT NULL,
+      product_id TEXT,
+      store TEXT,
+      period_type TEXT,
+      -- NULLABLE on purpose: lifetime / open-ended promotional grants are
+      -- entitled with no expiration.
       expires_at_ms INTEGER,
-      is_trial INTEGER NOT NULL DEFAULT 0,
-      revoked_at_ms INTEGER,
-      grace_until_ms INTEGER,
+      is_active INTEGER NOT NULL DEFAULT 0,
       environment TEXT,
-      app_account_token TEXT,
-      signed_at_ms INTEGER NOT NULL DEFAULT 0,
+      last_event_at_ms INTEGER NOT NULL DEFAULT 0,
       updated_at_ms INTEGER NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_subscription_original_txn
-      ON subscription_state (original_transaction_id);
+
+    CREATE TABLE IF NOT EXISTS revenuecat_events (
+      event_id TEXT PRIMARY KEY,
+      event_type TEXT NOT NULL,
+      received_at_ms INTEGER NOT NULL
+    );
 
     CREATE TABLE IF NOT EXISTS funnel_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,6 +130,24 @@ export function openLevelDb(path: string): Database {
       ON funnel_events (created_at_ms);
   `);
   return db;
+}
+
+/**
+ * One-time schema migration (2026-07): subscription_state used to hold
+ * Apple-JWS-derived columns (original_transaction_id, app_account_token,
+ * signed_at_ms). RevenueCat webhooks are entitlement truth now and the
+ * table is RevenueCat-shaped. Old rows are not carried over on purpose:
+ * state rebuilds from webhooks, /subscription/identify, and the live REST
+ * fallback within one app foreground.
+ */
+function migrateSubscriptionStateToRevenueCat(db: Database): void {
+  const columns = db
+    .prepare("PRAGMA table_info(subscription_state)")
+    .all() as { name: string }[];
+  if (columns.some((column) => column.name === "original_transaction_id")) {
+    db.exec("DROP INDEX IF EXISTS idx_subscription_original_txn;");
+    db.exec("DROP TABLE subscription_state;");
+  }
 }
 
 const SESSION_HASH_PATTERN = /^[0-9a-f]{64}$/;

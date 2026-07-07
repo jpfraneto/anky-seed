@@ -33,11 +33,12 @@ export type PaintingRouteContext = {
   openrouterApiKey: string;
   maxBodyBytes: number;
   now?: () => number;
-  // Test seam; defaults to the subscription table.
+  // Entitlement resolver (server.ts wires the RevenueCat REST fallback in);
+  // defaults to the local subscription table. May be sync or async.
   entitlementFor?: (
     account: string,
     nowMs: number,
-  ) => { entitled: boolean };
+  ) => { entitled: boolean } | Promise<{ entitled: boolean }>;
 };
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -130,9 +131,9 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     // The entitlement gate sits before any pipeline state so an unpaid
     // account can never trigger spend — not even a pre-generation re-trigger.
     if (level > FREE_GENERATION_MAX_LEVEL) {
-      const entitlement =
-        ctx.entitlementFor?.(account, nowMs) ??
-        accountEntitlement(db, account, nowMs);
+      const entitlement = ctx.entitlementFor
+        ? await ctx.entitlementFor(account, nowMs)
+        : accountEntitlement(db, account, nowMs);
       if (!entitlement.entitled) {
         return errorJson(c, 402, "ENTITLEMENT_REQUIRED");
       }

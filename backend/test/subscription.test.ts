@@ -1,9 +1,11 @@
-// Phase 3 — the boundary, server side.
+// RevenueCat is the sole subscription-entitlement truth.
 //
-// The subscription table is the single source of truth every gated endpoint
-// consults. These tests cover: the Apple JWS verifier (against a local test
-// chain), the state store (renewal ordering, refunds, grace), the sync and
-// notification routes, and the entitlement gates on /anky and /level/prepare.
+// These tests cover: the webhook route (auth, idempotency, lifecycle events,
+// promotional grants, out-of-order delivery), /subscription/identify (live
+// refresh through a stubbed RevenueCat fetch), the deprecated /subscription/sync
+// shim, and the entitlement gates on POST /anky and POST /level/prepare.
+// No test ever touches the network: the RevenueCat REST fallback is either
+// unconfigured (empty secret key) or stubbed through revenueCatFetch.
 
 import { beforeEach, describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
@@ -12,15 +14,15 @@ import { signAnkyMirrorRequest } from "@anky/protocol";
 import { openLevelDb } from "../level/db";
 import {
   ankyWorld,
+  clearInFlightForTests,
   clearReplayMemoryForTests,
   createApp,
   createSafeLogger,
+  type AnkyRouteDeps,
 } from "../server";
-import { verifyAppleJws } from "../subscription/applejws";
 import {
   accountEntitlement,
-  applyGracePeriod,
-  applyVerifiedTransaction,
+  applySubscriptionState,
   getSubscription,
 } from "../subscription/store";
 
@@ -28,71 +30,20 @@ const fixtureRoot = resolve(import.meta.dir, "../../protocol/fixtures");
 const identityFixtureMnemonic =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
-// A single snapshot of the real clock: the fixture chain's validity window
-// starts when the fixture was generated, so test payloads must be signed "now".
 const NOW = Date.now();
 const DAY = 24 * 60 * 60 * 1000;
-
-const jwsFixture = JSON.parse(
-  await readFile(resolve(import.meta.dir, "fixtures/apple-jws-fixture.json"), "utf8"),
-) as { rootDerBase64: string; leafDerBase64: string; leafPkcs8Base64: string };
+const WEBHOOK_AUTH = "Bearer test-webhook-secret";
 
 beforeEach(() => {
   clearReplayMemoryForTests();
+  clearInFlightForTests();
 });
 
 // --- helpers -----------------------------------------------------------------
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  return Buffer.from(bytes)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function mintJws(payload: Record<string, unknown>): Promise<string> {
-  const header = { alg: "ES256", x5c: [jwsFixture.leafDerBase64, jwsFixture.rootDerBase64] };
-  const headerPart = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
-  const payloadPart = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    Buffer.from(jwsFixture.leafPkcs8Base64, "base64"),
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    new TextEncoder().encode(`${headerPart}.${payloadPart}`),
-  );
-  return `${headerPart}.${payloadPart}.${base64UrlEncode(new Uint8Array(signature))}`;
-}
-
-const testJwsOptions = {
-  pinnedRootDerBase64: jwsFixture.rootDerBase64,
-  requireMarkerOids: false,
-};
-
-function sampleTransaction(overrides: Record<string, unknown> = {}) {
-  return {
-    bundleId: "com.jpfraneto.Anky",
-    productId: "anky.yearly",
-    originalTransactionId: "orig-1000",
-    transactionId: "txn-1000",
-    purchaseDate: NOW - DAY,
-    expiresDate: NOW + 30 * DAY,
-    // Signed "now": the fixture chain only became valid when it was generated.
-    signedDate: NOW,
-    environment: "Production",
-    type: "Auto-Renewable Subscription",
-    ...overrides,
-  };
-}
-
 async function signedHeaders(
   body: Uint8Array,
+  extra: Record<string, string> = {},
 ): Promise<Record<string, string>> {
   const requestTime = String(Date.now());
   const signed = await signAnkyMirrorRequest({
@@ -110,6 +61,7 @@ async function signedHeaders(
     "X-Anky-Signature": signed.signature,
     "X-Anky-Request-Time": requestTime,
     "X-Anky-Client": "other",
+    ...extra,
   };
 }
 
@@ -124,143 +76,343 @@ async function fixtureAccountId(): Promise<string> {
   return signed.identity.accountId;
 }
 
-// --- Apple JWS verifier ------------------------------------------------------
-
-describe("verifyAppleJws", () => {
-  test("verifies a chain that terminates at the pinned root", async () => {
-    const jws = await mintJws(sampleTransaction());
-    const result = await verifyAppleJws(jws, testJwsOptions);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.payload.productId).toBe("anky.yearly");
-  });
-
-  test("rejects a tampered payload", async () => {
-    const jws = await mintJws(sampleTransaction());
-    const [header, , signature] = jws.split(".");
-    const forged = base64UrlEncode(
-      new TextEncoder().encode(
-        JSON.stringify(sampleTransaction({ expiresDate: NOW + 3650 * DAY })),
-      ),
-    );
-    const result = await verifyAppleJws(
-      `${header}.${forged}.${signature}`,
-      testJwsOptions,
-    );
-    expect(result.ok).toBe(false);
-  });
-
-  test("rejects a chain that does not reach the real Apple root", async () => {
-    const jws = await mintJws(sampleTransaction());
-    // Default options pin the genuine Apple Root CA-G3.
-    const result = await verifyAppleJws(jws, { requireMarkerOids: false });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe("UNTRUSTED_ROOT");
-  });
-
-  test("requires Apple marker OIDs by default", async () => {
-    const jws = await mintJws(sampleTransaction());
-    const result = await verifyAppleJws(jws, {
-      pinnedRootDerBase64: jwsFixture.rootDerBase64,
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe("WRONG_LEAF_CERTIFICATE");
-  });
-
-  test("rejects malformed input", async () => {
-    expect((await verifyAppleJws("not-a-jws", testJwsOptions)).ok).toBe(false);
-    expect((await verifyAppleJws("a.b.c", testJwsOptions)).ok).toBe(false);
-  });
-});
-
-// --- subscription store ------------------------------------------------------
-
-describe("subscription store", () => {
-  test("upserts and answers the entitlement question", () => {
-    const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(db, "0xabc", sampleTransaction(), NOW);
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(true);
-    expect(accountEntitlement(db, "0xabc", NOW + 31 * DAY).entitled).toBe(false);
-    expect(accountEntitlement(db, "0xother", NOW).entitled).toBe(false);
-  });
-
-  test("a replayed older transaction cannot roll back a renewal", () => {
-    const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ signedDate: NOW, expiresDate: NOW + 365 * DAY }),
-      NOW,
-    );
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ signedDate: NOW - 10 * DAY, expiresDate: NOW + DAY }),
-      NOW,
-    );
-    const record = getSubscription(db, "0xabc");
-    expect(record?.expiresAtMs).toBe(NOW + 365 * DAY);
-  });
-
-  test("a refund revokes entitlement even with an older signedDate guard", () => {
-    const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ signedDate: NOW, expiresDate: NOW + 365 * DAY }),
-      NOW,
-    );
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({
-        signedDate: NOW - DAY,
-        expiresDate: NOW + 365 * DAY,
-        revocationDate: NOW,
-        revocationReason: 0,
-      }),
-      NOW,
-    );
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(false);
-  });
-
-  test("billing grace keeps an expired subscription entitled until it ends", () => {
-    const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ expiresDate: NOW - DAY }),
-      NOW,
-    );
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(false);
-    applyGracePeriod(db, "0xabc", NOW + 15 * DAY, NOW);
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(true);
-    expect(accountEntitlement(db, "0xabc", NOW + 16 * DAY).entitled).toBe(false);
-  });
-
-  test("the trial flag follows Apple's introductory offer type", () => {
-    const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ offerType: 1 }),
-      NOW,
-    );
-    expect(accountEntitlement(db, "0xabc", NOW).isTrial).toBe(true);
-  });
-});
-
-// --- routes ------------------------------------------------------------------
-
-function appWith(db = openLevelDb(":memory:")) {
+function appWith(
+  db = openLevelDb(":memory:"),
+  overrides: Parameters<typeof ankyWorld>[0] = {},
+  ankyRouteDeps?: AnkyRouteDeps,
+) {
   const app = createApp({
-    env: ankyWorld({}),
+    // Empty secret key: the REST fallback answers null and every check
+    // resolves from the local table — no network.
+    env: ankyWorld({
+      revenueCatSecretKey: "",
+      revenueCatWebhookAuth: WEBHOOK_AUTH,
+      ...overrides,
+    }),
     logger: createSafeLogger({ log() {} }),
     levelDb: db,
+    ankyRouteDeps,
   });
   return { app, db };
 }
 
+type WebhookEventOverrides = Record<string, unknown>;
+
+function webhookBody(overrides: WebhookEventOverrides = {}) {
+  return JSON.stringify({
+    api_version: "1.0",
+    event: {
+      id: "evt-1",
+      type: "INITIAL_PURCHASE",
+      app_user_id: "0xabc",
+      entitlement_ids: ["pro"],
+      product_id: "anky.yearly",
+      period_type: "NORMAL",
+      store: "APP_STORE",
+      environment: "PRODUCTION",
+      purchased_at_ms: NOW - DAY,
+      expiration_at_ms: NOW + 30 * DAY,
+      event_timestamp_ms: NOW,
+      ...overrides,
+    },
+  });
+}
+
+async function postWebhook(
+  app: ReturnType<typeof createApp>,
+  body: string,
+  authorization: string | null = WEBHOOK_AUTH,
+) {
+  return app.request("/webhooks/revenuecat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authorization === null ? {} : { Authorization: authorization }),
+    },
+    body,
+  });
+}
+
+function seedEntitledState(
+  db: ReturnType<typeof openLevelDb>,
+  account: string,
+  overrides: Partial<Parameters<typeof applySubscriptionState>[1]> = {},
+) {
+  applySubscriptionState(
+    db,
+    {
+      account,
+      entitlementId: "pro",
+      productId: "anky.yearly",
+      store: "app_store",
+      periodType: "normal",
+      expiresAtMs: NOW + 30 * DAY,
+      isActive: true,
+      environment: "PRODUCTION",
+      eventAtMs: NOW,
+      ...overrides,
+    },
+    NOW,
+  );
+}
+
+// --- POST /webhooks/revenuecat -----------------------------------------------
+
+describe("POST /webhooks/revenuecat", () => {
+  test("401 on missing or wrong Authorization", async () => {
+    const { app } = appWith();
+    const missing = await postWebhook(app, webhookBody(), null);
+    expect(missing.status).toBe(401);
+    expect((await missing.json()).error).toBe("INVALID_WEBHOOK_AUTH");
+
+    const wrong = await postWebhook(app, webhookBody(), "Bearer wrong");
+    expect(wrong.status).toBe(401);
+  });
+
+  test("503 when REVENUECAT_WEBHOOK_AUTH is unconfigured (fails closed)", async () => {
+    const { app } = appWith(openLevelDb(":memory:"), {
+      revenueCatWebhookAuth: "",
+    });
+    const res = await postWebhook(app, webhookBody(), "Bearer anything");
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe("WEBHOOK_AUTH_UNCONFIGURED");
+  });
+
+  test("INITIAL_PURCHASE creates active state and entitles the account", async () => {
+    const { app, db } = appWith();
+    const res = await postWebhook(app, webhookBody());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+
+    const entitlement = accountEntitlement(db, "0xabc", NOW);
+    expect(entitlement.entitled).toBe(true);
+    expect(entitlement.productId).toBe("anky.yearly");
+    expect(entitlement.expiresAtMs).toBe(NOW + 30 * DAY);
+    expect(entitlement.store).toBe("APP_STORE");
+    expect(entitlement.isPromotional).toBe(false);
+  });
+
+  test("EXPIRATION ends the entitlement", async () => {
+    const { app, db } = appWith();
+    await postWebhook(app, webhookBody());
+    const res = await postWebhook(
+      app,
+      webhookBody({
+        id: "evt-2",
+        type: "EXPIRATION",
+        expiration_at_ms: NOW,
+        event_timestamp_ms: NOW + 1,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(accountEntitlement(db, "0xabc", NOW + 2).entitled).toBe(false);
+  });
+
+  test("CANCELLATION (auto-renew off) keeps entitlement until expiry", async () => {
+    const { app, db } = appWith();
+    await postWebhook(app, webhookBody());
+    const res = await postWebhook(
+      app,
+      webhookBody({
+        id: "evt-2",
+        type: "CANCELLATION",
+        cancel_reason: "UNSUBSCRIBE",
+        expiration_at_ms: NOW + 30 * DAY,
+        event_timestamp_ms: NOW + 1,
+      }),
+    );
+    expect(res.status).toBe(200);
+    // Still entitled: the paid period runs to its expiration date.
+    expect(accountEntitlement(db, "0xabc", NOW + DAY).entitled).toBe(true);
+    // Not entitled once the period is over.
+    expect(accountEntitlement(db, "0xabc", NOW + 31 * DAY).entitled).toBe(false);
+  });
+
+  test("a duplicate event id is acknowledged but not re-applied", async () => {
+    const { app, db } = appWith();
+    await postWebhook(app, webhookBody());
+
+    // Redelivery with the same id but hostile content: must be skipped.
+    const res = await postWebhook(
+      app,
+      webhookBody({
+        type: "EXPIRATION",
+        expiration_at_ms: NOW - DAY,
+        event_timestamp_ms: NOW + 999,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, duplicate: true });
+    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(true);
+  });
+
+  test("an unknown event type is acknowledged as unhandled", async () => {
+    const { app, db } = appWith();
+    const res = await postWebhook(
+      app,
+      webhookBody({ id: "evt-test", type: "TEST" }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, unhandled: true });
+    expect(getSubscription(db, "0xabc")).toBeNull();
+  });
+
+  test("a PROMOTIONAL grant with expiration_at_ms null is entitled with no expiration", async () => {
+    // The critical promotional case: a grant from the RevenueCat dashboard,
+    // keyed by wallet address, open-ended. It must gate exactly like a
+    // purchase, forever, with no expiration to trip over.
+    const { app, db } = appWith();
+    const res = await postWebhook(
+      app,
+      webhookBody({
+        id: "evt-promo",
+        product_id: null,
+        period_type: "PROMOTIONAL",
+        store: "PROMOTIONAL",
+        expiration_at_ms: null,
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const entitlement = accountEntitlement(db, "0xabc", NOW + 3650 * DAY);
+    expect(entitlement.entitled).toBe(true);
+    expect(entitlement.expiresAtMs).toBeUndefined();
+    expect(entitlement.isPromotional).toBe(true);
+  });
+
+  test("an out-of-order older event cannot roll back newer state", async () => {
+    const { app, db } = appWith();
+    await postWebhook(
+      app,
+      webhookBody({
+        id: "evt-renewal",
+        type: "RENEWAL",
+        expiration_at_ms: NOW + 365 * DAY,
+        event_timestamp_ms: NOW,
+      }),
+    );
+    // A delayed older event with a shorter expiration arrives afterwards.
+    const res = await postWebhook(
+      app,
+      webhookBody({
+        id: "evt-older",
+        type: "INITIAL_PURCHASE",
+        expiration_at_ms: NOW + DAY,
+        event_timestamp_ms: NOW - 10 * DAY,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(getSubscription(db, "0xabc")?.expiresAtMs).toBe(NOW + 365 * DAY);
+  });
+});
+
+// --- POST /subscription/identify -----------------------------------------------
+
+describe("POST /subscription/identify", () => {
+  test("401 without a signature", async () => {
+    const { app } = appWith();
+    const res = await app.request("/subscription/identify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId: "0xabc" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test("403 when the body appUserId is not the authenticated account", async () => {
+    const { app } = appWith();
+    const body = new TextEncoder().encode(
+      JSON.stringify({ appUserId: "0x0000000000000000000000000000000000000001" }),
+    );
+    const res = await app.request("/subscription/identify", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("APP_USER_ID_MISMATCH");
+  });
+
+  test("refreshes from RevenueCat and answers the entitlement shape", async () => {
+    const account = await fixtureAccountId();
+    const expiresAt = new Date(NOW + 30 * DAY).toISOString();
+    const requestedUrls: string[] = [];
+    const { app, db } = appWith(
+      openLevelDb(":memory:"),
+      { revenueCatSecretKey: "sk_test" },
+      {
+        revenueCatFetch: async (url, init) => {
+          requestedUrls.push(url);
+          expect(init.headers.Authorization).toBe("Bearer sk_test");
+          return new Response(
+            JSON.stringify({
+              subscriber: {
+                entitlements: {
+                  pro: {
+                    expires_date: expiresAt,
+                    product_identifier: "anky.yearly",
+                    period_type: "normal",
+                  },
+                },
+                subscriptions: {
+                  "anky.yearly": { store: "app_store", period_type: "normal" },
+                },
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        },
+      },
+    );
+
+    const body = new TextEncoder().encode(JSON.stringify({ appUserId: account }));
+    const res = await app.request("/subscription/identify", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      entitled: true,
+      productId: "anky.yearly",
+      expiresAtMs: Date.parse(expiresAt),
+      store: "app_store",
+      periodType: "normal",
+    });
+    expect(requestedUrls[0]).toContain("/v1/subscribers/");
+    // The refreshed truth is persisted for the local fast path.
+    expect(accountEntitlement(db, account, NOW).entitled).toBe(true);
+  });
+});
+
+// --- POST /subscription/sync (deprecated shim) --------------------------------
+
 describe("POST /subscription/sync", () => {
+  test("answers the old shape from current state, flagged deprecated", async () => {
+    const account = await fixtureAccountId();
+    const db = openLevelDb(":memory:");
+    seedEntitledState(db, account);
+    const { app } = appWith(db);
+
+    const body = new TextEncoder().encode(
+      JSON.stringify({ signedTransaction: "legacy.jws.ignored" }),
+    );
+    const res = await app.request("/subscription/sync", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      entitled: true,
+      productId: "anky.yearly",
+      expiresAtMs: NOW + 30 * DAY,
+      isTrial: false,
+      deprecated: true,
+    });
+  });
+
   test("401 without a signature", async () => {
     const { app } = appWith();
     const res = await app.request("/subscription/sync", {
@@ -270,185 +422,27 @@ describe("POST /subscription/sync", () => {
     });
     expect(res.status).toBe(401);
   });
-
-  test("rejects an invalid Apple JWS", async () => {
-    const { app } = appWith();
-    const body = new TextEncoder().encode(
-      JSON.stringify({ signedTransaction: "not.a.jws" }),
-    );
-    const res = await app.request("/subscription/sync", {
-      method: "POST",
-      headers: await signedHeaders(body),
-      body,
-    });
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe("INVALID_APPLE_JWS");
-  });
-
-  test("a locally-minted chain does not pass the production pinned root", async () => {
-    // The full end-to-end guarantee: even a well-formed JWS signed by a
-    // non-Apple chain is rejected by the real route.
-    const { app } = appWith();
-    const jws = await mintJws(sampleTransaction());
-    const body = new TextEncoder().encode(
-      JSON.stringify({ signedTransaction: jws }),
-    );
-    const res = await app.request("/subscription/sync", {
-      method: "POST",
-      headers: await signedHeaders(body),
-      body,
-    });
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe("INVALID_APPLE_JWS");
-  });
 });
 
-describe("subscription routes with a trusted verifier seam", () => {
-  // Route-level behavior beyond signature verification, exercised through
-  // registerSubscriptionRoutes with the JWS options pointed at the test root.
-  async function seamedApp(db = openLevelDb(":memory:")) {
-    const { Hono } = await import("hono");
-    const { registerSubscriptionRoutes } = await import("../subscription/routes");
-    const server = await import("../server");
-    const app = new Hono();
-    registerSubscriptionRoutes(app, {
-      getDb: () => db,
-      authenticate: async (c, bodyBytes) => {
-        // Trust the fixture identity; freshness/replay covered elsewhere.
-        const account = c.req.header("x-anky-account");
-        if (!account) return { errorCode: "MISSING_SIGNATURE", status: 401 };
-        return { accountId: account };
-      },
-      maxBodyBytes: server.anky.maxBodyBytes,
-      expectedBundleId: "com.jpfraneto.Anky",
-      allowedProductIds: ["anky.yearly", "anky.monthly"],
-      now: () => NOW,
-      log: () => {},
-      jwsOptions: testJwsOptions,
-    });
-    return { app, db };
-  }
-
-  test("sync stores the verified transaction and answers entitled", async () => {
-    const { app, db } = await seamedApp();
-    const jws = await mintJws(sampleTransaction({ offerType: 1 }));
-    const res = await app.request("/subscription/sync", {
-      method: "POST",
-      headers: { "x-anky-account": "0xabc" },
-      body: JSON.stringify({ signedTransaction: jws }),
-    });
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.entitled).toBe(true);
-    expect(json.productId).toBe("anky.yearly");
-    expect(json.isTrial).toBe(true);
-    expect(getSubscription(db, "0xabc")?.originalTransactionId).toBe("orig-1000");
-  });
-
-  test("sync rejects a foreign bundle or unknown product", async () => {
-    const { app } = await seamedApp();
-    for (const [overrides, error] of [
-      [{ bundleId: "com.evil.App" }, "WRONG_BUNDLE"],
-      [{ productId: "some.other.sub" }, "UNKNOWN_PRODUCT"],
-    ] as const) {
-      const jws = await mintJws(sampleTransaction(overrides));
-      const res = await app.request("/subscription/sync", {
-        method: "POST",
-        headers: { "x-anky-account": "0xabc" },
-        body: JSON.stringify({ signedTransaction: jws }),
-      });
-      expect(res.status).toBe(400);
-      expect((await res.json()).error).toBe(error);
-    }
-  });
-
-  test("a refund notification revokes the mapped account", async () => {
-    const { app, db } = await seamedApp();
-    applyVerifiedTransaction(db, "0xabc", sampleTransaction(), NOW);
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(true);
-
-    const refundTxn = await mintJws(
-      sampleTransaction({ signedDate: NOW, revocationDate: NOW, revocationReason: 0 }),
-    );
-    const envelope = await mintJws({
-      notificationType: "REFUND",
-      signedDate: NOW,
-      data: { bundleId: "com.jpfraneto.Anky", signedTransactionInfo: refundTxn },
-    });
-    const res = await app.request("/appstore/notifications", {
-      method: "POST",
-      body: JSON.stringify({ signedPayload: envelope }),
-    });
-    expect(res.status).toBe(200);
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(false);
-  });
-
-  test("an unmapped notification is acknowledged and dropped", async () => {
-    const { app } = await seamedApp();
-    const txn = await mintJws(sampleTransaction({ originalTransactionId: "orig-unknown" }));
-    const envelope = await mintJws({
-      notificationType: "DID_RENEW",
-      signedDate: NOW,
-      data: { bundleId: "com.jpfraneto.Anky", signedTransactionInfo: txn },
-    });
-    const res = await app.request("/appstore/notifications", {
-      method: "POST",
-      body: JSON.stringify({ signedPayload: envelope }),
-    });
-    expect(res.status).toBe(200);
-  });
-
-  test("a grace-period renewal extends a mapped account", async () => {
-    const { app, db } = await seamedApp();
-    applyVerifiedTransaction(
-      db,
-      "0xabc",
-      sampleTransaction({ expiresDate: NOW - DAY }),
-      NOW,
-    );
-    const renewal = await mintJws({
-      originalTransactionId: "orig-1000",
-      autoRenewStatus: 1,
-      gracePeriodExpiresDate: NOW + 10 * DAY,
-    });
-    const envelope = await mintJws({
-      notificationType: "DID_FAIL_TO_RENEW",
-      subtype: "GRACE_PERIOD",
-      signedDate: NOW,
-      data: { bundleId: "com.jpfraneto.Anky", signedRenewalInfo: renewal },
-    });
-    const res = await app.request("/appstore/notifications", {
-      method: "POST",
-      body: JSON.stringify({ signedPayload: envelope }),
-    });
-    expect(res.status).toBe(200);
-    expect(accountEntitlement(db, "0xabc", NOW).entitled).toBe(true);
-  });
-});
-
-// --- gates -------------------------------------------------------------------
+// --- entitlement gate on POST /anky --------------------------------------------
 
 describe("entitlement gate on POST /anky", () => {
+  const mirrorRouter = async () => ({
+    provider: "test",
+    chargeable: true,
+    title: "Mirror",
+    reflection: "# Mirror\n\nA subscribed writer is always met.",
+  });
+
   test("a free account meets ENTITLEMENT_REQUIRED before any provider call", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let providerCalls = 0;
     // No accountEntitlement injection: the default resolver reads the (empty)
-    // subscription table. The credit outcome mirrors production for a free
-    // account — no balance, and device trials are off in the public constants.
-    const app = createApp({
-      env: ankyWorld({}),
-      logger: createSafeLogger({ log() {} }),
-      levelDb: openLevelDb(":memory:"),
-      ankyRouteDeps: {
-        prepareReflectionCredit: async () => ({
-          ok: false,
-          creditsRemaining: 0,
-          result: "trial_disabled",
-        }),
-        routeReflection: async () => {
-          providerCalls += 1;
-          throw new Error("free reflections must never reach a provider");
-        },
+    // subscription table; the REST fallback is unconfigured and answers null.
+    const { app } = appWith(openLevelDb(":memory:"), {}, {
+      routeReflection: async () => {
+        providerCalls += 1;
+        throw new Error("free reflections must never reach a provider");
       },
     });
     const res = await app.request("/anky", {
@@ -465,32 +459,11 @@ describe("entitlement gate on POST /anky", () => {
     expect(providerCalls).toBe(0);
   });
 
-  test("an entitled account reflects without touching the credit machinery", async () => {
+  test("an entitled account reflects", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const db = openLevelDb(":memory:");
-    applyVerifiedTransaction(db, await fixtureAccountId(), sampleTransaction(), Date.now());
-    let creditCalls = 0;
-    const app = createApp({
-      env: ankyWorld({}),
-      logger: createSafeLogger({ log() {} }),
-      levelDb: db,
-      ankyRouteDeps: {
-        prepareReflectionCredit: async () => {
-          creditCalls += 1;
-          return { ok: false, creditsRemaining: 0, result: "insufficient" };
-        },
-        routeReflection: async () => ({
-          provider: "test",
-          chargeable: true,
-          title: "Mirror",
-          reflection: "A subscribed writer is always met.",
-        }),
-        spendPreparedReflectionCredit: async () => {
-          creditCalls += 1;
-          return { ok: true, creditsRemaining: 0, result: "spent", spentCredit: true };
-        },
-      },
-    });
+    seedEntitledState(db, await fixtureAccountId());
+    const { app } = appWith(db, {}, { routeReflection: mirrorRouter });
 
     const res = await app.request("/anky", {
       method: "POST",
@@ -502,9 +475,33 @@ describe("entitlement gate on POST /anky", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("A subscribed writer is always met.");
-    expect(creditCalls).toBe(0);
+  });
+
+  test("a promotional-entitled account reflects", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const db = openLevelDb(":memory:");
+    seedEntitledState(db, await fixtureAccountId(), {
+      productId: null,
+      store: "PROMOTIONAL",
+      periodType: "PROMOTIONAL",
+      expiresAtMs: null,
+    });
+    const { app } = appWith(db, {}, { routeReflection: mirrorRouter });
+
+    const res = await app.request("/anky", {
+      method: "POST",
+      headers: {
+        ...(await signedHeaders(body)),
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+      body,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("A subscribed writer is always met.");
   });
 });
+
+// --- entitlement gate on POST /level/prepare -----------------------------------
 
 describe("entitlement gate on POST /level/prepare", () => {
   async function preparedApp(entitled: boolean) {
@@ -517,11 +514,10 @@ describe("entitlement gate on POST /level/prepare", () => {
        VALUES (?1, ?2, ?3, ?4, ?4)`,
     ).run(account, "a".repeat(64), 900, Date.now() - DAY);
     if (entitled) {
-      applyVerifiedTransaction(db, account, sampleTransaction({
-        expiresDate: Date.now() + 30 * DAY,
-        signedDate: Date.now() - DAY,
-        purchaseDate: Date.now() - DAY,
-      }), Date.now());
+      seedEntitledState(db, account, {
+        expiresAtMs: Date.now() + 30 * DAY,
+        eventAtMs: Date.now(),
+      });
     }
     const { app } = appWith(db);
     return app;
@@ -564,11 +560,7 @@ describe("entitlement gate on POST /level/prepare", () => {
 describe("funnel events", () => {
   test("stores whitelisted events and serves counts to the operator", async () => {
     const db = openLevelDb(":memory:");
-    const app = createApp({
-      env: ankyWorld({ adminKey: "test-admin" }),
-      logger: createSafeLogger({ log() {} }),
-      levelDb: db,
-    });
+    const { app } = appWith(db, { adminKey: "test-admin" });
 
     for (const [event, origin] of [
       ["boundary_reached", null],

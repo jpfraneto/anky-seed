@@ -14,7 +14,7 @@ describe("privacy logging", () => {
       statusCode: 200,
       latencyMs: 12,
       modelProvider: "mock",
-      creditResult: "bypassed",
+      entitlementResult: "subscription_entitled",
     });
 
     const output = lines.join("\n");

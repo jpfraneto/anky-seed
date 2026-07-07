@@ -9,8 +9,8 @@
  *
  * A client writes a `.anky` file locally. When the writer asks to be witnessed,
  * the client signs the exact bytes and sends them to POST /anky. The server
- * verifies the users identity, checks if they have available credits (or if they included a x402 payment receipt)
- * , reflects once, returns JSON, and forgets the writing.
+ * verifies the users identity, checks the RevenueCat-backed subscription
+ * entitlement, reflects once, returns JSON, and forgets the writing.
  *
  * This server is not memory.
  * This server is not a journal.
@@ -58,10 +58,11 @@ import { registerPaintingRoutes } from "./painting/routes";
 import { registerDebugRoutes, type DebugRouteDeps } from "./debug/routes";
 import { registerEventRoutes } from "./events/routes";
 import { registerSubscriptionRoutes } from "./subscription/routes";
+import type { AccountEntitlement } from "./subscription/store";
 import {
-  accountEntitlement as subscriptionAccountEntitlement,
-  type AccountEntitlement,
-} from "./subscription/store";
+  entitlementWithFallback,
+  type RevenueCatFetch,
+} from "./subscription/revenuecat";
 
 // -----------------------------------------------------------------------------
 // Start Here
@@ -75,7 +76,7 @@ and understand how to create a client.
 The client creates exact .anky bytes following the protocol: https://anky.app/protocol.md
 The writer signs those bytes using their base wallet.
 POST /anky receives text/plain and verifies headers.
-And then Anky reflects, charges only after success, and forgets.
+And then Anky reflects, gated only by the subscription entitlement, and forgets.
 `;
 
 export const mapOfThisFile = {
@@ -85,8 +86,7 @@ export const mapOfThisFile = {
   world: "ankyWorld",
   identity: "verifyAnkyBaseRequest",
   duplicateProtection: "MemoryIdempotencyStore",
-  creditsAndTrials: "prepareReflectionCredit -> spendPreparedReflectionCredit",
-  x402: "verifyX402Payment -> settleX402Payment",
+  subscription: "accountEntitlement -> entitlementWithFallback (RevenueCat)",
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
   providers:
     "routeReflection -> openRouterProvider -> defaultReflectionProvider",
@@ -101,7 +101,7 @@ export const clientCreationIndex = {
   finish: "A complete anky has at least 480000 ms of writing deltas.",
   sign: "Sign AnkyMirrorRequest with a Base EOA or embedded Ethereum wallet.",
   post: "Send exact bytes to POST /anky as text/plain; charset=utf-8.",
-  pay: "If 402 arrives, read PAYMENT-REQUIRED, build x402 payment, retry with PAYMENT-SIGNATURE.",
+  pay: "If 402 ENTITLEMENT_REQUIRED arrives, open the subscription paywall. Writing stays free.",
   keep: "Store the .anky and reflection locally. The server stores neither.",
 } as const;
 
@@ -172,10 +172,8 @@ async function sendAnky(ankyString) {
   });
 
   if (response.status === 402) {
-    const paymentRequired = response.headers.get("PAYMENT-REQUIRED");
-    if (!paymentRequired) throw new Error("ANKY_PAYMENT_REQUIRED_HEADER_MISSING");
-    const paymentSignature = await buildX402Payment(paymentRequired);
-    return sendAnkyWithPayment(ankyString, signedHeaders, paymentSignature);
+    // ENTITLEMENT_REQUIRED: the writer is not subscribed. Show the paywall.
+    throw new Error("ANKY_SUBSCRIPTION_REQUIRED");
   }
 
   if (!response.ok) {
@@ -216,12 +214,6 @@ export const defaultReflectionModels = {
   },
 } as const;
 
-export const defaultReflectionCreditCosts = {
-  sentence: 1,
-  dip: 1,
-  full: 1,
-} as const;
-
 export const anky = {
   host: "0.0.0.0",
   port: 8080,
@@ -233,49 +225,12 @@ export const anky = {
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,
-  reflectionCreditCosts: defaultReflectionCreditCosts,
   privacyRequiresZdr: true,
-  revenueCatCreditCode: "CRD",
-  // The subscription is the door to the deepening. Reflections, nudges, and
-  // paintings beyond level 2 require an entitled account (or previously
-  // purchased credits / x402 — paid value is never clawed back).
-  appBundleId: "com.jpfraneto.Anky",
-  subscriptionProductIds: ["anky.yearly", "anky.monthly"] as const,
+  // The subscription is the only door to the deepening. Reflections, nudges,
+  // and paintings beyond level 2 require an entitled account — a RevenueCat
+  // subscription or a promotional grant. Writing is free forever.
+  revenueCatEntitlementId: "pro",
   freeGenerationMaxLevel: 2,
-  trialCredits: 2,
-  // Phase 3 (July 2026): device-gift trials are off. Free-tier sessions make
-  // zero LLM calls; the 3-day subscription trial is the only trial.
-  automaticTrials: {
-    ios: false,
-    android: false,
-    iosDeviceCheckRequired: false,
-    androidPlayIntegrityRequired: false,
-    androidAddressTrialsConfirmed: false,
-  },
-  x402: {
-    facilitatorUrl: "https://x402.org/facilitator",
-    scheme: "exact",
-    network: "eip155:8453",
-    payTo: "0x3D45a97C4f76D43e810Ff107cB6dad3e5AF64641",
-    description: "Reflect one complete .anky writing ritual.",
-    mimeType: "text/markdown; charset=utf-8",
-    prices: {
-      defaultFallback: "$0",
-      openrouter: "$0.01",
-      bankr: "$0.015",
-      poiesis: "$0.01",
-      scarce: "$0.02",
-      max: "$0.05",
-    },
-  },
-  cryptoOnramp: {
-    sourceCurrency: "usd",
-    sourceAmount: "8.00",
-    destinationCurrency: "usdc",
-    destinationNetwork: "base",
-    walletAddressParam: "base_network",
-    lockWalletAddress: true,
-  },
 } as const;
 
 // Private material is not public law. Keep this list short.
@@ -283,11 +238,7 @@ const privateKeys = {
   openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
   adminKey: process.env.ANKY_ADMIN_KEY ?? "",
   revenueCatSecretKey: process.env.REVENUECAT_SECRET_KEY ?? "",
-  revenueCatProjectId: process.env.REVENUECAT_PROJECT_ID ?? "",
-  appleDeviceCheckTeamId: process.env.APPLE_DEVICECHECK_TEAM_ID ?? "",
-  appleDeviceCheckKeyId: process.env.APPLE_DEVICECHECK_KEY_ID ?? "",
-  appleDeviceCheckPrivateKey: process.env.APPLE_DEVICECHECK_PRIVATE_KEY ?? "",
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH ?? "",
 } as const;
 
 // -----------------------------------------------------------------------------
@@ -301,17 +252,14 @@ export type AnkyRouteDeps = {
   accountEntitlement?: (
     accountId: string,
   ) => AccountEntitlement | Promise<AccountEntitlement>;
-  prepareReflectionCredit?: typeof prepareReflectionCredit;
-  spendPreparedReflectionCredit?: typeof spendPreparedReflectionCredit;
   routeReflection?: typeof routeReflection;
   callMirror?: (input: { env: AnkyWorld; prompt: string }) => Promise<string>;
   providerFetch?: ProviderFetch;
-  creditFetch?: CreditFetch;
   idempotencyStore?: IdempotencyStore;
   diagnostics?: DiagnosticsSink;
-  verifyX402Payment?: typeof verifyX402Payment;
-  settleX402Payment?: typeof settleX402Payment;
-  createStripeOnrampSession?: typeof createStripeOnrampSession;
+  // Test seam for the RevenueCat REST fallback behind the default
+  // entitlement resolvers (never hit the network in tests).
+  revenueCatFetch?: RevenueCatFetch;
   progress?: AnkyProgressSink;
   reflectionChunk?: AnkyReflectionChunkSink;
 };
@@ -354,23 +302,34 @@ export function createApp(
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true }));
-  app.post("/crypto/onramp-session", (c) =>
-    handleCryptoOnrampSession(
-      c,
-      env,
-      input.ankyRouteDeps?.createStripeOnrampSession ?? createStripeOnrampSession,
-    ),
-  );
   const getLevelDb = input.levelDb
     ? () => input.levelDb ?? null
     : () => defaultLevelDb(env);
   // Entitlement fails closed: without the subscription table (volume not
-  // mounted) nobody reads as subscribed, and paid gates stay shut.
-  const defaultAccountEntitlement = (accountId: string): AccountEntitlement => {
+  // mounted) nobody reads as subscribed, and paid gates stay shut. Local
+  // webhook-maintained state answers fast; the RevenueCat REST fallback
+  // heals missing or stale negative rows.
+  const entitlementLookupEnv = {
+    revenueCatSecretKey: env.revenueCatSecretKey,
+    revenueCatEntitlementId: env.revenueCatEntitlementId,
+  };
+  const fallbackEntitlement = async (
+    accountId: string,
+    nowMs: number,
+  ): Promise<AccountEntitlement> => {
     const db = getLevelDb();
     if (!db) return { entitled: false };
-    return subscriptionAccountEntitlement(db, accountId, Date.now());
+    return entitlementWithFallback(
+      db,
+      entitlementLookupEnv,
+      accountId,
+      nowMs,
+      input.ankyRouteDeps?.revenueCatFetch,
+    );
   };
+  const defaultAccountEntitlement = (
+    accountId: string,
+  ): Promise<AccountEntitlement> => fallbackEntitlement(accountId, Date.now());
 
   app.post("/anky", (c) => {
     const deps = {
@@ -396,6 +355,7 @@ export function createApp(
     dataDir: env.dataDir,
     openrouterApiKey: env.openrouterApiKey,
     maxBodyBytes: env.maxBodyBytes,
+    entitlementFor: fallbackEntitlement,
   });
   registerDebugRoutes(app, {
     adminKey: env.adminKey,
@@ -413,8 +373,10 @@ export function createApp(
     getDb: getLevelDb,
     authenticate: levelAuthenticator(env),
     maxBodyBytes: env.maxBodyBytes,
-    expectedBundleId: anky.appBundleId,
-    allowedProductIds: anky.subscriptionProductIds,
+    revenueCatSecretKey: env.revenueCatSecretKey,
+    revenueCatWebhookAuth: env.revenueCatWebhookAuth,
+    revenueCatEntitlementId: env.revenueCatEntitlementId,
+    revenueCatFetch: input.ankyRouteDeps?.revenueCatFetch,
   });
 
   return app;
@@ -481,7 +443,7 @@ function levelAuthenticator(env: Env): LevelAuthenticator {
 
 // I am allowed to hold the artifact only while the request is alive. Every
 // exported function below keeps that promise: no raw writing, prompt, response,
-// signature, trial proof, seed phrase, or private key is ever stored or logged.
+// signature, seed phrase, or private key is ever stored or logged.
 //
 // The level painting pipeline (./painting) extends the covenant: the writing
 // a client sends to POST /level/prepare exists only inside that request. It
@@ -502,9 +464,7 @@ export type ErrorCode =
   | "MISSING_SIGNATURE"
   | "INVALID_SIGNATURE"
   | "BODY_TOO_LARGE"
-  | "INSUFFICIENT_CREDITS"
   | "ENTITLEMENT_REQUIRED"
-  | "TRIAL_ALREADY_CLAIMED"
   | "DUPLICATE_IN_PROGRESS"
   | "DUPLICATE_SUCCEEDED"
   | "RATE_LIMITED"
@@ -525,12 +485,8 @@ const errorMessages: Record<ErrorCode, string> = {
   MISSING_SIGNATURE: "This request is missing Anky signature headers.",
   INVALID_SIGNATURE: "The request signature could not be verified.",
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
-  INSUFFICIENT_CREDITS:
-    "You need one credit to ask Anky for a reflection. Writing is still free.",
   ENTITLEMENT_REQUIRED:
     "Reflections open with an Anky subscription. Writing is still free, always.",
-  TRIAL_ALREADY_CLAIMED:
-    "This device already used its first two reflections. Buy credits to reflect more writing.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
   DUPLICATE_SUCCEEDED:
     "This anky has already been reflected for this Anky address.",
@@ -553,9 +509,7 @@ const errorStatuses: Record<
   MISSING_SIGNATURE: 401,
   INVALID_SIGNATURE: 401,
   BODY_TOO_LARGE: 413,
-  INSUFFICIENT_CREDITS: 402,
   ENTITLEMENT_REQUIRED: 402,
-  TRIAL_ALREADY_CLAIMED: 402,
   DUPLICATE_IN_PROGRESS: 409,
   DUPLICATE_SUCCEEDED: 409,
   RATE_LIMITED: 429,
@@ -587,7 +541,6 @@ export type AnkyWorld = {
   openrouterModel: string;
   openrouterTimeoutMs: number;
   reflectionModels: ReflectionModelConfigByTier;
-  reflectionCreditCosts: ReflectionCreditCostByTier;
   requireZdr: boolean;
   providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
   bankrLlmGatewayUrl: string;
@@ -597,22 +550,9 @@ export type AnkyWorld = {
   poiesisLlmApiKey: string;
   poiesisZdrConfirmed: boolean;
   revenueCatSecretKey: string;
-  revenueCatProjectId: string;
-  revenueCatCreditCode: string;
+  revenueCatWebhookAuth: string;
+  revenueCatEntitlementId: string;
   requestTimeToleranceMs: number;
-  autoTrialEnabled: boolean;
-  trialCredits: number;
-  iosTrialEnabled: boolean;
-  iosDeviceCheckRequired: boolean;
-  appleDeviceCheckTeamId: string;
-  appleDeviceCheckKeyId: string;
-  appleDeviceCheckPrivateKey: string;
-  androidTrialEnabled: boolean;
-  androidPlayIntegrityRequired: boolean;
-  androidAddressTrialsConfirmed: boolean;
-  x402: typeof anky.x402;
-  stripeSecretKey: string;
-  cryptoOnramp: typeof anky.cryptoOnramp;
   dataDir: string;
   adminKey: string;
 };
@@ -629,8 +569,6 @@ export type ReflectionModelConfigByTier = Record<
   ReflectionModelConfig
 >;
 
-export type ReflectionCreditCostByTier = Record<SessionTier, number>;
-
 export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
   return {
     port: anky.port,
@@ -641,7 +579,6 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     openrouterModel: anky.openrouterModel,
     openrouterTimeoutMs: anky.openrouterTimeoutMs,
     reflectionModels: cloneReflectionModelConfig(anky.reflectionModels),
-    reflectionCreditCosts: { ...anky.reflectionCreditCosts },
     requireZdr: anky.privacyRequiresZdr,
     providerOrder: [...anky.providerOrder],
     bankrLlmGatewayUrl: "",
@@ -651,24 +588,9 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     poiesisLlmApiKey: "",
     poiesisZdrConfirmed: false,
     revenueCatSecretKey: privateKeys.revenueCatSecretKey,
-    revenueCatProjectId: privateKeys.revenueCatProjectId,
-    revenueCatCreditCode: anky.revenueCatCreditCode,
+    revenueCatWebhookAuth: privateKeys.revenueCatWebhookAuth,
+    revenueCatEntitlementId: anky.revenueCatEntitlementId,
     requestTimeToleranceMs: anky.requestTimeToleranceMs,
-    autoTrialEnabled: anky.automaticTrials.ios || anky.automaticTrials.android,
-    trialCredits: anky.trialCredits,
-    iosTrialEnabled: anky.automaticTrials.ios,
-    iosDeviceCheckRequired: anky.automaticTrials.iosDeviceCheckRequired,
-    appleDeviceCheckTeamId: privateKeys.appleDeviceCheckTeamId,
-    appleDeviceCheckKeyId: privateKeys.appleDeviceCheckKeyId,
-    appleDeviceCheckPrivateKey: privateKeys.appleDeviceCheckPrivateKey,
-    androidTrialEnabled: anky.automaticTrials.android,
-    androidPlayIntegrityRequired:
-      anky.automaticTrials.androidPlayIntegrityRequired,
-    androidAddressTrialsConfirmed:
-      anky.automaticTrials.androidAddressTrialsConfirmed,
-    x402: anky.x402,
-    stripeSecretKey: privateKeys.stripeSecretKey,
-    cryptoOnramp: anky.cryptoOnramp,
     dataDir: process.env.ANKY_DATA_DIR ?? anky.dataDir,
     adminKey: privateKeys.adminKey,
     ...overrides,
@@ -682,156 +604,6 @@ function cloneReflectionModelConfig(
     sentence: { ...config.sentence },
     dip: { ...config.dip },
     full: { ...config.full },
-  };
-}
-
-// -----------------------------------------------------------------------------
-// Stripe Crypto Onramp
-// -----------------------------------------------------------------------------
-
-type StripeOnrampFetch = (
-  input: string | URL | Request,
-  init?: RequestInit,
-) => Promise<Response>;
-
-type CryptoOnrampRequestBody = {
-  walletAddress?: unknown;
-  sourceAmount?: unknown;
-};
-
-type StripeOnrampSession = {
-  id?: string;
-  redirect_url?: string | null;
-  status?: string;
-};
-
-const baseAddressPattern = /^0x[a-fA-F0-9]{40}$/;
-
-async function handleCryptoOnrampSession(
-  c: Context,
-  env: AnkyWorld,
-  createSession: typeof createStripeOnrampSession,
-) {
-  const payload = (await c.req.json().catch(() => null)) as
-    | CryptoOnrampRequestBody
-    | null;
-  const walletAddress = typeof payload?.walletAddress === "string"
-    ? payload.walletAddress.trim()
-    : "";
-  const sourceAmount = typeof payload?.sourceAmount === "string"
-    ? payload.sourceAmount.trim()
-    : undefined;
-
-  if (!baseAddressPattern.test(walletAddress)) {
-    return c.json(
-      {
-        error: {
-          code: "INVALID_WALLET_ADDRESS",
-          message: "A valid Base wallet address is required.",
-        },
-      },
-      400,
-    );
-  }
-
-  const session = await createSession({
-    env,
-    walletAddress,
-    sourceAmount,
-  }).catch((error) => {
-    const message = error instanceof Error ? error.message : "STRIPE_ONRAMP_FAILED";
-    return { error: message };
-  });
-
-  if ("error" in session) {
-    const status = session.error === "STRIPE_ONRAMP_NOT_CONFIGURED" ? 503 : 502;
-    return c.json(
-      {
-        error: {
-          code: session.error,
-          message: "The crypto onramp is not available right now.",
-        },
-      },
-      status,
-    );
-  }
-
-  return c.json({
-    id: session.id,
-    redirectUrl: session.redirectUrl,
-    sourceAmount: session.sourceAmount,
-    sourceCurrency: session.sourceCurrency,
-    destinationCurrency: session.destinationCurrency,
-    destinationNetwork: session.destinationNetwork,
-    walletAddress,
-  });
-}
-
-export async function createStripeOnrampSession(input: {
-  env: AnkyWorld;
-  walletAddress: string;
-  sourceAmount?: string;
-  fetchImpl?: StripeOnrampFetch;
-}): Promise<{
-  id: string;
-  redirectUrl: string;
-  sourceAmount: string;
-  sourceCurrency: string;
-  destinationCurrency: string;
-  destinationNetwork: string;
-}> {
-  if (!input.env.stripeSecretKey) {
-    throw new Error("STRIPE_ONRAMP_NOT_CONFIGURED");
-  }
-
-  const sourceAmount = input.sourceAmount?.trim() || input.env.cryptoOnramp.sourceAmount;
-  if (!/^\d+(\.\d{1,2})?$/.test(sourceAmount)) {
-    throw new Error("INVALID_ONRAMP_AMOUNT");
-  }
-
-  const params = new URLSearchParams();
-  params.set(
-    `wallet_addresses[${input.env.cryptoOnramp.walletAddressParam}]`,
-    input.walletAddress,
-  );
-  params.set("lock_wallet_address", String(input.env.cryptoOnramp.lockWalletAddress));
-  params.set("source_currency", input.env.cryptoOnramp.sourceCurrency);
-  params.set("source_amount", sourceAmount);
-  params.set("destination_currency", input.env.cryptoOnramp.destinationCurrency);
-  params.set("destination_network", input.env.cryptoOnramp.destinationNetwork);
-  params.append("destination_currencies[]", input.env.cryptoOnramp.destinationCurrency);
-  params.append("destination_networks[]", input.env.cryptoOnramp.destinationNetwork);
-  params.set("metadata[anky_wallet]", input.walletAddress);
-
-  const fetcher = input.fetchImpl ?? fetch;
-  const response = await fetcher("https://api.stripe.com/v1/crypto/onramp_sessions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.env.stripeSecretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params,
-  });
-
-  const bodyText = await response.text();
-  const body = JSON.parse(bodyText || "{}") as StripeOnrampSession & {
-    error?: { message?: string };
-  };
-
-  if (!response.ok) {
-    throw new Error(body.error?.message ?? "STRIPE_ONRAMP_FAILED");
-  }
-  if (!body.id || !body.redirect_url) {
-    throw new Error("STRIPE_ONRAMP_MISSING_REDIRECT_URL");
-  }
-
-  return {
-    id: body.id,
-    redirectUrl: body.redirect_url,
-    sourceAmount,
-    sourceCurrency: input.env.cryptoOnramp.sourceCurrency,
-    destinationCurrency: input.env.cryptoOnramp.destinationCurrency,
-    destinationNetwork: input.env.cryptoOnramp.destinationNetwork,
   };
 }
 
@@ -857,7 +629,7 @@ export type SafeLogFields = {
   latencyMs: number;
   modelProvider?: string;
   modelFailure?: string;
-  creditResult?: string;
+  entitlementResult?: string;
   reflectionTier?: SessionTier;
 };
 
@@ -1205,1137 +977,6 @@ export function clearInFlightForTests(): void {
 }
 
 // -----------------------------------------------------------------------------
-// Credits + Trials
-// -----------------------------------------------------------------------------
-
-// I only charge after a chargeable provider succeeds. If the private provider
-// cannot safely answer and I fall back to the local covenant response, no credit
-// is spent.
-
-type CreditFetch = (url: string, init: RequestInit) => Promise<Response>;
-type RevenueCatFetch = (url: string, init: RequestInit) => Promise<Response>;
-type TrialFetch = (url: string, init: RequestInit) => Promise<Response>;
-type DeviceCheckFetch = (url: string, init: RequestInit) => Promise<Response>;
-
-export type CreditOperationResult =
-  | {
-      ok: true;
-      creditsRemaining: number | null;
-      result: "spent" | "trial_granted_spent" | "refunded" | "bypassed";
-    }
-  | {
-      ok: false;
-      creditsRemaining: number | null;
-      result:
-        | "insufficient"
-        | "not_configured"
-        | "unavailable"
-        | "trial_disabled"
-        | "trial_already_claimed"
-        | "trial_ineligible"
-        | "trial_proof_missing"
-        | "trial_proof_invalid";
-    };
-
-export type ReflectionCreditResult = {
-  ok: boolean;
-  creditsRemaining: number | null;
-  result:
-    | "spent"
-    | "trial_granted_spent"
-    | "bypassed"
-    | "subscribed"
-    | "insufficient"
-    | "trial_disabled"
-    | "trial_already_claimed"
-    | "trial_ineligible"
-    | "trial_proof_missing"
-    | "trial_proof_invalid"
-    | "not_configured"
-    | "unavailable";
-  spentCredit: boolean;
-  spendIdempotencyKey?: string;
-  creditCost?: number;
-};
-
-export type ReflectionEndpointName =
-  | "bankr"
-  | "openrouter"
-  | "poiesis"
-  | "default";
-
-export type ReflectionEndpointStatus = {
-  name: ReflectionEndpointName;
-  ready: boolean;
-  chargeable: boolean;
-  reason: string;
-};
-
-export type X402Quote = {
-  scheme: typeof anky.x402.scheme;
-  price: string;
-  network: typeof anky.x402.network;
-  payTo: typeof anky.x402.payTo;
-  description: string;
-  mimeType: typeof anky.x402.mimeType;
-  provider: ReflectionEndpointName;
-  chargeable: boolean;
-  status: string;
-};
-
-export type X402Payment = {
-  signature: string;
-  payload: unknown;
-  verification: unknown;
-  quote: X402Quote;
-};
-
-export type X402Result =
-  | { ok: true; payment: X402Payment }
-  | {
-      ok: false;
-      reason:
-        | "missing"
-        | "invalid_payload"
-        | "verification_failed"
-        | "facilitator_unavailable";
-      response?: unknown;
-    };
-
-export type PreparedReflectionCredit =
-  | {
-      ok: true;
-      source?: "balance" | "trial" | "bypass" | "subscription";
-      creditsRemaining: number | null;
-      result?: ReflectionCreditResult["result"];
-      spentCredit?: boolean;
-      spendIdempotencyKey?: string;
-      creditCost?: number;
-      trial?: { platform: "ios" | "android"; proofHash: string };
-    }
-  | {
-      ok: false;
-      creditsRemaining: number | null;
-      result: ReflectionCreditResult["result"];
-      spendIdempotencyKey?: string;
-      creditCost?: number;
-    };
-
-export type TrialEligibility =
-  | { eligible: true; platform: "ios" | "android"; proofHash: string }
-  | {
-      eligible: false;
-      reason:
-        | "auto_trial_disabled"
-        | "platform_disabled"
-        | "unsupported_platform"
-        | "missing_trial_proof"
-        | "invalid_trial_proof"
-        | "already_claimed"
-        | "trial_check_unavailable";
-    };
-
-export type DeviceCheckResult =
-  | { ok: true; claimed: boolean }
-  | {
-      ok: false;
-      reason: "not_configured" | "invalid_token" | "apple_unavailable";
-    };
-
-export async function prepareReflectionCredit(input: {
-  env: Env;
-  accountId: string;
-  accountIdHash: string;
-  ankyHash: string;
-  client: string;
-  tier?: SessionTier;
-  appVersion?: string;
-  trialProof?: string;
-  fetchImpl?: CreditFetch;
-}): Promise<PreparedReflectionCredit> {
-  const creditCost = reflectionCreditCostForTier(input.env, input.tier);
-  const spendIdempotencyKey = await reflectionSpendIdempotencyKey(
-    input.accountId,
-    input.ankyHash,
-  );
-  const balance = await getRevenueCatCreditBalance({
-    secretKey: input.env.revenueCatSecretKey,
-    projectId: input.env.revenueCatProjectId,
-    accountId: input.accountId,
-    creditCode: input.env.revenueCatCreditCode,
-    fetchImpl: input.fetchImpl,
-  });
-
-  if (!balance.ok) {
-    return {
-      ok: false,
-      creditsRemaining: null,
-      result: balance.result,
-      spendIdempotencyKey,
-      creditCost,
-    };
-  }
-
-  if (balance.balance !== null && balance.balance >= creditCost) {
-    return {
-      ok: true,
-      source: "balance",
-      creditsRemaining: balance.balance,
-      spendIdempotencyKey,
-      creditCost,
-    };
-  }
-
-  const eligibility = await evaluateTrialEligibility({
-    env: input.env,
-    accountId: input.accountId,
-    client: input.client,
-    trialProof: input.trialProof,
-    fetchImpl: input.fetchImpl,
-  });
-
-  if (!eligibility.eligible) {
-    return trialFailureResult(eligibility.reason, spendIdempotencyKey, creditCost);
-  }
-
-  return {
-    ok: true,
-    source: "trial",
-    creditsRemaining: null,
-    spendIdempotencyKey,
-    creditCost,
-    trial: { platform: eligibility.platform, proofHash: eligibility.proofHash },
-  };
-}
-
-export function currentReflectionEndpointStatuses(
-  env: Env,
-): ReflectionEndpointStatus[] {
-  return env.providerOrder.map((name) =>
-    reflectionEndpointStatus(env, name as ReflectionEndpointName),
-  );
-}
-
-export function quoteAnkyReflection(env: Env): X402Quote {
-  const statuses = currentReflectionEndpointStatuses(env);
-  const selected =
-    statuses.find((status) => status.ready) ??
-    reflectionEndpointStatus(env, "default");
-
-  return {
-    scheme: env.x402.scheme,
-    price: selected.chargeable
-      ? x402PriceForEndpoint(env, selected.name)
-      : env.x402.prices.defaultFallback,
-    network: env.x402.network,
-    payTo: env.x402.payTo,
-    description: `${env.x402.description} Provider: ${selected.name}.`,
-    mimeType: env.x402.mimeType,
-    provider: selected.name,
-    chargeable: selected.chargeable,
-    status: selected.reason,
-  };
-}
-
-function reflectionEndpointStatus(
-  env: Env,
-  name: ReflectionEndpointName,
-): ReflectionEndpointStatus {
-  switch (name) {
-    case "bankr":
-      if (env.requireZdr && !env.bankrZdrConfirmed) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "BANKR_ZDR_NOT_CONFIRMED",
-        };
-      }
-      if (!env.bankrLlmGatewayUrl || !env.bankrLlmGatewayApiKey) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "BANKR_NOT_CONFIGURED",
-        };
-      }
-      return {
-        name,
-        ready: false,
-        chargeable: true,
-        reason: "BANKR_ADAPTER_STAGED",
-      };
-    case "openrouter":
-      if (env.requireZdr && !providerMeetsZdr(openRouterProvider.privacy)) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "OPENROUTER_ZDR_NOT_CONFIRMED",
-        };
-      }
-      if (!env.openrouterApiKey || !env.openrouterModel) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "OPENROUTER_NOT_CONFIGURED",
-        };
-      }
-      return { name, ready: true, chargeable: true, reason: "READY" };
-    case "poiesis":
-      if (env.requireZdr && !env.poiesisZdrConfirmed) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "POIESIS_ZDR_NOT_CONFIRMED",
-        };
-      }
-      if (!env.poiesisLlmUrl || !env.poiesisLlmApiKey) {
-        return {
-          name,
-          ready: false,
-          chargeable: true,
-          reason: "POIESIS_NOT_CONFIGURED",
-        };
-      }
-      return {
-        name,
-        ready: false,
-        chargeable: true,
-        reason: "POIESIS_ADAPTER_STAGED",
-      };
-    case "default":
-      return { name, ready: true, chargeable: false, reason: "READY" };
-  }
-}
-
-function x402PriceForEndpoint(env: Env, name: ReflectionEndpointName): string {
-  switch (name) {
-    case "bankr":
-      return env.x402.prices.bankr;
-    case "openrouter":
-      return env.x402.prices.openrouter;
-    case "poiesis":
-      return env.x402.prices.poiesis;
-    case "default":
-      return env.x402.prices.defaultFallback;
-  }
-}
-
-export async function verifyX402Payment(input: {
-  env: Env;
-  quote: X402Quote;
-  paymentSignature?: string;
-  fetchImpl?: CreditFetch;
-}): Promise<X402Result> {
-  if (!input.paymentSignature) return { ok: false, reason: "missing" };
-  const payload = base64Json(input.paymentSignature);
-  if (!payload.ok) return { ok: false, reason: "invalid_payload" };
-
-  try {
-    const response = await (input.fetchImpl ?? fetch)(
-      `${input.env.x402.facilitatorUrl}/verify`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentPayload: payload.value,
-          paymentDetails: x402PaymentDetails(input.quote),
-        }),
-      },
-    );
-    const body = await response.json().catch(() => null);
-    if (!response.ok || !x402LooksValid(body)) {
-      return { ok: false, reason: "verification_failed", response: body };
-    }
-    return {
-      ok: true,
-      payment: {
-        signature: input.paymentSignature,
-        payload: payload.value,
-        verification: body,
-        quote: input.quote,
-      },
-    };
-  } catch {
-    return { ok: false, reason: "facilitator_unavailable" };
-  }
-}
-
-export async function settleX402Payment(input: {
-  env: Env;
-  payment: X402Payment;
-  fetchImpl?: CreditFetch;
-}): Promise<
-  { ok: true; response: unknown } | { ok: false; response: unknown }
-> {
-  try {
-    const response = await (input.fetchImpl ?? fetch)(
-      `${input.env.x402.facilitatorUrl}/settle`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentPayload: input.payment.payload,
-          paymentDetails: x402PaymentDetails(input.payment.quote),
-        }),
-      },
-    );
-    const body = await response.json().catch(() => null);
-    return { ok: response.ok && x402LooksValid(body), response: body };
-  } catch {
-    return { ok: false, response: { error: "facilitator_unavailable" } };
-  }
-}
-
-export async function spendPreparedReflectionCredit(input: {
-  env: Env;
-  accountId: string;
-  accountIdHash: string;
-  ankyHash: string;
-  prepared: PreparedReflectionCredit;
-  tier?: SessionTier;
-  trialProof?: string;
-  fetchImpl?: CreditFetch;
-}): Promise<ReflectionCreditResult> {
-  if (!input.prepared.ok) {
-    return { ...input.prepared, spentCredit: false };
-  }
-
-  const source = preparedSource(input.prepared);
-  if (source === "bypass") {
-    return {
-      ok: true,
-      creditsRemaining: null,
-      result: "bypassed",
-      spentCredit: false,
-      creditCost: input.prepared.creditCost,
-    };
-  }
-
-  const creditCost =
-    input.prepared.creditCost ??
-    reflectionCreditCostForTier(input.env, input.tier);
-  const spendIdempotencyKey =
-    input.prepared.spendIdempotencyKey ??
-    (await reflectionSpendIdempotencyKey(input.accountId, input.ankyHash));
-  const spendReference = `anky-reflection-v1:${input.accountIdHash}:${input.ankyHash}`;
-
-  if (source === "trial") {
-    const trial = input.prepared.trial;
-    if (!trial)
-      return {
-        ok: false,
-        creditsRemaining: null,
-        result: "unavailable",
-        spentCredit: false,
-        spendIdempotencyKey,
-        creditCost,
-      };
-    if (
-      trial.platform === "ios" &&
-      input.env.iosDeviceCheckRequired &&
-      !input.trialProof
-    ) {
-      return trialFailureResult(
-        "missing_trial_proof",
-        spendIdempotencyKey,
-        creditCost,
-      );
-    }
-
-    if (trial.platform === "ios" && input.trialProof) {
-      const mark = await markDeviceCheckTrialClaimed({
-        env: input.env,
-        token: input.trialProof!,
-        fetchImpl: input.fetchImpl,
-      });
-
-      if (!mark.ok && input.env.iosDeviceCheckRequired) {
-        return trialFailureResult(
-          mark.reason === "invalid_token"
-            ? "invalid_trial_proof"
-            : "trial_check_unavailable",
-          spendIdempotencyKey,
-          creditCost,
-        );
-      }
-    }
-
-    const trialGrant = await grantRevenueCatCredits({
-      secretKey: input.env.revenueCatSecretKey,
-      projectId: input.env.revenueCatProjectId,
-      accountId: input.accountId,
-      creditCode: input.env.revenueCatCreditCode,
-      amount: input.env.trialCredits,
-      idempotencyKey: await trialGrantIdempotencyKey(
-        input.accountId,
-        trial.platform,
-        trial.proofHash,
-      ),
-      reference: `anky-trial-v1:${trial.platform}:${input.accountIdHash}:${trial.proofHash}`,
-      fetchImpl: input.fetchImpl,
-    });
-
-    if (!trialGrant.ok) {
-      return {
-        ok: false,
-        creditsRemaining: trialGrant.creditsRemaining,
-        result:
-          trialGrant.result === "not_configured"
-            ? "not_configured"
-            : "unavailable",
-        spentCredit: false,
-        spendIdempotencyKey,
-        creditCost,
-      };
-    }
-  }
-
-  const spend = await spendRevenueCatCredit({
-    secretKey: input.env.revenueCatSecretKey,
-    projectId: input.env.revenueCatProjectId,
-    accountId: input.accountId,
-    creditCode: input.env.revenueCatCreditCode,
-    amount: creditCost,
-    idempotencyKey: spendIdempotencyKey,
-    reference: spendReference,
-    fetchImpl: input.fetchImpl,
-  });
-
-  return {
-    ok: spend.ok,
-    creditsRemaining: spend.creditsRemaining,
-    result: spend.ok
-      ? source === "trial"
-        ? "trial_granted_spent"
-        : "spent"
-      : spend.result,
-    spentCredit: spend.ok,
-    spendIdempotencyKey,
-    creditCost,
-  };
-}
-
-export async function resolveReflectionCredit(
-  input: Parameters<typeof prepareReflectionCredit>[0],
-): Promise<ReflectionCreditResult> {
-  const prepared = await prepareReflectionCredit(input);
-  return spendPreparedReflectionCredit({ ...input, prepared });
-}
-
-export async function refundReflectionCredit(input: {
-  env: Env;
-  accountId: string;
-  accountIdHash: string;
-  ankyHash: string;
-  fetchImpl?: CreditFetch;
-}) {
-  return refundRevenueCatCredit({
-    secretKey: input.env.revenueCatSecretKey,
-    projectId: input.env.revenueCatProjectId,
-    accountId: input.accountId,
-    creditCode: input.env.revenueCatCreditCode,
-    idempotencyKey: await reflectionRefundIdempotencyKey(
-      input.accountId,
-      input.ankyHash,
-    ),
-    reference: `anky-reflection-refund-v1:${input.accountIdHash}:${input.ankyHash}`,
-    fetchImpl: input.fetchImpl,
-  });
-}
-
-export async function getRevenueCatCreditBalance(input: {
-  secretKey: string;
-  projectId: string;
-  accountId: string;
-  creditCode: string;
-  fetchImpl?: RevenueCatFetch;
-}): Promise<
-  | { ok: true; balance: number | null }
-  | { ok: false; result: "not_configured" | "unavailable" }
-> {
-  if (!input.secretKey || !input.projectId || !input.creditCode) {
-    return { ok: false, result: "not_configured" };
-  }
-
-  const fetcher = input.fetchImpl ?? fetch;
-
-  try {
-    const response = await fetcher(
-      `${revenueCatVirtualCurrencyURL(input.projectId, input.accountId)}?include_empty_balances=true`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${input.secretKey}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      return { ok: false, result: "unavailable" };
-    }
-
-    const body = await response.json().catch(() => null);
-    return {
-      ok: true,
-      balance: balanceFromVirtualCurrencies(body, input.creditCode),
-    };
-  } catch {
-    return { ok: false, result: "unavailable" };
-  }
-}
-
-export async function grantRevenueCatCredits(input: {
-  secretKey: string;
-  projectId: string;
-  accountId: string;
-  creditCode: string;
-  amount: number;
-  idempotencyKey: string;
-  reference: string;
-  fetchImpl?: RevenueCatFetch;
-}): Promise<CreditOperationResult> {
-  return adjustRevenueCatCredits({
-    ...input,
-    amount: Math.max(0, input.amount),
-    result: "trial_granted_spent",
-  });
-}
-
-export async function spendRevenueCatCredit(input: {
-  secretKey: string;
-  projectId: string;
-  accountId: string;
-  creditCode: string;
-  amount?: number;
-  idempotencyKey: string;
-  reference: string;
-  fetchImpl?: RevenueCatFetch;
-}): Promise<CreditOperationResult> {
-  return adjustRevenueCatCredits({
-    ...input,
-    amount: -(input.amount ?? 1),
-    result: "spent",
-  });
-}
-
-export async function refundRevenueCatCredit(input: {
-  secretKey: string;
-  projectId: string;
-  accountId: string;
-  creditCode: string;
-  idempotencyKey: string;
-  reference: string;
-  fetchImpl?: RevenueCatFetch;
-}): Promise<CreditOperationResult> {
-  return adjustRevenueCatCredits({ ...input, amount: 1, result: "refunded" });
-}
-
-export async function evaluateTrialEligibility(input: {
-  env: Env;
-  accountId: string;
-  client: string;
-  trialProof?: string;
-  fetchImpl?: TrialFetch;
-}): Promise<TrialEligibility> {
-  if (!input.env.autoTrialEnabled) {
-    return { eligible: false, reason: "auto_trial_disabled" };
-  }
-
-  if (input.client === "ios") {
-    return evaluateIosTrialEligibility(input);
-  }
-
-  if (input.client === "android") {
-    return evaluateAndroidTrialEligibility(input);
-  }
-
-  return { eligible: false, reason: "unsupported_platform" };
-}
-
-export async function queryDeviceCheckTrialBit(input: {
-  env: Env;
-  token: string;
-  fetchImpl?: DeviceCheckFetch;
-}): Promise<DeviceCheckResult> {
-  const request = await makeDeviceCheckRequest(input.env, input.token);
-  if (!request.ok) return request;
-
-  return callAppleDeviceCheck({
-    env: input.env,
-    path: "query_two_bits",
-    body: request.body,
-    fetchImpl: input.fetchImpl,
-    parse: async (response) => {
-      const body = (await response.json().catch(() => null)) as {
-        bit0?: boolean;
-      } | null;
-      return { ok: true, claimed: body?.bit0 === true };
-    },
-  });
-}
-
-export async function markDeviceCheckTrialClaimed(input: {
-  env: Env;
-  token: string;
-  fetchImpl?: DeviceCheckFetch;
-}): Promise<
-  | { ok: true }
-  | {
-      ok: false;
-      reason: "not_configured" | "invalid_token" | "apple_unavailable";
-    }
-> {
-  const request = await makeDeviceCheckRequest(input.env, input.token);
-  if (!request.ok) return request;
-
-  return callAppleDeviceCheck({
-    env: input.env,
-    path: "update_two_bits",
-    body: {
-      ...request.body,
-      bit0: true,
-      bit1: false,
-    },
-    fetchImpl: input.fetchImpl,
-    parse: async () => ({ ok: true }),
-  });
-}
-
-async function adjustRevenueCatCredits(input: {
-  secretKey: string;
-  projectId: string;
-  accountId: string;
-  creditCode: string;
-  amount: number;
-  idempotencyKey: string;
-  reference: string;
-  result: "spent" | "trial_granted_spent" | "refunded";
-  fetchImpl?: RevenueCatFetch;
-}): Promise<CreditOperationResult> {
-  if (!input.secretKey || !input.projectId || !input.creditCode) {
-    return { ok: false, creditsRemaining: null, result: "not_configured" };
-  }
-
-  const fetcher = input.fetchImpl ?? fetch;
-
-  try {
-    const response = await fetcher(
-      revenueCatVirtualCurrencyTransactionsURL(
-        input.projectId,
-        input.accountId,
-      ),
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${input.secretKey}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": input.idempotencyKey,
-        },
-        body: JSON.stringify({
-          adjustments: {
-            [input.creditCode]: input.amount,
-          },
-          reference: input.reference,
-        }),
-      },
-    );
-
-    if (response.status === 422) {
-      return { ok: false, creditsRemaining: null, result: "insufficient" };
-    }
-
-    if (!response.ok) {
-      return { ok: false, creditsRemaining: null, result: "unavailable" };
-    }
-
-    const body = await response.json().catch(() => null);
-    return {
-      ok: true,
-      creditsRemaining: balanceFromVirtualCurrencies(body, input.creditCode),
-      result: input.result,
-    };
-  } catch {
-    return { ok: false, creditsRemaining: null, result: "unavailable" };
-  }
-}
-
-function revenueCatVirtualCurrencyURL(
-  projectId: string,
-  accountId: string,
-): string {
-  return `https://api.revenuecat.com/v2/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(accountId)}/virtual_currencies`;
-}
-
-function revenueCatVirtualCurrencyTransactionsURL(
-  projectId: string,
-  accountId: string,
-): string {
-  return `${revenueCatVirtualCurrencyURL(projectId, accountId)}/transactions`;
-}
-
-function balanceFromVirtualCurrencies(
-  body: unknown,
-  creditCode: string,
-): number | null {
-  if (
-    !body ||
-    typeof body !== "object" ||
-    !("items" in body) ||
-    !Array.isArray(body.items)
-  ) {
-    return null;
-  }
-
-  const match = body.items.find((item) => {
-    return (
-      item &&
-      typeof item === "object" &&
-      "currency_code" in item &&
-      item.currency_code === creditCode
-    );
-  });
-
-  if (
-    !match ||
-    typeof match !== "object" ||
-    !("balance" in match) ||
-    typeof match.balance !== "number"
-  ) {
-    return null;
-  }
-
-  return match.balance;
-}
-
-function x402PaymentDetails(quote: X402Quote) {
-  return {
-    scheme: quote.scheme,
-    price: quote.price,
-    network: quote.network,
-    payTo: quote.payTo,
-  };
-}
-
-function x402PaymentRequiredHeader(quote: X402Quote): string {
-  return base64HeaderJson({
-    x402Version: 2,
-    accepts: [x402PaymentDetails(quote)],
-    description: quote.description,
-    mimeType: quote.mimeType,
-    anky: {
-      provider: quote.provider,
-      chargeable: quote.chargeable,
-      status: quote.status,
-    },
-  });
-}
-
-function x402SettlementHeader(value: unknown): string {
-  return base64HeaderJson(value ?? {});
-}
-
-function x402LooksValid(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false;
-  if ("valid" in value) return value.valid === true;
-  if ("isValid" in value) return value.isValid === true;
-  if ("success" in value) return value.success === true;
-  if ("ok" in value) return value.ok === true;
-  return false;
-}
-
-function base64Json(
-  value: string,
-): { ok: true; value: unknown } | { ok: false } {
-  try {
-    const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return { ok: true, value: JSON.parse(atob(padded)) };
-  } catch {
-    return { ok: false };
-  }
-}
-
-function trialFailureResult(
-  reason:
-    | "auto_trial_disabled"
-    | "platform_disabled"
-    | "unsupported_platform"
-    | "missing_trial_proof"
-    | "invalid_trial_proof"
-    | "already_claimed"
-    | "trial_check_unavailable",
-  spendIdempotencyKey: string,
-  creditCost?: number,
-): Extract<PreparedReflectionCredit, { ok: false }> &
-  Pick<ReflectionCreditResult, "spentCredit"> {
-  const result = (() => {
-    switch (reason) {
-      case "auto_trial_disabled":
-      case "platform_disabled":
-      case "unsupported_platform":
-        return "trial_disabled";
-      case "missing_trial_proof":
-        return "trial_proof_missing";
-      case "invalid_trial_proof":
-        return "trial_proof_invalid";
-      case "already_claimed":
-        return "trial_already_claimed";
-      case "trial_check_unavailable":
-        return "unavailable";
-    }
-  })();
-
-  return {
-    ok: false,
-    creditsRemaining: null,
-    result,
-    spentCredit: false,
-    spendIdempotencyKey,
-    creditCost,
-  };
-}
-
-function reflectionSpendIdempotencyKey(
-  accountId: string,
-  ankyHash: string,
-): Promise<string> {
-  return sha256Hex(`anky-reflection-v1:${accountId}:${ankyHash}`);
-}
-
-function trialGrantIdempotencyKey(
-  accountId: string,
-  platform: string,
-  proofHash: string,
-): Promise<string> {
-  return sha256Hex(`anky-trial-v1:${platform}:${accountId}:${proofHash}`);
-}
-
-function reflectionRefundIdempotencyKey(
-  accountId: string,
-  ankyHash: string,
-): Promise<string> {
-  return sha256Hex(`anky-reflection-refund-v1:${accountId}:${ankyHash}`);
-}
-
-function preparedSource(
-  prepared: Extract<PreparedReflectionCredit, { ok: true }>,
-): "balance" | "trial" | "bypass" | "subscription" {
-  if (prepared.source) return prepared.source;
-  if (prepared.result === "bypassed" || prepared.spentCredit === false)
-    return "bypass";
-  if (prepared.result === "trial_granted_spent") return "trial";
-  return "balance";
-}
-
-async function evaluateAndroidTrialEligibility(input: {
-  env: Env;
-  accountId: string;
-}): Promise<TrialEligibility> {
-  if (!input.env.androidTrialEnabled) {
-    return { eligible: false, reason: "platform_disabled" };
-  }
-  if (input.env.androidPlayIntegrityRequired) {
-    return { eligible: false, reason: "missing_trial_proof" };
-  }
-
-  return {
-    eligible: true,
-    platform: "android",
-    proofHash: await shortHash(`android-account-trial-v1:${input.accountId}`),
-  };
-}
-
-async function evaluateIosTrialEligibility(input: {
-  env: Env;
-  accountId: string;
-  trialProof?: string;
-  fetchImpl?: TrialFetch;
-}): Promise<TrialEligibility> {
-  if (!input.env.iosTrialEnabled) {
-    return { eligible: false, reason: "platform_disabled" };
-  }
-
-  if (input.env.iosDeviceCheckRequired && !input.trialProof) {
-    return { eligible: false, reason: "missing_trial_proof" };
-  }
-
-  if (!input.trialProof) {
-    return {
-      eligible: true,
-      platform: "ios",
-      proofHash: await iosAccountTrialProofHash(input.accountId),
-    };
-  }
-
-  const deviceCheck = await queryDeviceCheckTrialBit({
-    env: input.env,
-    token: input.trialProof,
-    fetchImpl: input.fetchImpl,
-  });
-
-  if (!deviceCheck.ok) {
-    if (input.env.iosDeviceCheckRequired && deviceCheck.reason === "invalid_token") {
-      return { eligible: false, reason: "invalid_trial_proof" };
-    }
-    if (input.env.iosDeviceCheckRequired) {
-      return { eligible: false, reason: "trial_check_unavailable" };
-    }
-    return {
-      eligible: true,
-      platform: "ios",
-      proofHash: await iosAccountTrialProofHash(input.accountId),
-    };
-  }
-
-  if (deviceCheck.claimed) {
-    return { eligible: false, reason: "already_claimed" };
-  }
-
-  return {
-    eligible: true,
-    platform: "ios",
-    proofHash: await iosAccountTrialProofHash(input.accountId),
-  };
-}
-
-function iosAccountTrialProofHash(accountId: string): Promise<string> {
-  return shortHash(`ios-account-trial-v1:${accountId}`);
-}
-
-async function callAppleDeviceCheck<T>(input: {
-  env: Env;
-  path: "query_two_bits" | "update_two_bits";
-  body: Record<string, unknown>;
-  fetchImpl?: DeviceCheckFetch;
-  parse(response: Response): Promise<T>;
-}): Promise<T | { ok: false; reason: "invalid_token" | "apple_unavailable" }> {
-  const fetcher = input.fetchImpl ?? fetch;
-  const jwt = await makeAppleJwt(input.env);
-
-  try {
-    const response = await fetcher(
-      `${deviceCheckBaseURL(input.env)}/v1/${input.path}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input.body),
-      },
-    );
-
-    if (response.status === 400 || response.status === 401) {
-      return { ok: false, reason: "invalid_token" };
-    }
-
-    if (!response.ok) {
-      return { ok: false, reason: "apple_unavailable" };
-    }
-
-    return input.parse(response);
-  } catch {
-    return { ok: false, reason: "apple_unavailable" };
-  }
-}
-
-async function makeDeviceCheckRequest(
-  env: Env,
-  token: string,
-): Promise<
-  | {
-      ok: true;
-      body: { device_token: string; transaction_id: string; timestamp: number };
-    }
-  | { ok: false; reason: "not_configured" | "invalid_token" }
-> {
-  if (
-    !env.appleDeviceCheckTeamId ||
-    !env.appleDeviceCheckKeyId ||
-    !env.appleDeviceCheckPrivateKey
-  ) {
-    return { ok: false, reason: "not_configured" };
-  }
-  if (!token.trim()) {
-    return { ok: false, reason: "invalid_token" };
-  }
-
-  return {
-    ok: true,
-    body: {
-      device_token: token,
-      transaction_id: crypto.randomUUID(),
-      timestamp: Date.now(),
-    },
-  };
-}
-
-async function makeAppleJwt(env: Env): Promise<string> {
-  const header = base64UrlJson({
-    alg: "ES256",
-    kid: env.appleDeviceCheckKeyId,
-  });
-  const claims = base64UrlJson({
-    iss: env.appleDeviceCheckTeamId,
-    iat: Math.floor(Date.now() / 1000),
-  });
-  const signingInput = `${header}.${claims}`;
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToArrayBuffer(env.appleDeviceCheckPrivateKey),
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    new TextEncoder().encode(signingInput),
-  );
-  return `${signingInput}.${base64Url(new Uint8Array(signature))}`;
-}
-
-function deviceCheckBaseURL(env: Env): string {
-  return "https://api.devicecheck.apple.com";
-}
-
-function base64UrlJson(value: unknown): string {
-  return base64Url(new TextEncoder().encode(JSON.stringify(value)));
-}
-
-function base64HeaderJson(value: unknown): string {
-  return btoa(
-    String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))),
-  );
-}
-
-function base64Url(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const normalized = pem
-    .replace(/\\n/g, "\n")
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
-    .replace(/\s/g, "");
-  const binary = atob(normalized);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes.buffer;
-}
-
-// -----------------------------------------------------------------------------
 // Provider Router
 // -----------------------------------------------------------------------------
 
@@ -2506,15 +1147,6 @@ export function reflectionModelConfigForTier(
   };
 }
 
-export function reflectionCreditCostForTier(
-  env: Pick<Env, "reflectionCreditCosts">,
-  tier: SessionTier = "full",
-): number {
-  const configured =
-    env.reflectionCreditCosts?.[tier] ?? defaultReflectionCreditCosts[tier] ?? 1;
-  return Number.isFinite(configured) && configured >= 0 ? configured : 1;
-}
-
 export const bankrProvider: ReflectionProvider = {
   name: "bankr",
   privacy: {
@@ -2594,7 +1226,7 @@ export const defaultFallbackProvider: ReflectionProvider = {
       title: "mirror unavailable",
       tags: [],
       reflection:
-        "# mirror unavailable\n\nhey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. No credit was spent.",
+        "# mirror unavailable\n\nhey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now. Your writing remains on this device. Nothing was charged.",
     };
   },
 };
@@ -2734,52 +1366,13 @@ function providerWithPrivacy(
 }
 
 // -----------------------------------------------------------------------------
-// Wallet Funding Placeholder
-// -----------------------------------------------------------------------------
-
-// I can describe future Base USDC funding without shipping an unsafe production
-// funding flow. The placeholder remains inert until the integration is real.
-
-export type WalletFundingCurrency = "USDC";
-
-export type WalletCreditFundingQuote = {
-  provider: "base-usdc" | "veil-cash-placeholder";
-  address: string;
-  currency: WalletFundingCurrency;
-  chainId: 8453;
-  credits: number;
-  expiresAt: string;
-};
-
-export interface WalletCreditFundingProvider {
-  quote(input: {
-    address: string;
-    credits: number;
-  }): Promise<WalletCreditFundingQuote>;
-  reconcile(input: {
-    address: string;
-    transactionHash: string;
-  }): Promise<{ creditsGranted: number; reference: string }>;
-}
-
-export class VeilCashFundingProviderPlaceholder implements WalletCreditFundingProvider {
-  async quote(): Promise<WalletCreditFundingQuote> {
-    throw new Error("VEIL_CASH_INTEGRATION_NOT_CONFIGURED");
-  }
-
-  async reconcile(): Promise<{ creditsGranted: number; reference: string }> {
-    throw new Error("VEIL_CASH_INTEGRATION_NOT_CONFIGURED");
-  }
-}
-
-// -----------------------------------------------------------------------------
 // POST /anky
 // -----------------------------------------------------------------------------
 
 // Here is the whole ritual: reject unsafe inputs, verify Base EIP-712 identity,
-// validate the .anky protocol, acquire the duplicate lock, prepare credit access,
-// reconstruct only in memory, ask a private provider, spend only after success,
-// return the reflection, and forget.
+// validate the .anky protocol, acquire the duplicate lock, check the
+// subscription entitlement, reconstruct only in memory, ask a private
+// provider, return the reflection, and forget.
 
 export function handleAnkyReflectionStream(
   c: Context,
@@ -2918,19 +1511,9 @@ export async function handleAnkyReflection(
   logger: SafeLogger,
   deps: AnkyRouteDeps = {},
 ) {
-  const prepareCredit = deps.prepareReflectionCredit ?? prepareReflectionCredit;
-  const spendCredit =
-    deps.spendPreparedReflectionCredit ??
-    (deps.prepareReflectionCredit
-      ? testSpendPreparedReflectionCredit
-      : spendPreparedReflectionCredit);
   const reflectionRouter =
     deps.routeReflection ??
-    (deps.callMirror
-      ? legacyMirrorRouter(deps.callMirror)
-      : deps.prepareReflectionCredit
-        ? injectedCreditReflectionRouter
-        : routeReflection);
+    (deps.callMirror ? legacyMirrorRouter(deps.callMirror) : routeReflection);
   const idempotencyStore =
     deps.idempotencyStore ?? railwayMemoryIdempotencyStore;
   const startedAt = Date.now();
@@ -2946,18 +1529,13 @@ export async function handleAnkyReflection(
   let chainIdForDiagnostics: number | undefined;
   let appVersion: string | undefined;
   let durationMs: number | undefined;
-  let creditResult: string | undefined;
+  let entitlementResult: string | undefined;
   let modelProvider = "none";
   let modelFailure: string | undefined;
   let idempotencyKey: string | undefined;
   let billingHash: string | undefined;
   let idempotencyAcquired = false;
   let retryingSucceededReflection = false;
-  let recoveredPreviousSpend = false;
-  let x402Quote: X402Quote | undefined;
-  let x402Payment: X402Payment | undefined;
-  let x402Settlement: unknown;
-  let freeFallbackWithoutCredit = false;
   let requestIntent: AnkyRequestIntent = "reflection";
   let reflectionTier: SessionTier | undefined;
 
@@ -2990,8 +1568,6 @@ export async function handleAnkyReflection(
     requestIntent = ankyRequestIntent(
       c.req.header("x-anky-intent") ?? undefined,
     );
-    const trialProof = c.req.header("x-anky-trial-proof") ?? undefined;
-    const paymentSignature = c.req.header("payment-signature") ?? undefined;
     if (!signature || !requestTime) {
       statusCode = 401;
       errorCode = "MISSING_SIGNATURE";
@@ -3107,196 +1683,31 @@ export async function handleAnkyReflection(
     });
 
     try {
-      // Subscription first: entitled writers reflect without touching the
-      // credit machinery. Free writers fall through to purchased credits or
-      // x402 — paid value is honored forever — and otherwise meet the veil.
+      // The subscription is the only billing question. Promotional grants
+      // arrive through the same entitlement shape, so they count as
+      // entitled without special-casing. A retry of an already-succeeded
+      // reflection is honored even if the entitlement lapsed in between.
       const entitlement: AccountEntitlement = deps.accountEntitlement
         ? await deps.accountEntitlement(accountId)
         : { entitled: false };
-      if (
-        requestIntent === "nudge" &&
-        !entitlement.entitled &&
-        !retryingSucceededReflection
-      ) {
+      if (!entitlement.entitled && !retryingSucceededReflection) {
         statusCode = 402;
         errorCode = "ENTITLEMENT_REQUIRED";
         return errorJson(c, "ENTITLEMENT_REQUIRED");
       }
-      let preparedCredit: PreparedReflectionCredit =
-        requestIntent === "nudge" || retryingSucceededReflection
-          ? {
-              ok: true,
-              source: "bypass",
-              creditsRemaining: null,
-              result: "bypassed",
-              spentCredit: false,
-            }
-          : entitlement.entitled
-            ? {
-                ok: true,
-                source: "subscription",
-                creditsRemaining: null,
-                result: "subscribed",
-                spentCredit: false,
-              }
-            : await prepareCredit({
-                env,
-                accountId,
-                accountIdHash: identityHash,
-                ankyHash: billingHash,
-                client: identity.client,
-                tier: reflectionTier,
-                appVersion,
-                trialProof,
-                fetchImpl: deps.creditFetch,
-              });
-      if (
-        !preparedCredit.ok &&
-        preparedCredit.result === "insufficient" &&
-        preparedCredit.spendIdempotencyKey
-      ) {
-        const recoveredCredit = await spendCredit({
-          env,
-          accountId,
-          accountIdHash: identityHash,
-          ankyHash: billingHash,
-          prepared: {
-            ok: true,
-            source: "balance",
-            creditsRemaining: null,
-            spendIdempotencyKey: preparedCredit.spendIdempotencyKey,
-            creditCost: preparedCredit.creditCost,
-          },
-          tier: reflectionTier,
-          trialProof,
-          fetchImpl: deps.creditFetch,
-        });
-        if (recoveredCredit.ok) {
-          recoveredPreviousSpend = true;
-          preparedCredit = {
-            ok: true,
-            source: "bypass",
-            creditsRemaining: recoveredCredit.creditsRemaining,
-            result: "bypassed",
-            spentCredit: false,
-            spendIdempotencyKey: preparedCredit.spendIdempotencyKey,
-          };
-        }
-      }
+      entitlementResult = retryingSucceededReflection
+        ? "duplicate_succeeded_retry_bypass"
+        : requestIntent === "nudge"
+          ? "nudge_entitled"
+          : "subscription_entitled";
       await deps.progress?.({
-        stage: "credit_checked",
+        stage: "entitlement_checked",
         message: retryingSucceededReflection
-          ? "Anky already reflected this artifact and will retry without spending credits."
+          ? "Anky already reflected this artifact and will answer it again."
           : requestIntent === "nudge"
-            ? "Anky will return a lightweight nudge without spending a reflection credit."
-            : recoveredPreviousSpend
-              ? "Anky found a previous credit spend for this artifact and will retry without spending again."
-              : preparedCredit.ok && preparedCredit.source === "subscription"
-                ? "Anky recognized an active subscription. The mirror is open."
-                : preparedCredit.ok
-                  ? "Anky found an available reflection credit path."
-                  : "Anky did not find available credits and is checking x402.",
+            ? "Anky recognized the practice is alive and will return a nudge."
+            : "Anky recognized the practice is alive. The mirror is open.",
       });
-      if (retryingSucceededReflection) {
-        creditResult = "duplicate_succeeded_retry_bypass";
-      } else if (requestIntent === "nudge") {
-        creditResult = "nudge_not_charged";
-      } else if (recoveredPreviousSpend) {
-        creditResult = "recovered_previous_spend";
-      } else if (preparedCredit.ok && preparedCredit.source === "subscription") {
-        creditResult = "subscription_entitled";
-      }
-      if (!preparedCredit.ok) {
-        creditResult = preparedCredit.result;
-        if (preparedCredit.result === "trial_already_claimed") {
-          statusCode = 402;
-          errorCode = "TRIAL_ALREADY_CLAIMED";
-          return errorJson(c, "TRIAL_ALREADY_CLAIMED");
-        }
-        if (
-          preparedCredit.result === "trial_disabled" ||
-          preparedCredit.result === "trial_ineligible" ||
-          preparedCredit.result === "trial_proof_missing" ||
-          preparedCredit.result === "trial_proof_invalid"
-        ) {
-          // No subscription, no purchased credits, no device trial: this is
-          // the boundary. The client renders it as the veil.
-          statusCode = 402;
-          errorCode = "ENTITLEMENT_REQUIRED";
-          return errorJson(c, "ENTITLEMENT_REQUIRED");
-        }
-        x402Quote = quoteAnkyReflection(env);
-        await deps.progress?.({
-          stage: "x402_quote_created",
-          message: x402Quote.chargeable
-            ? "Anky created an x402 quote from current provider readiness."
-            : "Anky found no paid provider ready and will use the no-charge fallback.",
-          provider: x402Quote.provider,
-          chargeable: x402Quote.chargeable,
-          price: x402Quote.price,
-        });
-        if (!x402Quote.chargeable) {
-          freeFallbackWithoutCredit = true;
-          creditResult = "x402_not_required_default_fallback";
-        } else if (x402Quote.chargeable) {
-          const x402Verifier = deps.verifyX402Payment ?? verifyX402Payment;
-          const payment = await x402Verifier({
-            env,
-            quote: x402Quote,
-            paymentSignature,
-          });
-          if (payment.ok) {
-            x402Payment = payment.payment;
-            creditResult = "x402_verified";
-            await deps.progress?.({
-              stage: "x402_verified",
-              message: "Anky verified the x402 payment authorization.",
-              provider: x402Quote.provider,
-              price: x402Quote.price,
-            });
-          } else {
-            statusCode = 402;
-            errorCode = "INSUFFICIENT_CREDITS";
-            return c.json(
-              {
-                error: {
-                  code: "INSUFFICIENT_CREDITS",
-                  message: errorMessages.INSUFFICIENT_CREDITS,
-                },
-                x402: payment.reason,
-              },
-              402,
-              { "PAYMENT-REQUIRED": x402PaymentRequiredHeader(x402Quote) },
-            );
-          }
-        }
-      }
-
-      if (!preparedCredit.ok && !x402Payment && !freeFallbackWithoutCredit) {
-        if (preparedCredit.result === "trial_already_claimed") {
-          statusCode = 402;
-          errorCode = "TRIAL_ALREADY_CLAIMED";
-          return errorJson(c, "TRIAL_ALREADY_CLAIMED");
-        }
-        if (preparedCredit.result === "insufficient") {
-          statusCode = 402;
-          errorCode = "INSUFFICIENT_CREDITS";
-          return errorJson(c, "INSUFFICIENT_CREDITS");
-        }
-        if (
-          preparedCredit.result === "trial_disabled" ||
-          preparedCredit.result === "trial_ineligible" ||
-          preparedCredit.result === "trial_proof_missing" ||
-          preparedCredit.result === "trial_proof_invalid"
-        ) {
-          statusCode = 402;
-          errorCode = "ENTITLEMENT_REQUIRED";
-          return errorJson(c, "ENTITLEMENT_REQUIRED");
-        }
-        statusCode = 500;
-        errorCode = "MIRROR_FAILED";
-        return errorJson(c, "MIRROR_FAILED");
-      }
 
       const writing = reconstructProtocolText(validation.parsed);
       const prompt =
@@ -3319,7 +1730,6 @@ export async function handleAnkyReflection(
         await deps.progress?.({
           stage: "provider_started",
           message: "Anky is asking the reflection provider.",
-          provider: x402Quote?.provider,
         });
         mirror = await reflectionRouter({
           env:
@@ -3344,104 +1754,13 @@ export async function handleAnkyReflection(
         throw new Error("MIRROR_FAILED");
       }
 
-      let creditsRemaining = preparedCredit.ok
-        ? preparedCredit.creditsRemaining
-        : null;
-      const subscriptionCovered =
-        preparedCredit.ok && preparedCredit.source === "subscription";
-      if (
-        requestIntent === "reflection" &&
-        mirror.chargeable &&
-        !retryingSucceededReflection &&
-        !recoveredPreviousSpend &&
-        !subscriptionCovered
-      ) {
-        if (x402Payment) {
-          const x402Settler = deps.settleX402Payment ?? settleX402Payment;
-          const settlement = await x402Settler({ env, payment: x402Payment });
-          x402Settlement = settlement.response;
-          if (!settlement.ok) {
-            statusCode = 402;
-            errorCode = "INSUFFICIENT_CREDITS";
-            return c.json(
-              {
-                error: {
-                  code: "INSUFFICIENT_CREDITS",
-                  message: "The x402 payment could not be settled.",
-                },
-              },
-              402,
-              {
-                "PAYMENT-REQUIRED": x402PaymentRequiredHeader(
-                  x402Payment.quote,
-                ),
-                "PAYMENT-RESPONSE": x402SettlementHeader(settlement.response),
-              },
-            );
-          }
-          creditResult = "x402_settled";
-          creditsRemaining = null;
-          await deps.progress?.({
-            stage: "x402_settled",
-            message:
-              "Anky settled the x402 payment after a successful reflection.",
-            provider: x402Payment.quote.provider,
-            price: x402Payment.quote.price,
-          });
-        } else {
-          const credit = await spendCredit({
-            env,
-            accountId,
-            accountIdHash: identityHash,
-            ankyHash: billingHash,
-            prepared: preparedCredit,
-            tier: reflectionTier,
-            trialProof,
-            fetchImpl: deps.creditFetch,
-          });
-          creditResult = credit.result;
-          if (!credit.ok) {
-            statusCode = credit.result === "insufficient" ? 402 : 500;
-            errorCode =
-              statusCode === 402 ? "INSUFFICIENT_CREDITS" : "MIRROR_FAILED";
-            return errorJson(c, errorCode);
-          }
-          creditsRemaining = credit.creditsRemaining;
-          await deps.progress?.({
-            stage: "credit_spent",
-            message: "Anky spent one reflection credit after success.",
-          });
-        }
-      } else {
-        creditResult =
-          requestIntent === "nudge"
-            ? "nudge_not_charged"
-            : subscriptionCovered
-              ? "subscription_entitled"
-              : "not_spent_default_fallback";
-        await deps.progress?.({
-          stage: "credit_not_spent",
-          message:
-            requestIntent === "nudge"
-              ? "Anky returned the lightweight nudge without charging."
-              : subscriptionCovered
-                ? "Anky reflected within the subscription. Nothing was spent."
-                : "Anky used the fallback reflection and did not charge.",
-        });
-      }
-
       const responseBody = responseTextForIntent(requestIntent, mirror);
       const responseHeaders: Record<string, string> = {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Anky-Hash": ankyHash,
         "X-Anky-Intent": requestIntent,
-        "X-Anky-Credits-Remaining":
-          creditsRemaining === null ? "null" : String(creditsRemaining),
         ...(requestIntent === "reflection"
           ? { "X-Anky-Tags": JSON.stringify(mirror.tags ?? []) }
-          : {}),
-        ...(x402Settlement
-          ? { "PAYMENT-RESPONSE": x402SettlementHeader(x402Settlement) }
           : {}),
       };
       await idempotencyStore.markSucceeded(idempotencyKey);
@@ -3482,7 +1801,7 @@ export async function handleAnkyReflection(
       latencyMs: Date.now() - startedAt,
       modelProvider,
       modelFailure,
-      creditResult,
+      entitlementResult,
       reflectionTier,
     });
     await deps.diagnostics?.record({
@@ -3517,7 +1836,6 @@ function responseHeadersObject(headers: Headers): Record<string, string> {
   for (const [key, value] of headers.entries()) {
     if (
       key.toLowerCase().startsWith("x-anky-") ||
-      key.toLowerCase().startsWith("payment-") ||
       key.toLowerCase() === "content-type"
     ) {
       output[key] = value;
@@ -3586,48 +1904,10 @@ function ankyRequestIntent(value: string | undefined): AnkyRequestIntent {
   return value?.toLowerCase() === "nudge" ? "nudge" : "reflection";
 }
 
-async function injectedCreditReflectionRouter(): Promise<ReflectionProviderResult> {
-  return {
-    provider: "mock",
-    chargeable: true,
-    title: "Small Steady Thread",
-    tags: ["steady thread", "self trust", "quiet attention"],
-    reflection:
-      "# Small Steady Thread\n\nHere is what I saw: the writing kept returning to the same living thread.",
-  };
-}
-
 function isDiagnosticClient(
   value: string | undefined,
 ): value is "ios" | "android" | "other" {
   return value === "ios" || value === "android" || value === "other";
-}
-
-async function testSpendPreparedReflectionCredit(input: {
-  prepared: PreparedReflectionCredit;
-}): Promise<Awaited<ReturnType<typeof spendPreparedReflectionCredit>>> {
-  if (!input.prepared.ok) return { ...input.prepared, spentCredit: false };
-  const source =
-    input.prepared.source ??
-    (input.prepared.result === "trial_granted_spent"
-      ? "trial"
-      : input.prepared.result === "bypassed" ||
-          input.prepared.spentCredit === false
-        ? "bypass"
-        : "balance");
-  const result =
-    source === "trial"
-      ? "trial_granted_spent"
-      : source === "balance"
-        ? "spent"
-        : "bypassed";
-  return {
-    ok: true,
-    creditsRemaining: input.prepared.creditsRemaining,
-    result,
-    spentCredit: source !== "bypass",
-    spendIdempotencyKey: input.prepared.spendIdempotencyKey,
-  };
 }
 
 function safeModelFailure(error: unknown): string {

@@ -1,64 +1,69 @@
 // -----------------------------------------------------------------------------
-// Subscription state — the server's memory of who is subscribed.
+// Subscription state — the server's memory of who holds the `pro` entitlement.
 //
-// One row per account: which auto-renewable product, when it expires, whether
-// it was revoked (refund), and Apple's billing-retry grace window. This table
-// is the single source of truth for every gated endpoint. The ledger of
-// seconds is never touched by any of this: protection and progress are free
-// forever; only the deepening consults this table.
+// One row per account (the wallet address, which IS the RevenueCat
+// app_user_id): which product, which store it came from (App Store or a
+// promotional grant), the period type, and when it expires. `expires_at_ms`
+// is NULLABLE on purpose: lifetime and open-ended promotional grants are
+// entitled with no expiration. RevenueCat webhooks maintain this table; the
+// live REST fallback (revenuecat.ts) heals it when webhooks were missed.
+// The ledger of seconds is never touched by any of this: protection and
+// progress are free forever; only the deepening consults this table.
 // -----------------------------------------------------------------------------
 
 import type { Database } from "bun:sqlite";
-import type { AppleTransactionPayload } from "./applejws";
 
 export type SubscriptionRecord = {
   account: string;
-  originalTransactionId: string;
-  productId: string;
-  purchasedAtMs: number | null;
+  appUserId: string;
+  entitlementId: string;
+  productId: string | null;
+  store: string | null;
+  periodType: string | null;
   expiresAtMs: number | null;
-  isTrial: boolean;
-  revokedAtMs: number | null;
-  graceUntilMs: number | null;
+  isActive: boolean;
   environment: string | null;
-  appAccountToken: string | null;
-  signedAtMs: number;
+  lastEventAtMs: number;
+  updatedAtMs: number;
 };
 
 export type AccountEntitlement = {
   entitled: boolean;
   productId?: string;
   expiresAtMs?: number;
+  store?: string;
+  periodType?: string;
+  isPromotional?: boolean;
   isTrial?: boolean;
 };
 
 type SubscriptionRow = {
   account: string;
-  original_transaction_id: string;
-  product_id: string;
-  purchased_at_ms: number | null;
+  app_user_id: string;
+  entitlement_id: string;
+  product_id: string | null;
+  store: string | null;
+  period_type: string | null;
   expires_at_ms: number | null;
-  is_trial: number;
-  revoked_at_ms: number | null;
-  grace_until_ms: number | null;
+  is_active: number;
   environment: string | null;
-  app_account_token: string | null;
-  signed_at_ms: number;
+  last_event_at_ms: number;
+  updated_at_ms: number;
 };
 
 function rowToRecord(row: SubscriptionRow): SubscriptionRecord {
   return {
     account: row.account,
-    originalTransactionId: row.original_transaction_id,
+    appUserId: row.app_user_id,
+    entitlementId: row.entitlement_id,
     productId: row.product_id,
-    purchasedAtMs: row.purchased_at_ms,
+    store: row.store,
+    periodType: row.period_type,
     expiresAtMs: row.expires_at_ms,
-    isTrial: row.is_trial === 1,
-    revokedAtMs: row.revoked_at_ms,
-    graceUntilMs: row.grace_until_ms,
+    isActive: row.is_active === 1,
     environment: row.environment,
-    appAccountToken: row.app_account_token,
-    signedAtMs: row.signed_at_ms,
+    lastEventAtMs: row.last_event_at_ms,
+    updatedAtMs: row.updated_at_ms,
   };
 }
 
@@ -72,112 +77,122 @@ export function getSubscription(
   return row ? rowToRecord(row) : null;
 }
 
-export function accountsForOriginalTransaction(
-  db: Database,
-  originalTransactionId: string,
-): string[] {
-  const rows = db
-    .prepare(
-      "SELECT account FROM subscription_state WHERE original_transaction_id = ?1",
-    )
-    .all(originalTransactionId) as { account: string }[];
-  return rows.map((row) => row.account);
-}
+export type SubscriptionStateInput = {
+  account: string;
+  entitlementId: string;
+  productId: string | null;
+  store: string | null;
+  periodType: string | null;
+  expiresAtMs: number | null;
+  isActive: boolean;
+  environment: string | null;
+  eventAtMs: number;
+};
 
 /**
- * Applies an Apple-verified transaction to an account's subscription row.
- * Guarded by Apple's signedDate so a replayed older JWS can never roll a
- * renewal back; revocations always apply.
+ * Applies one observed entitlement state (webhook event or REST fallback
+ * answer) to an account's row. Guarded by the event timestamp so a
+ * webhook retry or an out-of-order delivery can never roll a newer state
+ * back — the freshest observation always stands.
  */
-export function applyVerifiedTransaction(
+export function applySubscriptionState(
   db: Database,
-  account: string,
-  transaction: AppleTransactionPayload,
+  input: SubscriptionStateInput,
   nowMs: number,
 ): SubscriptionRecord {
-  const signedAtMs =
-    typeof transaction.signedDate === "number" ? transaction.signedDate : 0;
-  const existing = getSubscription(db, account);
-  const isRevocation = typeof transaction.revocationDate === "number";
-  const stale =
-    existing !== null && !isRevocation && signedAtMs < existing.signedAtMs;
-  if (existing && stale) return existing;
+  const existing = getSubscription(db, input.account);
+  if (existing && input.eventAtMs < existing.lastEventAtMs) return existing;
 
   db.prepare(
     `INSERT INTO subscription_state (
-       account, original_transaction_id, product_id, purchased_at_ms,
-       expires_at_ms, is_trial, revoked_at_ms, grace_until_ms, environment,
-       app_account_token, signed_at_ms, updated_at_ms
-     ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+       account, app_user_id, entitlement_id, product_id, store, period_type,
+       expires_at_ms, is_active, environment, last_event_at_ms, updated_at_ms
+     ) VALUES (?1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
      ON CONFLICT (account) DO UPDATE SET
-       original_transaction_id = excluded.original_transaction_id,
+       app_user_id = excluded.app_user_id,
+       entitlement_id = excluded.entitlement_id,
        product_id = excluded.product_id,
-       purchased_at_ms = excluded.purchased_at_ms,
+       store = excluded.store,
+       period_type = excluded.period_type,
        expires_at_ms = excluded.expires_at_ms,
-       is_trial = excluded.is_trial,
-       revoked_at_ms = excluded.revoked_at_ms,
-       grace_until_ms = CASE
-         WHEN excluded.original_transaction_id = subscription_state.original_transaction_id
-         THEN subscription_state.grace_until_ms ELSE NULL END,
+       is_active = excluded.is_active,
        environment = excluded.environment,
-       app_account_token = excluded.app_account_token,
-       signed_at_ms = excluded.signed_at_ms,
+       last_event_at_ms = excluded.last_event_at_ms,
        updated_at_ms = excluded.updated_at_ms`,
   ).run(
-    account,
-    transaction.originalTransactionId ?? "",
-    transaction.productId ?? "",
-    transaction.purchaseDate ?? null,
-    transaction.expiresDate ?? null,
-    transaction.offerType === 1 ? 1 : 0,
-    transaction.revocationDate ?? null,
-    null,
-    transaction.environment ?? null,
-    transaction.appAccountToken ?? null,
-    signedAtMs,
+    input.account,
+    input.entitlementId,
+    input.productId,
+    input.store,
+    input.periodType,
+    input.expiresAtMs,
+    input.isActive ? 1 : 0,
+    input.environment,
+    input.eventAtMs,
     nowMs,
   );
-  const record = getSubscription(db, account);
+  const record = getSubscription(db, input.account);
   if (!record) throw new Error("SUBSCRIPTION_WRITE_FAILED");
   return record;
 }
 
-/** Billing-retry grace from an ASN renewal info payload. */
-export function applyGracePeriod(
-  db: Database,
-  account: string,
-  graceUntilMs: number | null,
+const PROMOTIONAL_STORES = new Set(["promotional", "PROMOTIONAL"]);
+const TRIAL_PERIODS = new Set(["trial", "TRIAL", "intro", "INTRO"]);
+
+export function entitlementFromRecord(
+  record: SubscriptionRecord | null,
   nowMs: number,
-): void {
-  db.prepare(
-    `UPDATE subscription_state SET grace_until_ms = ?2, updated_at_ms = ?3
-     WHERE account = ?1`,
-  ).run(account, graceUntilMs, nowMs);
+): AccountEntitlement {
+  if (!record) return { entitled: false };
+  if (!record.isActive) return { entitled: false };
+  // NULL expiration is a valid entitled state (lifetime / open-ended
+  // promotional grants) — is_active must not require an expiration.
+  if (record.expiresAtMs !== null && record.expiresAtMs <= nowMs) {
+    return { entitled: false };
+  }
+  return {
+    entitled: true,
+    productId: record.productId ?? undefined,
+    expiresAtMs: record.expiresAtMs ?? undefined,
+    store: record.store ?? undefined,
+    periodType: record.periodType ?? undefined,
+    isPromotional: record.store !== null && PROMOTIONAL_STORES.has(record.store),
+    isTrial:
+      record.periodType !== null && TRIAL_PERIODS.has(record.periodType),
+  };
 }
 
 /**
- * The one entitlement question every gated endpoint asks. Entitled while the
- * subscription is unrevoked and either unexpired or inside Apple's billing
- * grace window. A refund (revocation) ends entitlement immediately — but only
- * for future spend; nothing already generated is ever clawed back.
+ * The one entitlement question every gated endpoint asks, answered from
+ * local webhook-maintained state only. Callers that can afford a network
+ * round trip should prefer `entitlementWithFallback` (revenuecat.ts),
+ * which heals missing/stale rows from the RevenueCat REST API.
  */
 export function accountEntitlement(
   db: Database,
   account: string,
   nowMs: number,
 ): AccountEntitlement {
-  const record = getSubscription(db, account);
-  if (!record) return { entitled: false };
-  if (record.revokedAtMs !== null) return { entitled: false };
-  const activeUntil = Math.max(
-    record.expiresAtMs ?? 0,
-    record.graceUntilMs ?? 0,
-  );
-  if (activeUntil <= nowMs) return { entitled: false };
-  return {
-    entitled: true,
-    productId: record.productId,
-    expiresAtMs: record.expiresAtMs ?? undefined,
-    isTrial: record.isTrial,
-  };
+  return entitlementFromRecord(getSubscription(db, account), nowMs);
+}
+
+// -----------------------------------------------------------------------------
+// Webhook idempotency — one row per RevenueCat event id, forever.
+// -----------------------------------------------------------------------------
+
+/** True when this event id was seen for the first time (caller should
+ * process it); false when it is a redelivery (caller should 200 and skip). */
+export function recordWebhookEvent(
+  db: Database,
+  eventId: string,
+  eventType: string,
+  nowMs: number,
+): boolean {
+  const result = db
+    .prepare(
+      `INSERT OR IGNORE INTO revenuecat_events (event_id, event_type, received_at_ms)
+       VALUES (?1, ?2, ?3)`,
+    )
+    .run(eventId, eventType, nowMs);
+  return result.changes > 0;
 }
