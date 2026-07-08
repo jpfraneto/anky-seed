@@ -116,10 +116,40 @@ for (const level of levels) {
   const lock = SEED_SCENES[level];
   const res = await post("/debug/seed-default-painting", { level, text, ...lock });
   const json = (await res.json()) as Record<string, unknown>;
-  if (!res.ok) {
-    console.error(`level ${level} FAILED — HTTP ${res.status}: ${JSON.stringify(json)}`);
+  if (res.status !== 202) {
+    console.error(`level ${level} FAILED to start — HTTP ${res.status}: ${JSON.stringify(json)}`);
     process.exit(1);
   }
-  console.log(`level ${level} ok — title: ${json.title}`);
-  console.log(`dir: ${json.dir}`);
+
+  // The run is detached server-side; poll until it lands (or dies).
+  const deadline = Date.now() + 20 * 60 * 1000;
+  let settled = false;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
+    const statusRes = await fetch(`${BASE_URL}/debug/seed-default-painting?level=${level}`, {
+      headers: { Authorization: `Bearer ${ADMIN_KEY}` },
+    });
+    const status = (await statusRes.json()) as {
+      running?: boolean;
+      result?: { ok: boolean; title?: string; error?: string } | null;
+      packaged?: boolean;
+      title?: string | null;
+    };
+    if (status.running) {
+      console.log(`level ${level} … still painting`);
+      continue;
+    }
+    if (status.result?.ok || status.packaged) {
+      console.log(`level ${level} ok — title: ${status.result?.title ?? status.title}`);
+      settled = true;
+    } else {
+      console.error(`level ${level} FAILED — ${status.result?.error ?? "no package, no error"}`);
+      process.exit(1);
+    }
+    break;
+  }
+  if (!settled) {
+    console.error(`level ${level} timed out after 20 minutes of polling`);
+    process.exit(1);
+  }
 }

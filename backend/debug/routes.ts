@@ -50,6 +50,15 @@ function notFound(c: Context) {
   return c.json({ error: "NOT_FOUND" }, 404);
 }
 
+// Detached default-painting seed runs, keyed by level. Module-level on
+// purpose: a run must survive its originating request. Lost on restart —
+// the GET's `packaged` flag is the durable signal.
+const seedRuns = new Map<number, Promise<void>>();
+const seedResults = new Map<
+  number,
+  { ok: boolean; title?: string; error?: string; finishedAtMs: number }
+>();
+
 export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
   // Operator cost/health view: recent generation attempts, hashed accounts,
   // no writing anywhere near this table.
@@ -94,6 +103,40 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
   // cost decision 2026-07-08): runs the real pipeline once for the
   // `_defaults` pseudo-account so the package lands in the shared dir every
   // writer's static levels are served from. Re-run to replace a level.
+  //
+  // The pipeline takes minutes — longer than clients and proxies keep a
+  // request open, and an aborted request would abort the run — so POST
+  // starts it detached and returns 202; GET reports where it stands.
+  app.get("/debug/seed-default-painting", async (c) => {
+    if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
+    if (!ctx.dataDir) return c.json({ error: "DATA_DIR_UNAVAILABLE" }, 503);
+    const level = Number(c.req.query("level"));
+    if (!Number.isInteger(level) || level < 2 || level > STATIC_LEVEL_MAX) {
+      return c.json({ error: "INVALID_LEVEL" }, 400);
+    }
+    const metaFile = Bun.file(`${staticPaintingPackageDir(ctx.dataDir, level)}/meta.json`);
+    const packaged = await metaFile.exists();
+    let title: string | undefined;
+    let generatedAtMs: number | undefined;
+    if (packaged) {
+      try {
+        const meta = (await metaFile.json()) as { title?: string; generatedAtMs?: number };
+        title = meta.title;
+        generatedAtMs = meta.generatedAtMs;
+      } catch {
+        // Unreadable meta reads as packaged-but-untitled; the seed can re-run.
+      }
+    }
+    return c.json({
+      level,
+      running: seedRuns.has(level),
+      result: seedResults.get(level) ?? null,
+      packaged,
+      title: title ?? null,
+      generatedAtMs: generatedAtMs ?? null,
+    });
+  });
+
   app.post("/debug/seed-default-painting", async (c) => {
     if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
     const db = ctx.getDb?.();
@@ -137,29 +180,69 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
       return c.json({ error: "INVALID_SCENE_LOCK" }, 400);
     }
 
-    const pipeline = ctx.pipelineImpl ?? runPaintingPipeline;
-    try {
-      const meta = await pipeline({
-        db,
-        dataDir: ctx.dataDir,
-        account: STATIC_DEFAULTS_ACCOUNT,
-        level,
-        text,
-        lockedScene: hasLock ? { scene, title } : undefined,
-        openrouterApiKey: ctx.openrouterApiKey,
-        sync: true,
-        nowMs: Date.now(),
-      });
-      return c.json({
-        ok: true,
-        level,
-        title: meta.title,
-        dir: staticPaintingPackageDir(ctx.dataDir, level),
-      });
-    } catch (error) {
-      const code = error instanceof Error ? error.message : "PIPELINE_FAILED";
-      return c.json({ error: code }, 502);
+    if (seedRuns.has(level)) {
+      return c.json({ started: false, running: true, level }, 202);
     }
+
+    const pipeline = ctx.pipelineImpl ?? runPaintingPipeline;
+    const dataDir = ctx.dataDir;
+    seedResults.delete(level);
+    const run = pipeline({
+      db,
+      dataDir,
+      account: STATIC_DEFAULTS_ACCOUNT,
+      level,
+      text,
+      lockedScene: hasLock ? { scene, title } : undefined,
+      openrouterApiKey: ctx.openrouterApiKey,
+      // sync steers routing to the synchronous provider; the run itself is
+      // detached from this request so a dropped connection can't abort it.
+      sync: true,
+      nowMs: Date.now(),
+    })
+      .then((meta) => {
+        seedResults.set(level, { ok: true, title: meta.title, finishedAtMs: Date.now() });
+      })
+      .catch((error: unknown) => {
+        seedResults.set(level, {
+          ok: false,
+          error: error instanceof Error ? error.message : "PIPELINE_FAILED",
+          finishedAtMs: Date.now(),
+        });
+      })
+      .finally(() => {
+        seedRuns.delete(level);
+      });
+    seedRuns.set(level, run);
+
+    return c.json({ started: true, level }, 202);
+  });
+
+  // Operator download of a seeded default package's files — the writer-facing
+  // asset route needs a device identity; this one lets the operator pull the
+  // shared packages (e.g. to convert to webp and push to the CDN).
+  app.get("/debug/default-painting-asset", async (c) => {
+    if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
+    if (!ctx.dataDir) return c.json({ error: "DATA_DIR_UNAVAILABLE" }, 503);
+
+    const level = Number(c.req.query("level"));
+    const file = c.req.query("file") ?? "";
+    const allowed = ["final.png", "underdrawing.png", "revealmap.png", "meta.json"];
+    if (!Number.isInteger(level) || level < 2 || level > STATIC_LEVEL_MAX) {
+      return c.json({ error: "INVALID_LEVEL" }, 400);
+    }
+    if (!allowed.includes(file)) {
+      return c.json({ error: "UNKNOWN_ASSET" }, 404);
+    }
+    const asset = Bun.file(`${staticPaintingPackageDir(ctx.dataDir, level)}/${file}`);
+    if (!(await asset.exists())) {
+      return c.json({ error: "ASSET_NOT_READY" }, 404);
+    }
+    return new Response(await asset.arrayBuffer(), {
+      headers: {
+        "Content-Type": file.endsWith(".json") ? "application/json" : "image/png",
+      },
+    });
   });
 
   app.post("/debug/distill", async (c) => {
