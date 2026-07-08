@@ -3,10 +3,12 @@
 // public R2 bucket the app's locked gallery tiles load from.
 //
 // For each level: download final.png + underdrawing.png from the admin debug
-// asset route, convert to webp with sharp, upload via wrangler to
-//   anky-gallery/paintings/defaults/level-<N>/{final,underdrawing}.webp
+// asset route, upload the original png, convert to webp with sharp and upload
+// that too — via wrangler to
+//   anky-gallery/paintings/defaults/level-<N>/{final,underdrawing}.{png,webp}
 // served publicly at
 //   https://anky-gallery.fairchat.workers.dev/gallery/paintings/defaults/...
+// The app's locked tiles load the webp; the png is the full-quality original.
 //
 // Usage: ANKY_ADMIN_KEY=... bun scripts/publish-default-paintings-webp.ts [--level N]
 // -----------------------------------------------------------------------------
@@ -46,21 +48,26 @@ for (const level of levels) {
     }
     const png = new Uint8Array(await res.arrayBuffer());
     const webp = await sharp(png).webp({ quality: 86 }).toBuffer();
-    const name = file.replace(".png", ".webp");
-    const local = `${workDir}/level-${level}-${name}`;
-    await Bun.write(local, webp);
 
-    const key = `paintings/defaults/level-${level}/${name}`;
-    const put = Bun.spawnSync([
-      "wrangler", "r2", "object", "put", `${BUCKET}/${key}`,
-      "--file", local, "--content-type", "image/webp", "--remote",
-    ]);
-    if (put.exitCode !== 0) {
-      console.error(`upload failed for ${key}:\n${put.stderr.toString()}`);
-      process.exit(1);
+    const variants: Array<{ name: string; bytes: Uint8Array; contentType: string }> = [
+      { name: file, bytes: png, contentType: "image/png" },
+      { name: file.replace(".png", ".webp"), bytes: new Uint8Array(webp), contentType: "image/webp" },
+    ];
+    for (const variant of variants) {
+      const local = `${workDir}/level-${level}-${variant.name}`;
+      await Bun.write(local, variant.bytes);
+      const key = `paintings/defaults/level-${level}/${variant.name}`;
+      const put = Bun.spawnSync([
+        "wrangler", "r2", "object", "put", `${BUCKET}/${key}`,
+        "--file", local, "--content-type", variant.contentType, "--remote",
+      ]);
+      if (put.exitCode !== 0) {
+        console.error(`upload failed for ${key}:\n${put.stderr.toString()}`);
+        process.exit(1);
+      }
+      console.log(
+        `level ${level} ${variant.name}: ${(variant.bytes.byteLength / 1024).toFixed(0)}KB → r2:${key}`,
+      );
     }
-    console.log(
-      `level ${level} ${name}: ${(png.byteLength / 1024).toFixed(0)}KB png → ${(webp.byteLength / 1024).toFixed(0)}KB webp → r2:${key}`,
-    );
   }
 }

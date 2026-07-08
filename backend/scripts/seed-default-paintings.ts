@@ -54,7 +54,7 @@ const SEED_SCENES: Record<number, { title: string; scene: string }> = {
   },
   6: {
     title: "Both Skies True",
-    scene: `A still lake stretches across a low valley cradled by hills that have forgotten the sun. The small blue creature crouches at the water's edge, one hand just above the surface without touching — hovering in the suspended breath between reaching and receiving. Below the hand, and above it, the same constellation burns in two directions at once, sky and depth indistinguishable, each as true as the other. Three objects attend the moment: a glass lantern resting in the shallows, its flame neither growing nor dying, only persisting; a single open blossom floating free of any stem, petals wide though nothing watches; and a loose thread of light drifting through the reeds, not flying, not landing, simply stitching one dark patch of air to the next. The creature does not look up or down but holds the middle distance, as though understanding has arrived not as a word but as a temperature, as a change in the weight of the air. The pause is not hesitation — it is the posture of something that has learned to let the surface settle and read what gathers there. Mood: the quiet that follows a long wait when the waiting itself turns out to have been the answer. Palette: midnight indigo, phosphor green, bone white, deep lacquer black.`,
+    scene: `A still lake stretches across a low valley cradled by hills that have forgotten the sun. The small blue creature crouches at the water's edge, one hand just above the surface without touching — hovering in the suspended breath between reaching and receiving. Below the hand, and above it, the same constellation burns in two directions at once, sky and depth indistinguishable, each as true as the other. Three objects attend the moment: a glass lantern resting in the shallows, its small amber flame steady and generous, pooling warm gold across the still water around it and up the nearest reeds; a single open blossom floating free of any stem, petals wide though nothing watches; and a loose thread of light drifting through the reeds, not flying, not landing, simply stitching one dark patch of air to the next. The creature does not look up or down but holds the middle distance, as though understanding has arrived not as a word but as a temperature, as a change in the weight of the air. The pause is not hesitation — it is the posture of something that has learned to let the surface settle and read what gathers there. Mood: the quiet that follows a long wait when the waiting itself turns out to have been the answer. Palette: midnight indigo, phosphor green, bone white, warm lantern amber.`,
   },
   7: {
     title: "After the Carrying",
@@ -110,6 +110,19 @@ for (const level of levels) {
     console.log(`title: ${json.title}`);
     console.log(`scene: ${json.distilledScene}`);
     continue;
+  }
+
+  // Already-packaged levels are skipped so an interrupted run resumes where
+  // it stopped; pass --force to re-paint (replace) a level on purpose.
+  if (!process.argv.includes("--force")) {
+    const check = await fetch(`${BASE_URL}/debug/seed-default-painting?level=${level}`, {
+      headers: { Authorization: `Bearer ${ADMIN_KEY}` },
+    });
+    const state = (await check.json()) as { packaged?: boolean; title?: string | null };
+    if (state.packaged) {
+      console.log(`\n=== level ${level} already packaged ("${state.title}") — skipping ===`);
+      continue;
+    }
   }
 
   console.log(`\n=== seeding level ${level} ===`);
