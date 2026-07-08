@@ -89,7 +89,7 @@ export const mapOfThisFile = {
   subscription: "accountEntitlement -> entitlementWithFallback (RevenueCat)",
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
   providers:
-    "routeReflection -> openRouterProvider -> defaultReflectionProvider",
+    "routeReflection -> OpenRouter -> Bankr -> Poiesis -> defaultFallbackProvider",
   prompt: "buildReflectPromptFromText / buildNudgePrompt",
   endpoint: "handleAnkyReflection",
   startServer: "import.meta.main",
@@ -221,7 +221,7 @@ export const anky = {
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
   dataDir: "/data",
-  providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
+  providerOrder: ["openrouter", "bankr", "poiesis", "default"] as const,
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,
@@ -236,6 +236,8 @@ export const anky = {
 // Private material is not public law. Keep this list short.
 const privateKeys = {
   openrouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  bankrLlmGatewayApiKey: process.env.BANKR_LLM_GATEWAY_API_KEY ?? "",
+  poiesisLlmApiKey: process.env.POIESIS_LLM_API_KEY ?? "",
   adminKey: process.env.ANKY_ADMIN_KEY ?? "",
   revenueCatSecretKey: process.env.REVENUECAT_SECRET_KEY ?? "",
   revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH ?? "",
@@ -545,9 +547,11 @@ export type AnkyWorld = {
   providerOrder: Array<"openrouter" | "bankr" | "poiesis" | "default">;
   bankrLlmGatewayUrl: string;
   bankrLlmGatewayApiKey: string;
+  bankrLlmModel: string;
   bankrZdrConfirmed: boolean;
   poiesisLlmUrl: string;
   poiesisLlmApiKey: string;
+  poiesisLlmModel: string;
   poiesisZdrConfirmed: boolean;
   revenueCatSecretKey: string;
   revenueCatWebhookAuth: string;
@@ -581,12 +585,14 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     reflectionModels: cloneReflectionModelConfig(anky.reflectionModels),
     requireZdr: anky.privacyRequiresZdr,
     providerOrder: [...anky.providerOrder],
-    bankrLlmGatewayUrl: "",
-    bankrLlmGatewayApiKey: "",
-    bankrZdrConfirmed: false,
-    poiesisLlmUrl: "",
-    poiesisLlmApiKey: "",
-    poiesisZdrConfirmed: false,
+    bankrLlmGatewayUrl: process.env.BANKR_LLM_GATEWAY_URL ?? "",
+    bankrLlmGatewayApiKey: privateKeys.bankrLlmGatewayApiKey,
+    bankrLlmModel: process.env.BANKR_LLM_MODEL ?? anky.openrouterModel,
+    bankrZdrConfirmed: booleanEnv(process.env.BANKR_ZDR_CONFIRMED),
+    poiesisLlmUrl: process.env.POIESIS_LLM_URL ?? "",
+    poiesisLlmApiKey: privateKeys.poiesisLlmApiKey,
+    poiesisLlmModel: process.env.POIESIS_LLM_MODEL ?? anky.openrouterModel,
+    poiesisZdrConfirmed: booleanEnv(process.env.POIESIS_ZDR_CONFIRMED),
     revenueCatSecretKey: privateKeys.revenueCatSecretKey,
     revenueCatWebhookAuth: privateKeys.revenueCatWebhookAuth,
     revenueCatEntitlementId: anky.revenueCatEntitlementId,
@@ -595,6 +601,10 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     adminKey: privateKeys.adminKey,
     ...overrides,
   };
+}
+
+function booleanEnv(value: string | undefined): boolean {
+  return value?.toLowerCase() === "true";
 }
 
 function cloneReflectionModelConfig(
@@ -1159,7 +1169,22 @@ export const bankrProvider: ReflectionProvider = {
       throw new Error("BANKR_ZDR_NOT_CONFIRMED");
     if (!input.env.bankrLlmGatewayUrl || !input.env.bankrLlmGatewayApiKey)
       throw new Error("BANKR_NOT_CONFIGURED");
-    throw new Error("BANKR_ADAPTER_STAGED");
+    const tierConfig = reflectionModelConfigForTier(
+      input.env,
+      input.tier ?? "full",
+    );
+    return reflectViaOpenAiCompatibleGateway({
+      provider: "bankr",
+      errorPrefix: "BANKR",
+      endpoint: input.env.bankrLlmGatewayUrl,
+      apiKey: input.env.bankrLlmGatewayApiKey,
+      model: input.env.bankrLlmModel || tierConfig.model,
+      maxTokens: tierConfig.maxTokens,
+      timeoutMs: input.env.openrouterTimeoutMs,
+      prompt: input.prompt,
+      fetchImpl: input.fetchImpl,
+      onChunk: input.onChunk,
+    });
   },
 };
 
@@ -1175,9 +1200,212 @@ export const poiesisProvider: ReflectionProvider = {
       throw new Error("POIESIS_ZDR_NOT_CONFIRMED");
     if (!input.env.poiesisLlmUrl || !input.env.poiesisLlmApiKey)
       throw new Error("POIESIS_NOT_CONFIGURED");
-    throw new Error("POIESIS_ADAPTER_STAGED");
+    const tierConfig = reflectionModelConfigForTier(
+      input.env,
+      input.tier ?? "full",
+    );
+    return reflectViaOpenAiCompatibleGateway({
+      provider: "poiesis",
+      errorPrefix: "POIESIS",
+      endpoint: input.env.poiesisLlmUrl,
+      apiKey: input.env.poiesisLlmApiKey,
+      model: input.env.poiesisLlmModel || tierConfig.model,
+      maxTokens: tierConfig.maxTokens,
+      timeoutMs: input.env.openrouterTimeoutMs,
+      prompt: input.prompt,
+      fetchImpl: input.fetchImpl,
+      onChunk: input.onChunk,
+    });
   },
 };
+
+async function reflectViaOpenAiCompatibleGateway(input: {
+  provider: "bankr" | "poiesis";
+  errorPrefix: "BANKR" | "POIESIS";
+  endpoint: string;
+  apiKey: string;
+  model: string;
+  maxTokens?: number;
+  timeoutMs: number;
+  prompt: string;
+  fetchImpl?: ProviderFetch;
+  onChunk?: AnkyReflectionChunkSink;
+}): Promise<ReflectionProviderResult> {
+  if (!input.model) throw new Error(`${input.errorPrefix}_MODEL_NOT_CONFIGURED`);
+
+  const response = await postOpenAiCompatibleChatCompletion({
+    ...input,
+    stream: Boolean(input.onChunk),
+  });
+
+  const raw = input.onChunk
+    ? await readOpenAiCompatibleStream({
+        response,
+        provider: input.provider,
+        errorPrefix: input.errorPrefix,
+        onChunk: input.onChunk,
+      })
+    : await readOpenAiCompatibleJson({
+        response,
+        errorPrefix: input.errorPrefix,
+      });
+
+  return {
+    ...parseMirrorResponse(raw),
+    provider: input.provider,
+    chargeable: true,
+  };
+}
+
+async function postOpenAiCompatibleChatCompletion(input: {
+  endpoint: string;
+  apiKey: string;
+  model: string;
+  maxTokens?: number;
+  timeoutMs: number;
+  prompt: string;
+  fetchImpl?: ProviderFetch;
+  stream: boolean;
+}): Promise<Response> {
+  const fetcher = input.fetchImpl ?? fetch;
+  return fetcher(normalizeChatCompletionsEndpoint(input.endpoint), {
+    method: "POST",
+    signal: AbortSignal.timeout(input.timeoutMs),
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: input.model,
+      ...(typeof input.maxTokens === "number"
+        ? { max_tokens: input.maxTokens }
+        : {}),
+      ...(input.stream ? { stream: true } : {}),
+      messages: [{ role: "user", content: input.prompt }],
+    }),
+  });
+}
+
+function normalizeChatCompletionsEndpoint(endpoint: string): string {
+  const url = new URL(endpoint);
+  const pathname = url.pathname.replace(/\/+$/, "");
+  if (/\/chat\/completions$/i.test(pathname)) {
+    url.pathname = pathname;
+  } else if (/\/v1$/i.test(pathname)) {
+    url.pathname = `${pathname}/chat/completions`;
+  } else {
+    url.pathname = `${pathname}/v1/chat/completions`;
+  }
+  return url.toString();
+}
+
+async function readOpenAiCompatibleJson(input: {
+  response: Response;
+  errorPrefix: "BANKR" | "POIESIS";
+}): Promise<string> {
+  if (!input.response.ok) {
+    throw new Error(`${input.errorPrefix}_HTTP_${input.response.status}`);
+  }
+  const json = (await input.response.json()) as OpenAiCompatibleChatResponse;
+  const content = openAiCompatibleContent(json);
+  if (!content) throw new Error(`${input.errorPrefix}_EMPTY`);
+  return content;
+}
+
+async function readOpenAiCompatibleStream(input: {
+  response: Response;
+  provider: "bankr" | "poiesis";
+  errorPrefix: "BANKR" | "POIESIS";
+  onChunk: AnkyReflectionChunkSink;
+}): Promise<string> {
+  if (!input.response.ok) {
+    throw new Error(`${input.errorPrefix}_HTTP_${input.response.status}`);
+  }
+  if (!input.response.body) throw new Error(`${input.errorPrefix}_EMPTY`);
+
+  const reader = input.response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let reflection = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split(/\n\n/);
+    buffer = blocks.pop() ?? "";
+
+    for (const block of blocks) {
+      for (const chunk of openAiCompatibleChunksFromSseBlock(block)) {
+        reflection += chunk;
+        await input.onChunk({
+          chunk,
+          generatedCharacters: [...reflection].length,
+        });
+      }
+    }
+  }
+
+  buffer += decoder.decode();
+  for (const chunk of openAiCompatibleChunksFromSseBlock(buffer)) {
+    reflection += chunk;
+    await input.onChunk({
+      chunk,
+      generatedCharacters: [...reflection].length,
+    });
+  }
+
+  if (!reflection.trim()) throw new Error(`${input.errorPrefix}_EMPTY`);
+  return reflection;
+}
+
+type OpenAiCompatibleChatResponse = {
+  choices?: Array<{
+    delta?: { content?: unknown };
+    message?: { content?: unknown };
+  }>;
+  output_text?: unknown;
+};
+
+function openAiCompatibleContent(
+  response: OpenAiCompatibleChatResponse,
+): string | undefined {
+  const content = response.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (!item || typeof item !== "object") return "";
+        const text = (item as { text?: unknown }).text;
+        return typeof text === "string" ? text : "";
+      })
+      .join("");
+  }
+  return typeof response.output_text === "string"
+    ? response.output_text
+    : undefined;
+}
+
+function openAiCompatibleChunksFromSseBlock(block: string): string[] {
+  const chunks: string[] = [];
+  for (const line of block.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice("data:".length).trim();
+    if (!payload || payload === "[DONE]") continue;
+
+    try {
+      const json = JSON.parse(payload) as OpenAiCompatibleChatResponse;
+      const content =
+        json.choices?.[0]?.delta?.content ??
+        json.choices?.[0]?.message?.content;
+      if (typeof content === "string") chunks.push(content);
+    } catch {
+      continue;
+    }
+  }
+  return chunks;
+}
 
 async function streamOpenRouterProvider(input: {
   env: Env;
