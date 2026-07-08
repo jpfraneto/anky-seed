@@ -10,7 +10,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { signAnkyMirrorRequest } from "@anky/protocol";
+import { signAnkyMirrorRequest, thresholdForLevel } from "@anky/protocol";
 import { openLevelDb } from "../level/db";
 import {
   ankyWorld,
@@ -507,12 +507,13 @@ describe("entitlement gate on POST /level/prepare", () => {
   async function preparedApp(entitled: boolean) {
     const db = openLevelDb(":memory:");
     const account = await fixtureAccountId();
-    // Enough sealed seconds to be earning level 3 (level 2 needs 480s,
-    // level 3 needs 480*1.62 more), reported recently.
+    // Enough sealed seconds to be earning level 9 — the first dynamically
+    // generated level now that 1–8 ship as shared static defaults
+    // (cost decision 2026-07-08) — reported recently.
     db.prepare(
       `INSERT INTO session_ledger (account, session_hash, seconds, sealed_at_ms, reported_at_ms)
        VALUES (?1, ?2, ?3, ?4, ?4)`,
-    ).run(account, "a".repeat(64), 900, Date.now() - DAY);
+    ).run(account, "a".repeat(64), thresholdForLevel(8), Date.now() - DAY);
     if (entitled) {
       seedEntitledState(db, account, {
         expiresAtMs: Date.now() + 30 * DAY,
@@ -534,23 +535,25 @@ describe("entitlement gate on POST /level/prepare", () => {
     });
   }
 
-  test("level 3 requires entitlement", async () => {
+  test("level 9 — the first generated level — requires entitlement", async () => {
     const app = await preparedApp(false);
-    const res = await prepare(app, 3);
+    const res = await prepare(app, 9);
     expect(res.status).toBe(402);
     expect((await res.json()).error).toBe("ENTITLEMENT_REQUIRED");
   });
 
-  test("level 2 — the one free ceremony — never asks for entitlement", async () => {
+  test("static levels never ask for entitlement", async () => {
     const app = await preparedApp(false);
-    const res = await prepare(app, 2);
-    // Past the entitlement gate; the pipeline itself 202s into generation.
-    expect(res.status).not.toBe(402);
+    const res = await prepare(app, 3);
+    // The static short-circuit answers before the entitlement gate; with no
+    // defaults seeded in tests it reports the missing package instead.
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe("DEFAULT_PACKAGE_MISSING");
   });
 
-  test("an entitled account passes the level-3 gate", async () => {
+  test("an entitled account passes the level-9 gate", async () => {
     const app = await preparedApp(true);
-    const res = await prepare(app, 3);
+    const res = await prepare(app, 9);
     expect(res.status).not.toBe(402);
   });
 });

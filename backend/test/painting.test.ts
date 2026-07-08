@@ -3,7 +3,9 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
+import { thresholdForLevel } from "@anky/protocol";
 import { openLevelDb, getLevelState, recordSessions, setLevelPhase } from "../level/db";
+import { applySubscriptionState } from "../subscription/store";
 import { buildRevealMap } from "../painting/revealMap";
 import { revealTuning as T } from "../painting/revealTuning";
 import { extractPalette, paletteHasWarmSwatch } from "../painting/palette";
@@ -297,6 +299,7 @@ describe("POST /level/prepare guardrails", () => {
       });
       return {
         body,
+        account: request.identity.accountId,
         headers: {
           "Content-Type": "application/json",
           "X-Anky-Identity-Version": request.identity.identityVersion,
@@ -309,23 +312,55 @@ describe("POST /level/prepare guardrails", () => {
       };
     };
 
-    // Too little writing.
-    let { body, headers } = await signed({ level: 2, text: "short" });
+    // Static level (≤ 8): the shared-defaults short-circuit answers before
+    // any text/session guardrail — 503 until the operator seeds the
+    // packages, never a provider call.
+    let { body, headers, account } = await signed({ level: 2, text: "short" });
     let response = await app.request("/level/prepare", { method: "POST", headers, body });
-    expect(response.status).toBe(400);
-    expect((await response.json()).error).toBe("NOT_ENOUGH_WRITING");
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("DEFAULT_PACKAGE_MISSING");
 
-    // Enough writing, but no ledgered sessions.
-    ({ body, headers } = await signed({ level: 2, text: "w".repeat(200) }));
-    response = await app.request("/level/prepare", { method: "POST", headers, body });
-    expect(response.status).toBe(403);
-    expect((await response.json()).error).toBe("NO_RECENT_SESSIONS");
-
-    // Invalid level.
+    // Invalid level (beyond the level being earned).
     ({ body, headers } = await signed({ level: 9, text: "w".repeat(200) }));
     response = await app.request("/level/prepare", { method: "POST", headers, body });
     expect(response.status).toBe(400);
     expect((await response.json()).error).toBe("INVALID_LEVEL");
+
+    // Dynamic-level guardrails (level 9 is the first generated level): an
+    // entitled account with level-8 seconds banked, whose only ledgered
+    // session is stale enough to sit outside the 45-day window.
+    applySubscriptionState(
+      db,
+      {
+        account,
+        entitlementId: "pro",
+        productId: "anky.yearly",
+        store: "app_store",
+        periodType: "normal",
+        expiresAtMs: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        isActive: true,
+        environment: "PRODUCTION",
+        eventAtMs: Date.now(),
+      },
+      Date.now(),
+    );
+    const staleSealedAt = Date.now() - 100 * 24 * 60 * 60 * 1000;
+    db.prepare(
+      `INSERT INTO session_ledger (account, session_hash, seconds, sealed_at_ms, reported_at_ms)
+       VALUES (?1, ?2, ?3, ?4, ?4)`,
+    ).run(account, "b".repeat(64), thresholdForLevel(8), staleSealedAt);
+
+    // Too little writing.
+    ({ body, headers } = await signed({ level: 9, text: "short" }));
+    response = await app.request("/level/prepare", { method: "POST", headers, body });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("NOT_ENOUGH_WRITING");
+
+    // Enough writing, but no session inside the 45-day window.
+    ({ body, headers } = await signed({ level: 9, text: "w".repeat(200) }));
+    response = await app.request("/level/prepare", { method: "POST", headers, body });
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe("NO_RECENT_SESSIONS");
   });
 
   test("prepare is idempotent while a generation is pending", async () => {

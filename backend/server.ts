@@ -364,6 +364,7 @@ export function createApp(
     openrouterApiKey: env.openrouterApiKey,
     maxBodyBytes: env.maxBodyBytes,
     getDb: getLevelDb,
+    dataDir: env.dataDir,
     distillImpl: input.debugDeps?.distillImpl,
   });
   registerEventRoutes(app, {
@@ -2093,9 +2094,16 @@ function reflectionMarkdown(
   mirror: Pick<ReflectionProviderResult, "title" | "reflection">,
 ): string {
   const markdown = mirror.reflection.trim();
-  return /^#\s+/m.test(markdown)
-    ? markdown
-    : `# ${mirror.title}\n\n${markdown}`;
+  if (/^#\s+/m.test(markdown)) return markdown;
+  // When there is no heading, the title is derived from the body's first
+  // words — prepending it makes every client render the opening twice
+  // ("That's a very direct preface. That's a very direct preface.").
+  const normalize = (text: string) =>
+    text.toLowerCase().replace(/\s+/g, " ").trim();
+  if (normalize(markdown).startsWith(normalize(mirror.title))) {
+    return markdown;
+  }
+  return `# ${mirror.title}\n\n${markdown}`;
 }
 
 function nudgeText(

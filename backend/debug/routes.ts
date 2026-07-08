@@ -14,6 +14,12 @@ import type { Database } from "bun:sqlite";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { distillWriting, type DistillUsage } from "../painting/distill";
 import { finalPaintingPrompt } from "../painting/prompts";
+import {
+  staticPaintingPackageDir,
+  STATIC_DEFAULTS_ACCOUNT,
+  STATIC_LEVEL_MAX,
+} from "../painting/config";
+import { runPaintingPipeline } from "../painting/pipeline";
 
 export type DebugRouteDeps = {
   distillImpl?: typeof distillWriting;
@@ -24,8 +30,10 @@ export type DebugRouteContext = {
   openrouterApiKey: string;
   maxBodyBytes: number;
   getDb?: () => Database | null;
-  // Test seam
+  dataDir?: string;
+  // Test seams
   distillImpl?: typeof distillWriting;
+  pipelineImpl?: typeof runPaintingPipeline;
 };
 
 function bearerMatches(c: Context, adminKey: string): boolean {
@@ -80,6 +88,64 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
       )
       .all(cutoff);
     return c.json({ windowDays: 30, byEvent, byOrigin });
+  });
+
+  // One-time seeding of the shared static default paintings (levels 2–8,
+  // cost decision 2026-07-08): runs the real pipeline once for the
+  // `_defaults` pseudo-account so the package lands in the shared dir every
+  // writer's static levels are served from. Re-run to replace a level.
+  app.post("/debug/seed-default-painting", async (c) => {
+    if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
+    const db = ctx.getDb?.();
+    if (!db) return c.json({ error: "LEVEL_STORE_UNAVAILABLE" }, 503);
+    if (!ctx.dataDir) return c.json({ error: "DATA_DIR_UNAVAILABLE" }, 503);
+
+    const raw = await c.req.arrayBuffer();
+    if (raw.byteLength > ctx.maxBodyBytes) {
+      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+    }
+
+    let level = 0;
+    let text = "";
+    try {
+      const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
+        level?: unknown;
+        text?: unknown;
+      };
+      level = typeof parsed.level === "number" ? Math.floor(parsed.level) : 0;
+      text = typeof parsed.text === "string" ? parsed.text : "";
+    } catch {
+      return c.json({ error: "INVALID_REQUEST" }, 400);
+    }
+    if (level < 2 || level > STATIC_LEVEL_MAX) {
+      return c.json({ error: "INVALID_LEVEL" }, 400);
+    }
+    if (text.trim().length < 80) {
+      return c.json({ error: "NOT_ENOUGH_WRITING" }, 400);
+    }
+
+    const pipeline = ctx.pipelineImpl ?? runPaintingPipeline;
+    try {
+      const meta = await pipeline({
+        db,
+        dataDir: ctx.dataDir,
+        account: STATIC_DEFAULTS_ACCOUNT,
+        level,
+        text,
+        openrouterApiKey: ctx.openrouterApiKey,
+        sync: true,
+        nowMs: Date.now(),
+      });
+      return c.json({
+        ok: true,
+        level,
+        title: meta.title,
+        dir: staticPaintingPackageDir(ctx.dataDir, level),
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "PIPELINE_FAILED";
+      return c.json({ error: code }, 502);
+    }
   });
 
   app.post("/debug/distill", async (c) => {

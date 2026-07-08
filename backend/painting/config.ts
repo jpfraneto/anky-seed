@@ -93,6 +93,23 @@ export function paintingPackageDir(
   return `${dataDir}/paintings/${safeAccount}/${Math.floor(level)}`;
 }
 
+/**
+ * Levels 1–8 are shared static defaults — the same paintings for every
+ * writer, zero per-user generation (cost decision 2026-07-08). Level 1 is
+ * bundled inside the app; levels 2–8 live once on the volume under the
+ * `_defaults` pseudo-account (real account ids are `base:0x…`, so no
+ * collision) and are served to everyone. Dynamic per-writer generation
+ * starts at STATIC_LEVEL_MAX + 1. Seed the packages once with
+ * `scripts/seed-default-paintings.ts`.
+ */
+export const STATIC_LEVEL_MAX = 8;
+
+export const STATIC_DEFAULTS_ACCOUNT = "_defaults";
+
+export function staticPaintingPackageDir(dataDir: string, level: number): string {
+  return `${dataDir}/paintings/${STATIC_DEFAULTS_ACCOUNT}/${Math.floor(level)}`;
+}
+
 export const PAINTING_PACKAGE_FILES = [
   "final.png",
   "underdrawing.png",

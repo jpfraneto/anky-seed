@@ -15,16 +15,23 @@
 
 import type { Context, Hono } from "hono";
 import type { Database } from "bun:sqlite";
-import { levelStatusFor } from "../level/db";
+import { levelStatusFor, setLevelPhase } from "../level/db";
 import type { LevelAuthenticator, LevelIdentity, LevelAuthError } from "../level/routes";
 import { accountEntitlement } from "../subscription/store";
-import { paintingConfig, paintingPackageDir, PAINTING_PACKAGE_FILES } from "./config";
+import {
+  paintingConfig,
+  paintingPackageDir,
+  staticPaintingPackageDir,
+  PAINTING_PACKAGE_FILES,
+  STATIC_LEVEL_MAX,
+} from "./config";
 import { levelStateAllowsPrepare, runPaintingPipeline } from "./pipeline";
 
-// Level 2 celebrates the one free ceremony (1→2); every generation beyond it
-// belongs to the subscription. Assets already generated stay downloadable
-// forever — a lapse or refund gates the next painting, never a delivered one.
-export const FREE_GENERATION_MAX_LEVEL = 2;
+// Levels 1–8 are shared static defaults with no generation at all (cost
+// decision 2026-07-08), so every actual generation — level 9 up — belongs to
+// the subscription. Assets already generated stay downloadable forever — a
+// lapse or refund gates the next painting, never a delivered one.
+export const FREE_GENERATION_MAX_LEVEL = STATIC_LEVEL_MAX;
 
 export type PaintingRouteContext = {
   getDb: () => Database | null;
@@ -126,6 +133,34 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     // writer is currently earning (they may have outrun pre-generation).
     if (level < 2 || level > status.level + 1) {
       return errorJson(c, 400, "INVALID_LEVEL");
+    }
+
+    // Levels ≤ STATIC_LEVEL_MAX are shared static defaults: no generation,
+    // no entitlement, no caps, no text required. Flip the phase so the
+    // client's normal download flow picks the package up from the shared
+    // defaults dir (seeded once by scripts/seed-default-paintings.ts).
+    if (level <= STATIC_LEVEL_MAX) {
+      const staticGate = levelStateAllowsPrepare(db, account, level);
+      if (!staticGate.allowed) {
+        return c.json({ status: levelStatusFor(db, account), phase: staticGate.phase });
+      }
+      const staticDir = staticPaintingPackageDir(ctx.dataDir, level);
+      const metaFile = Bun.file(`${staticDir}/meta.json`);
+      if (!(await metaFile.exists())) {
+        return errorJson(c, 503, "DEFAULT_PACKAGE_MISSING");
+      }
+      const meta = (await metaFile.json()) as {
+        title?: string;
+        thresholdSeconds?: number;
+      };
+      const status = levelStatusFor(db, account);
+      const phase = status.level >= level ? "ceremonyPending" : "generated";
+      setLevelPhase(db, account, level, phase, nowMs, {
+        title: typeof meta.title === "string" ? meta.title : `Level ${level}`,
+        thresholdSeconds:
+          typeof meta.thresholdSeconds === "number" ? meta.thresholdSeconds : 0,
+      });
+      return c.json({ status: levelStatusFor(db, account), phase }, 202);
     }
 
     // The entitlement gate sits before any pipeline state so an unpaid
@@ -281,7 +316,13 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
       return errorJson(c, 404, "UNKNOWN_ASSET");
     }
 
-    const dir = paintingPackageDir(ctx.dataDir, identity.accountId, level);
+    // Static default levels are the same package for everyone — served from
+    // the shared defaults dir and publicly cacheable. Per-writer paintings
+    // stay private to their owner.
+    const isStaticLevel = level <= STATIC_LEVEL_MAX;
+    const dir = isStaticLevel
+      ? staticPaintingPackageDir(ctx.dataDir, level)
+      : paintingPackageDir(ctx.dataDir, identity.accountId, level);
     const asset = Bun.file(`${dir}/${file}`);
     if (!(await asset.exists())) {
       return errorJson(c, 404, "ASSET_NOT_READY");
@@ -289,7 +330,9 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     return new Response(await asset.arrayBuffer(), {
       headers: {
         "Content-Type": CONTENT_TYPES[file] ?? "application/octet-stream",
-        "Cache-Control": "private, max-age=31536000, immutable",
+        "Cache-Control": isStaticLevel
+          ? "public, max-age=31536000, immutable"
+          : "private, max-age=31536000, immutable",
       },
     });
   });
