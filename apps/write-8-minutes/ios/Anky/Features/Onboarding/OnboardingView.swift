@@ -69,7 +69,7 @@ struct AnkyOnboardingView: View {
                     case 6: meetAnkyScreen
                     case 7: nameScreen
                     case 8: targetScreen
-                    case 9: journeyScreen
+                    case 9: paintingsScreen
                     case 10: paywallScreen
                     default: notificationsScreen
                     }
@@ -475,38 +475,35 @@ struct AnkyOnboardingView: View {
         }
     }
 
-    // MARK: - Screen 9 · The journey container
+    // MARK: - Screen 9 · The paintings
 
-    private var journeyScreen: some View {
+    /// The reward, shown before the ask: the first painting fully revealed
+    /// (bundled, so it renders offline) above the locked underdrawings of
+    /// what's waiting — the same tiles the gallery shows after Day 1.
+    private var paintingsScreen: some View {
         VStack(spacing: 18) {
-            Text(AnkyLocalization.ui("Your first 8 days."))
+            Text(AnkyLocalization.ui("Your words become paintings."))
                 .font(.ankyTitle)
                 .foregroundStyle(Color.ankyInk)
+                .multilineTextAlignment(.center)
 
-            VeilCard(padding: 16) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(OnboardingJourneyDay.story(for: storyName), id: \.day) { entry in
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text("\(entry.day)")
-                                .font(.system(size: 17, weight: .medium, design: .serif))
-                                .monospacedDigit()
-                                .foregroundStyle(entry.isMilestone ? Color.ankyGold : Color.ankyInkSoft.opacity(0.7))
-                                .frame(width: 20, alignment: .trailing)
+            VStack(spacing: 10) {
+                OnboardingHeroPainting()
+                    .frame(maxWidth: 240)
 
-                            Text(AnkyLocalization.ui(entry.line))
-                                .font(.system(size: 14, weight: entry.isMilestone ? .medium : .regular, design: .serif))
-                                .foregroundStyle(entry.isMilestone ? Color.ankyInk : Color.ankyInkSoft)
-                                .lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 6)
+                Text(AnkyLocalization.ui("“The Door” · your first canvas"))
+                    .font(.ankyCaption)
+                    .foregroundStyle(Color.ankyInkSoft)
+            }
 
-                        if entry.day < 8 {
-                            LazureDivider().padding(.leading, 32)
-                        }
-                    }
+            HStack(spacing: 12) {
+                ForEach(2...5, id: \.self) { level in
+                    OnboardingLockedPaintingTile(level: level)
                 }
             }
+            .frame(maxWidth: 320)
+
+            dawnBody("As you write, I paint. Every minute reveals another stroke of the canvas — and when a painting completes, the next is already waiting.")
 
             Text(AnkyLocalization.ui("Day 1 begins the moment you close this screen."))
                 .font(.ankyCaption)
@@ -514,24 +511,14 @@ struct AnkyOnboardingView: View {
 
             dawnCTA("Begin.") { advance() }
         }
-    }
-
-    /// The name chosen two screens ago — the story is told about that
-    /// person, in the third person, so the writer gets a first taste of
-    /// watching themselves from a small distance.
-    private var storyName: String? {
-        let typed = writerName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !typed.isEmpty {
-            return typed
-        }
-        return WritingAnchorStore().writerName
+        .multilineTextAlignment(.center)
     }
 
     // MARK: - Screen 10 · The paywall (post-dawn, same room as the map)
 
-    /// The ask, placed after the journey map (the setup) and before the
-    /// Day 1 threshold. Hard gate — skippability lives inside PaywallView
-    /// behind `paywallIsSkippable`.
+    /// The ask, placed after the paintings promise (the reward made
+    /// visible) and before the Day 1 threshold. Hard gate — skippability
+    /// lives inside PaywallView behind `paywallIsSkippable`.
     private var paywallScreen: some View {
         PaywallView(store: entitlements, context: .onboarding) {
             advance(haptic: false)
@@ -754,45 +741,84 @@ private enum PhoneHoursBracket: String, CaseIterable {
     }
 }
 
-// MARK: - Journey map copy
+// MARK: - Paintings screen pieces
 
-/// One beat per day of the 8-Day Gate, mirroring what EightDayGateStore
-/// actually tracks — told as a story about the person by name, in the
-/// third person. Anky's reflections thread through it: the relationship
-/// the writer is about to enter, and the small distance from themselves
-/// it opens.
-private struct OnboardingJourneyDay {
-    let day: Int
-    let line: String
-    let isMilestone: Bool
-
-    static func story(for name: String?) -> [OnboardingJourneyDay] {
-        guard let name, !name.isEmpty else {
-            return secondPerson
+/// The bundled level-1 painting, fully revealed — the one image that is
+/// guaranteed to exist before any network call, framed the way the gallery
+/// frames every finished Anky.
+private struct OnboardingHeroPainting: View {
+    private static let image: UIImage? = {
+        guard
+            let url = Bundle.main.url(
+                forResource: "final",
+                withExtension: "png",
+                subdirectory: "StarterPainting"
+            )
+        else {
+            return nil
         }
-        return [
-            .init(day: 1, line: "\(name) picks the apps you want Anky to guard.", isMilestone: true),
-            .init(day: 2, line: "When you try to open one, you write what is on your mind first. Your target is \(DailyTargetStore.defaultMinutes) minutes.", isMilestone: false),
-            .init(day: 3, line: "The first block may feel annoying. Good. You found the hook.", isMilestone: true),
-            .init(day: 4, line: "You write about that. Or whatever you want. You feel something new.", isMilestone: false),
-            .init(day: 5, line: "Anky reflects something back. Not advice — a mirror.", isMilestone: false),
-            .init(day: 6, line: "The feed is still there. But there was a pause before it. You discover you were there.", isMilestone: false),
-            .init(day: 7, line: "Some days you enter anyway. Some days you do not need to.", isMilestone: true),
-            .init(day: 8, line: "The gate becomes yours. Anky was only holding it until you could feel the choice.", isMilestone: true)
-        ]
-    }
+        return UIImage(contentsOfFile: url.path)
+    }()
 
-    /// Fallback when no name was given.
-    private static let secondPerson: [OnboardingJourneyDay] = [
-        .init(day: 1, line: "You pick the apps you want Anky to guard.", isMilestone: true),
-        .init(day: 2, line: "When you try to open one, you write what is on your mind first. Your target is \(DailyTargetStore.defaultMinutes) minutes.", isMilestone: false),
-        .init(day: 3, line: "The first block may feel annoying. Good. You found the hook.", isMilestone: true),
-        .init(day: 4, line: "Instead of pushing through, you write what is happening. You feel something new.", isMilestone: false),
-        .init(day: 5, line: "Anky reflects something back. Not advice — a mirror.", isMilestone: false),
-        .init(day: 6, line: "The feed is still there. But now there is a pause before it.", isMilestone: false),
-        .init(day: 7, line: "Some days you enter anyway. Some days you do not need to.", isMilestone: true),
-        .init(day: 8, line: "The gate becomes yours. Anky was only holding it until you could feel the choice.", isMilestone: true)
-    ]
+    var body: some View {
+        Group {
+            if let image = Self.image {
+                Image(uiImage: image)
+                    .resizable()
+            } else {
+                Color.ankyPaper
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(Color.ankyGold.opacity(0.55), lineWidth: PaintingFrameMetrics.borderWidth)
+        )
+        .shadow(color: Color.ankyGold.opacity(0.28), radius: 18, y: 6)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A future painting, small: its underdrawing (cached webp from the CDN,
+/// parchment while it loads or offline) behind a quiet lock — the same
+/// promise the gallery's locked tiles keep after Day 1.
+private struct OnboardingLockedPaintingTile: View {
+    let level: Int
+    @State private var underdrawing: UIImage?
+
+    var body: some View {
+        ZStack {
+            Group {
+                if let underdrawing {
+                    Image(uiImage: underdrawing)
+                        .resizable()
+                } else {
+                    Color.ankyPaper.opacity(0.85)
+                }
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.black.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(Color.ankyGold.opacity(0.45), lineWidth: 1)
+            )
+
+            Image(systemName: "lock.fill")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.ankyInkSoft)
+                .frame(width: 26, height: 26)
+                .background(Color.ankyPaper.opacity(0.72), in: Circle())
+        }
+        .accessibilityHidden(true)
+        .task(id: level) {
+            underdrawing = await StaticPaintingCDN.loadUnderdrawing(level: level)
+        }
+    }
 }
 
 // MARK: - Progress dots
