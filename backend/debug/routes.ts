@@ -107,13 +107,19 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
 
     let level = 0;
     let text = "";
+    let scene = "";
+    let title = "";
     try {
       const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
         level?: unknown;
         text?: unknown;
+        scene?: unknown;
+        title?: unknown;
       };
       level = typeof parsed.level === "number" ? Math.floor(parsed.level) : 0;
       text = typeof parsed.text === "string" ? parsed.text : "";
+      scene = typeof parsed.scene === "string" ? parsed.scene.trim() : "";
+      title = typeof parsed.title === "string" ? parsed.title.trim() : "";
     } catch {
       return c.json({ error: "INVALID_REQUEST" }, 400);
     }
@@ -122,6 +128,13 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
     }
     if (text.trim().length < 80) {
       return c.json({ error: "NOT_ENOUGH_WRITING" }, 400);
+    }
+    // Optional scene lock: when a reviewed scene + title are supplied,
+    // distillation is skipped and this exact scene is painted. Same bounds
+    // parseDistilledScene enforces on model output.
+    const hasLock = scene.length > 0 || title.length > 0;
+    if (hasLock && (scene.length < 40 || scene.length > 2000 || title.length === 0 || title.length > 48)) {
+      return c.json({ error: "INVALID_SCENE_LOCK" }, 400);
     }
 
     const pipeline = ctx.pipelineImpl ?? runPaintingPipeline;
@@ -132,6 +145,7 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
         account: STATIC_DEFAULTS_ACCOUNT,
         level,
         text,
+        lockedScene: hasLock ? { scene, title } : undefined,
         openrouterApiKey: ctx.openrouterApiKey,
         sync: true,
         nowMs: Date.now(),

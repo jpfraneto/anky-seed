@@ -42,6 +42,12 @@ export type PipelineInput = {
   level: number;
   /** Writing since the last level-up. Transient; forgotten on return. */
   text: string;
+  /**
+   * A pre-approved distilled scene. When present, distillation is skipped and
+   * this exact scene is painted — used by the default-painting seeding so a
+   * reviewed scene is literally what gets generated.
+   */
+  lockedScene?: DistilledScene;
   openrouterApiKey: string;
   sync: boolean;
   progress?: PipelineProgress;
@@ -85,22 +91,24 @@ export async function runPaintingPipeline(
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       await progress("distilling", "anky is reading the shape of this chapter…");
-      const distilled: DistilledScene = await distill({
-        text: input.text,
-        openrouterApiKey: input.openrouterApiKey,
-        // Token counts only — never text, never account. Transient cost signal.
-        onUsage: (usage) => {
-          console.log(
-            JSON.stringify({
-              event: "distill_usage",
-              level: input.level,
-              promptTokens: usage.promptTokens,
-              completionTokens: usage.completionTokens,
-              costUsd: usage.costUsd,
-            }),
-          );
-        },
-      });
+      const distilled: DistilledScene =
+        input.lockedScene ??
+        (await distill({
+          text: input.text,
+          openrouterApiKey: input.openrouterApiKey,
+          // Token counts only — never text, never account. Transient cost signal.
+          onUsage: (usage) => {
+            console.log(
+              JSON.stringify({
+                event: "distill_usage",
+                level: input.level,
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                costUsd: usage.costUsd,
+              }),
+            );
+          },
+        }));
 
       await progress("painting", "anky is painting…");
       const reference = await characterSheet();

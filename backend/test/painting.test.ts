@@ -243,6 +243,49 @@ describe("pipeline", () => {
     expect(state?.title).toBe("First Light");
   });
 
+  test("a locked scene bypasses distillation and is painted verbatim", async () => {
+    const db = openLevelDb(":memory:");
+    const dataDir = mkdtempSync(join(tmpdir(), "anky-painting-"));
+    const now = Date.now();
+
+    const prompts: string[] = [];
+    const generateImpl = async (input: {
+      kind: string;
+      prompt: string;
+    }): Promise<PaintingGeneration> => {
+      prompts.push(input.prompt);
+      return {
+        png: input.kind === "final" ? finalFixture : underFixture,
+        provider: "openrouter",
+        model: "test",
+        costUsd: 0.05,
+      };
+    };
+
+    const meta = await runPaintingPipeline({
+      db,
+      dataDir,
+      account: "acct",
+      level: 3,
+      text: "enough writing to satisfy the endpoint minimum ".repeat(3),
+      lockedScene: {
+        scene:
+          "The character stands in a reviewed and approved scene beside one candle. Mood: certainty. Palette: parchment, umber, gold.",
+        title: "Locked Title",
+      },
+      openrouterApiKey: "test-key",
+      sync: true,
+      nowMs: now,
+      distillImpl: async () => {
+        throw new Error("DISTILL_MUST_NOT_RUN");
+      },
+      generateImpl: generateImpl as never,
+    });
+
+    expect(meta.title).toBe("Locked Title");
+    expect(prompts[0]).toContain("reviewed and approved scene");
+  });
+
   test("retries once, then resets the phase on repeated failure", async () => {
     const db = openLevelDb(":memory:");
     const dataDir = mkdtempSync(join(tmpdir(), "anky-painting-"));
