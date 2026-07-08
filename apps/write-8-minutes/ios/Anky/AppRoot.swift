@@ -3,14 +3,20 @@ import UIKit
 
 struct AppRoot: View {
     /// QA override: resets `anky.onboardingCompleted` on every launch so
-    /// the full 13-screen flow can be walked repeatedly. MUST be set back
-    /// to false before shipping a build.
+    /// the full 13-screen flow can be walked repeatedly. Compiled out of
+    /// Release builds, so TestFlight/App Store archives can never ship
+    /// with it active; flip the DEBUG value to false to test the normal
+    /// returning-writer launch.
     ///
-    /// Its sibling lives in EntitlementStore.ignoresEntitlementForQA:
-    /// purchases persist across onboarding re-runs, so without it QA
-    /// walkthroughs jump over the paywall after the first test purchase.
-    /// Both flags MUST be false before shipping.
+    /// Its siblings live in EntitlementStore.ignoresEntitlementForQA
+    /// (purchases persist across onboarding re-runs, so without it QA
+    /// walkthroughs jump over the paywall after the first test purchase)
+    /// and PaywallView.paywallIsSkippable (the "later" escape hatch).
+    #if DEBUG
+    private static let alwaysShowsOnboardingForQA = true
+    #else
     private static let alwaysShowsOnboardingForQA = false
+    #endif
 
     private enum WriteSurface {
         case home

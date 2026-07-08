@@ -16,9 +16,14 @@ import RevenueCat
 final class EntitlementStore: ObservableObject {
     /// QA override: treats the writer as NOT entitled everywhere gating
     /// decisions are made, so the paywall shows even after a test
-    /// purchase (purchases persist across onboarding re-runs). MUST be
-    /// set back to false before shipping a build.
+    /// purchase (purchases persist across onboarding re-runs). Compiled
+    /// out of Release builds; flip the DEBUG value to false to test
+    /// entitled behavior.
+    #if DEBUG
+    nonisolated static let ignoresEntitlementForQA = true
+    #else
     nonisolated static let ignoresEntitlementForQA = false
+    #endif
 
     @Published private(set) var isEntitled = false
     @Published private(set) var packages: [Package] = []

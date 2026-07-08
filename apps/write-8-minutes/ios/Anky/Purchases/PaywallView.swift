@@ -36,8 +36,13 @@ struct PaywallView: View {
     }
 
     /// QA / App Review escape hatch: when true, a quiet "later" link
-    /// advances without purchase. MUST be false before shipping a build.
+    /// advances without purchase. Compiled out of Release builds; flip
+    /// the DEBUG value to false to test the hard gate.
+    #if DEBUG
+    private static let paywallIsSkippable = true
+    #else
     private static let paywallIsSkippable = false
+    #endif
 
     @ObservedObject var store: EntitlementStore
     let context: Context
