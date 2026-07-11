@@ -96,8 +96,8 @@ function Footer({ onNavigate }: FooterProps) {
             </a>
             <a
               className="text-cream/84 transition hover:text-gold-100"
-              href="/privacy"
-              onClick={(event) => handleLocalClick(event, "/privacy")}
+              href="/privacy-policy"
+              onClick={(event) => handleLocalClick(event, "/privacy-policy")}
             >
               Privacy Policy
             </a>

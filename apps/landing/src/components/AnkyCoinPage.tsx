@@ -30,7 +30,7 @@ const sections = [
   },
   {
     title: "What It Points To",
-    body: "Anky is a writing practice. You sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. The token will not change what the practice is. It will not unlock features, grant app access, replace credits, or make the writing more real.",
+    body: "Anky is a writing practice. You sit down, you write for 8 minutes without stopping, and something emerges that your conscious mind didn't plan. The token will not change what the practice is. It will not unlock features, grant app access, replace an App Store subscription, or make the writing more real.",
   },
   {
     title: "The Memetic Layer",

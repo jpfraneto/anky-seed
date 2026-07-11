@@ -5,10 +5,18 @@
 /PITCH.md /pitch.md 301
 /POIESIS.md /poiesis.md 301
 
-/terms-and-conditions /terms-of-service.md 200
-/terms-of-service /terms-of-service.md 200
-/privacy-policy /privacy-policy.md 200
-/politica-de-privacidad /politica-de-privacidad.md 200
+/privacy /privacy-policy 301
+/privacy-policy-french /fr/privacy-policy 301
+/privacy-policy-espanol /es/privacy-policy 301
+/politica-de-privacidad /es/privacy-policy 301
+/privacy-policy-german /de/privacy-policy 301
+/privacy-policy-chinese /zh-hans/privacy-policy 301
+/privacy-policy-hindi /hi/privacy-policy 301
+/terms-and-conditions /terms 301
+/terms-of-service /terms 301
+/privacy-policy.md /privacy-policy 301
+/politica-de-privacidad.md /es/privacy-policy 301
+/terms-of-service.md /terms 301
 /sojourn9 /sojourn9.md 200
 
 /prompts/0001 /prompts/0001.md 200

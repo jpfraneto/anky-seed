@@ -9,12 +9,13 @@ import FeatureCard from "./components/FeatureCard";
 import Footer from "./components/Footer";
 import GalleryPage from "./components/GalleryPage";
 import Hero from "./components/Hero";
-import LegalPage, { type LegalRoute } from "./components/LegalPage";
+import LegalPage from "./components/LegalPage";
 import MemesPage from "./components/MemesPage";
 import SiteNav from "./components/SiteNav";
 import StoreBadges from "./components/StoreBadges";
 import TikTokLandingPage from "./components/TikTokLandingPage";
 import { featureCards } from "./content";
+import { resolveLegalRoute } from "./legalRoutes";
 
 function isInteractiveTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -110,7 +111,7 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [ankyModeOpen]);
 
-  const legalRoute = path.slice(1) as LegalRoute;
+  const legalRoute = resolveLegalRoute(path);
 
   const ankyModeLayer = ankyModeOpen ? (
     <AnkyMode
@@ -120,11 +121,7 @@ function App() {
     />
   ) : null;
 
-  if (
-    legalRoute === "protocol" ||
-    legalRoute === "privacy" ||
-    legalRoute === "terms"
-  ) {
+  if (legalRoute) {
     return (
       <>
         <LegalPage currentPath={path} route={legalRoute} onNavigate={navigate} />
@@ -236,7 +233,7 @@ function App() {
           <section className="px-4 py-8 sm:px-8 lg:px-10">
             <div className="mx-auto max-w-6xl rounded-lg border border-gold-200/14 bg-black/22 px-6 py-7 text-center shadow-[0_24px_90px_rgba(0,0,0,0.26)]">
               <p className="font-serif text-3xl text-cream md:text-4xl">
-                No sign-up. No credentials. No data to sell. Just{" "}
+                No traditional sign-up. No password. No ads. Just{" "}
                 <span className="text-yellow-600 font-bold">you</span> meeting
                 yourself, maybe for the first time.
               </p>
@@ -255,12 +252,15 @@ function App() {
               </article>
               <article className="min-w-0 rounded-lg border border-gold-200/12 bg-black/24 p-5 md:p-9">
                 <h2 className="font-serif text-4xl text-cream">
-                  Your writing stays on your phone.
+                  Your writing stays on your phone by default.
                 </h2>
                 <p className="mt-6 max-w-xl text-lg leading-8 text-cream/72">
-                  The server forgets. There is no account because there is
-                  nothing to account for. Anky doesn't have a database. You can
-                  inspect all the code here:{" "}
+                  Core writing is local. When you explicitly request an AI
+                  reflection, nudge, or personalized painting, the app sends
+                  only the needed content for that request. Raw writing is
+                  processed transiently; limited subscription, progress,
+                  generated-asset, security, and reliability records remain.
+                  You can inspect the code here:{" "}
                   <a
                     href="https://github.com/ankydotapp/monorepo"
                     className="break-all text-gold-100"
