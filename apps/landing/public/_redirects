@@ -17,6 +17,8 @@
 /privacy-policy.md /privacy-policy 301
 /politica-de-privacidad.md /es/privacy-policy 301
 /terms-of-service.md /terms 301
+/privacy-policy /index.html 200
+/terms /index.html 200
 /sojourn9 /sojourn9.md 200
 
 /prompts/0001 /prompts/0001.md 200
