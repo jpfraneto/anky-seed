@@ -31,6 +31,8 @@ struct AnkySettingsView: View {
     @State private var showsDeleteAccountSheet = false
     @State private var deleteConfirmationText = ""
     @State private var isDeletingAccount = false
+    @State private var didCopyAddress = false
+    @State private var didCopyRecoveryPhrase = false
 
     private static let founderChatURL = URL(string: "https://t.me/jpfraneto")!
     private static let shareURL = URL(string: "https://anky.app")!
@@ -590,23 +592,38 @@ struct AnkySettingsView: View {
                                 .foregroundStyle(Color.ankyInk)
                             Spacer()
                             Button {
-                                ClipboardClient().copy(viewModel.accountId)
-                                AnkyHaptics.light()
+                                copyAddress()
                             } label: {
-                                Image(systemName: "doc.on.doc")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(Color.ankyInkSoft)
+                                HStack(spacing: 5) {
+                                    if didCopyAddress {
+                                        Text(AnkyLocalization.ui("Copied"))
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    Image(systemName: didCopyAddress ? "checkmark" : "doc.on.doc")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundStyle(didCopyAddress ? Color.ankyGold : Color.ankyInkSoft)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(AnkyLocalization.ui("Copy public address"))
                         }
 
+                        // The full address, wrapping so every character shows —
+                        // tap to copy, or select it by hand.
                         Text(viewModel.accountId)
-                            .font(.system(size: 12, weight: .regular, design: .monospaced))
-                            .foregroundStyle(Color.ankyInkSoft)
+                            .font(.system(size: 13, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Color.ankyInk)
                             .textSelection(.enabled)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(11)
+                            .background(Color.ankyPaper.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
+                            )
+                            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .onTapGesture { copyAddress() }
 
                         Text(AnkyLocalization.ui("Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours."))
                             .font(.system(size: 12, weight: .regular))
@@ -651,16 +668,18 @@ struct AnkySettingsView: View {
 
                             HStack(spacing: 10) {
                                 Button {
-                                    ClipboardClient().copy(viewModel.recoveryPhraseText)
-                                    AnkyHaptics.light()
+                                    copyRecoveryPhrase()
                                 } label: {
-                                    Label(AnkyLocalization.ui("Copy"), systemImage: "doc.on.doc")
+                                    Label(
+                                        AnkyLocalization.ui(didCopyRecoveryPhrase ? "Copied" : "Copy"),
+                                        systemImage: didCopyRecoveryPhrase ? "checkmark" : "doc.on.doc"
+                                    )
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundStyle(Color.ankyInk)
+                                        .foregroundStyle(didCopyRecoveryPhrase ? Color.ankyGold : Color.ankyInk)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
                                         .background(Color.ankyPaper.opacity(0.5), in: Capsule())
-                                        .overlay(Capsule().strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
+                                        .overlay(Capsule().strokeBorder((didCopyRecoveryPhrase ? Color.ankyGold : Color.ankyInk).opacity(didCopyRecoveryPhrase ? 0.5 : 0.10), lineWidth: 0.5))
                                 }
                                 .buttonStyle(.plain)
 
@@ -681,6 +700,24 @@ struct AnkySettingsView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func copyAddress() {
+        ClipboardClient().copy(viewModel.accountId)
+        AnkyHaptics.success()
+        withAnimation(.easeInOut(duration: 0.15)) { didCopyAddress = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeInOut(duration: 0.25)) { didCopyAddress = false }
+        }
+    }
+
+    private func copyRecoveryPhrase() {
+        ClipboardClient().copy(viewModel.recoveryPhraseText)
+        AnkyHaptics.success()
+        withAnimation(.easeInOut(duration: 0.15)) { didCopyRecoveryPhrase = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeInOut(duration: 0.25)) { didCopyRecoveryPhrase = false }
         }
     }
 
