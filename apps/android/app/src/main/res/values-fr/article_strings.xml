@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legal documents (subscription-reality text, effective July 6, 2026),
+  ported from the iOS localized PrivacyPolicy.md / TermsAndConditions.md
+  with Android adaptations: Google Play purchases, encrypted backups and
+  device secure storage instead of the iOS platform services. CDATA markdown.
+-->
+<resources>
+    <string name="privacy_article_body"><![CDATA[Anky, Inc. - En vigueur le 6 juillet 2026
+
+> La version courte: Anky est d’abord locale. Votre écriture reste sur votre appareil, sauf si vous choisissez de l’exporter, de la sauvegarder, de contacter l’assistance ou de demander une réflexion à Anky. Lorsque vous demandez une réflexion, votre écriture est envoyée au service miroir de Anky et aux fournisseurs AI afin qu’une réflexion puisse être générée. Nous utilisons des fournisseurs qui ne stockent pas vos écrits. Nous ne vendons pas vos données, ne les utilisons pas à des fins publicitaires et n’utilisons pas vos écrits pour former nos propres modèles.
+
+## 1. Qui nous sommes
+
+Anky est exploité par ** Anky, Inc.**, une société du Delaware.
+
+Contacter:**[support@anky.app](mailto:support@anky.app)**
+
+Cette politique de confidentialité explique comment Anky traite les informations lorsque vous utilisez l’application mobile, le site Web, le service miroir, les achats, l’assistance et les services associés Anky.
+
+## 2. Qu’est-ce que Anky
+
+Anky est une première application d’écriture et de réflexion locale.
+
+L’artefact principal est le fichier `.anky`: une session d’écriture en avant uniquement créée sous contrainte. L’application vous permet d’écrire, d’enregistrer, de revisiter, d’exporter, d’importer, de supprimer et éventuellement de réfléchir à cette écriture.
+
+Anky n’est pas un thérapeute, un service médical, un service de crise, un conseiller financier, un conseiller juridique ou une autorité spirituelle.
+
+## 3. Ce qui reste sur votre appareil par défaut
+
+Les données suivantes sont stockées localement sur votre appareil, sauf si vous choisissez de les exporter, de les sauvegarder, de les récupérer ailleurs, de contacter l’assistance ou de demander une réflexion:
+
+- Vos fichiers d’écriture `.anky`
+- Brouillons d’écriture actifs
+- Écriture lisible reconstruite
+- Réflexions locales renvoyées par Anky
+- Historique de session et données cartographiques
+- Paramètres de l’application locale
+- Paramètres de rappel quotidien
+- Informations d’accès locales au Anky
+- Matériel de récupération privé stocké dans le stockage sécurisé de l’appareil
+- Cache local des droits d’abonnement
+- Fichiers d’exportation/importation locaux que vous créez
+
+L’écriture, la sauvegarde, la révélation, la copie, la navigation sur la carte et la visualisation de l’historique local ne nécessitent pas l’envoi de vos écrits au serveur de Anky.
+
+## 4. Ce qui quitte votre appareil
+
+Les données quittent votre appareil dans les situations suivantes:
+
+### Demander à Anky une réflexion ou un coup de pouce pour l’écriture
+
+Lorsque vous appuyez sur ** Ask Anky ** ou demandez un coup de pouce en écriture, l’application envoie les octets exacts du fichier `.anky` au service miroir de Anky.
+
+Le service miroir:
+
+- Vérifie la demande
+- Vérifie le format et le hachage `.anky`
+- Reconstruit le texte lisible du `.anky`
+- Envoie l’écriture reconstruite et l’invite aux fournisseurs de services AI
+- Reçoit la réflexion ou le coup de pouce généré
+- Renvoie le résultat sur votre appareil
+- Vérifie qu’un abonnement actif ou un essai couvre la réflexion
+
+La réflexion renvoyée est stockée localement sur votre appareil.
+
+### Achats et abonnements
+
+Si vous vous abonnez à Anky, les achats sont traités par Google Play et gérés via RevenueCat. Nous ne recevons ni ne stockons votre numéro de carte de crédit.
+
+Anky propose un abonnement annuel à renouvellement automatique ($88 USD/an, avec un essai gratuit de 3 jours pour les nouveaux abonnés) et un abonnement mensuel ($11.99 USD/mois). Les abonnements se renouvellent automatiquement jusqu’à ce que vous les annuliez dans vos paramètres d’abonnement Google Play; l’essai gratuit annuel se convertit en abonnement payant à sa fin, sauf annulation au moins 24 heures avant.
+
+Anky utilise les enregistrements liés aux achats, les identifiants de produits, les informations sur les droits, les identifiants des utilisateurs de l’application, l’état des transactions et les métadonnées associées de Google et de RevenueCat pour reconnaître et gérer votre abonnement.
+
+### Accès local et demande de sécurité
+
+Anky crée un profil local privé pour votre appareil. Les demandes de réflexion et de nudge incluent des métadonnées de vérification limitées afin que le service miroir puisse accepter la demande, empêcher les abus et l’attribuer au bon profil.
+
+Les vérifications d’abonnement identifient votre fiche client RevenueCat avec votre profil Anky afin que votre abonnement soit reconnu par le service miroir.
+
+Votre matériel de récupération privé n’est pas envoyé à Anky.
+
+Pour les essais gratuits, la prévention de fraude, la prévention d’abus et la sécurité des demandes, l’application peut demander un jeton aux services d’intégrité ou d’attestation Android lorsque c’est possible. Les demandes de réflexion ou d’aide peuvent envoyer ce jeton au miroir comme preuve d’essai.
+
+### Sauvegardes, stockage sécurisé, exportation et importation
+
+Lorsque vous activez les fonctionnalités de sauvegarde, de récupération ou d’exportation, les informations d’écriture, de réflexion, de récupération ou les fichiers associés sélectionnés sont stockés à l’aide de sauvegardes chiffrées, du stockage sécurisé de l’appareil, des sauvegardes de périphérique ou la destination que vous choisissez via la feuille de partage ou le sélecteur de fichiers.
+
+Anky ne peut pas contrôler la confidentialité des fichiers après les avoir exportés ou partagés.
+
+### Soutien
+
+Si vous contactez le support, vous choisissez quoi envoyer. Les messages d’assistance incluent l’adresse e-mail à partir de laquelle vous envoyez et tout identifiant d’assistance Anky, plate-forme, version de l’application, texte, captures d’écran, fichiers ou contexte que vous incluez.
+
+## 5. Ce que nous ne collectons pas
+
+Anky ne nécessite pas:
+
+- Votre nom légal
+- Votre numéro de téléphone
+- Vos contacts
+- Votre localisation précise
+- Votre appareil photo
+- Votre micro
+- Vos photos
+- Vos comptes sociaux
+- Une connexion traditionnelle par nom d’utilisateur/mot de passe
+
+Anky ne vend pas de données personnelles.
+
+Anky n’utilise pas votre écriture à des fins publicitaires.
+
+Anky n’utilise pas votre écriture pour entraîner les modèles AI appartenant à Anky.
+
+## 6. Services tiers
+
+Anky utilise les services tiers suivants pour les fonctionnalités de l’application décrites dans cette politique:
+
+- **Google** - achats Google Play, remboursements, services d’appareil, sauvegardes Android si activées, notifications, attestation d’appareil et services de plateforme.
+- ** RevenueCat **- gestion des achats, droits d’abonnement et enregistrements liés aux transactions.
+- ** OpenRouter **- acheminement des demandes de réflexion vers les fournisseurs de modèles AI.
+- ** AI model providers **- générer des réflexions à partir du texte que vous choisissez d’envoyer.
+- ** Cloud hosting / infrastructure providers **- exploite le service miroir, les journaux, la sécurité et la fiabilité de Anky.
+- ** Email/support providers **- recevoir et répondre aux demandes d’assistance.
+
+Ces fournisseurs traitent les données selon leurs propres conditions et politiques de confidentialité.
+
+## 7. Traitement AI
+
+Lorsque vous demandez une réflexion, votre écriture est traitée par les systèmes AI.
+
+Les réflexions générées par AI peuvent être inexactes, incomplètes, inattendues, émotionnellement intenses ou inutiles. Les réflexions sont générées automatiquement et ne doivent pas être traitées comme des conseils professionnels.
+
+Nous concevons le service miroir de Anky pour éviter de stocker de manière permanente l’écriture brute de `.anky`, l’écriture reconstruite ou le texte de réflexion, sauf si cela est nécessaire pour un flux d’assistance/de débogage demandé par l’utilisateur, pour la sécurité, la prévention des abus, la conformité légale ou tout autre objectif clairement indiqué.
+
+Les fournisseurs AI traitent les demandes selon leurs propres politiques de traitement des données. Nous utilisons des paramètres de protection de la confidentialité lorsqu’ils sont disponibles, mais nous ne pouvons pas promettre que chaque fournisseur en aval applique des pratiques de conservation identiques.
+
+## 8. Métadonnées opérationnelles
+
+Pour faire fonctionner Anky, nous collectons et traitons des métadonnées limitées, telles que:
+
+- ID de support Anky ou identifiant d’utilisateur de l’application
+- Demander des horodatages
+- Demander des hachages
+- Version de l’application
+- Plate-forme
+- État des droits d’abonnement et enregistrements de transactions
+- Acheter des identifiants de produits
+- États d’erreur
+- Métadonnées d’utilisation du fournisseur
+- Signaux de sécurité et de prévention des abus
+- Métadonnées de demande d’assistance
+
+Nous utilisons ces données pour fournir des réflexions, gérer les abonnements, prévenir les abus, déboguer les problèmes, répondre au support, respecter la loi et exploiter le service.
+
+## 9. Paiements
+
+Les paiements sont gérés par Google Play et gérés avec RevenueCat.
+
+Les formules de Anky sont des abonnements à renouvellement automatique ($88 USD/an avec un essai gratuit de 3 jours, ou $11.99 USD/mois). Ils se renouvellent jusqu’à annulation dans vos paramètres d’abonnement Google Play; annulez au moins 24 heures avant la fin de la période en cours pour éviter le prochain débit.
+
+Nous ne recevons pas les détails complets de votre carte de paiement.
+
+Les remboursements, les litiges de facturation et l’historique des achats sont traités conformément aux politiques de Google Play.
+
+## 10. Mots de récupération
+
+Votre matériel de récupération privé reste sur votre appareil, sauf si vous l’exportez, le révélez, le sauvegardez ou le partagez de toute autre manière.
+
+Ne partagez jamais vos mots de récupération. Si vous les perdez, Anky ne peut pas restaurer l’accès sans une sauvegarde que vous contrôlez.
+
+## 11. Conservation des données
+
+Les données locales restent sur votre appareil jusqu’à ce que vous les supprimiez, supprimiez l’application, réinitialisiez l’application ou supprimiez les sauvegardes.
+
+Les métadonnées opérationnelles liées à Reflection sont conservées aussi longtemps que nécessaire pour exploiter le service, gérer les abonnements, prévenir la fraude ou les abus, se conformer aux obligations légales, résoudre les litiges et maintenir la sécurité.
+
+Les enregistrements d’achat sont conservés par Google, RevenueCat et Ankys elon les besoins à des fins de facturation, de comptabilité, de prévention de la fraude, fiscales, juridiques et d’assistance.
+
+Les e-mails d’assistance sont conservés aussi longtemps que nécessaire pour vous répondre, conserver des enregistrements et protéger Anky.
+
+## 12. Suppression
+
+Vous pouvez supprimer l’écriture locale, les réflexions locales, l’accès privé et les données d’application locale depuis l’application où les outils de suppression sont disponibles, ou en supprimant l’application de votre appareil.
+
+La suppression de l’application ne supprime pas les données en dehors de l’application, notamment:
+
+- Fichiers que vous avez exportés ou partagés
+- Sauvegardes de périphériques contrôlées par les paramètres Google ou de l’appareil
+- Dossiers d’achat Google Play
+- Dossiers d’achat RevenueCat
+- E-mails d’assistance que vous avez envoyés
+- Métadonnées back-end nécessaires à la sécurité, à la comptabilité des abonnements, à la prévention de la fraude, à la conformité légale ou à la résolution des litiges
+- Données du réseau public
+
+Pour demander la suppression des données des contrôles Anky, contactez **[support@anky.app](mailto:support@anky.app)**.
+
+## 13. Enfants
+
+Anky n’est pas destiné aux enfants de moins de 13 ans.
+
+Si vous avez moins de 18 ans, utilisez Anky uniquement avec l’autorisation d’un parent ou d’un tuteur.
+
+Nous ne collectons pas sciemment d’informations personnelles auprès d’enfants de moins de 13 ans. Si vous pensez qu’un enfant nous a fourni des informations personnelles, contactez **[support@anky.app](mailto:support@anky.app)**.
+
+## 14. Vos droits
+
+Selon l’endroit où vous résidez, vos droits peuvent inclure l’accès, la rectification, la suppression, l’exportation, la restriction ou l’opposition à certaines utilisations de vos données personnelles.
+
+Étant donné que Anky est d’abord local, la plupart de vos données se trouvent uniquement sur votre appareil et peuvent être gérées directement par vous.
+
+Pour les demandes concernant les contrôles de données Anky, contactez **[support@anky.app](mailto:support@anky.app)**.
+
+## 15. Sécurité
+
+Nous utilisons des mesures techniques et organisationnelles raisonnables pour protéger les données que nous traitons.
+
+Aucun système n’est parfaitement sécurisé. Vous êtes responsable de la protection de votre appareil, de votre mot de passe, des mots de récupération, des fichiers exportés, de votre compte Google et de tout endroit où vous stockez ou partagez vos écrits.
+
+## 16. Utilisateurs internationaux
+
+Anky, Inc. est basée aux États-Unis. Les données envoyées à Anky ou à ses prestataires de services sont traitées aux États-Unis ou dans d’autres pays où ces fournisseurs opèrent.
+
+## 17. Modifications
+
+Nous mettons à jour cette politique de confidentialité lorsque la politique change.
+
+Lorsque nous le ferons, nous mettrons à jour la date d’entrée en vigueur. L’utilisation continue de Anky après les modifications signifie que vous acceptez la politique mise à jour.
+
+## 18. Contacter
+
+** Anky, Inc.**
+
+Contacter:**[support@anky.app](mailto:support@anky.app)**]]></string>
+
+    <string name="terms_article_body"><![CDATA[Anky, Inc. - En vigueur le 6 juillet 2026
+
+> Important: Anky est une application d’écriture et de réflexion. Il ne s’agit pas de thérapie, de soins médicaux, de soutien en cas de crise, de conseils financiers, de conseils juridiques ou d’autorité spirituelle. En utilisant Anky, vous acceptez de rester responsable de votre écriture, de vos décisions, de votre appareil, de vos mots de récupération, de vos achats et de la façon dont vous utilisez les réflexions générées par AI.
+
+## 1. Acceptation
+
+Ces termes et conditions constituent un accord entre vous et ** Anky, Inc.**, une société du Delaware.
+
+En téléchargeant, en accédant ou en utilisant Anky, vous acceptez ces conditions.
+
+Si vous n’êtes pas d’accord, n’utilisez pas Anky.
+
+## 2. Ce que propose Anky
+
+Anky vous permet:
+
+- Écrire des sessions `.anky` en avant uniquement
+- Enregistrer l’écriture localement
+- Revisitez l’histoire de l’écriture locale
+- Exporter ou importer des fichiers d’écriture
+- Gérer l’accès privé Anky
+- S’abonner à la pratique complète
+- Demandez à Anky les réflexions générées par AI
+- Utiliser les fonctionnalités associées que nous fournissons au fil du temps
+
+Nous pouvons modifier, suspendre ou interrompre n’importe quelle partie de Anky à tout moment.
+
+## 3. Condition d’âge
+
+Anky n’est pas destiné aux enfants de moins de 13 ans.
+
+Si vous avez moins de 18 ans, vous ne pouvez utiliser Anky qu’avec l’autorisation d’un parent ou d’un tuteur.
+
+En utilisant Anky, vous déclarez que vous répondez à ces exigences.
+
+## 4. Anky n’est pas un conseil professionnel
+
+Anky n’est pas un thérapeute, un médecin, un service d’urgence, un conseiller financier, un conseiller juridique, une autorité religieuse ou une autorité spirituelle.
+
+Les réflexions générées par AI sont uniquement destinées à la réflexion personnelle.
+
+Ils peuvent être inexacts, incomplets, inattendus, intenses sur le plan émotionnel ou inutiles.
+
+Ne comptez pas sur Anky pour des décisions médicales, de santé mentale, juridiques, financières, d’urgence ou de sécurité.
+
+Si vous risquez de vous blesser ou de blesser quelqu’un d’autre, ou si vous êtes en danger immédiat, contactez immédiatement les services d’urgence locaux ou une personne de confiance.
+
+## 5. Votre écriture
+
+Vous êtes propriétaire de votre écriture.
+
+En utilisant Anky, vous accordez à Anky, Inc. une autorisation limitée pour traiter votre écriture uniquement dans la mesure nécessaire pour fournir les fonctionnalités que vous choisissez, telles que l’enregistrement local, la génération d’une réflexion, l’exportation, l’importation, la sauvegarde, le débogage, l’assistance, la sécurité et la prévention des abus.
+
+Vous êtes responsable de ce que vous écrivez, exportez, envoyez, partagez ou sauvegardez.
+
+N’écrivez pas, ne téléchargez pas, n’exportez pas ou ne partagez pas de contenu via Anky d’une manière qui viole la loi ou qui nuit à autrui.
+
+## 6. Conception axée sur le local
+
+Anky est conçu pour être local avant tout.
+
+Votre écriture reste normalement sur votre appareil.
+
+Lorsque vous demandez une réflexion, vous comprenez que votre écriture est envoyée au service miroir de Anky et aux prestataires de services AI pour générer la réflexion. Nous utilisons des fournisseurs qui ne stockent pas vos écrits.
+
+Lorsque vous exportez, partagez, sauvegardez ou contactez l’assistance, vous choisissez d’envoyer ou de stocker des données en dehors de l’application.
+
+## 7. Accès privé et récupération
+
+Anky peut créer un accès local privé pour votre appareil.
+
+Vous êtes responsable de la protection de vos mots de récupération, du code d’accès de votre appareil, de votre accès biométrique, de vos sauvegardes de compte et des fichiers exportés.
+
+Ne partagez jamais vos mots de rétablissement.
+
+Si vous perdez vos mots de récupération, Anky ne pourra peut-être pas restaurer votre état de profil, le lien avec votre abonnement ou vos données associées.
+
+Anky n’est pas responsable des pertes causées par la perte de mots de récupération, d’appareils compromis, d’informations d’identification partagées ou d’accès non autorisé à votre appareil ou à vos comptes.
+
+## 8. Achats, abonnements et remboursements
+
+Tout ce que vous avez écrit reste toujours lisible sur votre appareil, que vous soyez abonné ou non.
+
+La pratique complète — le portail, les réflexions de Anky, les peintures au-delà de la limite gratuite et le déverrouillage quotidien — nécessite un abonnement à renouvellement automatique (voir la section 10).
+
+Les achats sont traités via Google Play et gérés avec RevenueCat.
+
+Nous ne traitons ni ne stockons les détails complets de votre carte de paiement.
+
+Les remboursements sont traités par Google conformément aux politiques de Google Play.
+
+Nous pouvons modifier les prix ou les formules à tout moment, sous réserve de la loi applicable et des règles Google Play. Les changements de prix ne s’appliquent jamais rétroactivement à une période que vous avez déjà payée.
+
+## 9. AI-Réflexions générées
+
+Les réflexions générées par AI sont produites automatiquement.
+
+Vous comprenez que les réflexions peuvent:
+
+- Se tromper
+- Manquer un contexte important
+- Cela semble plus certain qu’ils ne le sont
+- Être émotionnellement mal à l’aise
+- Ne pas comprendre votre langage, votre ton ou votre intention
+- Contenir du contenu inattendu
+- Être indisponible en raison d’erreurs techniques
+
+Vous restez responsable de l’interprétation et de l’utilisation de toute réflexion.
+
+Anky, Inc. n’est pas responsable des décisions que vous prenez sur la base du contenu généré par AI.
+
+## 10. Abonnements à renouvellement automatique
+
+Anky propose deux formules d’abonnement:
+
+- **Annuel** — $88 USD par an, avec un essai gratuit de 3 jours pour les nouveaux abonnés.
+- **Mensuel** — $11.99 USD par mois, sans essai gratuit.
+
+Les prix peuvent varier selon les pays; Google Play affiche le prix exact dans votre devise avant que vous ne confirmiez.
+
+Sauf annulation, les abonnements se renouvellent automatiquement à la fin de chaque période, et l’essai gratuit annuel se convertit en abonnement annuel payant à la fin de l’essai.
+
+Le paiement est débité sur votre compte Google. Votre compte est débité pour le renouvellement dans les 24 heures précédant la fin de la période en cours.
+
+Vous pouvez annuler à tout moment dans les paramètres d’abonnement Google Play (Play Store → Paiements et abonnements → Abonnements). Pour éviter un débit, annulez au moins 24 heures avant la fin de l’essai ou de la période en cours. L’annulation arrête les renouvellements futurs; l’accès continue jusqu’à la fin de la période déjà payée (ou de l’essai).
+
+Vous pouvez restaurer des achats précédents sur tout appareil connecté au même compte Google avec « Restaurer les achats » dans Anky.
+
+La suppression de l’application n’annule pas un abonnement.
+
+## 11. Comportement de l’utilisateur
+
+Vous vous engagez à ne pas:
+
+- Utilisez Ankys i vous ne remplissez pas les conditions d’âge
+- Utilisez Anky pour des activités illégales
+- Abuser, attaquer, perturber ou surcharger les systèmes de Anky
+- Contourner les abonnements, les paywalls, les essais ou les contrôles de sécurité
+- Faites de l’ingénierie inverse, grattez, extrayez ou publiez les invites privées, les instructions de modèle ou les systèmes backend de Anky
+- Utiliser des robots, des scripts ou des automatisations pour abuser de l’application
+- Tentative d’accès aux données, aux mots de récupération, à l’accès privé ou au compte d’une autre personne
+- Télécharger ou partager du contenu qui viole les droits d’une autre personne
+- Utilisez Anky pour générer des instructions pour vous faire du mal ou faire du mal à autrui
+- Déformer Anky, Anky, Inc. ou toute affiliation avec nous
+
+Nous pouvons suspendre, restreindre ou mettre fin à l’accès si nous pensons que vous avez violé ces conditions, abusé du service, créé un risque ou utilisé illégalement Anky.
+
+## 12. Propriété intellectuelle
+
+Anky, Inc. est propriétaire du logiciel, de la conception, du nom, des logos, des personnages, des éléments visuels, des invites, des concepts de produits, de la documentation et de la propriété intellectuelle associée de Anky.
+
+Vous ne pouvez pas copier, modifier, distribuer, vendre, faire de l’ingénierie inverse ou créer des œuvres dérivées de Anky, sauf lorsque la loi ou une licence open source que nous fournissons explicitement le permet.
+
+Vous restez propriétaire de vos propres écrits.
+
+## 13. Commentaires
+
+Si vous nous envoyez des commentaires, des idées, des suggestions, des rapports de bogues ou des demandes de fonctionnalités, vous autorisez Anky, Inc. à les utiliser sans restriction ni compensation.
+
+Cela ne nous confère pas la propriété de vos écrits privés.
+
+## 14. Services tiers
+
+Anky dépend de services tiers, qui peuvent inclure des fournisseurs de modèles Google, RevenueCat, OpenRouter, AI, des fournisseurs d’hébergement cloud, des fournisseurs de messagerie et des réseaux publics.
+
+Nous ne sommes pas responsables des services tiers, des conditions, des pannes, des politiques, des prix, des décisions ou des pratiques en matière de données.
+
+Votre utilisation de services tiers peut être soumise à leurs conditions et politiques de confidentialité.
+
+## 15. Conditions Google Play
+
+Si vous avez téléchargé Anky à partir de Google Play, les conditions de Google s’appliquent également.
+
+Google n’est pas responsable de Anky, de son contenu, de son support, de ses garanties ou de ses réclamations, sauf si la loi applicable ou les propres conditions de Google l’exigent.
+
+## 16. Disponibilité
+
+Anky peut être indisponible, retardé, interrompu, inexact ou interrompu.
+
+Nous ne garantissons pas que Anky fonctionnera toujours, que les réflexions seront toujours disponibles, que l’état de l’abonnement sera toujours synchronisé instantanément ou que les données locales ne seront jamais perdues.
+
+Sauvegardez tout ce qui est important.
+
+## 17. Résiliation
+
+Vous pouvez arrêter d’utiliser Anky à tout moment.
+
+Vous pouvez supprimer l’application et supprimer les données locales lorsque l’application fournit des outils de suppression.
+
+Nous pouvons suspendre, limiter ou mettre fin à votre accès à Anky à tout moment si nous estimons que cela est nécessaire pour protéger Anky, les utilisateurs, les tiers ou l’intégrité du service.
+
+## 18. Exclusion de garanties
+
+ANKYEST FOURNI « TEL QUEL » ET « COMME ÉTIQUETTE AV AI ».
+
+DANS TOUTE LA MESURE PERMISE PAR LA LOI,ANKY, INC. DÉCLINE AI MS TOUTES LES GARANTIES, EXPRESSES OU IMPLICITES, Y COMPRIS LES GARANTIES DE QUALITÉ MARCHANDE, D’ADAPTATION À UN USAGE PARTICULIER, DE TITRE, DE NON-VIOLATION, D’EXACTITUDE, DE LABILITÉ, DE SÉCURITÉ ET DE FIABILITÉ.
+
+VOTRE UTILISATION DEANKYEST À VOS PROPRES RISQUES.
+
+## 19. Limitation de responsabilité
+
+DANS TOUTE LA MESURE PERMISE PAR LA LOI,ANKY, INC. ET SES PROPRIÉT AI RES, DIRECTEURS, DIRIGEANTS, EMPLOYÉS, ENTREPRENEURS, FOURNISSEURS DE SERVICES ET AFFILIÉS NE SERONT PAS RESPONSABLES DES DOMMAGES INDIRECTS, ACCESSOIRES, SPÉCIAUX, CONSÉCUTIFS, EXEMPL AI RES OU PUNITIFS, OU DE LA PERTE DE BÉNÉFICES, DE DONNÉES, D’ÉCRITURE PERTE, PERTE DE TEMPS D’ABONNEMENT, PERTE D’ACCÈS À LA RÉCUPÉRATION, COMPROMIS DE L’APPAREIL, DÉTRESSE ÉMOTIONNELLE OU DÉCISIONS PRISES SUR LA BASE DU CONTENU GÉNÉRÉ PAR AI.
+
+DANS TOUTE LA MESURE PERMISE PAR LA LOI, LA RESPONSABILITÉ TOTALE DEANKY, INC. POUR TOUT CL AI M NE DÉPASSERA PAS LE PLUS GRAND DES ENTRE:
+
+(A) LE MONTANT QUE VOUS PERSEZ AI D ÀANKY, INC. VIA L’APPLICATION DANS LES 12 MOIS AVANT LE CL AI M, OU
+
+(B)$50USD.
+
+Certaines juridictions n’autorisent pas certaines limitations, donc certaines de ces limites peuvent ne pas s’appliquer à vous.
+
+## 20. Indemnisation
+
+Vous acceptez de défendre, d’indemniser et de dégager Anky, Inc. et ses propriétaires, administrateurs, dirigeants, employés, sous-traitants, prestataires de services et sociétés affiliées de toute responsabilité contre les réclamations, dommages, pertes, responsabilités, coûts et dépenses découlant de:
+
+- Votre utilisation de Anky
+- Votre écriture ou contenu exporté
+- Votre violation de ces Conditions
+- Votre violation de la loi
+- Votre violation des droits d’autrui
+- Votre utilisation abusive des réflexions générées par AI
+- Votre activité de récupération, de sauvegarde ou d’exportation
+
+## 21. Loi applicable
+
+Les présentes Conditions sont régies par les lois de l’État du Delaware, sans égard aux principes de conflit de lois, sauf lorsque votre loi locale l’exige autrement.
+
+## 22. Litiges et arbitrage
+
+Dans toute la mesure permise par la loi, les litiges entre vous et Anky, Inc. seront résolus par le biais d’un arbitrage individuel exécutoire, et non dans le cadre d’un recours collectif ou d’un procès devant jury.
+
+Vous et Anky, Inc. acceptez de déposer des réclamations uniquement sur une base individuelle.
+
+Cet article n’empêche pas l’une ou l’autre des parties de demander réparation devant la Cour des petites créances ou de demander une injonction pour des problèmes de propriété intellectuelle, de sécurité ou d’accès non autorisé.
+
+Si cette section d’arbitrage n’est pas applicable là où vous vivez, le reste de ces conditions s’applique toujours.
+
+## 23. Modifications
+
+Nous pouvons mettre à jour ces conditions de temps à autre.
+
+Lorsque nous le ferons, nous mettrons à jour la date d’entrée en vigueur. L’utilisation continue de Anky après les modifications signifie que vous acceptez les conditions mises à jour.
+
+## 24. Contacter
+
+** Anky, Inc.**
+
+Contacter:**[support@anky.app](mailto:support@anky.app)**]]></string>
+</resources>

@@ -1,4 +1,4 @@
-import type { SessionTier } from "@anky/protocol";
+import { sha256Hex, type SessionTier } from "@anky/protocol";
 
 export type DotAnkyEntry = {
   deltaMs: number;
@@ -170,13 +170,54 @@ Write in the same language and vibe as the entry.
 
 Reply with pure markdown, and use headings for different sections. At the top of the reply add a max 4 word title.`;
 
+export const PROMPT_FULL_ATTENTIVE = `You are Anky, a deeply attentive reflection companion.
+
+Read the user’s stream-of-consciousness writing as a living whole. Do not correct its grammar, diagnose the writer, flatten it into a summary, or respond to every idea individually.
+
+Reflect back what is most alive underneath the writing.
+
+Your response should:
+
+1. Begin by simply confirming that you read it.
+2. Identify the deepest underlying thread beneath the literal subjects and ideas.
+3. Find the most emotionally or philosophically important sentence in the writing and quote it briefly.
+4. Name the central tension the writer is carrying, especially where two sincere desires are pulling against each other.
+5. When relevant, distinguish the essential product, longing, or truth from the machinery surrounding it.
+6. Offer one grounded technical or practical boundary when the writing contains a consequential risk. Do this soberly and without derailing the emotional reflection.
+7. Notice the movement and energy of the writing: where it accelerates, branches, becomes overloaded, returns, or reveals what the writer needs next.
+8. End with a short three-line reflection that feels memorable, precise, tender, and true.
+
+The voice should be intimate but not sentimental, perceptive but not clinical, poetic but not vague. Do not act like a guru. Do not praise everything. Do not prescribe a large plan. Help the writer recognize what they already revealed.
+
+The reflection must feel specifically born from this exact piece of writing. It should not resemble generic encouragement or therapy language.
+
+Here is the writing:`;
+
+export const FULL_PROMPT_EXPERIMENT_ID = "full-reflection-prompt-v1";
+
+export type FullPromptVariant = "control" | "attentive";
+
+export async function fullPromptVariantForAnkyHash(
+  ankyHash: string,
+): Promise<FullPromptVariant> {
+  // Namespace the artifact hash so retries stay in one arm without coupling a
+  // future prompt experiment to this experiment's cohort assignment.
+  const assignmentHash = await sha256Hex(
+    `${FULL_PROMPT_EXPERIMENT_ID}:${ankyHash.toLowerCase()}`,
+  );
+  return Number.parseInt(assignmentHash.slice(0, 2), 16) < 128
+    ? "control"
+    : "attentive";
+}
+
 export const REFLECT_DOT_ANKY_MASTER_PROMPT = PROMPT_FULL;
 
 export function buildReflectPrompt(
   reconstructedText: string,
   tier: SessionTier,
+  fullVariant: FullPromptVariant = "control",
 ): string {
-  return `${promptForTier(tier).trim()}
+  return `${promptForTier(tier, fullVariant).trim()}
 
 ---
 
@@ -193,14 +234,17 @@ export function buildReflectDotAnkyPrompt(dotAnky: string): string {
   return buildReflectPromptFromText(reconstructedText);
 }
 
-function promptForTier(tier: SessionTier): string {
+function promptForTier(
+  tier: SessionTier,
+  fullVariant: FullPromptVariant,
+): string {
   switch (tier) {
     case "sentence":
       return PROMPT_SENTENCE;
     case "dip":
       return PROMPT_DIP;
     case "full":
-      return PROMPT_FULL;
+      return fullVariant === "attentive" ? PROMPT_FULL_ATTENTIVE : PROMPT_FULL;
   }
 }
 

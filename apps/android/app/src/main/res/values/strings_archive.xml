@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Archive chamber copy, ported from the iOS ArchiveChamberView
+  (HomeDailyChamberView.swift). Rows never speak protocol status words and
+  never show counts — the words themselves are the row.
+
+  translatable="false" until the localization workstream (PARITY WS9) adds
+  all six locales — flip the attribute when values-es/fr/de/hi/zh-rCN gain
+  these keys.
+-->
+<resources>
+    <string name="archive_your_writings" translatable="false">Your Writings</string>
+    <string name="archive_search" translatable="false">Search</string>
+    <string name="archive_clear_search" translatable="false">Clear search</string>
+    <string name="archive_today" translatable="false">Today</string>
+    <string name="archive_yesterday" translatable="false">Yesterday</string>
+    <string name="archive_empty" translatable="false">What you write collects here.</string>
+    <string name="archive_empty_search" translatable="false">Nothing you\'ve written contains that yet.</string>
+</resources>

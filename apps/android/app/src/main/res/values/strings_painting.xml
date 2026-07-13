@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WS3 painting surfaces (feature/painting). Registry-owned lines (gate pass
+  line, emergency link, ceremony title/line/Begin, generation wait, journey
+  day label, veils) live in core/copy/AnkyCopyRegistry and are NOT duplicated
+  here.
+-->
+<resources>
+    <!-- Painting home -->
+    <string name="painting_preparing_canvas" translatable="false">anky is preparing your canvas…</string>
+    <string name="painting_cta_write" translatable="false">Write</string>
+    <string name="painting_cta_choose_apps" translatable="false">Choose apps</string>
+    <string name="painting_cta_continue_setup" translatable="false">Continue setup</string>
+    <string name="painting_level_badge" translatable="false">lvl %1$d</string>
+    <string name="painting_history_title" translatable="false">History</string>
+    <string name="painting_history_empty" translatable="false">Your first page is waiting.</string>
+    <string name="painting_history_mins" translatable="false">mins</string>
+    <string name="painting_blocked_apps_a11y" translatable="false">Apps waiting behind the door</string>
+    <string name="painting_emergency_a11y" translatable="false">Emergency: open your apps without writing</string>
+    <string name="painting_settings_a11y" translatable="false">Settings</string>
+    <string name="painting_boundary_not_yet" translatable="false">not yet</string>
+
+    <!-- Gallery -->
+    <string name="painting_gallery_title" translatable="false">Gallery</string>
+    <string name="painting_gallery_empty" translatable="false">Your first painting is still arriving, stroke by stroke.</string>
+    <string name="painting_gallery_entry" translatable="false">%1$s · lvl %2$d</string>
+    <string name="painting_gallery_painted_from" translatable="false">painted from %1$s seconds of your writing</string>
+    <string name="painting_gallery_close_a11y" translatable="false">Close</string>
+
+    <!-- Ceremony / generation wait -->
+    <string name="ceremony_from_your_writing" translatable="false">from your writing</string>
+
+    <!-- Journey -->
+    <string name="journey_minutes_written" translatable="false">%1$d mins written</string>
+    <string name="journey_writings_count" translatable="false">%1$d writings</string>
+</resources>

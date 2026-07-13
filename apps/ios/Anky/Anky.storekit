@@ -1,0 +1,136 @@
+{
+  "identifier" : "8A0000A4-0000-4000-8000-00000000A400",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A4000000",
+      "localizations" : [
+
+      ],
+      "name" : "Anky",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "88.90",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A4000001",
+          "introductoryOffer" : {
+            "internalID" : "A4000003",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "AI reflections, journey & art after level 8",
+              "displayName" : "Anky Pro Annual",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "Reflexiones IA, viaje y arte tras nivel 8",
+              "displayName" : "Anky Pro Anual",
+              "locale" : "es_ES"
+            },
+            {
+              "description" : "Réflexions IA, parcours et art après niv. 8",
+              "displayName" : "Anky Pro annuel",
+              "locale" : "fr_FR"
+            },
+            {
+              "description" : "KI-Reflexionen, Reise und Kunst ab Level 9",
+              "displayName" : "Anky Pro Jährlich",
+              "locale" : "de_DE"
+            },
+            {
+              "description" : "AI 反思、96 天旅程与 8 级后艺术",
+              "displayName" : "Anky Pro 年度订阅",
+              "locale" : "zh_Hans"
+            },
+            {
+              "description" : "AI चिंतन, यात्रा और स्तर 8 के बाद कला",
+              "displayName" : "Anky Pro वार्षिक",
+              "locale" : "hi_IN"
+            }
+          ],
+          "productID" : "anky.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Anky Pro Annual",
+          "subscriptionGroupID" : "A4000000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "11.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A4000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "AI reflections, journey & art after level 8",
+              "displayName" : "Anky Pro Monthly",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "Reflexiones IA, viaje y arte tras nivel 8",
+              "displayName" : "Anky Pro Mensual",
+              "locale" : "es_ES"
+            },
+            {
+              "description" : "Réflexions IA, parcours et art après niv. 8",
+              "displayName" : "Anky Pro mensuel",
+              "locale" : "fr_FR"
+            },
+            {
+              "description" : "KI-Reflexionen, Reise und Kunst ab Level 9",
+              "displayName" : "Anky Pro Monatlich",
+              "locale" : "de_DE"
+            },
+            {
+              "description" : "AI 反思、96 天旅程与 8 级后艺术",
+              "displayName" : "Anky Pro 月度订阅",
+              "locale" : "zh_Hans"
+            },
+            {
+              "description" : "AI चिंतन, यात्रा और स्तर 8 के बाद कला",
+              "displayName" : "Anky Pro मासिक",
+              "locale" : "hi_IN"
+            }
+          ],
+          "productID" : "anky.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Anky Pro Monthly",
+          "subscriptionGroupID" : "A4000000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

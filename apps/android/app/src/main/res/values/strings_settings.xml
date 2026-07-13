@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AnkySettingsScreen strings (port of iOS AnkySettingsView).
+  Marked translatable="false" for now: the WS9 localization pass owns
+  translating these across the 5 locale dirs and flipping the flag.
+-->
+<resources>
+    <string name="settings_daily_writing_section" translatable="false">Your daily writing</string>
+    <string name="settings_minutes_a_day_one" translatable="false">%1$d minute a day</string>
+    <string name="settings_minutes_a_day_other" translatable="false">%1$d minutes a day</string>
+    <string name="settings_daily_target_footnote_default" translatable="false">Writing this long opens your apps for the rest of the day. Sessions are never cut short — you can always keep going.</string>
+    <string name="settings_daily_target_footnote_pending" translatable="false">Today stays at %1$d min · %2$d min from tomorrow. Writing this long opens your apps for the rest of the day.</string>
+    <string name="settings_name_section" translatable="false">How should Anky call you?</string>
+    <string name="settings_name_placeholder" translatable="false">your name</string>
+    <string name="settings_writing_section" translatable="false">Writing</string>
+    <string name="settings_backspace_title" translatable="false">Backspace</string>
+    <string name="settings_backspace_subtitle" translatable="false">Off keeps the ritual: words only move forward.</string>
+    <string name="settings_autocorrect_title" translatable="false">Autocorrect &amp; suggestions</string>
+    <string name="settings_autocorrect_subtitle" translatable="false">The keyboard\'s spelling help and word bar.</string>
+    <string name="settings_typeface_section" translatable="false">Font &amp; size</string>
+    <string name="settings_typeface_preview" translatable="false">One that stays. One that listens.</string>
+    <string name="settings_protection_section" translatable="false">Protection</string>
+    <string name="settings_backup_title" translatable="false">Encrypted backup</string>
+    <string name="settings_backup_subtitle_off" translatable="false">Keep an encrypted copy of your archive.</string>
+    <string name="settings_backup_subtitle_on" translatable="false">Encrypted backup is on.</string>
+    <string name="settings_backup_last_format" translatable="false">Encrypted · last backup %1$s</string>
+    <string name="settings_app_lock_title" translatable="false">App lock</string>
+    <string name="settings_app_lock_subtitle" translatable="false">Ask before opening your writing.</string>
+    <string name="settings_blocked_apps_title" translatable="false">Apps that are blocked</string>
+    <string name="settings_blocked_apps_subtitle" translatable="false">Choose what waits until you have written.</string>
+    <string name="settings_gate_off_state" translatable="false">The gate is off. Nothing re-arms it until you turn it back on.</string>
+    <string name="settings_gate_no_selection" translatable="false">No apps chosen yet.</string>
+    <string name="settings_gate_on_state_one" translatable="false">Gating 1 app until you write.</string>
+    <string name="settings_gate_on_state_other" translatable="false">Gating %1$d apps until you write.</string>
+    <string name="settings_paintings_section" translatable="false">Your paintings</string>
+    <string name="settings_mirror_section" translatable="false">Mirror</string>
+    <string name="settings_support_section" translatable="false">Support</string>
+    <string name="settings_contact_email_title" translatable="false">Contact via email</string>
+    <string name="settings_contact_email_subtitle" translatable="false">support@anky.app</string>
+    <string name="settings_legal_section" translatable="false">Legal</string>
+    <string name="settings_privacy_subtitle" translatable="false">Your writing stays yours.</string>
+    <string name="settings_terms_subtitle" translatable="false">The agreement for using Anky.</string>
+    <string name="settings_about_section" translatable="false">About</string>
+</resources>

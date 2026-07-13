@@ -18,19 +18,23 @@ Subsequent writing lines contain:
 <delta_ms> <accepted_character>
 ```
 
+`delta_ms` is a non-negative base-10 integer. It is not zero-padded.
+
 A typed space is encoded as `SPACE`:
 
 ```txt
 <delta_ms> SPACE
 ```
 
-A legacy terminal silence line may appear at the end of older artifacts:
+A terminal stillness line may appear at the end of reflected artifacts:
 
 ```txt
-8000
+<terminal_stillness_ms>
 ```
 
-The terminal line is a compatibility marker, not a character, and does not count toward completion.
+The terminal line is a bare positive integer with no character payload. `8000` is the legacy/default value. Current clients allow configured values from `1000` through `8000`. The terminal line is a reflection marker, not a character, and does not count toward completion.
+
+Newline characters are not accepted writing characters. A session is reconstructed as one block of text.
 
 ## Duration
 
@@ -38,9 +42,9 @@ The first accepted character occurs at the starting epoch. Each subsequent writi
 
 A complete Anky has at least `480000` milliseconds of accumulated writing deltas.
 
-The legacy terminal silence line does not advance writing duration and cannot make an incomplete fragment complete.
+The terminal stillness line does not advance writing duration and cannot make an incomplete fragment complete.
 
-Valid fragments may be under `480000` milliseconds and may omit the terminal silence line. Current clients should not append terminal silence to newly saved active sessions.
+Valid fragments may be under `480000` milliseconds and may omit the terminal stillness line. Clients may strip the terminal line when reopening an unreflected fragment for continuation; the next accepted character after reopening lands with a `0` delta.
 
 ## Reconstruction
 

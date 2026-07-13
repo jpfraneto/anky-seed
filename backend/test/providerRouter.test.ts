@@ -129,7 +129,7 @@ describe("provider router", () => {
     expect(providers).toEqual(["openrouter", "bankr", "poiesis", "default"]);
   });
 
-  test("falls back from exhausted OpenRouter credits to Bankr", async () => {
+  test("falls back from exhausted OpenRouter quota to Bankr", async () => {
     const calls: Array<{ url: string; body: any }> = [];
     const result = await routeReflection({
       env: ankyWorld({
@@ -146,7 +146,7 @@ describe("provider router", () => {
         const body = JSON.parse(String(init.body));
         calls.push({ url, body });
         if (url.includes("openrouter.ai")) {
-          return new Response("no credits", { status: 402 });
+          return new Response("no quota", { status: 402 });
         }
         return Response.json({
           choices: [{ message: { content: "# Bankr Mirror\n\nbody" } }],
@@ -188,7 +188,7 @@ describe("provider router", () => {
         const body = JSON.parse(String(init.body));
         calls.push({ url, body });
         if (url.includes("openrouter.ai")) {
-          return new Response("no credits", { status: 402 });
+          return new Response("no quota", { status: 402 });
         }
         if (url.includes("bankr.example")) {
           return new Response("bankr exhausted", { status: 402 });

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged with the generated Info.plist (GENERATE_INFOPLIST_FILE stays
+	     YES). Only keys the INFOPLIST_KEY_ build settings cannot express
+	     live here. -->
+	<!-- Standard-exempt crypto only (HTTPS, keychain, AES-GCM backups):
+	     answers export compliance up front so uploads never stall on it. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Release-verifiable purchase metadata. Runtime constants remain in
+	     AnkyPurchasesConfig; SubscriptionRemediationTests pins this mirror to
+	     those constants so archive inspection can prove the exact identifiers. -->
+	<key>AnkyRevenueCatConfiguration</key>
+	<dict>
+		<key>Entitlement</key>
+		<string>pro</string>
+		<key>Offering</key>
+		<string>default</string>
+		<key>MonthlyProduct</key>
+		<string>anky.monthly</string>
+		<key>AnnualProduct</key>
+		<string>anky.annual</string>
+	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>inc.anky.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>anky</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

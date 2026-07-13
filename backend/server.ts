@@ -46,10 +46,18 @@ import { Hono, type Context } from "hono";
 import { mkdirSync } from "node:fs";
 import type { Database } from "bun:sqlite";
 import {
+  FULL_PROMPT_EXPERIMENT_ID,
   buildReflectPrompt,
+  fullPromptVariantForAnkyHash,
   streamOpenRouterChatCompletion,
+  type FullPromptVariant,
 } from "./reflection";
-import { openLevelDb } from "./level/db";
+import {
+  beginRequestIdempotency,
+  consumeAccountDailyQuota,
+  markRequestIdempotency,
+  openLevelDb,
+} from "./level/db";
 import {
   registerLevelRoutes,
   type LevelAuthenticator,
@@ -58,11 +66,19 @@ import { registerPaintingRoutes } from "./painting/routes";
 import { registerDebugRoutes, type DebugRouteDeps } from "./debug/routes";
 import { registerEventRoutes } from "./events/routes";
 import { registerSubscriptionRoutes } from "./subscription/routes";
+import { registerAccountRoutes } from "./account/routes";
 import type { AccountEntitlement } from "./subscription/store";
 import {
   entitlementWithFallback,
   type RevenueCatFetch,
 } from "./subscription/revenuecat";
+import {
+  BodyTooLargeError,
+  MemoryWindowRateLimiter,
+  clientIp,
+  rateLimitedResponse,
+  readLimitedBody,
+} from "./security";
 
 // -----------------------------------------------------------------------------
 // Start Here
@@ -190,6 +206,17 @@ async function sendAnky(ankyString) {
 }
 `;
 
+const rateLimitConfig = {
+  publicIpPerMinute: 120,
+  expensiveIpPerMinute: 30,
+  expensiveAccountPerTenMinutes: 8,
+  authenticatedIpPerMinute: 240,
+  authenticatedAccountPerMinute: 120,
+  prepareIpPerMinute: 20,
+  prepareAccountPerTenMinutes: 4,
+  prepareAccountDaily: 6,
+} as const;
+
 // -----------------------------------------------------------------------------
 // Public Constants
 // -----------------------------------------------------------------------------
@@ -226,11 +253,11 @@ export const anky = {
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,
   privacyRequiresZdr: true,
-  // The subscription is the only door to the deepening. Reflections, nudges,
-  // and paintings beyond level 2 require an entitled account — a RevenueCat
-  // subscription or a promotional grant. Writing is free forever.
+  // The subscription is the only door to the generated deepening. New server
+  // reflections/nudges and personalized paintings beyond static level 8 need
+  // RevenueCat entitlement `pro`; writing and static levels 1–8 remain free.
   revenueCatEntitlementId: "pro",
-  freeGenerationMaxLevel: 2,
+  freeGenerationMaxLevel: 8,
 } as const;
 
 // Private material is not public law. Keep this list short.
@@ -264,6 +291,14 @@ export type AnkyRouteDeps = {
   revenueCatFetch?: RevenueCatFetch;
   progress?: AnkyProgressSink;
   reflectionChunk?: AnkyReflectionChunkSink;
+  consumeDailyQuota?: (
+    accountId: string,
+    route: "anky",
+    limit: number,
+  ) => { allowed: true } | { allowed: false; retryAfterSeconds: number };
+  checkAccountBurst?: (
+    accountId: string,
+  ) => { allowed: true } | { allowed: false; retryAfterSeconds: number };
 };
 
 export type AnkyProgressEvent = {
@@ -302,8 +337,40 @@ export function createApp(
   const env = input.env ?? ankyWorld();
   const logger = input.logger ?? createSafeLogger();
   const app = new Hono();
+  const publicIpLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.publicIpPerMinute,
+    60_000,
+  );
+  const expensiveIpLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.expensiveIpPerMinute,
+    60_000,
+  );
+  const expensiveAccountBurstLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.expensiveAccountPerTenMinutes,
+    10 * 60_000,
+  );
+  const authenticatedIpLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.authenticatedIpPerMinute,
+    60_000,
+  );
+  const authenticatedAccountLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.authenticatedAccountPerMinute,
+    60_000,
+  );
+  const prepareIpLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.prepareIpPerMinute,
+    60_000,
+  );
+  const prepareAccountBurstLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.prepareAccountPerTenMinutes,
+    10 * 60_000,
+  );
 
-  app.get("/health", (c) => c.json({ ok: true }));
+  app.get("/health", (c) => {
+    const limit = publicIpLimiter.check(`health:${clientIp(c)}`);
+    if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
+    return c.json({ ok: true });
+  });
   const getLevelDb = input.levelDb
     ? () => input.levelDb ?? null
     : () => defaultLevelDb(env);
@@ -334,8 +401,27 @@ export function createApp(
   ): Promise<AccountEntitlement> => fallbackEntitlement(accountId, Date.now());
 
   app.post("/anky", (c) => {
+    const ipLimit = expensiveIpLimiter.check(`anky:${clientIp(c)}`);
+    if (!ipLimit.allowed) {
+      return rateLimitedResponse(ipLimit.retryAfterSeconds);
+    }
+    const db = getLevelDb();
     const deps = {
       accountEntitlement: defaultAccountEntitlement,
+      idempotencyStore:
+        input.ankyRouteDeps?.idempotencyStore ??
+        (db ? new SqliteIdempotencyStore(db) : railwayMemoryIdempotencyStore),
+      consumeDailyQuota: (accountId: string) => {
+        if (!db) return { allowed: true as const };
+        return consumeAccountDailyQuota(db, {
+          route: "anky",
+          account: accountId,
+          limit: 24,
+          nowMs: Date.now(),
+        });
+      },
+      checkAccountBurst: (accountId: string) =>
+        expensiveAccountBurstLimiter.check(`anky:${accountId}`),
       ...input.ankyRouteDeps,
       diagnostics: input.diagnostics,
     };
@@ -345,19 +431,55 @@ export function createApp(
     return handleAnkyReflection(c, env, logger, deps);
   });
 
+  const authenticate = rateLimitedAuthenticator(levelAuthenticator(env), {
+    ipLimiter: authenticatedIpLimiter,
+    accountLimiter: authenticatedAccountLimiter,
+  });
+
   registerLevelRoutes(app, {
     getDb: getLevelDb,
-    authenticate: levelAuthenticator(env),
+    authenticate,
     maxBodyBytes: env.maxBodyBytes,
     requestTimeToleranceMs: env.requestTimeToleranceMs,
   });
   registerPaintingRoutes(app, {
     getDb: getLevelDb,
-    authenticate: levelAuthenticator(env),
+    authenticate,
     dataDir: env.dataDir,
     openrouterApiKey: env.openrouterApiKey,
     maxBodyBytes: env.maxBodyBytes,
     entitlementFor: fallbackEntitlement,
+    checkPrepareIp: (ip) => prepareIpLimiter.check(`prepare:${ip}`),
+    checkPrepareBurst: (account) => prepareAccountBurstLimiter.check(`prepare:${account}`),
+    consumePrepareDailyQuota: (account, nowMs) => {
+      const db = getLevelDb();
+      if (!db) return { allowed: true as const, remaining: rateLimitConfig.prepareAccountDaily };
+      return consumeAccountDailyQuota(db, {
+        route: "level_prepare",
+        account,
+        limit: rateLimitConfig.prepareAccountDaily,
+        nowMs,
+      });
+    },
+    beginPrepareIdempotency: (account, level, nowMs) => {
+      const db = getLevelDb();
+      if (!db) return { acquired: true as const };
+      const key = `${account}:level_prepare:${level}`;
+      return {
+        key,
+        ...beginRequestIdempotency(db, {
+          key,
+          account,
+          intent: "level_prepare",
+          artifactHash: `level:${level}`,
+          nowMs,
+        }),
+      };
+    },
+    markPrepareIdempotency: (key, status, nowMs) => {
+      const db = getLevelDb();
+      if (db) markRequestIdempotency(db, key, status, nowMs);
+    },
   });
   registerDebugRoutes(app, {
     adminKey: env.adminKey,
@@ -368,18 +490,24 @@ export function createApp(
     distillImpl: input.debugDeps?.distillImpl,
   });
   registerEventRoutes(app, {
-    authenticate: levelAuthenticator(env),
+    authenticate,
     maxBodyBytes: env.maxBodyBytes,
     getDb: getLevelDb,
   });
   registerSubscriptionRoutes(app, {
     getDb: getLevelDb,
-    authenticate: levelAuthenticator(env),
+    authenticate,
     maxBodyBytes: env.maxBodyBytes,
     revenueCatSecretKey: env.revenueCatSecretKey,
     revenueCatWebhookAuth: env.revenueCatWebhookAuth,
     revenueCatEntitlementId: env.revenueCatEntitlementId,
     revenueCatFetch: input.ankyRouteDeps?.revenueCatFetch,
+    checkWebhookIp: (ip) => publicIpLimiter.check(`webhook:${ip}`),
+  });
+  registerAccountRoutes(app, {
+    getDb: getLevelDb,
+    authenticate,
+    dataDir: env.dataDir,
   });
 
   return app;
@@ -437,6 +565,38 @@ function levelAuthenticator(env: Env): LevelAuthenticator {
       return { errorCode: identity.code, status: 401 };
     }
     return { accountId: identity.accountId };
+  };
+}
+
+function rateLimitedAuthenticator(
+  authenticate: LevelAuthenticator,
+  limits: {
+    ipLimiter: MemoryWindowRateLimiter;
+    accountLimiter: MemoryWindowRateLimiter;
+  },
+): LevelAuthenticator {
+  return async (c, bodyBytes) => {
+    const ipLimit = limits.ipLimiter.check(`auth:${clientIp(c)}`);
+    if (!ipLimit.allowed) {
+      return {
+        errorCode: "RATE_LIMITED",
+        status: 429,
+        retryAfterSeconds: ipLimit.retryAfterSeconds,
+      };
+    }
+
+    const identity = await authenticate(c, bodyBytes);
+    if (identity && "errorCode" in identity) return identity;
+
+    const accountLimit = limits.accountLimiter.check(`auth:${identity.accountId}`);
+    if (!accountLimit.allowed) {
+      return {
+        errorCode: "RATE_LIMITED",
+        status: 429,
+        retryAfterSeconds: accountLimit.retryAfterSeconds,
+      };
+    }
+    return identity;
   };
 }
 
@@ -642,6 +802,8 @@ export type SafeLogFields = {
   modelFailure?: string;
   entitlementResult?: string;
   reflectionTier?: SessionTier;
+  reflectionPromptExperiment?: string;
+  reflectionPromptVariant?: FullPromptVariant;
 };
 
 export type SafeLogger = {
@@ -670,6 +832,8 @@ export type MirrorDiagnosticEvent = {
   durationMs?: number;
   errorCode?: string;
   reflectionTier?: SessionTier;
+  reflectionPromptExperiment?: string;
+  reflectionPromptVariant?: FullPromptVariant;
   startedAt: string;
   finishedAt: string;
 };
@@ -845,6 +1009,16 @@ export function isFreshRequestTime(
   return Math.abs(now - parsed) <= toleranceMs;
 }
 
+// Replay/freshness audit:
+// - Every signed request carries X-Anky-Request-Time in epoch milliseconds.
+// - The timestamp must be within env.requestTimeToleranceMs of server time;
+//   both future and stale requests outside that bounded skew are rejected.
+// - Within that freshness window, the exact (requestTime, EIP-712 signature)
+//   pair is remembered in memory and cannot be reused.
+// - The signature is over the exact request body hash, account, request time,
+//   and client, so a replay cannot be moved to another body or account.
+// This is a short-window replay guard, not an abuse control; route quotas and
+// durable idempotency handle hostile clients that can generate valid requests.
 export function rememberRequest(
   signature: string,
   requestTime: string,
@@ -890,12 +1064,14 @@ export type IdempotencyBeginResult =
 export interface IdempotencyStore {
   begin(input: {
     key: string;
+    accountId?: string;
     addressHash: string;
     ankyHash: string;
     now?: number;
   }): Promise<IdempotencyBeginResult>;
   beginSucceededRetry(input: {
     key: string;
+    accountId?: string;
     addressHash: string;
     ankyHash: string;
     now?: number;
@@ -911,11 +1087,107 @@ export async function mirrorIdempotencyKey(
   return sha256Hex(`${address}:${ankyHash}`);
 }
 
+export class SqliteIdempotencyStore implements IdempotencyStore {
+  constructor(private readonly db: Database) {}
+
+  async begin(input: {
+    key: string;
+    accountId?: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult> {
+    const now = input.now ?? Date.now();
+    const existing = this.get(input.key);
+    if (existing?.status === "processing" || existing?.status === "succeeded") {
+      return { acquired: false, record: existing };
+    }
+    const record: IdempotencyRecord = {
+      key: input.key,
+      status: "processing",
+      addressHash: input.addressHash,
+      ankyHash: input.ankyHash,
+      updatedAt: now,
+    };
+    this.db
+      .prepare(
+        `INSERT INTO request_idempotency
+           (key, account, intent, artifact_hash, status, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(key) DO UPDATE SET
+           status = excluded.status,
+           updated_at_ms = excluded.updated_at_ms`,
+      )
+      .run(input.key, input.accountId ?? input.addressHash, "mirror", input.ankyHash, "processing", now);
+    return { acquired: true, record };
+  }
+
+  async beginSucceededRetry(input: {
+    key: string;
+    accountId?: string;
+    addressHash: string;
+    ankyHash: string;
+    now?: number;
+  }): Promise<IdempotencyBeginResult> {
+    const existing = this.get(input.key);
+    if (existing?.status !== "succeeded") {
+      return existing
+        ? { acquired: false, record: existing }
+        : this.begin(input);
+    }
+    return this.begin(input);
+  }
+
+  async markSucceeded(key: string, now = Date.now()): Promise<void> {
+    this.update(key, "succeeded", now);
+  }
+
+  async markFailed(key: string, now = Date.now()): Promise<void> {
+    this.update(key, "failed", now);
+  }
+
+  private get(key: string): IdempotencyRecord | null {
+    const row = this.db
+      .prepare(
+        `SELECT key, account, artifact_hash, status, updated_at_ms
+         FROM request_idempotency WHERE key = ?1`,
+      )
+      .get(key) as
+      | {
+          key: string;
+          account: string;
+          artifact_hash: string;
+          status: IdempotencyStatus;
+          updated_at_ms: number;
+        }
+      | null;
+    if (!row) return null;
+    return {
+      key: row.key,
+      status: row.status,
+      addressHash: row.account,
+      ankyHash: row.artifact_hash,
+      updatedAt: row.updated_at_ms,
+    };
+  }
+
+  private update(key: string, status: IdempotencyStatus, now: number): void {
+    this.db
+      .prepare(
+        `UPDATE request_idempotency
+         SET status = ?2, updated_at_ms = ?3
+         WHERE key = ?1`,
+      )
+      .run(key, status, now);
+  }
+}
+
 export class MemoryIdempotencyStore implements IdempotencyStore {
   private records = new Map<string, IdempotencyRecord>();
 
   async begin(input: {
     key: string;
+    accountId?: string;
     addressHash: string;
     ankyHash: string;
     now?: number;
@@ -939,6 +1211,7 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
 
   async beginSucceededRetry(input: {
     key: string;
+    accountId?: string;
     addressHash: string;
     ankyHash: string;
     now?: number;
@@ -1509,7 +1782,7 @@ export function buildNudgePrompt(input: {
     "",
     "Do not give generic encouragement, productivity advice, praise, summary, analysis, therapy language, or instructions.",
     "",
-    "Do not mention how long they wrote, word count, credits, mirrors, prompts, or this instruction.",
+    "Do not mention how long they wrote, word count, billing balances, mirrors, prompts, or this instruction.",
     "",
     "Write in the same language as the writing. Return plain text only: one sentence, no markdown, no title, no quotes, under 26 words.",
     "",
@@ -1767,6 +2040,7 @@ export async function handleAnkyReflection(
   let retryingSucceededReflection = false;
   let requestIntent: AnkyRequestIntent = "reflection";
   let reflectionTier: SessionTier | undefined;
+  let reflectionPromptVariant: FullPromptVariant | undefined;
 
   try {
     await deps.progress?.({
@@ -1778,11 +2052,6 @@ export async function handleAnkyReflection(
       statusCode = 400;
       errorCode = "INVALID_ANKY";
       return errorJson(c, "INVALID_ANKY");
-    }
-    if (requestBodyTooLarge(c.req.header("content-length"), env.maxBodyBytes)) {
-      statusCode = 413;
-      errorCode = "BODY_TOO_LARGE";
-      return errorJson(c, "BODY_TOO_LARGE");
     }
     const identityVersion = c.req.header("x-anky-identity-version");
     identityVersionForDiagnostics = identityVersion ?? undefined;
@@ -1814,17 +2083,12 @@ export async function handleAnkyReflection(
       return errorJson(c, "INVALID_SIGNATURE");
     }
 
-    const dotAnky = await c.req.text();
-    const bodyBytes = new TextEncoder().encode(dotAnky);
+    const bodyBytes = await readLimitedBody(c, env.maxBodyBytes);
+    const dotAnky = new TextDecoder().decode(bodyBytes);
     await deps.progress?.({
       stage: "dot_anky_read",
       message: "Anky read the exact .anky string.",
     });
-    if (bodyBytes.byteLength > env.maxBodyBytes) {
-      statusCode = 413;
-      errorCode = "BODY_TOO_LARGE";
-      return errorJson(c, "BODY_TOO_LARGE");
-    }
     ankyHash = await sha256Hex(bodyBytes);
     await deps.progress?.({
       stage: "hash_computed",
@@ -1854,6 +2118,18 @@ export async function handleAnkyReflection(
     accountId = identity.accountId;
     chainIdForDiagnostics = identity.chainId;
     identityHash = await addressHash(accountId);
+    const accountBurst = deps.checkAccountBurst?.(accountId);
+    if (accountBurst && !accountBurst.allowed) {
+      statusCode = 429;
+      errorCode = "RATE_LIMITED";
+      return rateLimitedResponse(accountBurst.retryAfterSeconds);
+    }
+    const dailyQuota = deps.consumeDailyQuota?.(accountId, "anky", 24);
+    if (dailyQuota && !dailyQuota.allowed) {
+      statusCode = 429;
+      errorCode = "RATE_LIMITED";
+      return rateLimitedResponse(dailyQuota.retryAfterSeconds);
+    }
     await deps.progress?.({
       stage: "identity_verified",
       message: "Anky verified the writer signature for these exact bytes.",
@@ -1884,12 +2160,14 @@ export async function handleAnkyReflection(
     idempotencyKey = await mirrorIdempotencyKey(accountId, billingHash);
     const idempotency = await idempotencyStore.begin({
       key: idempotencyKey,
+      accountId,
       addressHash: identityHash,
       ankyHash: billingHash,
     });
     if (!idempotency.acquired && idempotency.record.status === "succeeded") {
       const retry = await idempotencyStore.beginSucceededRetry({
         key: idempotencyKey,
+        accountId,
         addressHash: identityHash,
         ankyHash: billingHash,
       });
@@ -1912,10 +2190,8 @@ export async function handleAnkyReflection(
     });
 
     try {
-      // The subscription is the only billing question. Promotional grants
-      // arrive through the same entitlement shape, so they count as
-      // entitled without special-casing. A retry of an already-succeeded
-      // reflection is honored even if the entitlement lapsed in between.
+      // Subscription is the only billing question. A retry of an already
+      // succeeded reflection is honored even if entitlement changed since.
       const entitlement: AccountEntitlement = deps.accountEntitlement
         ? await deps.accountEntitlement(accountId)
         : { entitled: false };
@@ -1939,6 +2215,9 @@ export async function handleAnkyReflection(
       });
 
       const writing = reconstructProtocolText(validation.parsed);
+      if (requestIntent === "reflection" && reflectionTier === "full") {
+        reflectionPromptVariant = await fullPromptVariantForAnkyHash(ankyHash);
+      }
       const prompt =
         requestIntent === "nudge"
           ? buildNudgePrompt({
@@ -1946,7 +2225,11 @@ export async function handleAnkyReflection(
               durationMs: validation.durationMs,
               wordCount: countPromptWords(writing),
             })
-          : buildReflectPrompt(writing, reflectionTier ?? "full");
+          : buildReflectPrompt(
+              writing,
+              reflectionTier ?? "full",
+              reflectionPromptVariant,
+            );
       await deps.progress?.({
         stage: "reflection_prepared",
         message:
@@ -2012,7 +2295,12 @@ export async function handleAnkyReflection(
         }
       }
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      statusCode = 413;
+      errorCode = "BODY_TOO_LARGE";
+      return errorJson(c, "BODY_TOO_LARGE");
+    }
     statusCode = 500;
     errorCode = "MIRROR_FAILED";
     return errorJson(c, "MIRROR_FAILED");
@@ -2032,6 +2320,10 @@ export async function handleAnkyReflection(
       modelFailure,
       entitlementResult,
       reflectionTier,
+      reflectionPromptExperiment: reflectionPromptVariant
+        ? FULL_PROMPT_EXPERIMENT_ID
+        : undefined,
+      reflectionPromptVariant,
     });
     await deps.diagnostics?.record({
       requestId,
@@ -2045,6 +2337,10 @@ export async function handleAnkyReflection(
       durationMs,
       errorCode,
       reflectionTier,
+      reflectionPromptExperiment: reflectionPromptVariant
+        ? FULL_PROMPT_EXPERIMENT_ID
+        : undefined,
+      reflectionPromptVariant,
       startedAt: startedAtIso,
       finishedAt: new Date().toISOString(),
     });
@@ -2062,11 +2358,9 @@ function requestBodyTooLarge(
 
 function responseHeadersObject(headers: Headers): Record<string, string> {
   const output: Record<string, string> = {};
+  const safeHeaders = new Set(["content-type", "x-anky-hash", "x-anky-intent", "x-anky-tags"]);
   for (const [key, value] of headers.entries()) {
-    if (
-      key.toLowerCase().startsWith("x-anky-") ||
-      key.toLowerCase() === "content-type"
-    ) {
+    if (safeHeaders.has(key.toLowerCase())) {
       output[key] = value;
     }
   }
@@ -2164,10 +2458,51 @@ function safeModelFailure(error: unknown): string {
 
 if (import.meta.main) {
   const env = ankyWorld();
-  Bun.serve({
+  const appFetch = createApp({ env }).fetch;
+  let draining = false;
+  let inFlight = 0;
+  const server = Bun.serve({
     port: env.port,
     hostname: env.host,
-    fetch: createApp({ env }).fetch,
+    async fetch(request, server) {
+      if (draining) {
+        return new Response(JSON.stringify({ error: { code: "SERVER_DRAINING" } }), {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": "5",
+          },
+        });
+      }
+      inFlight += 1;
+      try {
+        return await appFetch(request, server);
+      } finally {
+        inFlight -= 1;
+      }
+    },
   });
   console.log(`anky mirror listening on ${env.host}:${env.port}`);
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  let shutdownStarted = false;
+  const shutdown = async (signal: NodeJS.Signals) => {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    draining = true;
+    console.log(`received ${signal}; draining in-flight requests`);
+    server.stop(false);
+    const deadline = Date.now() + 25_000;
+    while (inFlight > 0 && Date.now() < deadline) {
+      await sleep(100);
+    }
+    if (inFlight > 0) {
+      console.warn(`forcing shutdown with ${inFlight} request(s) still in flight`);
+      server.stop(true);
+    }
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }

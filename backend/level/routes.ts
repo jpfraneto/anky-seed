@@ -9,6 +9,7 @@
 import type { Context, Hono } from "hono";
 import type { Database } from "bun:sqlite";
 import {
+  MAX_SESSION_SECONDS,
   MAX_SESSIONS_PER_REPORT,
   getLevelState,
   levelStatusFor,
@@ -17,6 +18,7 @@ import {
   setLevelPhase,
   type ReportedSession,
 } from "./db";
+import { BodyTooLargeError, rateLimitedResponse, readLimitedBody } from "../security";
 
 export type LevelIdentity = {
   accountId: string;
@@ -25,6 +27,7 @@ export type LevelIdentity = {
 export type LevelAuthError = {
   errorCode: string;
   status: number;
+  retryAfterSeconds?: number;
 };
 
 /**
@@ -55,6 +58,34 @@ function errorJson(c: Context, status: number, error: string) {
   return c.json({ error }, status as 400);
 }
 
+function authErrorResponse(c: Context, error: LevelAuthError) {
+  if (error.status === 429) {
+    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
+  }
+  return errorJson(c, error.status, error.errorCode);
+}
+
+const SESSION_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+
+async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
+  try {
+    return await readLimitedBody(c, maxBodyBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+    }
+    throw error;
+  }
+}
+
 export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
   const now = ctx.now ?? (() => Date.now());
 
@@ -62,15 +93,13 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
     const db = ctx.getDb();
     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
 
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
 
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
 
     let parsed: unknown;
@@ -79,7 +108,13 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
     } catch {
       return errorJson(c, 400, "INVALID_SESSION_REPORT");
     }
-    const sessions = (parsed as { sessions?: unknown })?.sessions;
+    // Strict on purpose: session reports are a security boundary for level
+    // progress. Unknown fields are rejected instead of silently accepted so a
+    // hostile client cannot smuggle alternate interpretations into future code.
+    if (!isPlainObject(parsed) || !hasOnlyKeys(parsed, ["sessions"])) {
+      return errorJson(c, 400, "INVALID_SESSION_REPORT");
+    }
+    const sessions = parsed.sessions;
     if (!Array.isArray(sessions) || sessions.length === 0) {
       return errorJson(c, 400, "INVALID_SESSION_REPORT");
     }
@@ -87,19 +122,37 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
       return errorJson(c, 413, "TOO_MANY_SESSIONS");
     }
 
+    const nowMs = now();
     const reportable: ReportedSession[] = [];
     for (const entry of sessions) {
-      const candidate = entry as Partial<ReportedSession> | null;
+      if (!isPlainObject(entry) || !hasOnlyKeys(entry, ["hash", "seconds", "sealedAtMs"])) {
+        return errorJson(c, 400, "INVALID_SESSION_REPORT");
+      }
+      const hash = entry.hash;
+      const secondsValue = entry.seconds;
+      const sealedAtMsValue = entry.sealedAtMs;
+      if (
+        typeof hash !== "string" ||
+        !SESSION_HASH_PATTERN.test(hash) ||
+        typeof secondsValue !== "number" ||
+        !Number.isSafeInteger(secondsValue) ||
+        typeof sealedAtMsValue !== "number" ||
+        !Number.isSafeInteger(sealedAtMsValue) ||
+        secondsValue < 1 ||
+        secondsValue > MAX_SESSION_SECONDS ||
+        sealedAtMsValue > nowMs + ctx.requestTimeToleranceMs
+      ) {
+        return errorJson(c, 400, "INVALID_SESSION_REPORT");
+      }
+      const seconds = secondsValue;
+      const sealedAtMs = sealedAtMsValue;
       reportable.push({
-        hash: typeof candidate?.hash === "string" ? candidate.hash : "",
-        seconds:
-          typeof candidate?.seconds === "number" ? candidate.seconds : -1,
-        sealedAtMs:
-          typeof candidate?.sealedAtMs === "number" ? candidate.sealedAtMs : -1,
+        hash,
+        seconds,
+        sealedAtMs,
       });
     }
 
-    const nowMs = now();
     const result = recordSessions(
       db,
       identity.accountId,
@@ -117,14 +170,12 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
     const db = ctx.getDb();
     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
 
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
 
     let level = 0;
@@ -152,7 +203,7 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
 
     const identity = await ctx.authenticate(c, new Uint8Array());
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
 
     return c.json({ status: levelStatusFor(db, identity.accountId) });

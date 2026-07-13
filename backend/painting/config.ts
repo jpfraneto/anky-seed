@@ -81,16 +81,22 @@ export function paintingConfig(): PaintingConfig {
   };
 }
 
+/** Account-scoped package root on the volume. */
+export function paintingAccountDir(dataDir: string, account: string): string {
+  // The account id is validated upstream (parseBaseAccountId); levels are
+  // integers. Sanitize anyway — this becomes a filesystem path. Real account
+  // ids cannot collide with the `_defaults` static-painting pseudo-account.
+  const safeAccount = account.replace(/[^a-zA-Z0-9:._-]/g, "_");
+  return `${dataDir}/paintings/${safeAccount}`;
+}
+
 /** Package layout on the volume: one directory per (account, level). */
 export function paintingPackageDir(
   dataDir: string,
   account: string,
   level: number,
 ): string {
-  // The account id is validated upstream (parseBaseAccountId); levels are
-  // integers. Sanitize anyway — this becomes a filesystem path.
-  const safeAccount = account.replace(/[^a-zA-Z0-9:._-]/g, "_");
-  return `${dataDir}/paintings/${safeAccount}/${Math.floor(level)}`;
+  return `${paintingAccountDir(dataDir, account)}/${Math.floor(level)}`;
 }
 
 /**

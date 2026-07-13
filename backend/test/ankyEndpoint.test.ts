@@ -17,9 +17,11 @@ import {
   normalizeMetadataValue,
 } from "../server";
 import {
+  FULL_PROMPT_EXPERIMENT_ID,
   buildReflectPromptFromText,
   PROMPT_DIP,
   PROMPT_FULL,
+  PROMPT_FULL_ATTENTIVE,
   PROMPT_SENTENCE,
 } from "../reflection";
 
@@ -28,7 +30,7 @@ const identityFixtureMnemonic = "abandon abandon abandon abandon abandon abandon
 
 // The one billing question: is the account entitled (subscription or
 // promotional grant)? Tests answer it directly through the deps seam.
-const entitledAccount = () => ({ entitled: true, productId: "anky.yearly" });
+const entitledAccount = () => ({ entitled: true, productId: "anky.annual" });
 
 const smallSteadyThreadReflection = async () => ({
   provider: "mock",
@@ -86,6 +88,35 @@ describe("POST /anky", () => {
     expect(text).toContain("Here is what I saw");
   });
 
+  test("streams a reflection for an iOS artifact with configured terminal stillness", async () => {
+    const fixture = await readFile(resolve(fixtureRoot, "valid-complete.anky"), "utf8");
+    const body = dotAnkyBytes(fixture.replace(/8000\s*$/, "3000"));
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: entitledAccount,
+        routeReflection: smallSteadyThreadReflection,
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {
+        Accept: "text/event-stream",
+        "X-Anky-Client": "ios",
+      }),
+      body: dotAnkyBody(body),
+    });
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(text).toContain("event: reflection");
+    expect(text).not.toContain("event: error");
+    expect(text).toContain("# Small Steady Thread");
+  });
+
   test("sends the byte-identical full reflection prompt to the provider", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let capturedPrompt = "";
@@ -126,6 +157,60 @@ describe("POST /anky", () => {
     expect(capturedPrompt).not.toContain("`tag`");
     expect(capturedPrompt).not.toContain("Rules for tags");
     expect(capturedPrompt).not.toContain('"tags"');
+  });
+
+  test("silently splits full ankys between control and attentive prompts", async () => {
+    const attentiveBody = dotAnkyBytes("1770000000000 h\n480000 a");
+    const controlBody = dotAnkyBytes("1770000000000 h\n480000 b");
+    const capturedPrompts: string[] = [];
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: entitledAccount,
+        routeReflection: async ({ prompt }) => {
+          capturedPrompts.push(prompt);
+          return smallSteadyThreadReflection();
+        },
+      },
+    });
+
+    const attentiveResponse = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(attentiveBody, {
+        Accept: "text/event-stream",
+      }),
+      body: dotAnkyBody(attentiveBody),
+    });
+    const attentiveResponseText = await attentiveResponse.text();
+    const controlResponse = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(controlBody),
+      body: dotAnkyBody(controlBody),
+    });
+    const controlResponseText = await controlResponse.text();
+
+    expect(attentiveResponse.status).toBe(200);
+    expect(controlResponse.status).toBe(200);
+    expect(capturedPrompts).toHaveLength(2);
+    expect(capturedPrompts[0]).toBe(
+      `${PROMPT_FULL_ATTENTIVE}\n\n---\n\nha`,
+    );
+    expect(capturedPrompts[1]).toBe(`${PROMPT_FULL}\n\n---\n\nhb`);
+    expect(capturedPrompts[0]).not.toContain("[INSERT ANKY]");
+
+    const clientVisible = [
+      attentiveResponseText,
+      controlResponseText,
+      JSON.stringify([...attentiveResponse.headers]),
+      JSON.stringify([...controlResponse.headers]),
+    ].join("\n");
+    expect(clientVisible).not.toContain(FULL_PROMPT_EXPERIMENT_ID);
+    expect(clientVisible).not.toContain("attentive");
+    expect(clientVisible).not.toContain("reflectionPromptVariant");
+    expect(clientVisible).not.toContain(
+      "You are Anky, a deeply attentive reflection companion.",
+    );
   });
 
   test("streams safe progress updates before the markdown reflection", async () => {
@@ -462,12 +547,13 @@ describe("POST /anky", () => {
 
   test("sentence-tier ankys receive the sentence prompt", async () => {
     const body = dotAnkyBytes("1770000000000 h");
+    const lines: string[] = [];
     let capturedPrompt = "";
     let capturedTier = "";
     let entitlementCalls = 0;
     const app = createApp({
       env: ankyWorld(),
-      logger: createSafeLogger({ log() {} }),
+      logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         accountEntitlement: () => {
           entitlementCalls += 1;
@@ -501,15 +587,17 @@ describe("POST /anky", () => {
     expect(capturedPrompt).toBe(`${PROMPT_SENTENCE}\n\n---\n\nh`);
     expect(capturedPrompt).not.toContain("1770000000000");
     expect(capturedPrompt).not.toContain("RHYTHM SUMMARY");
+    expect(JSON.parse(lines[0] ?? "{}").reflectionPromptVariant).toBeUndefined();
   });
 
   test("dip-tier ankys receive the dip prompt", async () => {
     const body = dotAnkyBytes("1770000000000 h\n88000 i");
+    const lines: string[] = [];
     let capturedPrompt = "";
     let capturedTier = "";
     const app = createApp({
       env: ankyWorld(),
-      logger: createSafeLogger({ log() {} }),
+      logger: createSafeLogger({ log: (line) => lines.push(String(line)) }),
       ankyRouteDeps: {
         accountEntitlement: entitledAccount,
         routeReflection: async ({ prompt, tier }) => {
@@ -537,6 +625,7 @@ describe("POST /anky", () => {
     expect(capturedPrompt).toBe(`${PROMPT_DIP}\n\n---\n\nhi`);
     expect(capturedPrompt).not.toContain("88000");
     expect(capturedPrompt).not.toContain("averageDeltaMs");
+    expect(JSON.parse(lines[0] ?? "{}").reflectionPromptVariant).toBeUndefined();
   });
 
   test("a free account meets ENTITLEMENT_REQUIRED before any provider call", async () => {
@@ -598,7 +687,7 @@ describe("POST /anky", () => {
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        accountEntitlement: () => ({ entitled: true, productId: "anky.yearly" }),
+        accountEntitlement: () => ({ entitled: true, productId: "anky.annual" }),
         routeReflection: async ({ env, prompt }) => {
           promptText = prompt;
           routedModel = env.openrouterModel;
@@ -918,6 +1007,8 @@ describe("POST /anky", () => {
 
     expect(log.reflectionTier).toBe("full");
     expect(log.entitlementResult).toBe("subscription_entitled");
+    expect(log.reflectionPromptExperiment).toBe(FULL_PROMPT_EXPERIMENT_ID);
+    expect(log.reflectionPromptVariant).toBe("control");
     expect(logs).not.toContain("You are Anky");
     expect(logs).not.toContain("Here is what I saw");
     expect(logs).not.toContain("1770000000000");
@@ -950,6 +1041,10 @@ describe("POST /anky", () => {
     expect(serialized).toContain("\"provider\":\"mock\"");
     expect(serialized).toContain("\"client\":\"ios\"");
     expect(serialized).toContain("\"reflectionTier\":\"full\"");
+    expect(serialized).toContain(
+      `\"reflectionPromptExperiment\":\"${FULL_PROMPT_EXPERIMENT_ID}\"`,
+    );
+    expect(serialized).toContain("\"reflectionPromptVariant\":\"control\"");
     expect(serialized).not.toContain(headers["X-Anky-Account"]);
     expect(serialized).not.toContain(headers["X-Anky-Signature"]);
     expect(serialized).not.toContain("You are Anky");

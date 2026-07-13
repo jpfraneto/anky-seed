@@ -1,0 +1,1711 @@
+diff --git a/backend/.env.example b/backend/.env.example
+index b1777d3..4cfeb99 100644
+--- a/backend/.env.example
++++ b/backend/.env.example
+@@ -1,7 +1,8 @@
+ # Anky backend — canonical environment (post-RevenueCat migration).
+ # RevenueCat webhooks are the sole subscription-entitlement truth.
+-# Obsolete and intentionally absent: REVENUECAT_PROJECT_ID, REVENUECAT_CREDIT_CODE,
+-# STRIPE_SECRET_KEY, APPLE_DEVICECHECK_TEAM_ID / _KEY_ID / _PRIVATE_KEY.
++# Obsolete and intentionally absent:
++# STRIPE_SECRET_KEY,
++# APPLE_DEVICECHECK_TEAM_ID / _KEY_ID / _PRIVATE_KEY.
+ 
+ # --- reflection (required) ----------------------------------------------------
+ OPENROUTER_API_KEY=            # OpenRouter API key; without it /anky uses the no-charge fallback
+diff --git a/backend/debug/routes.ts b/backend/debug/routes.ts
+index 37ecfdb..1a17d79 100644
+--- a/backend/debug/routes.ts
++++ b/backend/debug/routes.ts
+@@ -20,6 +20,7 @@ import {
+   STATIC_LEVEL_MAX,
+ } from "../painting/config";
+ import { runPaintingPipeline } from "../painting/pipeline";
++import { BodyTooLargeError, readLimitedBody } from "../security";
+ 
+ export type DebugRouteDeps = {
+   distillImpl?: typeof distillWriting;
+@@ -50,6 +51,17 @@ function notFound(c: Context) {
+   return c.json({ error: "NOT_FOUND" }, 404);
+ }
+ 
++async function debugBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
++  try {
++    return await readLimitedBody(c, maxBodyBytes);
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      return c.json({ error: "BODY_TOO_LARGE" }, 413);
++    }
++    throw error;
++  }
++}
++
+ // Detached default-painting seed runs, keyed by level. Module-level on
+ // purpose: a run must survive its originating request. Lost on restart —
+ // the GET's `packaged` flag is the durable signal.
+@@ -143,17 +155,15 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
+     if (!db) return c.json({ error: "LEVEL_STORE_UNAVAILABLE" }, 503);
+     if (!ctx.dataDir) return c.json({ error: "DATA_DIR_UNAVAILABLE" }, 503);
+ 
+-    const raw = await c.req.arrayBuffer();
+-    if (raw.byteLength > ctx.maxBodyBytes) {
+-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+-    }
++    const body = await debugBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
+ 
+     let level = 0;
+     let text = "";
+     let scene = "";
+     let title = "";
+     try {
+-      const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
++      const parsed = JSON.parse(new TextDecoder().decode(body)) as {
+         level?: unknown;
+         text?: unknown;
+         scene?: unknown;
+@@ -206,7 +216,7 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
+       .catch((error: unknown) => {
+         seedResults.set(level, {
+           ok: false,
+-          error: error instanceof Error ? error.message : "PIPELINE_FAILED",
++          error: error instanceof Error ? error.name : "PIPELINE_FAILED",
+           finishedAtMs: Date.now(),
+         });
+       })
+@@ -248,14 +258,12 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
+   app.post("/debug/distill", async (c) => {
+     if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
+ 
+-    const raw = await c.req.arrayBuffer();
+-    if (raw.byteLength > ctx.maxBodyBytes) {
+-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+-    }
++    const body = await debugBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
+ 
+     let text = "";
+     try {
+-      const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
++      const parsed = JSON.parse(new TextDecoder().decode(body)) as {
+         text?: unknown;
+       };
+       text = typeof parsed.text === "string" ? parsed.text : "";
+@@ -294,7 +302,7 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
+         usage: usage ?? null,
+       });
+     } catch (error) {
+-      const code = error instanceof Error ? error.message : "DISTILL_FAILED";
++      const code = error instanceof Error && error.name !== "Error" ? error.name : "DISTILL_FAILED";
+       return c.json({ error: code }, 502);
+     }
+   });
+diff --git a/backend/events/routes.ts b/backend/events/routes.ts
+index 6304369..980e3d4 100644
+--- a/backend/events/routes.ts
++++ b/backend/events/routes.ts
+@@ -12,6 +12,7 @@
+ import type { Context, Hono } from "hono";
+ import type { Database } from "bun:sqlite";
+ import type { LevelAuthenticator, LevelIdentity, LevelAuthError } from "../level/routes";
++import { BodyTooLargeError, rateLimitedResponse, readLimitedBody } from "../security";
+ 
+ export const FUNNEL_EVENTS = [
+   "ceremony_1_shown",
+@@ -43,6 +44,13 @@ function isAuthError(
+   return (result as LevelAuthError).errorCode !== undefined;
+ }
+ 
++function authErrorResponse(c: Context, error: LevelAuthError) {
++  if (error.status === 429) {
++    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
++  }
++  return c.json({ error: error.errorCode }, error.status as 401);
++}
++
+ async function hashedAccount(accountId: string): Promise<string> {
+   const digest = await crypto.subtle.digest(
+     "SHA-256",
+@@ -54,20 +62,29 @@ async function hashedAccount(accountId: string): Promise<string> {
+     .slice(0, 16);
+ }
+ 
++async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
++  try {
++    return await readLimitedBody(c, maxBodyBytes);
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      return c.json({ error: "BODY_TOO_LARGE" }, 413);
++    }
++    throw error;
++  }
++}
++
+ export function registerEventRoutes(app: Hono, ctx: EventRouteContext): void {
+   const log =
+     ctx.log ?? ((line: Record<string, unknown>) => console.log(JSON.stringify(line)));
+ 
+   app.post("/events/emergency-unlock", async (c: Context) => {
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+ 
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return c.json({ error: identity.errorCode }, identity.status as 401);
++      return authErrorResponse(c, identity);
+     }
+ 
+     log({
+@@ -79,15 +96,13 @@ export function registerEventRoutes(app: Hono, ctx: EventRouteContext): void {
+   });
+ 
+   app.post("/events/funnel", async (c: Context) => {
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+ 
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return c.json({ error: identity.errorCode }, identity.status as 401);
++      return authErrorResponse(c, identity);
+     }
+ 
+     let event = "";
+diff --git a/backend/level/db.ts b/backend/level/db.ts
+index cad8463..532aa8d 100644
+--- a/backend/level/db.ts
++++ b/backend/level/db.ts
+@@ -34,6 +34,18 @@ export type SessionReportResult = {
+   rejected: number;
+ };
+ 
++export type AccountDeletionCounts = Record<
++  | "subscription_state"
++  | "session_ledger"
++  | "level_state"
++  | "painting_meta"
++  | "generation_log"
++  | "funnel_events"
++  | "request_idempotency"
++  | "account_daily_quota",
++  number
++>;
++
+ export type LevelStatus = {
+   totalSeconds: number;
+   level: number;
+@@ -54,6 +66,11 @@ export function openLevelDb(path: string): Database {
+   db.exec("PRAGMA journal_mode = WAL;");
+   migrateSubscriptionStateToRevenueCat(db);
+   db.exec(`
++    CREATE TABLE IF NOT EXISTS schema_migrations (
++      version TEXT PRIMARY KEY,
++      applied_at_ms INTEGER NOT NULL
++    );
++
+     CREATE TABLE IF NOT EXISTS session_ledger (
+       account TEXT NOT NULL,
+       session_hash TEXT NOT NULL,
+@@ -129,9 +146,61 @@ export function openLevelDb(path: string): Database {
+     CREATE INDEX IF NOT EXISTS idx_funnel_events_created
+       ON funnel_events (created_at_ms);
+   `);
++  runSchemaMigrations(db);
+   return db;
+ }
+ 
++const SCHEMA_MIGRATIONS: Array<{ version: string; sql: string }> = [
++  {
++    version: "20260709_session_ledger_account_sealed_at",
++    sql: `
++      CREATE INDEX IF NOT EXISTS idx_session_ledger_account_sealed_at
++        ON session_ledger (account, sealed_at_ms);
++    `,
++  },
++  {
++    version: "20260709_request_idempotency_and_daily_quota",
++    sql: `
++      CREATE TABLE IF NOT EXISTS request_idempotency (
++        key TEXT PRIMARY KEY,
++        account TEXT NOT NULL,
++        intent TEXT NOT NULL,
++        artifact_hash TEXT NOT NULL,
++        status TEXT NOT NULL,
++        updated_at_ms INTEGER NOT NULL
++      );
++      CREATE INDEX IF NOT EXISTS idx_request_idempotency_account
++        ON request_idempotency (account, updated_at_ms);
++
++      CREATE TABLE IF NOT EXISTS account_daily_quota (
++        route TEXT NOT NULL,
++        account TEXT NOT NULL,
++        day_utc TEXT NOT NULL,
++        count INTEGER NOT NULL,
++        updated_at_ms INTEGER NOT NULL,
++        PRIMARY KEY (route, account, day_utc)
++      );
++    `,
++  },
++];
++
++function runSchemaMigrations(db: Database): void {
++  const applied = new Set(
++    (db
++      .prepare("SELECT version FROM schema_migrations")
++      .all() as { version: string }[]).map((row) => row.version),
++  );
++  const migrate = db.transaction((migration: { version: string; sql: string }) => {
++    db.exec(migration.sql);
++    db.prepare(
++      "INSERT INTO schema_migrations (version, applied_at_ms) VALUES (?1, ?2)",
++    ).run(migration.version, Date.now());
++  });
++  for (const migration of SCHEMA_MIGRATIONS) {
++    if (!applied.has(migration.version)) migrate(migration);
++  }
++}
++
+ /**
+  * One-time schema migration (2026-07): subscription_state used to hold
+  * Apple-JWS-derived columns (original_transaction_id, app_account_token,
+@@ -369,3 +438,124 @@ export function logGeneration(
+     entry.nowMs,
+   );
+ }
++
++export type DailyQuotaResult =
++  | { allowed: true; remaining: number }
++  | { allowed: false; retryAfterSeconds: number };
++
++export function consumeAccountDailyQuota(
++  db: Database,
++  input: { route: string; account: string; limit: number; nowMs: number },
++): DailyQuotaResult {
++  const dayUtc = new Date(input.nowMs).toISOString().slice(0, 10);
++  const retryAfterSeconds = Math.max(
++    1,
++    Math.ceil(
++      (Date.parse(`${dayUtc}T00:00:00.000Z`) + 24 * 60 * 60 * 1000 - input.nowMs) /
++        1000,
++    ),
++  );
++  const current = db
++    .prepare(
++      `SELECT count FROM account_daily_quota
++       WHERE route = ?1 AND account = ?2 AND day_utc = ?3`,
++    )
++    .get(input.route, input.account, dayUtc) as { count: number } | null;
++  if (current && current.count >= input.limit) {
++    return { allowed: false, retryAfterSeconds };
++  }
++  db.prepare(
++    `INSERT INTO account_daily_quota (route, account, day_utc, count, updated_at_ms)
++     VALUES (?1, ?2, ?3, 1, ?4)
++     ON CONFLICT(route, account, day_utc) DO UPDATE SET
++       count = account_daily_quota.count + 1,
++       updated_at_ms = excluded.updated_at_ms`,
++  ).run(input.route, input.account, dayUtc, input.nowMs);
++  return { allowed: true, remaining: Math.max(0, input.limit - ((current?.count ?? 0) + 1)) };
++}
++
++export function beginRequestIdempotency(
++  db: Database,
++  input: {
++    key: string;
++    account: string;
++    intent: string;
++    artifactHash: string;
++    nowMs: number;
++  },
++): { acquired: true } | { acquired: false; status: string } {
++  const existing = db
++    .prepare("SELECT status FROM request_idempotency WHERE key = ?1")
++    .get(input.key) as { status: string } | null;
++  if (existing?.status === "processing" || existing?.status === "succeeded") {
++    return { acquired: false, status: existing.status };
++  }
++  db.prepare(
++    `INSERT INTO request_idempotency
++       (key, account, intent, artifact_hash, status, updated_at_ms)
++     VALUES (?1, ?2, ?3, ?4, 'processing', ?5)
++     ON CONFLICT(key) DO UPDATE SET
++       status = 'processing',
++       updated_at_ms = excluded.updated_at_ms`,
++  ).run(input.key, input.account, input.intent, input.artifactHash, input.nowMs);
++  return { acquired: true };
++}
++
++export function markRequestIdempotency(
++  db: Database,
++  key: string,
++  status: "succeeded" | "failed",
++  nowMs: number,
++): void {
++  db.prepare(
++    `UPDATE request_idempotency
++     SET status = ?2, updated_at_ms = ?3
++     WHERE key = ?1`,
++  ).run(key, status, nowMs);
++}
++
++export function deleteAccountScopedRows(
++  db: Database,
++  account: string,
++  accountHash: string,
++): AccountDeletionCounts {
++  const emptyCounts: AccountDeletionCounts = {
++    subscription_state: 0,
++    session_ledger: 0,
++    level_state: 0,
++    painting_meta: 0,
++    generation_log: 0,
++    funnel_events: 0,
++    request_idempotency: 0,
++    account_daily_quota: 0,
++  };
++  const tx = db.transaction(() => {
++    const counts = { ...emptyCounts };
++    counts.subscription_state = db
++      .prepare("DELETE FROM subscription_state WHERE account = ?1")
++      .run(account).changes;
++    counts.session_ledger = db
++      .prepare("DELETE FROM session_ledger WHERE account = ?1")
++      .run(account).changes;
++    counts.level_state = db
++      .prepare("DELETE FROM level_state WHERE account = ?1")
++      .run(account).changes;
++    counts.painting_meta = db
++      .prepare("DELETE FROM painting_meta WHERE account = ?1")
++      .run(account).changes;
++    counts.generation_log = db
++      .prepare("DELETE FROM generation_log WHERE account = ?1")
++      .run(account).changes;
++    counts.funnel_events = db
++      .prepare("DELETE FROM funnel_events WHERE account_hash = ?1")
++      .run(accountHash).changes;
++    counts.request_idempotency = db
++      .prepare("DELETE FROM request_idempotency WHERE account = ?1")
++      .run(account).changes;
++    counts.account_daily_quota = db
++      .prepare("DELETE FROM account_daily_quota WHERE account = ?1")
++      .run(account).changes;
++    return counts;
++  });
++  return tx();
++}
+diff --git a/backend/level/routes.ts b/backend/level/routes.ts
+index 679e69b..0d460d2 100644
+--- a/backend/level/routes.ts
++++ b/backend/level/routes.ts
+@@ -9,6 +9,7 @@
+ import type { Context, Hono } from "hono";
+ import type { Database } from "bun:sqlite";
+ import {
++  MAX_SESSION_SECONDS,
+   MAX_SESSIONS_PER_REPORT,
+   getLevelState,
+   levelStatusFor,
+@@ -17,6 +18,7 @@ import {
+   setLevelPhase,
+   type ReportedSession,
+ } from "./db";
++import { BodyTooLargeError, rateLimitedResponse, readLimitedBody } from "../security";
+ 
+ export type LevelIdentity = {
+   accountId: string;
+@@ -25,6 +27,7 @@ export type LevelIdentity = {
+ export type LevelAuthError = {
+   errorCode: string;
+   status: number;
++  retryAfterSeconds?: number;
+ };
+ 
+ /**
+@@ -55,6 +58,34 @@ function errorJson(c: Context, status: number, error: string) {
+   return c.json({ error }, status as 400);
+ }
+ 
++function authErrorResponse(c: Context, error: LevelAuthError) {
++  if (error.status === 429) {
++    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
++  }
++  return errorJson(c, error.status, error.errorCode);
++}
++
++const SESSION_HASH_PATTERN = /^[0-9a-f]{64}$/;
++
++function isPlainObject(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null && !Array.isArray(value);
++}
++
++function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
++  return Object.keys(value).every((key) => allowed.includes(key));
++}
++
++async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
++  try {
++    return await readLimitedBody(c, maxBodyBytes);
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      return c.json({ error: "BODY_TOO_LARGE" }, 413);
++    }
++    throw error;
++  }
++}
++
+ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+   const now = ctx.now ?? (() => Date.now());
+ 
+@@ -62,15 +93,13 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+     const db = ctx.getDb();
+     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+ 
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+ 
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+ 
+     let parsed: unknown;
+@@ -79,7 +108,13 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+     } catch {
+       return errorJson(c, 400, "INVALID_SESSION_REPORT");
+     }
+-    const sessions = (parsed as { sessions?: unknown })?.sessions;
++    // Strict on purpose: session reports are a security boundary for level
++    // progress. Unknown fields are rejected instead of silently accepted so a
++    // hostile client cannot smuggle alternate interpretations into future code.
++    if (!isPlainObject(parsed) || !hasOnlyKeys(parsed, ["sessions"])) {
++      return errorJson(c, 400, "INVALID_SESSION_REPORT");
++    }
++    const sessions = parsed.sessions;
+     if (!Array.isArray(sessions) || sessions.length === 0) {
+       return errorJson(c, 400, "INVALID_SESSION_REPORT");
+     }
+@@ -87,19 +122,37 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+       return errorJson(c, 413, "TOO_MANY_SESSIONS");
+     }
+ 
++    const nowMs = now();
+     const reportable: ReportedSession[] = [];
+     for (const entry of sessions) {
+-      const candidate = entry as Partial<ReportedSession> | null;
++      if (!isPlainObject(entry) || !hasOnlyKeys(entry, ["hash", "seconds", "sealedAtMs"])) {
++        return errorJson(c, 400, "INVALID_SESSION_REPORT");
++      }
++      const hash = entry.hash;
++      const secondsValue = entry.seconds;
++      const sealedAtMsValue = entry.sealedAtMs;
++      if (
++        typeof hash !== "string" ||
++        !SESSION_HASH_PATTERN.test(hash) ||
++        typeof secondsValue !== "number" ||
++        !Number.isSafeInteger(secondsValue) ||
++        typeof sealedAtMsValue !== "number" ||
++        !Number.isSafeInteger(sealedAtMsValue) ||
++        secondsValue < 1 ||
++        secondsValue > MAX_SESSION_SECONDS ||
++        sealedAtMsValue > nowMs + ctx.requestTimeToleranceMs
++      ) {
++        return errorJson(c, 400, "INVALID_SESSION_REPORT");
++      }
++      const seconds = secondsValue;
++      const sealedAtMs = sealedAtMsValue;
+       reportable.push({
+-        hash: typeof candidate?.hash === "string" ? candidate.hash : "",
+-        seconds:
+-          typeof candidate?.seconds === "number" ? candidate.seconds : -1,
+-        sealedAtMs:
+-          typeof candidate?.sealedAtMs === "number" ? candidate.sealedAtMs : -1,
++        hash,
++        seconds,
++        sealedAtMs,
+       });
+     }
+ 
+-    const nowMs = now();
+     const result = recordSessions(
+       db,
+       identity.accountId,
+@@ -117,14 +170,12 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+     const db = ctx.getDb();
+     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+ 
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+ 
+     let level = 0;
+@@ -152,7 +203,7 @@ export function registerLevelRoutes(app: Hono, ctx: LevelRouteContext): void {
+ 
+     const identity = await ctx.authenticate(c, new Uint8Array());
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+ 
+     return c.json({ status: levelStatusFor(db, identity.accountId) });
+diff --git a/backend/painting/routes.ts b/backend/painting/routes.ts
+index c431fe4..fe413ff 100644
+--- a/backend/painting/routes.ts
++++ b/backend/painting/routes.ts
+@@ -26,6 +26,7 @@ import {
+   STATIC_LEVEL_MAX,
+ } from "./config";
+ import { levelStateAllowsPrepare, runPaintingPipeline } from "./pipeline";
++import { BodyTooLargeError, clientIp, rateLimitedResponse, readLimitedBody } from "../security";
+ 
+ // Levels 1–8 are shared static defaults with no generation at all (cost
+ // decision 2026-07-08), so every actual generation — level 9 up — belongs to
+@@ -46,6 +47,26 @@ export type PaintingRouteContext = {
+     account: string,
+     nowMs: number,
+   ) => { entitled: boolean } | Promise<{ entitled: boolean }>;
++  checkPrepareIp?: (
++    ip: string,
++  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
++  checkPrepareBurst?: (
++    account: string,
++  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
++  consumePrepareDailyQuota?: (
++    account: string,
++    nowMs: number,
++  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
++  beginPrepareIdempotency?: (
++    account: string,
++    level: number,
++    nowMs: number,
++  ) => ({ key?: string } & ({ acquired: true } | { acquired: false; status: string }));
++  markPrepareIdempotency?: (
++    key: string,
++    status: "succeeded" | "failed",
++    nowMs: number,
++  ) => void;
+ };
+ 
+ const CONTENT_TYPES: Record<string, string> = {
+@@ -72,6 +93,24 @@ function errorJson(c: Context, status: number, error: string) {
+   return c.json({ error }, status as 400);
+ }
+ 
++function authErrorResponse(c: Context, error: LevelAuthError) {
++  if (error.status === 429) {
++    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
++  }
++  return errorJson(c, error.status, error.errorCode);
++}
++
++async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
++  try {
++    return await readLimitedBody(c, maxBodyBytes);
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      return errorJson(c, 413, "BODY_TOO_LARGE");
++    }
++    throw error;
++  }
++}
++
+ function pipelinesToday(db: Database, account: string, nowMs: number): number {
+   const dayStart = new Date(nowMs);
+   dayStart.setUTCHours(0, 0, 0, 0);
+@@ -84,6 +123,17 @@ function pipelinesToday(db: Database, account: string, nowMs: number): number {
+   return row.n;
+ }
+ 
++function retryAfterUtcMidnight(nowMs: number): number {
++  const dayUtc = new Date(nowMs).toISOString().slice(0, 10);
++  return Math.max(
++    1,
++    Math.ceil(
++      (Date.parse(`${dayUtc}T00:00:00.000Z`) + 24 * 60 * 60 * 1000 - nowMs) /
++        1000,
++    ),
++  );
++}
++
+ function hasRecentSession(db: Database, account: string, nowMs: number): boolean {
+   const cutoff = nowMs - 45 * 24 * 60 * 60 * 1000;
+   const row = db
+@@ -99,18 +149,21 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+   const now = ctx.now ?? (() => Date.now());
+ 
+   app.post("/level/prepare", async (c) => {
++    const ipGate = ctx.checkPrepareIp?.(clientIp(c));
++    if (ipGate && !ipGate.allowed) {
++      return rateLimitedResponse(ipGate.retryAfterSeconds);
++    }
++
+     const db = ctx.getDb();
+     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+ 
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+ 
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+     const account = identity.accountId;
+ 
+@@ -186,8 +239,34 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+     if (!hasRecentSession(db, account, nowMs)) {
+       return errorJson(c, 403, "NO_RECENT_SESSIONS");
+     }
++    const idempotency = ctx.beginPrepareIdempotency?.(account, level, nowMs);
++    const idempotencyKey = idempotency?.key;
++    if (idempotency && !idempotency.acquired) {
++      return c.json(
++        {
++          status: levelStatusFor(db, account),
++          phase: "generationPending",
++          idempotency: idempotency.status,
++        },
++        idempotency.status === "succeeded" ? 200 : 202,
++      );
++    }
++
++    const burstGate = ctx.checkPrepareBurst?.(account);
++    if (burstGate && !burstGate.allowed) {
++      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
++      return rateLimitedResponse(burstGate.retryAfterSeconds);
++    }
++
+     if (pipelinesToday(db, account, nowMs) >= paintingConfig().maxGenerationsPerAccountPerDay) {
+-      return errorJson(c, 429, "DAILY_GENERATION_CAP");
++      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
++      return rateLimitedResponse(retryAfterUtcMidnight(nowMs));
++    }
++
++    const dailyGate = ctx.consumePrepareDailyQuota?.(account, nowMs);
++    if (dailyGate && !dailyGate.allowed) {
++      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
++      return rateLimitedResponse(dailyGate.retryAfterSeconds);
+     }
+ 
+     const key = `${account}:${level}`;
+@@ -205,7 +284,12 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+           sync: false,
+           nowMs,
+         })
+-          .catch(() => {})
++          .then(() => {
++            if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "succeeded", now());
++          })
++          .catch(() => {
++            if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", now());
++          })
+           .finally(() => inFlight.delete(key));
+         inFlight.set(key, run);
+       }
+@@ -254,7 +338,19 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+                 sync: true,
+                 nowMs,
+                 progress: (stage, message) => send("update", { stage, message }),
+-              }).finally(() => inFlight.delete(key));
++              })
++                .then(() => {
++                  if (idempotencyKey) {
++                    ctx.markPrepareIdempotency?.(idempotencyKey, "succeeded", now());
++                  }
++                })
++                .catch((error) => {
++                  if (idempotencyKey) {
++                    ctx.markPrepareIdempotency?.(idempotencyKey, "failed", now());
++                  }
++                  throw error;
++                })
++                .finally(() => inFlight.delete(key));
+               inFlight.set(key, run);
+               await run;
+             }
+@@ -264,7 +360,7 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+               JSON.stringify({
+                 event: "painting_sync_failed",
+                 level,
+-                detail: error instanceof Error ? error.message : String(error),
++                detail: error instanceof Error ? error.name : "unknown",
+               }),
+             );
+             send("error", {
+@@ -304,7 +400,7 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
+ 
+     const identity = await ctx.authenticate(c, new Uint8Array());
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+ 
+     const level = Number(c.req.param("level"));
+diff --git a/backend/server.ts b/backend/server.ts
+index 4c35c8e..3d5351f 100644
+--- a/backend/server.ts
++++ b/backend/server.ts
+@@ -49,7 +49,12 @@ import {
+   buildReflectPrompt,
+   streamOpenRouterChatCompletion,
+ } from "./reflection";
+-import { openLevelDb } from "./level/db";
++import {
++  beginRequestIdempotency,
++  consumeAccountDailyQuota,
++  markRequestIdempotency,
++  openLevelDb,
++} from "./level/db";
+ import {
+   registerLevelRoutes,
+   type LevelAuthenticator,
+@@ -58,11 +63,19 @@ import { registerPaintingRoutes } from "./painting/routes";
+ import { registerDebugRoutes, type DebugRouteDeps } from "./debug/routes";
+ import { registerEventRoutes } from "./events/routes";
+ import { registerSubscriptionRoutes } from "./subscription/routes";
++import { registerAccountRoutes } from "./account/routes";
+ import type { AccountEntitlement } from "./subscription/store";
+ import {
+   entitlementWithFallback,
+   type RevenueCatFetch,
+ } from "./subscription/revenuecat";
++import {
++  BodyTooLargeError,
++  MemoryWindowRateLimiter,
++  clientIp,
++  rateLimitedResponse,
++  readLimitedBody,
++} from "./security";
+ 
+ // -----------------------------------------------------------------------------
+ // Start Here
+@@ -190,6 +203,17 @@ async function sendAnky(ankyString) {
+ }
+ `;
+ 
++const rateLimitConfig = {
++  publicIpPerMinute: 120,
++  expensiveIpPerMinute: 30,
++  expensiveAccountPerTenMinutes: 8,
++  authenticatedIpPerMinute: 240,
++  authenticatedAccountPerMinute: 120,
++  prepareIpPerMinute: 20,
++  prepareAccountPerTenMinutes: 4,
++  prepareAccountDaily: 6,
++} as const;
++
+ // -----------------------------------------------------------------------------
+ // Public Constants
+ // -----------------------------------------------------------------------------
+@@ -264,6 +288,14 @@ export type AnkyRouteDeps = {
+   revenueCatFetch?: RevenueCatFetch;
+   progress?: AnkyProgressSink;
+   reflectionChunk?: AnkyReflectionChunkSink;
++  consumeDailyQuota?: (
++    accountId: string,
++    route: "anky",
++    limit: number,
++  ) => { allowed: true } | { allowed: false; retryAfterSeconds: number };
++  checkAccountBurst?: (
++    accountId: string,
++  ) => { allowed: true } | { allowed: false; retryAfterSeconds: number };
+ };
+ 
+ export type AnkyProgressEvent = {
+@@ -302,8 +334,40 @@ export function createApp(
+   const env = input.env ?? ankyWorld();
+   const logger = input.logger ?? createSafeLogger();
+   const app = new Hono();
++  const publicIpLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.publicIpPerMinute,
++    60_000,
++  );
++  const expensiveIpLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.expensiveIpPerMinute,
++    60_000,
++  );
++  const expensiveAccountBurstLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.expensiveAccountPerTenMinutes,
++    10 * 60_000,
++  );
++  const authenticatedIpLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.authenticatedIpPerMinute,
++    60_000,
++  );
++  const authenticatedAccountLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.authenticatedAccountPerMinute,
++    60_000,
++  );
++  const prepareIpLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.prepareIpPerMinute,
++    60_000,
++  );
++  const prepareAccountBurstLimiter = new MemoryWindowRateLimiter(
++    rateLimitConfig.prepareAccountPerTenMinutes,
++    10 * 60_000,
++  );
+ 
+-  app.get("/health", (c) => c.json({ ok: true }));
++  app.get("/health", (c) => {
++    const limit = publicIpLimiter.check(`health:${clientIp(c)}`);
++    if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
++    return c.json({ ok: true });
++  });
+   const getLevelDb = input.levelDb
+     ? () => input.levelDb ?? null
+     : () => defaultLevelDb(env);
+@@ -334,8 +398,27 @@ export function createApp(
+   ): Promise<AccountEntitlement> => fallbackEntitlement(accountId, Date.now());
+ 
+   app.post("/anky", (c) => {
++    const ipLimit = expensiveIpLimiter.check(`anky:${clientIp(c)}`);
++    if (!ipLimit.allowed) {
++      return rateLimitedResponse(ipLimit.retryAfterSeconds);
++    }
++    const db = getLevelDb();
+     const deps = {
+       accountEntitlement: defaultAccountEntitlement,
++      idempotencyStore:
++        input.ankyRouteDeps?.idempotencyStore ??
++        (db ? new SqliteIdempotencyStore(db) : railwayMemoryIdempotencyStore),
++      consumeDailyQuota: (accountId: string) => {
++        if (!db) return { allowed: true as const };
++        return consumeAccountDailyQuota(db, {
++          route: "anky",
++          account: accountId,
++          limit: 24,
++          nowMs: Date.now(),
++        });
++      },
++      checkAccountBurst: (accountId: string) =>
++        expensiveAccountBurstLimiter.check(`anky:${accountId}`),
+       ...input.ankyRouteDeps,
+       diagnostics: input.diagnostics,
+     };
+@@ -345,19 +428,55 @@ export function createApp(
+     return handleAnkyReflection(c, env, logger, deps);
+   });
+ 
++  const authenticate = rateLimitedAuthenticator(levelAuthenticator(env), {
++    ipLimiter: authenticatedIpLimiter,
++    accountLimiter: authenticatedAccountLimiter,
++  });
++
+   registerLevelRoutes(app, {
+     getDb: getLevelDb,
+-    authenticate: levelAuthenticator(env),
++    authenticate,
+     maxBodyBytes: env.maxBodyBytes,
+     requestTimeToleranceMs: env.requestTimeToleranceMs,
+   });
+   registerPaintingRoutes(app, {
+     getDb: getLevelDb,
+-    authenticate: levelAuthenticator(env),
++    authenticate,
+     dataDir: env.dataDir,
+     openrouterApiKey: env.openrouterApiKey,
+     maxBodyBytes: env.maxBodyBytes,
+     entitlementFor: fallbackEntitlement,
++    checkPrepareIp: (ip) => prepareIpLimiter.check(`prepare:${ip}`),
++    checkPrepareBurst: (account) => prepareAccountBurstLimiter.check(`prepare:${account}`),
++    consumePrepareDailyQuota: (account, nowMs) => {
++      const db = getLevelDb();
++      if (!db) return { allowed: true as const, remaining: rateLimitConfig.prepareAccountDaily };
++      return consumeAccountDailyQuota(db, {
++        route: "level_prepare",
++        account,
++        limit: rateLimitConfig.prepareAccountDaily,
++        nowMs,
++      });
++    },
++    beginPrepareIdempotency: (account, level, nowMs) => {
++      const db = getLevelDb();
++      if (!db) return { acquired: true as const };
++      const key = `${account}:level_prepare:${level}`;
++      return {
++        key,
++        ...beginRequestIdempotency(db, {
++          key,
++          account,
++          intent: "level_prepare",
++          artifactHash: `level:${level}`,
++          nowMs,
++        }),
++      };
++    },
++    markPrepareIdempotency: (key, status, nowMs) => {
++      const db = getLevelDb();
++      if (db) markRequestIdempotency(db, key, status, nowMs);
++    },
+   });
+   registerDebugRoutes(app, {
+     adminKey: env.adminKey,
+@@ -368,18 +487,23 @@ export function createApp(
+     distillImpl: input.debugDeps?.distillImpl,
+   });
+   registerEventRoutes(app, {
+-    authenticate: levelAuthenticator(env),
++    authenticate,
+     maxBodyBytes: env.maxBodyBytes,
+     getDb: getLevelDb,
+   });
+   registerSubscriptionRoutes(app, {
+     getDb: getLevelDb,
+-    authenticate: levelAuthenticator(env),
++    authenticate,
+     maxBodyBytes: env.maxBodyBytes,
+     revenueCatSecretKey: env.revenueCatSecretKey,
+     revenueCatWebhookAuth: env.revenueCatWebhookAuth,
+     revenueCatEntitlementId: env.revenueCatEntitlementId,
+     revenueCatFetch: input.ankyRouteDeps?.revenueCatFetch,
++    checkWebhookIp: (ip) => publicIpLimiter.check(`webhook:${ip}`),
++  });
++  registerAccountRoutes(app, {
++    getDb: getLevelDb,
++    authenticate,
+   });
+ 
+   return app;
+@@ -440,6 +564,38 @@ function levelAuthenticator(env: Env): LevelAuthenticator {
+   };
+ }
+ 
++function rateLimitedAuthenticator(
++  authenticate: LevelAuthenticator,
++  limits: {
++    ipLimiter: MemoryWindowRateLimiter;
++    accountLimiter: MemoryWindowRateLimiter;
++  },
++): LevelAuthenticator {
++  return async (c, bodyBytes) => {
++    const ipLimit = limits.ipLimiter.check(`auth:${clientIp(c)}`);
++    if (!ipLimit.allowed) {
++      return {
++        errorCode: "RATE_LIMITED",
++        status: 429,
++        retryAfterSeconds: ipLimit.retryAfterSeconds,
++      };
++    }
++
++    const identity = await authenticate(c, bodyBytes);
++    if (identity && "errorCode" in identity) return identity;
++
++    const accountLimit = limits.accountLimiter.check(`auth:${identity.accountId}`);
++    if (!accountLimit.allowed) {
++      return {
++        errorCode: "RATE_LIMITED",
++        status: 429,
++        retryAfterSeconds: accountLimit.retryAfterSeconds,
++      };
++    }
++    return identity;
++  };
++}
++
+ // -----------------------------------------------------------------------------
+ // The Covenant
+ // -----------------------------------------------------------------------------
+@@ -845,6 +1001,16 @@ export function isFreshRequestTime(
+   return Math.abs(now - parsed) <= toleranceMs;
+ }
+ 
++// Replay/freshness audit:
++// - Every signed request carries X-Anky-Request-Time in epoch milliseconds.
++// - The timestamp must be within env.requestTimeToleranceMs of server time;
++//   both future and stale requests outside that bounded skew are rejected.
++// - Within that freshness window, the exact (requestTime, EIP-712 signature)
++//   pair is remembered in memory and cannot be reused.
++// - The signature is over the exact request body hash, account, request time,
++//   and client, so a replay cannot be moved to another body or account.
++// This is a short-window replay guard, not an abuse control; route quotas and
++// durable idempotency handle hostile clients that can generate valid requests.
+ export function rememberRequest(
+   signature: string,
+   requestTime: string,
+@@ -890,12 +1056,14 @@ export type IdempotencyBeginResult =
+ export interface IdempotencyStore {
+   begin(input: {
+     key: string;
++    accountId?: string;
+     addressHash: string;
+     ankyHash: string;
+     now?: number;
+   }): Promise<IdempotencyBeginResult>;
+   beginSucceededRetry(input: {
+     key: string;
++    accountId?: string;
+     addressHash: string;
+     ankyHash: string;
+     now?: number;
+@@ -911,11 +1079,107 @@ export async function mirrorIdempotencyKey(
+   return sha256Hex(`${address}:${ankyHash}`);
+ }
+ 
++export class SqliteIdempotencyStore implements IdempotencyStore {
++  constructor(private readonly db: Database) {}
++
++  async begin(input: {
++    key: string;
++    accountId?: string;
++    addressHash: string;
++    ankyHash: string;
++    now?: number;
++  }): Promise<IdempotencyBeginResult> {
++    const now = input.now ?? Date.now();
++    const existing = this.get(input.key);
++    if (existing?.status === "processing" || existing?.status === "succeeded") {
++      return { acquired: false, record: existing };
++    }
++    const record: IdempotencyRecord = {
++      key: input.key,
++      status: "processing",
++      addressHash: input.addressHash,
++      ankyHash: input.ankyHash,
++      updatedAt: now,
++    };
++    this.db
++      .prepare(
++        `INSERT INTO request_idempotency
++           (key, account, intent, artifact_hash, status, updated_at_ms)
++         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
++         ON CONFLICT(key) DO UPDATE SET
++           status = excluded.status,
++           updated_at_ms = excluded.updated_at_ms`,
++      )
++      .run(input.key, input.accountId ?? input.addressHash, "mirror", input.ankyHash, "processing", now);
++    return { acquired: true, record };
++  }
++
++  async beginSucceededRetry(input: {
++    key: string;
++    accountId?: string;
++    addressHash: string;
++    ankyHash: string;
++    now?: number;
++  }): Promise<IdempotencyBeginResult> {
++    const existing = this.get(input.key);
++    if (existing?.status !== "succeeded") {
++      return existing
++        ? { acquired: false, record: existing }
++        : this.begin(input);
++    }
++    return this.begin(input);
++  }
++
++  async markSucceeded(key: string, now = Date.now()): Promise<void> {
++    this.update(key, "succeeded", now);
++  }
++
++  async markFailed(key: string, now = Date.now()): Promise<void> {
++    this.update(key, "failed", now);
++  }
++
++  private get(key: string): IdempotencyRecord | null {
++    const row = this.db
++      .prepare(
++        `SELECT key, account, artifact_hash, status, updated_at_ms
++         FROM request_idempotency WHERE key = ?1`,
++      )
++      .get(key) as
++      | {
++          key: string;
++          account: string;
++          artifact_hash: string;
++          status: IdempotencyStatus;
++          updated_at_ms: number;
++        }
++      | null;
++    if (!row) return null;
++    return {
++      key: row.key,
++      status: row.status,
++      addressHash: row.account,
++      ankyHash: row.artifact_hash,
++      updatedAt: row.updated_at_ms,
++    };
++  }
++
++  private update(key: string, status: IdempotencyStatus, now: number): void {
++    this.db
++      .prepare(
++        `UPDATE request_idempotency
++         SET status = ?2, updated_at_ms = ?3
++         WHERE key = ?1`,
++      )
++      .run(key, status, now);
++  }
++}
++
+ export class MemoryIdempotencyStore implements IdempotencyStore {
+   private records = new Map<string, IdempotencyRecord>();
+ 
+   async begin(input: {
+     key: string;
++    accountId?: string;
+     addressHash: string;
+     ankyHash: string;
+     now?: number;
+@@ -939,6 +1203,7 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
+ 
+   async beginSucceededRetry(input: {
+     key: string;
++    accountId?: string;
+     addressHash: string;
+     ankyHash: string;
+     now?: number;
+@@ -1509,7 +1774,7 @@ export function buildNudgePrompt(input: {
+     "",
+     "Do not give generic encouragement, productivity advice, praise, summary, analysis, therapy language, or instructions.",
+     "",
+-    "Do not mention how long they wrote, word count, credits, mirrors, prompts, or this instruction.",
++    "Do not mention how long they wrote, word count, billing balances, mirrors, prompts, or this instruction.",
+     "",
+     "Write in the same language as the writing. Return plain text only: one sentence, no markdown, no title, no quotes, under 26 words.",
+     "",
+@@ -1779,11 +2044,6 @@ export async function handleAnkyReflection(
+       errorCode = "INVALID_ANKY";
+       return errorJson(c, "INVALID_ANKY");
+     }
+-    if (requestBodyTooLarge(c.req.header("content-length"), env.maxBodyBytes)) {
+-      statusCode = 413;
+-      errorCode = "BODY_TOO_LARGE";
+-      return errorJson(c, "BODY_TOO_LARGE");
+-    }
+     const identityVersion = c.req.header("x-anky-identity-version");
+     identityVersionForDiagnostics = identityVersion ?? undefined;
+     const account = c.req.header("x-anky-account");
+@@ -1814,17 +2074,12 @@ export async function handleAnkyReflection(
+       return errorJson(c, "INVALID_SIGNATURE");
+     }
+ 
+-    const dotAnky = await c.req.text();
+-    const bodyBytes = new TextEncoder().encode(dotAnky);
++    const bodyBytes = await readLimitedBody(c, env.maxBodyBytes);
++    const dotAnky = new TextDecoder().decode(bodyBytes);
+     await deps.progress?.({
+       stage: "dot_anky_read",
+       message: "Anky read the exact .anky string.",
+     });
+-    if (bodyBytes.byteLength > env.maxBodyBytes) {
+-      statusCode = 413;
+-      errorCode = "BODY_TOO_LARGE";
+-      return errorJson(c, "BODY_TOO_LARGE");
+-    }
+     ankyHash = await sha256Hex(bodyBytes);
+     await deps.progress?.({
+       stage: "hash_computed",
+@@ -1854,6 +2109,18 @@ export async function handleAnkyReflection(
+     accountId = identity.accountId;
+     chainIdForDiagnostics = identity.chainId;
+     identityHash = await addressHash(accountId);
++    const accountBurst = deps.checkAccountBurst?.(accountId);
++    if (accountBurst && !accountBurst.allowed) {
++      statusCode = 429;
++      errorCode = "RATE_LIMITED";
++      return rateLimitedResponse(accountBurst.retryAfterSeconds);
++    }
++    const dailyQuota = deps.consumeDailyQuota?.(accountId, "anky", 24);
++    if (dailyQuota && !dailyQuota.allowed) {
++      statusCode = 429;
++      errorCode = "RATE_LIMITED";
++      return rateLimitedResponse(dailyQuota.retryAfterSeconds);
++    }
+     await deps.progress?.({
+       stage: "identity_verified",
+       message: "Anky verified the writer signature for these exact bytes.",
+@@ -1884,12 +2151,14 @@ export async function handleAnkyReflection(
+     idempotencyKey = await mirrorIdempotencyKey(accountId, billingHash);
+     const idempotency = await idempotencyStore.begin({
+       key: idempotencyKey,
++      accountId,
+       addressHash: identityHash,
+       ankyHash: billingHash,
+     });
+     if (!idempotency.acquired && idempotency.record.status === "succeeded") {
+       const retry = await idempotencyStore.beginSucceededRetry({
+         key: idempotencyKey,
++        accountId,
+         addressHash: identityHash,
+         ankyHash: billingHash,
+       });
+@@ -1912,10 +2181,8 @@ export async function handleAnkyReflection(
+     });
+ 
+     try {
+-      // The subscription is the only billing question. Promotional grants
+-      // arrive through the same entitlement shape, so they count as
+-      // entitled without special-casing. A retry of an already-succeeded
+-      // reflection is honored even if the entitlement lapsed in between.
++      // Subscription is the only billing question. A retry of an already
++      // succeeded reflection is honored even if entitlement changed since.
+       const entitlement: AccountEntitlement = deps.accountEntitlement
+         ? await deps.accountEntitlement(accountId)
+         : { entitled: false };
+@@ -2012,7 +2279,12 @@ export async function handleAnkyReflection(
+         }
+       }
+     }
+-  } catch {
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      statusCode = 413;
++      errorCode = "BODY_TOO_LARGE";
++      return errorJson(c, "BODY_TOO_LARGE");
++    }
+     statusCode = 500;
+     errorCode = "MIRROR_FAILED";
+     return errorJson(c, "MIRROR_FAILED");
+@@ -2062,11 +2334,9 @@ function requestBodyTooLarge(
+ 
+ function responseHeadersObject(headers: Headers): Record<string, string> {
+   const output: Record<string, string> = {};
++  const safeHeaders = new Set(["content-type", "x-anky-hash", "x-anky-intent", "x-anky-tags"]);
+   for (const [key, value] of headers.entries()) {
+-    if (
+-      key.toLowerCase().startsWith("x-anky-") ||
+-      key.toLowerCase() === "content-type"
+-    ) {
++    if (safeHeaders.has(key.toLowerCase())) {
+       output[key] = value;
+     }
+   }
+@@ -2164,10 +2434,51 @@ function safeModelFailure(error: unknown): string {
+ 
+ if (import.meta.main) {
+   const env = ankyWorld();
+-  Bun.serve({
++  const appFetch = createApp({ env }).fetch;
++  let draining = false;
++  let inFlight = 0;
++  const server = Bun.serve({
+     port: env.port,
+     hostname: env.host,
+-    fetch: createApp({ env }).fetch,
++    async fetch(request, server) {
++      if (draining) {
++        return new Response(JSON.stringify({ error: { code: "SERVER_DRAINING" } }), {
++          status: 503,
++          headers: {
++            "Content-Type": "application/json",
++            "Retry-After": "5",
++          },
++        });
++      }
++      inFlight += 1;
++      try {
++        return await appFetch(request, server);
++      } finally {
++        inFlight -= 1;
++      }
++    },
+   });
+   console.log(`anky mirror listening on ${env.host}:${env.port}`);
++
++  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
++  let shutdownStarted = false;
++  const shutdown = async (signal: NodeJS.Signals) => {
++    if (shutdownStarted) return;
++    shutdownStarted = true;
++    draining = true;
++    console.log(`received ${signal}; draining in-flight requests`);
++    server.stop(false);
++    const deadline = Date.now() + 25_000;
++    while (inFlight > 0 && Date.now() < deadline) {
++      await sleep(100);
++    }
++    if (inFlight > 0) {
++      console.warn(`forcing shutdown with ${inFlight} request(s) still in flight`);
++      server.stop(true);
++    }
++    process.exit(0);
++  };
++
++  process.on("SIGTERM", shutdown);
++  process.on("SIGINT", shutdown);
+ }
+diff --git a/backend/subscription/routes.ts b/backend/subscription/routes.ts
+index 6f3e66b..43ec5bf 100644
+--- a/backend/subscription/routes.ts
++++ b/backend/subscription/routes.ts
+@@ -36,6 +36,12 @@ import {
+   type RevenueCatFetch,
+   type RevenueCatWebhookEvent,
+ } from "./revenuecat";
++import {
++  BodyTooLargeError,
++  clientIp,
++  rateLimitedResponse,
++  readLimitedBody,
++} from "../security";
+ 
+ export type SubscriptionRouteContext = {
+   getDb: () => Database | null;
+@@ -46,6 +52,9 @@ export type SubscriptionRouteContext = {
+   revenueCatEntitlementId: string;
+   now?: () => number;
+   log?: (line: Record<string, unknown>) => void;
++  checkWebhookIp?: (
++    ip: string,
++  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
+   // Test seam
+   revenueCatFetch?: RevenueCatFetch;
+ };
+@@ -60,6 +69,13 @@ function errorJson(c: Context, status: number, error: string) {
+   return c.json({ error }, status as 400);
+ }
+ 
++function authErrorResponse(c: Context, error: LevelAuthError) {
++  if (error.status === 429) {
++    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
++  }
++  return errorJson(c, error.status, error.errorCode);
++}
++
+ async function hashedAccount(accountId: string): Promise<string> {
+   const digest = await crypto.subtle.digest(
+     "SHA-256",
+@@ -81,6 +97,17 @@ function entitlementJson(entitlement: AccountEntitlement) {
+   };
+ }
+ 
++async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
++  try {
++    return await readLimitedBody(c, maxBodyBytes);
++  } catch (error) {
++    if (error instanceof BodyTooLargeError) {
++      return errorJson(c, 413, "BODY_TOO_LARGE");
++    }
++    throw error;
++  }
++}
++
+ export function registerSubscriptionRoutes(
+   app: Hono,
+   ctx: SubscriptionRouteContext,
+@@ -97,15 +124,13 @@ export function registerSubscriptionRoutes(
+     const db = ctx.getDb();
+     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+ 
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+ 
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+     const account = identity.accountId;
+ 
+@@ -151,14 +176,12 @@ export function registerSubscriptionRoutes(
+     const db = ctx.getDb();
+     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+ 
+-    const raw = await c.req.arrayBuffer();
+-    const bodyBytes = new Uint8Array(raw);
+-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
+-    }
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const bodyBytes = body;
+     const identity = await ctx.authenticate(c, bodyBytes);
+     if (isAuthError(identity)) {
+-      return errorJson(c, identity.status, identity.errorCode);
++      return authErrorResponse(c, identity);
+     }
+     const nowMs = now();
+     const entitlement = accountEntitlement(db, identity.accountId, nowMs);
+@@ -178,11 +201,10 @@ export function registerSubscriptionRoutes(
+   });
+ 
+   app.post("/webhooks/revenuecat", async (c: Context) => {
+-    const db = ctx.getDb();
+-    if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+-
+     // Fail closed on configuration: without a shared secret nothing can
+-    // be trusted to mutate entitlement state.
++    // be trusted to mutate entitlement state. Wrong/missing secrets are
++    // rejected before DB access or body parsing, keeping abusive webhook
++    // probes cheap and non-observable.
+     if (!ctx.revenueCatWebhookAuth) {
+       return errorJson(c, 503, "WEBHOOK_AUTH_UNCONFIGURED");
+     }
+@@ -190,11 +212,17 @@ export function registerSubscriptionRoutes(
+     if (authorization !== ctx.revenueCatWebhookAuth) {
+       return errorJson(c, 401, "INVALID_WEBHOOK_AUTH");
+     }
+-
+-    const raw = await c.req.arrayBuffer();
+-    if (raw.byteLength > ctx.maxBodyBytes) {
+-      return errorJson(c, 413, "BODY_TOO_LARGE");
++    const webhookLimit = ctx.checkWebhookIp?.(clientIp(c));
++    if (webhookLimit && !webhookLimit.allowed) {
++      return rateLimitedResponse(webhookLimit.retryAfterSeconds);
+     }
++
++    const db = ctx.getDb();
++    if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
++
++    const body = await routeBody(c, ctx.maxBodyBytes);
++    if (body instanceof Response) return body;
++    const raw = body;
+     let event: RevenueCatWebhookEvent | null = null;
+     try {
+       const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
+@@ -261,6 +289,10 @@ export function registerSubscriptionRoutes(
+       return c.json({ ok: true, ignored: true });
+     }
+ 
++    // Account deletion intentionally does not cancel RevenueCat/App Store
++    // subscriptions. A later authenticated webhook may recreate the minimal
++    // subscription_state row for the still-active App Store entitlement, but
++    // it must not resurrect session, level, funnel, generation, or writing data.
+     const record = applyWebhookEvent(
+       db,
+       appUserId,
+diff --git a/ROUTE_AUTH_TABLE.md b/ROUTE_AUTH_TABLE.md
+new file mode 100644
+index 0000000..2b680ad
+--- /dev/null
++++ b/ROUTE_AUTH_TABLE.md
+@@ -0,0 +1,26 @@
++# Backend Route Auth Table
++
++Generated from the final route registrations on 2026-07-09.
++
++| Route | Auth | Body cap | Rate limits | Durable controls | Stored content |
++| --- | --- | --- | --- | --- | --- |
++| `GET /health` | Public | N/A | IP window | None | None |
++| `POST /anky` | EIP-712 signed `.anky` bytes | Streaming `readLimitedBody` | IP burst, account burst, account daily quota | SQLite idempotency by account + terminal artifact hash + intent | Hash, seconds/metadata only; no writing |
++| `POST /level/sessions` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | SQLite ledger idempotency by account + session hash | Hash, seconds, sealed timestamp |
++| `GET /level/status` | EIP-712 signed empty body | N/A | Authenticated IP + account window | None | None |
++| `POST /level/ceremony-shown` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | Idempotent phase advance | Level phase only |
++| `POST /level/prepare` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window, prepare IP burst, prepare account burst, prepare account daily quota | SQLite idempotency by account + `level_prepare` + level | Distilled painting metadata and generated assets only; raw text is transient |
++| `GET /level/assets/:level/:file` | EIP-712 signed empty body | N/A | Authenticated IP + account window | Owner check for writer-specific paintings | Serves generated asset bytes |
++| `POST /events/emergency-unlock` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | None | Hashed account + event metadata |
++| `POST /events/funnel` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | None | Hashed account + whitelisted event/origin |
++| `POST /subscription/identify` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | RevenueCat refresh | Subscription state only |
++| `POST /subscription/sync` | EIP-712 signed JSON | Streaming `readLimitedBody` | Authenticated IP + account window | Deprecated shim, no receipt storage | Subscription response metadata only |
++| `POST /webhooks/revenuecat` | Shared `Authorization` secret | Streaming `readLimitedBody` after secret check | IP window after secret check | RevenueCat event-id idempotency | Subscription state and webhook id/type |
++| `DELETE /account` | EIP-712 signed empty body | N/A | Authenticated IP + account window plus deletion account/IP window | Single SQLite transaction | Deletes all account-scoped rows |
++| `GET /debug/*` | Bearer `ANKY_ADMIN_KEY` | N/A | Hidden by 404 on missing/wrong/unconfigured token | None | Operator summaries only |
++| `POST /debug/distill` | Bearer `ANKY_ADMIN_KEY` | Streaming `readLimitedBody` after token check | Hidden by 404 on missing/wrong/unconfigured token | None | No storage; token counts may log |
++| `POST /debug/seed-default-painting` | Bearer `ANKY_ADMIN_KEY` | Streaming `readLimitedBody` after token check | Hidden by 404 on missing/wrong/unconfigured token | In-memory detached seed run guard | Static default painting package |
++
++There is no CORS middleware in the backend. Mobile clients do not need CORS; any future browser client must add an exact-origin allowlist instead of a wildcard.
++
++Signed-route freshness is documented beside `rememberRequest` in `server.ts`: timestamp skew is bounded by `requestTimeToleranceMs`, the `(requestTime, signature)` pair is rejected on replay within that window, and signatures bind the exact body hash, account, request time, and client.
+diff --git a/WORKSTREAM_G_ACCEPTANCE.md b/WORKSTREAM_G_ACCEPTANCE.md
+new file mode 100644
+index 0000000..bfc4f40
+--- /dev/null
++++ b/WORKSTREAM_G_ACCEPTANCE.md
+@@ -0,0 +1,115 @@
++# Workstream G Acceptance Demonstrations
++
++These are the production HTTP checks for the hardening pass. Set:
++
++```sh
++export BASE_URL="http://127.0.0.1:8080"
++export WEBHOOK_SECRET="local-revenuecat-secret"
++export ADMIN_KEY="local-admin-key"
++```
++
++For signed routes, create fresh EIP-712 headers over the exact body for every request. `scripts/sign-curl-headers.ts` uses `signAnkyMirrorRequest` from `@anky/protocol`; reusing a signature intentionally fails replay protection.
++
++## 1. Burst Rate Limit Returns 429
++
++`/level/prepare` has a per-account burst limit of 4 per 10 minutes and an IP burst limit of 20 per minute. Use a level-9 entitled account with a recent session and fresh signed headers per request:
++
++```sh
++BODY='{"level":9,"text":"'"$(printf 'w%.0s' {1..200})"'"}'
++for i in 1 2 3 4 5; do
++  HEADERS="$(bun scripts/sign-curl-headers.ts --text "$BODY" --content-type application/json)"
++  eval "curl -i -sS -X POST '$BASE_URL/level/prepare' $HEADERS --data-binary '$BODY' | sed -n '1,8p'"
++done
++```
++
++Expected: first allowed requests return `202`/`200`/idempotent status depending on level state; the burst-exceeding request returns `HTTP/1.1 429` with `Retry-After`.
++
++## 2. Daily Quota Returns 429
++
++The prepare daily quota is durable in `account_daily_quota` under route `level_prepare`. Seed or naturally consume 6 same-day prepare attempts, then request one more:
++
++```sh
++sqlite3 "$ANKY_DATA_DIR/anky.sqlite" \
++  "INSERT INTO account_daily_quota(route, account, day_utc, count, updated_at_ms)
++   VALUES('level_prepare', '$ACCOUNT', strftime('%Y-%m-%d','now'), 6, unixepoch()*1000)
++   ON CONFLICT(route, account, day_utc) DO UPDATE SET count=6;"
++
++BODY='{"level":9,"text":"'"$(printf 'w%.0s' {1..200})"'"}'
++HEADERS="$(bun scripts/sign-curl-headers.ts --text "$BODY" --content-type application/json)"
++eval "curl -i -sS -X POST '$BASE_URL/level/prepare' $HEADERS --data-binary '$BODY' | sed -n '1,10p'"
++```
++
++Expected: `HTTP/1.1 429`, JSON error `RATE_LIMITED`, and `Retry-After` near seconds until UTC midnight.
++
++## 3. Oversized Body Rejected Before Memory Spike
++
++Every body-reading route uses `readLimitedBody`, which checks `Content-Length` and the streamed byte count before appending each chunk.
++
++```sh
++python3 - <<'PY' > /tmp/too-large.anky
++print("9" * 1100000)
++PY
++curl -i -sS -X POST "$BASE_URL/anky" \
++  -H "Content-Type: text/plain; charset=utf-8" \
++  -H "X-Anky-Signature: placeholder" \
++  -H "X-Anky-Request-Time: $(date +%s000)" \
++  --data-binary @/tmp/too-large.anky | sed -n '1,10p'
++```
++
++Expected: `HTTP/1.1 413` and `BODY_TOO_LARGE`. With a large `Content-Length`, rejection occurs before reading the full body; without it, the stream is cancelled as soon as the byte cap is exceeded.
++
++## 4. Duplicate `(account, hash, intent)` Short-Circuits Before Provider Call
++
++`/anky` persists idempotency in `request_idempotency` keyed by account + terminal artifact hash + intent. Send a valid entitled reflection once, then send the exact same terminalized `.anky` from the same account with a fresh signature:
++
++```sh
++BODY_FILE=../protocol/fixtures/valid-complete.anky
++HEADERS="$(bun scripts/sign-curl-headers.ts --file "$BODY_FILE" --content-type 'text/plain; charset=utf-8')"
++eval "curl -i -sS -X POST '$BASE_URL/anky' $HEADERS --data-binary '@$BODY_FILE' | sed -n '1,12p'"
++
++HEADERS="$(bun scripts/sign-curl-headers.ts --file "$BODY_FILE" --content-type 'text/plain; charset=utf-8')"
++eval "curl -i -sS -X POST '$BASE_URL/anky' $HEADERS --data-binary '@$BODY_FILE' | sed -n '1,12p'"
++```
++
++Expected: duplicate succeeds by retry path or returns duplicate-in-progress before a provider call. Verify no new provider log/cost row appears for the second call.
++
++`/level/prepare` persists idempotency in `request_idempotency` using account + `level_prepare` + level. A repeated prepare for the same level returns status with `idempotency: "processing"` or `"succeeded"` before `runPaintingPipeline` can start again.
++
++## 5. Webhook Wrong/Missing Secret Rejected Before Body Parsing
++
++```sh
++python3 - <<'PY' > /tmp/huge-webhook.json
++print('{"event":{"id":"x","type":"INITIAL_PURCHASE"},"padding":"' + ("x" * 2000000) + '"}')
++PY
++
++curl -i -sS -X POST "$BASE_URL/webhooks/revenuecat" \
++  --data-binary @/tmp/huge-webhook.json | sed -n '1,10p'
++
++curl -i -sS -X POST "$BASE_URL/webhooks/revenuecat" \
++  -H "Authorization: wrong" \
++  --data-binary @/tmp/huge-webhook.json | sed -n '1,10p'
++```
++
++Expected: `401 INVALID_WEBHOOK_AUTH` without needing valid JSON and before body parsing. If `REVENUECAT_WEBHOOK_AUTH` is unset, expected response is `503 WEBHOOK_AUTH_UNCONFIGURED`.
++
++## 6. Restart Preserves Durable Idempotency And Daily Quota
++
++After step 2 or 4, restart the server process and inspect SQLite:
++
++```sh
++sqlite3 "$ANKY_DATA_DIR/anky.sqlite" \
++  "SELECT route, account, day_utc, count FROM account_daily_quota WHERE route IN ('anky','level_prepare');"
++sqlite3 "$ANKY_DATA_DIR/anky.sqlite" \
++  "SELECT account, intent, artifact_hash, status FROM request_idempotency ORDER BY updated_at_ms DESC LIMIT 10;"
++```
++
++Repeat the same duplicate request and one over-quota request. Expected: same duplicate short-circuit and `429` daily quota after restart, because both controls are SQLite-backed.
++
++## 7. `/debug/*` Returns 404 On Missing/Wrong/Unconfigured Token
++
++```sh
++curl -i -sS "$BASE_URL/debug/generations" | sed -n '1,10p'
++curl -i -sS "$BASE_URL/debug/generations" -H "Authorization: Bearer wrong" | sed -n '1,10p'
++```
++
++Expected: `HTTP/1.1 404` with `{"error":"NOT_FOUND"}`. With `ANKY_ADMIN_KEY` unset, even a bearer value returns the same 404.
+diff --git a/scripts/sign-curl-headers.ts b/scripts/sign-curl-headers.ts
+new file mode 100644
+index 0000000..1c13fb3
+--- /dev/null
++++ b/scripts/sign-curl-headers.ts
+@@ -0,0 +1,48 @@
++import { readFileSync } from "node:fs";
++import { signAnkyMirrorRequest } from "@anky/protocol";
++
++const args = Bun.argv.slice(2);
++
++function valueAfter(flag: string): string | undefined {
++  const index = args.indexOf(flag);
++  if (index < 0) return undefined;
++  return args[index + 1];
++}
++
++const file = valueAfter("--file");
++const text = valueAfter("--text");
++const contentType = valueAfter("--content-type") ?? "application/json";
++const intent = valueAfter("--intent");
++const mnemonic =
++  process.env.ANKY_ACCEPTANCE_MNEMONIC ??
++  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
++
++if ((file ? 1 : 0) + (text ? 1 : 0) !== 1) {
++  console.error("usage: bun scripts/sign-curl-headers.ts (--file PATH | --text BODY) [--content-type TYPE] [--intent reflection|nudge]");
++  process.exit(2);
++}
++
++const body = file ? new Uint8Array(readFileSync(file)) : new TextEncoder().encode(text);
++const requestTime = String(Date.now());
++const signed = await signAnkyMirrorRequest({
++  mnemonic,
++  chainId: 8453,
++  body,
++  requestTime,
++  client: "other",
++});
++
++const headers: Record<string, string> = {
++  "Content-Type": contentType,
++  "X-Anky-Identity-Version": signed.identity.identityVersion,
++  "X-Anky-Account": signed.identity.accountId,
++  "X-Anky-Signature-Type": "eip712",
++  "X-Anky-Signature": signed.signature,
++  "X-Anky-Request-Time": requestTime,
++  "X-Anky-Client": "other",
++};
++if (intent) headers["X-Anky-Intent"] = intent;
++
++for (const [key, value] of Object.entries(headers)) {
++  console.log(`-H ${JSON.stringify(`${key}: ${value}`)}`);
++}

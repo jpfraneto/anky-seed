@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reveal copy added by the subscription-era port (reflection veil replaces
+  the credits sheet). Verbatim from iOS RevealView / AnkyCopyRegistry.
+
+  translatable="false" until the localization workstream (PARITY WS9) adds
+  all six locales — flip the attribute when values-es/fr/de/hi/zh-rCN gain
+  these keys.
+-->
+<resources>
+    <!-- Bottom CTA for a veiled (free) session — opens the paywall. -->
+    <string name="reveal_see_what_anky_saw" translatable="false">SEE WHAT ANKY SAW</string>
+    <!-- Quiet line when the server refuses for lack of entitlement. -->
+    <string name="reveal_subscription_opens_reflections" translatable="false">Reflections open with the subscription. Writing is still free.</string>
+</resources>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Write Before You Scroll gate runtime (WS2). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Special-access permission granted by the user in Settings → Usage access;
+         Android's Screen Time authorization. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Relock alarm at unlockedUntil (belt-and-braces with the watcher tick). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- The iOS shield survives reboot because the OS owns it; Android re-arms itself. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Exemption that lets a foreground service start the shield activity over
+         the blocked app on Android 10+ (background-activity-launch rules). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- GateSetup's "OEM reality" step: ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Launcher-app visibility for the blocked-app picker. Deliberately
+         intent-scoped instead of QUERY_ALL_PACKAGES (Play-policy safer):
+         the picker only needs apps a launcher could open. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".AnkyApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:theme="@style/Theme.Anky">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <receiver
+            android:name=".core.notifications.DailyReminderReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="painting"
+                    android:scheme="anky" />
+                <data
+                    android:host="write"
+                    android:scheme="anky" />
+            </intent-filter>
+        </activity>
+
+        <!-- The door: full-screen shield over a blocked app. Own task,
+             invisible to recents, never kept in history — back goes home. -->
+        <activity
+            android:name=".feature.gate.ShieldActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:screenOrientation="portrait"
+            android:taskAffinity="inc.anky.android.gate.shield" />
+
+        <!-- The watcher: Android's ManagedSettings + DeviceActivityMonitor.
+             specialUse: user-enabled app blocker (no dataSync/mediaPlayback/etc.
+             type fits a digital-wellbeing watcher; see WIRING-gate-runtime.md). -->
+        <service
+            android:name=".core.gate.runtime.GateWatcherService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="@string/gate_fgs_special_use_explanation" />
+        </service>
+
+        <!-- Relock alarm target (AlarmManager at unlockedUntil). -->
+        <receiver
+            android:name=".core.gate.runtime.RelockReceiver"
+            android:exported="false" />
+
+        <!-- Re-arm the gate after reboot (alarms and services do not survive it). -->
+        <receiver
+            android:name=".core.gate.runtime.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

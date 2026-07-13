@@ -1,0 +1,1553 @@
+diff --git a/apps/ios/AUDIT_NOTES.md b/apps/ios/AUDIT_NOTES.md
+index 5d1f778..529b620 100644
+--- a/apps/ios/AUDIT_NOTES.md
++++ b/apps/ios/AUDIT_NOTES.md
+@@ -16,13 +16,13 @@ Format: one finding per line — `[SEVERITY] area — finding (evidence) — why
+ - [RISK] purchases — Ask to Buy (paymentPendingError) falls into generic failure branch with "couldn't finish that / nothing was charged" copy (EntitlementStore.swift:150-169) — pending parental approval reported as failure; heals via customerInfoStream but interim copy is false.
+ - [RISK] onboarding — kill/relaunch anywhere mid-flow restarts at screen 1; `anky.onboardingLastScreen` is written (OnboardingView.swift:93,96) but never read to resume; worst case: user buys trial at screen 10, kills at 11, replays 1-9 and may see paywall again until RC cache loads.
+ - [RISK] Screen Time — OS-level denial leaves GateSetupView repeating "Allow Screen Time" with no denied-state copy or Settings deep link (denied copy exists only in debug panel, WriteBeforeScrollSpikeViewModel.swift:46); "later" link prevents hard stall but the core product is silently unconfigurable.
+-- [RISK] trial — reminder promised on paywall ("I'll remind you before your trial ends") is scheduled without checking notification authorization (LocalNotificationScheduler.swift:45-63); with notifications denied it never fires → silent $88 conversion after "No surprises."
++- [RISK] trial — reminder promised on paywall ("I'll remind you before your trial ends") is scheduled without checking notification authorization (LocalNotificationScheduler.swift:45-63); with notifications denied it never fires → silent yearly conversion after "No surprises."
+ - [RISK] iCloud restore — restores archives + identity but never sets `anky.onboardingCompleted` (only written in AppRoot completeOnboarding) — returning veteran replays full onboarding incl. hard paywall with their restored archive captive behind it.
+ - [RISK] offline entitled user, new device — everything fails closed with no "will reappear when online" messaging; veils + silent paywall CTA (Blocker above) compound.
+ - [RISK] restore purchases — zero feedback on failure or nothing-to-restore, both on paywall (PaywallView.swift:474-482) and Settings (AnkySettingsView.swift:142-145); errors swallowed with `try?` (EntitlementStore.swift:175).
+ - [OBS] lapse behavior verified as veils not lockout; archive stays reachable (no LapsedPaywallScreen exists; RevealView.swift:128-135 veils only reflection; archive tab has no gate).
+ - [OBS] backend never blocks onboarding/purchase — identify + funnel are best-effort fire-and-forget (EntitlementStore.swift:204-213, LevelSyncClient.swift:239-260); contract matches backend/subscription/routes.ts:96-120.
+-- [OBS] hardcoded fallback prices "$88"/"$11.99" on paywall (PaywallView.swift:190-196) — wrong for non-US storefronts when offerings haven't loaded.
++- [OBS] hardcoded fallback prices on paywall (PaywallView.swift:190-196) — wrong for non-US storefronts when offerings haven't loaded.
+ - [OBS] trial detection sound (periodType-based, EntitlementStore.swift:68-70); Live Activity gated on real product + weekly cap (TrialActivityController.swift:16-57).
+ - [OBS] screens 1-9,11 have no dead ends (local-only; deny paths advance with hints); camera optional, usage strings present (project.pbxproj:1451-1452,1489-1490).
+ - [OBS] `MirrorConfiguration.currentBaseURL()` honors a UserDefaults override before prod URL (MirrorConfiguration.swift:7-9) — sweep QA devices for stale overrides.
+@@ -37,7 +37,7 @@ Format: one finding per line — `[SEVERITY] area — finding (evidence) — why
+ - [RISK] NSFaceIDUsageDescription is a philosophy statement, not a purpose ("Privacy is the most important feature of Anky.", pbxproj:1452) — known rejection trigger.
+ - [RISK] privacy manifests — app has PrivacyInfo.xcprivacy; the 4 extension bundles have none while compiling UserDefaults(suiteName:) (AppGroupStorage.swift:7), a required-reason API.
+ - [RISK] ITSAppUsesNonExemptEncryption unset anywhere — export compliance stall on every upload; set NO (standard-exempt crypto).
+-- [RISK] paywall pre-purchase trial path shows only "No payment due today." (PaywallView.swift:169-172) — add "then $88/year, auto-renews until cancelled" under CTA; 3.1.2 ASC metadata is operator task.
++- [RISK] paywall pre-purchase trial path shows only "No payment due today." (PaywallView.swift:169-172) — add yearly price and auto-renewal copy under CTA; 3.1.2 ASC metadata is operator task.
+ - [OBS] FamilyControls usage is correctly .individual, no parental-control language; shield bridge is compliant notification-only pattern — include an App Review note explaining the flow.
+ - [OBS] paywall UI otherwise has required elements: price+duration, renewal disclosure, Restore/Terms/Privacy footer (PaywallView.swift:302-308,216-218,390-400).
+ - [OBS] entitlements clean/consistent (app group in all 5, iCloud genuinely used); versions 1.2.3(48) consistent across all 5 targets; TARGETED_DEVICE_FAMILY "1,2" — iPad ships, reviewers test iPad first, layouts unverified.
+@@ -105,7 +105,7 @@ Format: one finding per line — `[SEVERITY] area — finding (evidence) — why
+ - [RESOLVED] emergency breath — `AnkyCopyRegistry.emergencyLink` ("emergency? open without writing") now rendered in PaintingHomeView chrome whenever phase==.ready && signal.isShieldActive && !signal.isCurrentlyUnlocked, wired to onEmergency → EmergencyBreathView (zIndex 95) → rest-of-day grant; the 10-min pending-intent path remains as a secondary route.
+ - [RESOLVED] paywall silent no-ops — EntitlementStore: `loadPackages` failure sets visible `offeringsErrorLine` + PaywallView renders it with a Try-again control; `purchase()` surfaces store-unreachable instead of silent return; `ensureConfigured()` retries RevenueCat configuration at purchase/restore/redeem time when launch-time identify failed; `restore()` always reports (restored / nothing to restore / failed) on paywall and Settings, with progress state; missing-plan tap surfaces a line instead of no-op.
+ - [RESOLVED 2026-07-06, option C] free-tier target moment (Fix 7) — verified: free users CAN be shielded (GateSetupView reachable without entitlement via AppRoot:650/1355; ScreenTimeShieldController has zero entitlement checks; reconcileShield re-arms every foreground; nothing disarms on lapse). Per instructions this is the undecided product fork — moment screen NOT built; needs a product decision (options: subscriber-only gate arming, free daily-unlock, or upsell moment + keep shield). → DECIDED same day: keep mechanics + upsell moment screen; built in the follow-up pass (see "Option-C pass" section below).
+-- [RESOLVED] legal docs — Terms/Privacy regenerated in all 6 locales (en by hand, de/es/fr/hi/zh-Hans by per-locale agents, each verified by grep): credit economy and DeviceCheck removed, Terms §10 now "Auto-Renewing Subscriptions" ($88/yr + 3-day trial, $11.99/mo, renewal, 24h cancel window, restore, delete-app note), Privacy §4/§6/§8/§9/§10/§11/§12 rewritten to RevenueCat-subscription reality; only "credit card" mentions remain by design. Paywall trial CTA payment line now reads "No payment due today. Then $88/year — auto-renews until you cancel." (PaywallView.paymentLine, localized price).
++- [RESOLVED] legal docs — Terms/Privacy regenerated in all 6 locales (en by hand, de/es/fr/hi/zh-Hans by per-locale agents, each verified by grep): former virtual-currency economy and DeviceCheck removed, Terms §10 now "Auto-Renewing Subscriptions" (yearly + 3-day trial, monthly, renewal, 24h cancel window, restore, delete-app note), Privacy §4/§6/§8/§9/§10/§11/§12 rewritten to RevenueCat-subscription reality; only "credit card" mentions remain by design. Paywall trial CTA payment line now uses localized yearly price and auto-renewal copy.
+ - [RESOLVED] archive plist — cause: 1.2.1(46) was archived BEFORE the 2026-07-05 pbxproj gained the INFOPLIST_KEY_* settings and the Anky/Info.plist merge; current config verified to emit all keys (URL types, Live Activities, camera/mic/speech/photo strings, MinimumOSVersion 16.0). Regression gate added: `scripts/verify-archive-plist.sh <archive|app>` diffs the archive plist against pbxproj source truth (version/build/min-OS live-read) + required keys + extension version lockstep; proven red on the 1.2.1 archive and used on the 1.2.4 verification archive. Also: NSFaceIDUsageDescription rewritten as a purpose statement, and ITSAppUsesNonExemptEncryption=false added to Anky/Info.plist (export compliance).
+ - [RESOLVED] identity minimum-safe set — (a) BIP39 checksum validated on import (`RecoveryPhrase(text:validatingChecksum:)`, rejects with dedicated UI error; stored phrases keep loading un-validated so pre-fix imports can't brick); (b) import stages the incoming phrase, snapshots the current phrase to `writer-base-eoa-recovery-phrase-previous-v1`, verifies every write before switching (never overwrite-in-place; `previousRecoveryPhraseText()` is the escape hatch); (c) `loadOrCreate` consults the synchronizable iCloud Keychain backup before minting a new wallet on fresh installs (all four mint paths route through one `adoptICloudBackupOrGenerate`). Tests: IdentitySafetyTests (7 passed; iCloud-adoption case skips under SwiftPM host without keychain entitlement — verify once on device).
+ 
+diff --git a/apps/ios/Anky.xcodeproj/project.pbxproj b/apps/ios/Anky.xcodeproj/project.pbxproj
+index 97aaa76..fb74d18 100644
+--- a/apps/ios/Anky.xcodeproj/project.pbxproj
++++ b/apps/ios/Anky.xcodeproj/project.pbxproj
+@@ -40,6 +40,7 @@
+ 		8A0000030000000000000001 /* SessionIndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001001 /* SessionIndexStore.swift */; };
+ 		8A0000030000000000000002 /* AppOpenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001002 /* AppOpenStore.swift */; };
+ 		8A0000030000000000000003 /* AnkyverseCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001003 /* AnkyverseCalendar.swift */; };
++		8A0000C10000000000000001 /* JourneyAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C10000000000001001 /* JourneyAnchor.swift */; };
+ 		8A0000030000000000000004 /* BiometricAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001004 /* BiometricAuthClient.swift */; };
+ 		8A0000030000000000000005 /* LocalNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001005 /* LocalNotificationScheduler.swift */; };
+ 		8A0000030000000000000006 /* RecoveryPhrase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001006 /* RecoveryPhrase.swift */; };
+@@ -87,6 +88,7 @@
+ 		8A000016000000000000000C /* WriteBeforeScrollAppRouteResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100C /* WriteBeforeScrollAppRouteResolver.swift */; };
+ 		8A0000170000000000000001 /* AnkyWriteBeforeScrollShieldAction.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000170000000000001003 /* AnkyWriteBeforeScrollShieldAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+ 		8A0000170000000000000002 /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000170000000000001001 /* ShieldActionExtension.swift */; };
++		8A0000170000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000170000000000001005 /* PrivacyInfo.xcprivacy */; };
+ 		8A0000170000000000000003 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
+ 		8A0000170000000000000004 /* BlockedAppSelectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001005 /* BlockedAppSelectionStore.swift */; };
+ 		8A0000170000000000000005 /* WriteBeforeScrollScreenTimeStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001001 /* WriteBeforeScrollScreenTimeStateStore.swift */; };
+@@ -99,9 +101,11 @@
+ 		8A0000180000000000000004 /* WriteBeforeScrollEventLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001007 /* WriteBeforeScrollEventLogStore.swift */; };
+ 		8A0000180000000000000005 /* WriteBeforeScrollLaunchBridgeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100A /* WriteBeforeScrollLaunchBridgeStore.swift */; };
+ 		8A0000180000000000000006 /* WriteBeforeScrollLaunchBridgeModeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100B /* WriteBeforeScrollLaunchBridgeModeResolver.swift */; };
+-		8A0000180000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001005 /* Assets.xcassets */; };
++		8A0000180000000000000008 /* anky_shield_door_icon.webp in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001006 /* anky_shield_door_icon.webp */; };
++		8A0000180000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001007 /* PrivacyInfo.xcprivacy */; };
+ 		8A0000190000000000000001 /* AnkyWriteBeforeScrollMonitor.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+ 		8A0000190000000000000002 /* DeviceActivityMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */; };
++		8A000019000000000000000B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001005 /* PrivacyInfo.xcprivacy */; };
+ 		8A0000190000000000000003 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
+ 		8A0000190000000000000004 /* BlockedAppSelectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001005 /* BlockedAppSelectionStore.swift */; };
+ 		8A0000190000000000000005 /* WriteBeforeScrollScreenTimeStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000160000000000001001 /* WriteBeforeScrollScreenTimeStateStore.swift */; };
+@@ -114,7 +118,6 @@
+ 		8A0000A10000000000000002 /* WritingAnchorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001002 /* WritingAnchorStore.swift */; };
+ 		8A0000A10000000000000003 /* GateSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001003 /* GateSetupView.swift */; };
+ 		8A0000A10000000000000004 /* SignalState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001004 /* SignalState.swift */; };
+-		8A0000A10000000000000005 /* GateHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001005 /* GateHomeView.swift */; };
+ 		8A0000A10000000000000006 /* EightDayGateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001006 /* EightDayGateStore.swift */; };
+ 		8A0000A10000000000000007 /* DailyTargetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001007 /* DailyTargetStore.swift */; };
+ 		8A0000A10000000000000008 /* QuickPassStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A10000000000001008 /* QuickPassStore.swift */; };
+@@ -171,6 +174,8 @@
+ 		8A0000D00000000000000015 /* TrialActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A40000000000001005 /* TrialActivityAttributes.swift */; };
+ 		8A0000D00000000000000016 /* StarterPainting in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000100A /* StarterPainting */; };
+ 		8A0000D00000000000000017 /* AnkyCopyRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001018 /* AnkyCopyRegistry.swift */; };
++		8A0000E00000000000000001 /* DraftRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E00000000000001001 /* DraftRecoveryTests.swift */; };
++		8A0000E00000000000000002 /* JourneyAnchorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E00000000000001002 /* JourneyAnchorTests.swift */; };
+ /* End PBXBuildFile section */
+ 
+ /* Begin PBXContainerItemProxy section */
+@@ -202,6 +207,13 @@
+ 			remoteGlobalIDString = 8A0000D00000000000004001;
+ 			remoteInfo = AnkyGlanceWidgets;
+ 		};
++		8A0000E00000000000006001 /* PBXContainerItemProxy */ = {
++			isa = PBXContainerItemProxy;
++			containerPortal = 8A0000010000000000006001 /* Project object */;
++			proxyType = 1;
++			remoteGlobalIDString = 8A0000010000000000004001;
++			remoteInfo = Anky;
++		};
+ /* End PBXContainerItemProxy section */
+ 
+ /* Begin PBXCopyFilesBuildPhase section */
+@@ -256,6 +268,7 @@
+ 		8A0000030000000000001001 /* SessionIndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionIndexStore.swift; sourceTree = "<group>"; };
+ 		8A0000030000000000001002 /* AppOpenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOpenStore.swift; sourceTree = "<group>"; };
+ 		8A0000030000000000001003 /* AnkyverseCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyverseCalendar.swift; sourceTree = "<group>"; };
++		8A0000C10000000000001001 /* JourneyAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyAnchor.swift; sourceTree = "<group>"; };
+ 		8A0000030000000000001004 /* BiometricAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthClient.swift; sourceTree = "<group>"; };
+ 		8A0000030000000000001005 /* LocalNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationScheduler.swift; sourceTree = "<group>"; };
+ 		8A0000030000000000001006 /* RecoveryPhrase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPhrase.swift; sourceTree = "<group>"; };
+@@ -318,20 +331,22 @@
+ 		8A0000170000000000001002 /* AnkyWriteBeforeScrollShieldAction.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyWriteBeforeScrollShieldAction.entitlements; sourceTree = "<group>"; };
+ 		8A0000170000000000001003 /* AnkyWriteBeforeScrollShieldAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyWriteBeforeScrollShieldAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		8A0000170000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
++		8A0000170000000000001005 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+ 		8A0000180000000000001001 /* ShieldConfigurationExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShieldConfigurationExtension.swift; sourceTree = "<group>"; };
+ 		8A0000180000000000001002 /* AnkyWriteBeforeScrollShieldConfiguration.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyWriteBeforeScrollShieldConfiguration.entitlements; sourceTree = "<group>"; };
+ 		8A0000180000000000001003 /* AnkyWriteBeforeScrollShieldConfiguration.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyWriteBeforeScrollShieldConfiguration.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		8A0000180000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+-		8A0000180000000000001005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
++		8A0000180000000000001006 /* anky_shield_door_icon.webp */ = {isa = PBXFileReference; lastKnownFileType = file; path = anky_shield_door_icon.webp; sourceTree = "<group>"; };
++		8A0000180000000000001007 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+ 		8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActivityMonitorExtension.swift; sourceTree = "<group>"; };
+ 		8A0000190000000000001002 /* AnkyWriteBeforeScrollMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyWriteBeforeScrollMonitor.entitlements; sourceTree = "<group>"; };
+ 		8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnkyWriteBeforeScrollMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		8A0000190000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
++		8A0000190000000000001005 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+ 		8A0000A10000000000001001 /* FirstGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstGateStore.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001002 /* WritingAnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingAnchorStore.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001003 /* GateSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateSetupView.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001004 /* SignalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalState.swift; sourceTree = "<group>"; };
+-		8A0000A10000000000001005 /* GateHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GateHomeView.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001006 /* EightDayGateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EightDayGateStore.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001007 /* DailyTargetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTargetStore.swift; sourceTree = "<group>"; };
+ 		8A0000A10000000000001008 /* QuickPassStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickPassStore.swift; sourceTree = "<group>"; };
+@@ -383,6 +398,9 @@
+ 		8A0000D00000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+ 		8A0000D00000000000001005 /* PaintingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintingWidget.swift; sourceTree = "<group>"; };
+ 		8A0000D00000000000001006 /* TrialLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialLiveActivity.swift; sourceTree = "<group>"; };
++		8A0000E00000000000001001 /* DraftRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftRecoveryTests.swift; sourceTree = "<group>"; };
++		8A0000E00000000000001002 /* JourneyAnchorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyAnchorTests.swift; sourceTree = "<group>"; };
++		8A0000E00000000000001003 /* AnkyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFrameworksBuildPhase section */
+@@ -423,6 +441,13 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
++		8A0000E00000000000002001 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
+ /* End PBXFrameworksBuildPhase section */
+ 
+ /* Begin PBXGroup section */
+@@ -434,6 +459,7 @@
+ 				8A0000180000000000003001 /* AnkyWriteBeforeScrollShieldConfiguration */,
+ 				8A0000190000000000003001 /* AnkyWriteBeforeScrollMonitor */,
+ 				8A0000D00000000000003001 /* AnkyGlanceWidgets */,
++				8A0000E00000000000003001 /* AnkyTests */,
+ 				8A0000A40000000000001004 /* storekit */,
+ 				8A0000010000000000003003 /* Products */,
+ 			);
+@@ -467,6 +493,7 @@
+ 				8A0000180000000000001003 /* AnkyWriteBeforeScrollShieldConfiguration.appex */,
+ 				8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */,
+ 				8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */,
++				8A0000E00000000000001003 /* AnkyTests.xctest */,
+ 			);
+ 			name = Products;
+ 			sourceTree = "<group>";
+@@ -548,6 +575,7 @@
+ 				8A0000030000000000001001 /* SessionIndexStore.swift */,
+ 				8A0000030000000000001002 /* AppOpenStore.swift */,
+ 				8A0000030000000000001003 /* AnkyverseCalendar.swift */,
++				8A0000C10000000000001001 /* JourneyAnchor.swift */,
+ 				8A0000030000000000001008 /* BackupImporter.swift */,
+ 				8A00000C0000000000001001 /* ICloudBackupStore.swift */,
+ 				8A0000140000000000001001 /* RawCheckInStore.swift */,
+@@ -706,6 +734,7 @@
+ 			children = (
+ 				8A0000170000000000001001 /* ShieldActionExtension.swift */,
+ 				8A0000170000000000001004 /* Info.plist */,
++				8A0000170000000000001005 /* PrivacyInfo.xcprivacy */,
+ 				8A0000170000000000001002 /* AnkyWriteBeforeScrollShieldAction.entitlements */,
+ 			);
+ 			path = AnkyWriteBeforeScrollShieldAction;
+@@ -715,8 +744,9 @@
+ 			isa = PBXGroup;
+ 			children = (
+ 				8A0000180000000000001001 /* ShieldConfigurationExtension.swift */,
+-				8A0000180000000000001005 /* Assets.xcassets */,
++				8A0000180000000000001006 /* anky_shield_door_icon.webp */,
+ 				8A0000180000000000001004 /* Info.plist */,
++				8A0000180000000000001007 /* PrivacyInfo.xcprivacy */,
+ 				8A0000180000000000001002 /* AnkyWriteBeforeScrollShieldConfiguration.entitlements */,
+ 			);
+ 			path = AnkyWriteBeforeScrollShieldConfiguration;
+@@ -727,6 +757,7 @@
+ 			children = (
+ 				8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */,
+ 				8A0000190000000000001004 /* Info.plist */,
++				8A0000190000000000001005 /* PrivacyInfo.xcprivacy */,
+ 				8A0000190000000000001002 /* AnkyWriteBeforeScrollMonitor.entitlements */,
+ 			);
+ 			path = AnkyWriteBeforeScrollMonitor;
+@@ -735,7 +766,6 @@
+ 		8A0000A10000000000003001 /* Gate */ = {
+ 			isa = PBXGroup;
+ 			children = (
+-				8A0000A10000000000001005 /* GateHomeView.swift */,
+ 				8A0000A1000000000000100A /* AdaptiveTargetOfferView.swift */,
+ 				8A0000A1000000000000100B /* EmergencyBreathView.swift */,
+ 			);
+@@ -818,6 +848,15 @@
+ 			path = AnkyGlanceWidgets;
+ 			sourceTree = "<group>";
+ 		};
++		8A0000E00000000000003001 /* AnkyTests */ = {
++			isa = PBXGroup;
++			children = (
++				8A0000E00000000000001001 /* DraftRecoveryTests.swift */,
++				8A0000E00000000000001002 /* JourneyAnchorTests.swift */,
++			);
++			path = Anky/Tests;
++			sourceTree = "<group>";
++		};
+ /* End PBXGroup section */
+ 
+ /* Begin PBXNativeTarget section */
+@@ -924,6 +963,26 @@
+ 			productReference = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */;
+ 			productType = "com.apple.product-type.app-extension";
+ 		};
++		8A0000E00000000000004001 /* AnkyTests */ = {
++			isa = PBXNativeTarget;
++			buildConfigurationList = 8A0000E00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyTests" */;
++			buildPhases = (
++				8A0000E00000000000005001 /* Sources */,
++				8A0000E00000000000002001 /* Frameworks */,
++				8A0000E00000000000005002 /* Resources */,
++			);
++			buildRules = (
++			);
++			dependencies = (
++				8A0000E00000000000006002 /* PBXTargetDependency */,
++			);
++			name = AnkyTests;
++			packageProductDependencies = (
++			);
++			productName = AnkyTests;
++			productReference = 8A0000E00000000000001003 /* AnkyTests.xctest */;
++			productType = "com.apple.product-type.bundle.unit-test";
++		};
+ /* End PBXNativeTarget section */
+ 
+ /* Begin PBXProject section */
+@@ -957,6 +1016,9 @@
+ 					8A0000190000000000004001 = {
+ 						CreatedOnToolsVersion = 16.2;
+ 					};
++					8A0000E00000000000004001 = {
++						CreatedOnToolsVersion = 16.2;
++					};
+ 				};
+ 			};
+ 			buildConfigurationList = 8A0000010000000000007001 /* Build configuration list for PBXProject "Anky" */;
+@@ -986,6 +1048,7 @@
+ 				8A0000180000000000004001 /* AnkyWriteBeforeScrollShieldConfiguration */,
+ 				8A0000190000000000004001 /* AnkyWriteBeforeScrollMonitor */,
+ 				8A0000D00000000000004001 /* AnkyGlanceWidgets */,
++				8A0000E00000000000004001 /* AnkyTests */,
+ 			);
+ 		};
+ /* End PBXProject section */
+@@ -1009,6 +1072,7 @@
+ 			isa = PBXResourcesBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
++				8A0000170000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+@@ -1016,7 +1080,8 @@
+ 			isa = PBXResourcesBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+-				8A0000180000000000000007 /* Assets.xcassets in Resources */,
++				8A0000180000000000000008 /* anky_shield_door_icon.webp in Resources */,
++				8A0000180000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+@@ -1024,6 +1089,7 @@
+ 			isa = PBXResourcesBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
++				8A000019000000000000000B /* PrivacyInfo.xcprivacy in Resources */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+@@ -1035,6 +1101,13 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
++		8A0000E00000000000005002 /* Resources */ = {
++			isa = PBXResourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
+ /* End PBXResourcesBuildPhase section */
+ 
+ /* Begin PBXShellScriptBuildPhase section */
+@@ -1135,6 +1208,7 @@
+ 				8A0000030000000000000001 /* SessionIndexStore.swift in Sources */,
+ 				8A0000030000000000000002 /* AppOpenStore.swift in Sources */,
+ 				8A0000030000000000000003 /* AnkyverseCalendar.swift in Sources */,
++				8A0000C10000000000000001 /* JourneyAnchor.swift in Sources */,
+ 				8A0000030000000000000004 /* BiometricAuthClient.swift in Sources */,
+ 				8A0000030000000000000005 /* LocalNotificationScheduler.swift in Sources */,
+ 				8A0000030000000000000006 /* RecoveryPhrase.swift in Sources */,
+@@ -1163,7 +1237,6 @@
+ 				8A0000A10000000000000002 /* WritingAnchorStore.swift in Sources */,
+ 				8A0000A10000000000000003 /* GateSetupView.swift in Sources */,
+ 				8A0000A10000000000000004 /* SignalState.swift in Sources */,
+-				8A0000A10000000000000005 /* GateHomeView.swift in Sources */,
+ 				8A0000A10000000000000006 /* EightDayGateStore.swift in Sources */,
+ 				8A0000A10000000000000007 /* DailyTargetStore.swift in Sources */,
+ 				8A0000A10000000000000008 /* QuickPassStore.swift in Sources */,
+@@ -1249,6 +1322,15 @@
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
++		8A0000E00000000000005001 /* Sources */ = {
++			isa = PBXSourcesBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				8A0000E00000000000000001 /* DraftRecoveryTests.swift in Sources */,
++				8A0000E00000000000000002 /* JourneyAnchorTests.swift in Sources */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
+ /* End PBXSourcesBuildPhase section */
+ 
+ /* Begin PBXTargetDependency section */
+@@ -1272,6 +1354,11 @@
+ 			target = 8A0000D00000000000004001 /* AnkyGlanceWidgets */;
+ 			targetProxy = 8A0000D00000000000006001 /* PBXContainerItemProxy */;
+ 		};
++		8A0000E00000000000006002 /* PBXTargetDependency */ = {
++			isa = PBXTargetDependency;
++			target = 8A0000010000000000004001 /* Anky */;
++			targetProxy = 8A0000E00000000000006001 /* PBXContainerItemProxy */;
++		};
+ /* End PBXTargetDependency section */
+ 
+ /* Begin PBXVariantGroup section */
+@@ -1439,7 +1526,7 @@
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_ASSET_PATHS = "";
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				ENABLE_PREVIEWS = YES;
+@@ -1459,7 +1546,7 @@
+ 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+ 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+@@ -1477,7 +1564,7 @@
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_ASSET_PATHS = "";
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				ENABLE_PREVIEWS = YES;
+@@ -1497,7 +1584,7 @@
+ 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+ 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+@@ -1514,12 +1601,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1536,12 +1623,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1558,12 +1645,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1580,12 +1667,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1602,12 +1689,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1624,12 +1711,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1646,12 +1733,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1668,12 +1755,12 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 50;
++				CURRENT_PROJECT_VERSION = 53;
+ 				DEVELOPMENT_TEAM = 84V63LKV45;
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+-				MARKETING_VERSION = 1.2.4;
++				MARKETING_VERSION = 1.3.0;
+ 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SKIP_INSTALL = YES;
+@@ -1684,6 +1771,46 @@
+ 			};
+ 			name = Release;
+ 		};
++		8A0000E00000000000008001 /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 53;
++				DEVELOPMENT_TEAM = 84V63LKV45;
++				GENERATE_INFOPLIST_FILE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
++				MARKETING_VERSION = 1.3.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SWIFT_VERSION = 5.0;
++				TARGETED_DEVICE_FAMILY = "1,2";
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anky.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Anky";
++			};
++			name = Debug;
++		};
++		8A0000E00000000000008002 /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 53;
++				DEVELOPMENT_TEAM = 84V63LKV45;
++				GENERATE_INFOPLIST_FILE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
++				MARKETING_VERSION = 1.3.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
++				SUPPORTS_MACCATALYST = NO;
++				SWIFT_VERSION = 5.0;
++				TARGETED_DEVICE_FAMILY = "1,2";
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anky.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Anky";
++			};
++			name = Release;
++		};
+ /* End XCBuildConfiguration section */
+ 
+ /* Begin XCConfigurationList section */
+@@ -1741,6 +1868,15 @@
+ 			defaultConfigurationIsVisible = 0;
+ 			defaultConfigurationName = Release;
+ 		};
++		8A0000E00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyTests" */ = {
++			isa = XCConfigurationList;
++			buildConfigurations = (
++				8A0000E00000000000008001 /* Debug */,
++				8A0000E00000000000008002 /* Release */,
++			);
++			defaultConfigurationIsVisible = 0;
++			defaultConfigurationName = Release;
++		};
+ /* End XCConfigurationList section */
+ 
+ /* Begin XCRemoteSwiftPackageReference section */
+diff --git a/apps/ios/Anky.xcodeproj/xcshareddata/xcschemes/Anky.xcscheme b/apps/ios/Anky.xcodeproj/xcshareddata/xcschemes/Anky.xcscheme
+index d62b75f..7a3a80e 100644
+--- a/apps/ios/Anky.xcodeproj/xcshareddata/xcschemes/Anky.xcscheme
++++ b/apps/ios/Anky.xcodeproj/xcshareddata/xcschemes/Anky.xcscheme
+@@ -21,6 +21,20 @@
+                ReferencedContainer = "container:Anky.xcodeproj">
+             </BuildableReference>
+          </BuildActionEntry>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "NO"
++            buildForProfiling = "NO"
++            buildForArchiving = "NO"
++            buildForAnalyzing = "NO">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "8A0000E00000000000004001"
++               BuildableName = "AnkyTests.xctest"
++               BlueprintName = "AnkyTests"
++               ReferencedContainer = "container:Anky.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
+       </BuildActionEntries>
+    </BuildAction>
+    <TestAction
+@@ -29,6 +43,17 @@
+       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+       shouldUseLaunchSchemeArgsEnv = "YES">
+       <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "8A0000E00000000000004001"
++               BuildableName = "AnkyTests.xctest"
++               BlueprintName = "AnkyTests"
++               ReferencedContainer = "container:Anky.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
+       </Testables>
+    </TestAction>
+    <LaunchAction
+diff --git a/apps/ios/Anky/Core/Storage/ActiveDraftStore.swift b/apps/ios/Anky/Core/Storage/ActiveDraftStore.swift
+index 73afb31..30700e6 100644
+--- a/apps/ios/Anky/Core/Storage/ActiveDraftStore.swift
++++ b/apps/ios/Anky/Core/Storage/ActiveDraftStore.swift
+@@ -3,65 +3,100 @@ import Foundation
+ import AnkyProtocol
+ #endif
+ 
++struct ActiveDraftRecovery: Equatable {
++    let text: String
++    let createdAt: Date
++    let durationMs: Int64
++    let wordCount: Int
++}
++
+ /// Persistence for the in-progress (unsealed) writing session.
+ ///
+-/// Current semantics — read before changing:
+-/// - **In-process resume works**: the live session lives in
+-///   `WriteViewModel.sessionEngine` (a `@StateObject` on AppRoot), so
+-///   navigating between surfaces or backgrounding the app resumes writing
+-///   without touching this store.
+-/// - **This file is a crash artifact, not a restore feature**: it is written
+-///   on background/navigation/seal-failure, but nothing currently loads it
+-///   back into a `WritingSessionEngine` at launch. `WriteViewModel.init`
+-///   only inspects it to clear stale previous-day drafts
+-///   (`resetDotAnkyIfNeeded`).
+-/// - **Sealed `.anky` artifacts are immutable**: sealing appends the terminal
+-///   `8000` sentinel exactly once and closes the engine; a closed artifact
+-///   can be read, reflected on, and exported, but never continued.
+-/// - Future improvement (intentionally not built yet): restore an unsealed
+-///   draft into the engine after a crash/relaunch.
++/// Drafts are recoverable artifacts. Time passing must never delete them:
++/// only successful seal/archive, successful reflection terminalization, or
++/// explicit user discard may clear the file.
+ struct ActiveDraftStore {
+     let fileURL: URL
+     private let legacyFileURL: URL
++    private let quarantineDirectory: URL
+ 
+-    init(fileManager: FileManager = .default) {
+-        let base = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
++    init(fileManager: FileManager = .default, baseDirectory: URL? = nil) {
++        let base = baseDirectory ?? fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+         let directory = base.appendingPathComponent("ActiveDrafts", isDirectory: true)
+         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+         self.fileURL = directory.appendingPathComponent(LocalAnkyArchive.canonicalFileName)
++        self.quarantineDirectory = directory.appendingPathComponent("Quarantine", isDirectory: true)
++        try? fileManager.createDirectory(at: quarantineDirectory, withIntermediateDirectories: true)
+         self.legacyFileURL = base
+             .appendingPathComponent("Ankys", isDirectory: true)
+             .appendingPathComponent(LocalAnkyArchive.canonicalFileName)
+     }
+ 
+     func load() -> String? {
+-        if let draft = try? String(contentsOf: fileURL, encoding: .utf8) {
++        loadRecoverableDraft()?.text
++    }
++
++    func loadRecoverableDraft() -> ActiveDraftRecovery? {
++        if let draft = loadRecovery(from: fileURL) {
+             return draft
+         }
+ 
+-        guard let legacyDraft = try? String(contentsOf: legacyFileURL, encoding: .utf8),
+-              isOpenDraft(legacyDraft) else {
+-            return nil
+-        }
+-        return legacyDraft
++        return loadRecovery(from: legacyFileURL)
+     }
+ 
+     func save(_ text: String) {
+-        try? text.write(to: fileURL, atomically: true, encoding: .utf8)
++        let tempURL = fileURL
++            .deletingLastPathComponent()
++            .appendingPathComponent(".\(fileURL.lastPathComponent).tmp-\(UUID().uuidString)")
++        do {
++            try Data(text.utf8).write(to: tempURL, options: [.atomic])
++            if FileManager.default.fileExists(atPath: fileURL.path) {
++                _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: tempURL)
++            } else {
++                try FileManager.default.moveItem(at: tempURL, to: fileURL)
++            }
++        } catch {
++            try? FileManager.default.removeItem(at: tempURL)
++        }
+     }
+ 
+     func clear() {
+         try? FileManager.default.removeItem(at: fileURL)
+-        if let legacyDraft = try? String(contentsOf: legacyFileURL, encoding: .utf8),
+-           isOpenDraft(legacyDraft) {
++        if loadRecovery(from: legacyFileURL) != nil {
+             try? FileManager.default.removeItem(at: legacyFileURL)
+         }
+     }
+ 
+-    private func isOpenDraft(_ text: String) -> Bool {
+-        guard let parsed = try? AnkyParser.parse(text) else {
+-            return false
++    private func loadRecovery(from url: URL) -> ActiveDraftRecovery? {
++        guard FileManager.default.fileExists(atPath: url.path) else {
++            return nil
++        }
++        guard let data = try? Data(contentsOf: url),
++              let text = String(data: data, encoding: .utf8) else {
++            quarantine(url: url, raw: (try? Data(contentsOf: url)) ?? Data())
++            return nil
+         }
+-        return parsed.terminalSilenceMs == nil
++        do {
++            let parsed = try AnkyParser.parse(text)
++            guard parsed.terminalSilenceMs == nil else {
++                return nil
++            }
++            let reconstructed = AnkyReconstructor.reconstructText(parsed)
++            return ActiveDraftRecovery(
++                text: text,
++                createdAt: Date(timeIntervalSince1970: TimeInterval(parsed.startEpochMs) / 1000),
++                durationMs: AnkyDuration.durationMs(parsed),
++                wordCount: reconstructed.split { $0.isWhitespace || $0.isNewline }.count
++            )
++        } catch {
++            quarantine(url: url, raw: data)
++            return nil
++        }
++    }
++
++    private func quarantine(url: URL, raw: Data) {
++        let quarantineURL = quarantineDirectory
++            .appendingPathComponent("corrupt-\(Int(Date().timeIntervalSince1970 * 1000))-\(url.lastPathComponent)")
++        try? raw.write(to: quarantineURL, options: [.atomic])
+     }
+ }
+diff --git a/apps/ios/Anky/Features/Gate/EmergencyBreathView.swift b/apps/ios/Anky/Features/Gate/EmergencyBreathView.swift
+index db3ae6d..2b57e86 100644
+--- a/apps/ios/Anky/Features/Gate/EmergencyBreathView.swift
++++ b/apps/ios/Anky/Features/Gate/EmergencyBreathView.swift
+@@ -3,7 +3,8 @@ import SwiftUI
+ /// Phase-2 §2: the emergency door. Thirty seconds of pastel breath — Anky
+ /// breathing, watercolor veils swelling and settling, a thin gold hairline
+ /// filling. No numerals, no guilt. Completing it opens the rest of the day;
+-/// leaving cancels it with nothing owed and nothing said.
++/// leaving cancels it with nothing owed and nothing said. A skip button
++/// stands under the breath for the moments that can't wait.
+ struct EmergencyBreathView: View {
+     let onComplete: () -> Void
+     let onCancel: () -> Void
+@@ -13,6 +14,7 @@ struct EmergencyBreathView: View {
+     @Environment(\.scenePhase) private var scenePhase
+     @State private var startedAt: Date?
+     @State private var progress: Double = 0
++    @State private var didFinish = false
+ 
+     var body: some View {
+         ZStack {
+@@ -49,9 +51,9 @@ struct EmergencyBreathView: View {
+                 }
+             }
+ 
+-            VStack {
++            VStack(spacing: 0) {
+                 HStack {
+-                    Button(action: onCancel) {
++                    Button(action: cancel) {
+                         Image(systemName: "chevron.down")
+                             .font(.system(size: 15, weight: .light))
+                             .foregroundStyle(Color.ankyInkSoft.opacity(0.35))
+@@ -60,10 +62,42 @@ struct EmergencyBreathView: View {
+                     .accessibilityLabel(AnkyLocalization.ui("Cancel"))
+                     Spacer()
+                 }
++                .padding(.top, 8)
++                .padding(.leading, 12)
++
++                VStack(spacing: 10) {
++                    Text(AnkyLocalization.ui("Breathe with Anky"))
++                        .font(.system(size: 25, weight: .semibold, design: .serif))
++                        .foregroundStyle(Color.ankyInk)
++                        .multilineTextAlignment(.center)
++
++                    Text(AnkyLocalization.ui("Stay for thirty seconds of breath, and your apps open for the rest of the day."))
++                        .font(.system(size: 15, weight: .regular, design: .serif))
++                        .foregroundStyle(Color.ankyInkSoft)
++                        .multilineTextAlignment(.center)
++                        .lineSpacing(4)
++                }
++                .padding(.horizontal, 36)
++                .padding(.top, 4)
++
+                 Spacer()
++
++                Button(action: finish) {
++                    Text(AnkyLocalization.ui("Skip the breath — open my apps now"))
++                        .font(.system(size: 15, weight: .semibold))
++                        .foregroundStyle(Color.ankyInk)
++                        .lineLimit(1)
++                        .minimumScaleFactor(0.8)
++                        .padding(.horizontal, 24)
++                        .frame(minHeight: 46)
++                        .background(Color.ankyPaper.opacity(0.72), in: Capsule())
++                        .overlay(Capsule().strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
++                        .shadow(color: Color.ankyViolet.opacity(0.12), radius: 10, y: 3)
++                }
++                .buttonStyle(.plain)
++                .padding(.horizontal, 32)
++                .padding(.bottom, 26)
+             }
+-            .padding(.top, 8)
+-            .padding(.leading, 12)
+         }
+         .task {
+             // Date-anchored so a dropped frame never stretches the breath.
+@@ -73,17 +107,30 @@ struct EmergencyBreathView: View {
+                 let elapsed = Date().timeIntervalSince(start)
+                 progress = min(1, elapsed / Self.breathSeconds)
+                 if elapsed >= Self.breathSeconds {
+-                    onComplete()
++                    finish()
+                     return
+                 }
+                 try? await Task.sleep(nanoseconds: 100_000_000)
+             }
+         }
+         .onChange(of: scenePhase) { phase in
+-            // Interruption cancels — no partial credit.
++            // Interruption cancels — no partial progress.
+             if phase != .active {
+-                onCancel()
++                cancel()
+             }
+         }
+     }
++
++    /// Skip and the timer land on the same door; it opens exactly once.
++    private func finish() {
++        guard !didFinish else { return }
++        didFinish = true
++        onComplete()
++    }
++
++    private func cancel() {
++        guard !didFinish else { return }
++        didFinish = true
++        onCancel()
++    }
+ }
+diff --git a/apps/ios/Anky/Features/Write/WriteViewModel.swift b/apps/ios/Anky/Features/Write/WriteViewModel.swift
+index 1f9a848..426124f 100644
+--- a/apps/ios/Anky/Features/Write/WriteViewModel.swift
++++ b/apps/ios/Anky/Features/Write/WriteViewModel.swift
+@@ -15,7 +15,7 @@ final class WriteViewModel: ObservableObject {
+     @Published private(set) var protocolText: String = ""
+     @Published private(set) var elapsedMs: Int64 = 0
+     @Published private(set) var silenceElapsedMs: Int64 = 0
+-    @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.terminalSilenceMs
++    @Published private(set) var silenceRemainingMs: Int64 = WritingPreferencesStore().load().effectiveTerminalSilenceMs
+     @Published private(set) var lastCharacter: Character?
+     @Published private(set) var lastCharacterPulseID = UUID()
+     @Published private(set) var rejectedInputPulseID = UUID()
+@@ -73,6 +73,13 @@ final class WriteViewModel: ObservableObject {
+         isFrozen && resumesOnNextInput && sessionEngine.isStarted && !sessionEngine.isClosed && !hasReachedRitualMark
+     }
+ 
++    /// The sealed artifact a "continue writing" session came from, exposed
++    /// while the writer hasn't typed yet — the back button's way home to
++    /// the reflection screen.
++    var pendingContinuedArtifact: SavedAnky? {
++        isWaitingToResumeContinuedDraft ? continuedArtifactToReplace : nil
++    }
++
+     var canBeginNewPage: Bool {
+         isPausedOnDraft || completedArtifact != nil
+     }
+@@ -96,6 +103,7 @@ final class WriteViewModel: ObservableObject {
+     private var silenceTask: Task<Void, Never>?
+     private var tickerTask: Task<Void, Never>?
+     private var nudgeTask: Task<Void, Never>?
++    private var quickPassUnlockLineTask: Task<Void, Never>?
+     private var completion: ((SavedAnky) -> Void)?
+     private var writeBeforeScrollUnlockAvailabilityHandler: ((UnlockGrant) -> Void)?
+     private var writeBeforeScrollPassiveUnlockHandler: ((UnlockGrant) -> Void)?
+@@ -103,6 +111,7 @@ final class WriteViewModel: ObservableObject {
+     private var isClosing = false
+     private var isFrozen = false
+     private var resumesOnNextInput = false
++    private var preservesRecoveredDraftGapOnNextInput = false
+     private var continuedArtifactToReplace: SavedAnky?
+     private var errorMessageTask: Task<Void, Never>?
+     private var errorRecallExpirationDate: Date?
+@@ -124,6 +133,9 @@ final class WriteViewModel: ObservableObject {
+     private let invalidInputHaptic = UINotificationFeedbackGenerator()
+     private let nudgeStartHaptic = UIImpactFeedbackGenerator(style: .soft)
+     private let nudgeResultHaptic = UINotificationFeedbackGenerator()
++    private var terminalSilenceMs: Int64 {
++        WritingPreferencesStore().load().effectiveTerminalSilenceMs
++    }
+ 
+     init(
+         draftStore: ActiveDraftStore = ActiveDraftStore(),
+@@ -145,7 +157,6 @@ final class WriteViewModel: ObservableObject {
+         self.userDefaults = userDefaults
+         self.writeBeforeScrollUnlockStateStore = writeBeforeScrollUnlockStateStore
+         self.writeBeforeScrollUnlockOfferPolicy = writeBeforeScrollUnlockOfferPolicy
+-        resetDotAnkyIfNeeded()
+         refreshTodayCount()
+         // Adopt pre-level-system history exactly once, before any new seal.
+         levelProgressStore.backfillIfNeeded(from: sessionIndexStore.load())
+@@ -214,6 +225,9 @@ final class WriteViewModel: ObservableObject {
+ 
+         let acceptedCharacters = sessionEngine.accept(text, at: now)
+         guard !acceptedCharacters.isEmpty else {
++            // The keyboard applied this edit natively; a refusal here must
++            // still publish so the text view reconciles back to engine truth.
++            objectWillChange.send()
+             return
+         }
+ 
+@@ -244,6 +258,9 @@ final class WriteViewModel: ObservableObject {
+             at: now
+         )
+         guard !acceptedCharacters.isEmpty else {
++            // Same reconciliation contract as accept(_:): the view already
++            // holds the native edit and must be pulled back to engine truth.
++            objectWillChange.send()
+             return
+         }
+ 
+@@ -273,6 +290,8 @@ final class WriteViewModel: ObservableObject {
+         case .enter:
+             rejectedEnterCount += 1
+             showTransientError(AnkyCopyRegistry.enterMessage)
++        case .paste:
++            showTransientError(AnkyLocalization.ui("Paste is not available here."))
+         }
+         invalidInputHaptic.notificationOccurred(.warning)
+         invalidInputHaptic.prepare()
+@@ -311,9 +330,8 @@ final class WriteViewModel: ObservableObject {
+     }
+ 
+     /// Writes the unsealed session to the draft file as a crash artifact.
+-    /// This is not a cross-launch restore: nothing loads the draft back into
+-    /// the engine at launch. In-process resume works because this view model
+-    /// (and its engine) outlive surface changes. See ActiveDraftStore docs.
++    /// AppRoot checks ActiveDraftStore on launch/foreground and explicitly
++    /// asks whether to resume or discard before normal flow continues.
+     func persistOnBackground() {
+         guard sessionEngine.isStarted, !sessionEngine.isClosed else {
+             return
+@@ -362,18 +380,60 @@ final class WriteViewModel: ObservableObject {
+         clearErrorMessage()
+     }
+ 
++    @discardableResult
++    func resumeRecoveredDraft(_ recovery: ActiveDraftRecovery) -> Bool {
++        do {
++            let restoredEngine = try WritingSessionEngine(draftText: recovery.text)
++            guard !restoredEngine.isClosed else {
++                return false
++            }
++            silenceTask?.cancel()
++            tickerTask?.cancel()
++            nudgeTask?.cancel()
++
++            sessionEngine = restoredEngine
++            completedArtifact = nil
++            protocolText = sessionEngine.protocolText
++            displayedText = sessionEngine.reconstructedText
++            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
++            lastCharacter = nil
++            elapsedMs = sessionEngine.elapsedMs
++            silenceElapsedMs = 0
++            silenceRemainingMs = terminalSilenceMs
++            needsImmediateClose = false
++            isClosing = false
++            isFrozen = true
++            resumesOnNextInput = true
++            preservesRecoveredDraftGapOnNextInput = true
++            continuedArtifactToReplace = nil
++            keyboardFocusID = UUID()
++            clearErrorMessage()
++            clearNudgeMessage()
++            draftStore.save(protocolText)
++            return true
++        } catch {
++            showPersistentError(AnkyLocalization.ui("Could not recover this writing session."))
++            return false
++        }
++    }
++
+     @discardableResult
+     func continueSession(from artifact: SavedAnky) -> Bool {
+         guard !artifact.isComplete else {
+             clearCompletedSession()
+             return false
+         }
++        guard reflectionStore.load(hash: artifact.hash) == nil else {
++            showPersistentError(AnkyLocalization.ui("This writing has already been reflected."))
++            clearCompletedSession()
++            return false
++        }
+ 
+         do {
+             let draftText = LocalAnkyArchive.reopenableDraftText(from: artifact.text)
+             let restoredEngine = try WritingSessionEngine(draftText: draftText)
+             guard !restoredEngine.isClosed else {
+-                showPersistentError("This writing session cannot be continued.")
++                showPersistentError(AnkyLocalization.ui("This writing session cannot be continued."))
+                 return false
+             }
+ 
+@@ -389,11 +449,12 @@ final class WriteViewModel: ObservableObject {
+             lastCharacter = nil
+             elapsedMs = sessionEngine.elapsedMs
+             silenceElapsedMs = 0
+-            silenceRemainingMs = AnkyDuration.terminalSilenceMs
++            silenceRemainingMs = terminalSilenceMs
+             needsImmediateClose = false
+             isClosing = false
+             isFrozen = true
+             resumesOnNextInput = true
++            preservesRecoveredDraftGapOnNextInput = false
+             lastMinuteHaptic = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
+             lastAlarmHapticSecond = 0
+             keyboardFocusID = UUID()
+@@ -403,7 +464,7 @@ final class WriteViewModel: ObservableObject {
+             draftStore.save(protocolText)
+             return true
+         } catch {
+-            showPersistentError("Could not continue this writing session.")
++            showPersistentError(AnkyLocalization.ui("Could not continue this writing session."))
+             return false
+         }
+     }
+@@ -411,7 +472,7 @@ final class WriteViewModel: ObservableObject {
+     @discardableResult
+     func importAnkyArtifact(_ text: String) -> Bool {
+         guard !sessionEngine.isStarted else {
+-            showPersistentError("Finish this rhythm before opening another artifact.")
++            showPersistentError(AnkyLocalization.ui("Finish this rhythm before opening another artifact."))
+             return false
+         }
+ 
+@@ -429,10 +490,10 @@ final class WriteViewModel: ObservableObject {
+             refreshTodayCount()
+             return true
+         } catch AnkyImportError.invalidArtifact {
+-            showTransientError("i couldn't find a readable .anky in that.")
++            showTransientError(AnkyLocalization.ui("i couldn't find a readable .anky in that."))
+             return false
+         } catch {
+-            showTransientError("i couldn't open that .anky yet.")
++            showTransientError(AnkyLocalization.ui("i couldn't open that .anky yet."))
+             return false
+         }
+     }
+@@ -504,17 +565,18 @@ final class WriteViewModel: ObservableObject {
+         }
+ 
+         let silenceElapsed = Self.nowMs() - lastAcceptedMs
+-        if silenceElapsed >= AnkyDuration.terminalSilenceMs {
++        let silenceLimitMs = terminalSilenceMs
++        if silenceElapsed >= silenceLimitMs {
+             closeOrFreezeAfterSilence()
+         } else {
+-            scheduleSilenceClose(afterMs: AnkyDuration.terminalSilenceMs - silenceElapsed)
++            scheduleSilenceClose(afterMs: silenceLimitMs - silenceElapsed)
+         }
+     }
+ 
+     private func persistDraftAndScheduleSilence() {
+         protocolText = sessionEngine.protocolText
+         draftStore.save(protocolText)
+-        scheduleSilenceClose(afterMs: AnkyDuration.terminalSilenceMs)
++        scheduleSilenceClose(afterMs: terminalSilenceMs)
+     }
+ 
+     private func requestAnkyNudge(persistent: Bool = false) async {
+@@ -595,9 +657,12 @@ final class WriteViewModel: ObservableObject {
+         guard isFrozen else {
+             return
+         }
+-        sessionEngine.prepareToResume(at: now)
++        if !preservesRecoveredDraftGapOnNextInput {
++            sessionEngine.prepareToResume(at: now)
++        }
+         isFrozen = false
+         resumesOnNextInput = false
++        preservesRecoveredDraftGapOnNextInput = false
+         startTicker()
+     }
+ 
+@@ -609,12 +674,12 @@ final class WriteViewModel: ObservableObject {
+         isClosing = true
+         silenceTask?.cancel()
+         tickerTask?.cancel()
+-        sessionEngine.closeWithTerminalSilence()
++        let silenceLimitMs = terminalSilenceMs
+         protocolText = sessionEngine.protocolText
+ 
+         let validation = AnkyValidator.validate(protocolText)
+         guard validation.isValid else {
+-            showPersistentError("Could not save this .anky.")
++            showPersistentError(AnkyLocalization.ui("Could not save this .anky."))
+             draftStore.save(protocolText)
+             isClosing = false
+             return
+@@ -660,12 +725,12 @@ final class WriteViewModel: ObservableObject {
+             completedArtifact = persisted
+             isFrozen = true
+             elapsedMs = persisted.durationMs
+-            silenceElapsedMs = AnkyDuration.terminalSilenceMs
++            silenceElapsedMs = silenceLimitMs
+             silenceRemainingMs = 0
+             isClosing = false
+             completion?(persisted)
+         } catch {
+-            showPersistentError("Could not save this .anky.")
++            showPersistentError(AnkyLocalization.ui("Could not save this .anky."))
+             draftStore.save(protocolText)
+             isClosing = false
+         }
+@@ -685,7 +750,7 @@ final class WriteViewModel: ObservableObject {
+         protocolText = ""
+         elapsedMs = 0
+         silenceElapsedMs = 0
+-        silenceRemainingMs = AnkyDuration.terminalSilenceMs
++        silenceRemainingMs = terminalSilenceMs
+         lastCharacter = nil
+         lastCharacterPulseID = UUID()
+         rejectedInputPulseID = UUID()
+@@ -695,12 +760,14 @@ final class WriteViewModel: ObservableObject {
+         isClosing = false
+         isFrozen = false
+         resumesOnNextInput = false
++        preservesRecoveredDraftGapOnNextInput = false
+         continuedArtifactToReplace = nil
+         lastMinuteHaptic = 0
+         lastAlarmHapticSecond = 0
+         writeBeforeScrollSessionTracker.reset()
+         writeBeforeScrollSessionMetrics = writeBeforeScrollSessionTracker.metrics
+         writeBeforeScrollAvailableUnlockGrant = nil
++        quickPassUnlockLineTask?.cancel()
+         quickPassUnlockLine = nil
+         hasAppliedPassiveQuickUnlock = false
+         hasAppliedPassiveDailyUnlockUpgrade = false
+@@ -809,12 +876,26 @@ final class WriteViewModel: ObservableObject {
+         writeBeforeScrollPassiveUnlockHandler?(grant)
+         if isGateOriginatedSession {
+             quickPassUnlockLine = AnkyCopyRegistry.quickPassUnlockLine(appName: gateOriginAppDisplayName)
++            // The line speaks through the companion bubble and steps aside
++            // on its own — the writer is mid-sentence.
++            quickPassUnlockLineTask?.cancel()
++            quickPassUnlockLineTask = Task { [weak self] in
++                try? await Task.sleep(nanoseconds: 10_000_000_000)
++                guard !Task.isCancelled else { return }
++                self?.quickPassUnlockLine = nil
++            }
+         }
+     }
+ 
+-    /// Crossing the daily target while a Quick Pass window is open upgrades
+-    /// the writer to the full-day unlock on the spot — the sealing screen
+-    /// already promises the day.
++    func clearQuickPassUnlockLine() {
++        quickPassUnlockLineTask?.cancel()
++        quickPassUnlockLine = nil
++    }
++
++    /// Crossing the daily target applies the full-day unlock on the spot,
++    /// mid-keystroke — upgrading an open Quick Pass window or opening the
++    /// day outright. The writer never has to stop to collect what they
++    /// already earned (feedback 2026-07-08).
+     private func applyPassiveDailyUnlockUpgrade(_ grant: UnlockGrant) {
+         guard !hasAppliedPassiveDailyUnlockUpgrade else {
+             return
+@@ -939,7 +1020,7 @@ final class WriteViewModel: ObservableObject {
+             with: "",
+             options: .regularExpression
+         )
+-        return withoutHeading.isEmpty ? "stay with the next true sentence." : withoutHeading
++        return withoutHeading.isEmpty ? AnkyLocalization.ui("stay with the next true sentence.") : withoutHeading
+     }
+ 
+     private static func nudgeErrorMessage(from message: String, serverPayload: MirrorServerErrorPayload? = nil) -> String {
+@@ -990,13 +1071,14 @@ final class WriteViewModel: ObservableObject {
+ 
+         if let lastAcceptedMs = sessionEngine.lastAcceptedMs {
+             let currentSilenceElapsedMs = max(0, now - lastAcceptedMs)
+-            if currentSilenceElapsedMs >= AnkyDuration.terminalSilenceMs {
++            let silenceLimitMs = terminalSilenceMs
++            if currentSilenceElapsedMs >= silenceLimitMs {
+                 closeOrFreezeAfterSilence()
+                 return
+             }
+ 
+             silenceElapsedMs = currentSilenceElapsedMs
+-            silenceRemainingMs = max(0, AnkyDuration.terminalSilenceMs - silenceElapsedMs)
++            silenceRemainingMs = max(0, silenceLimitMs - silenceElapsedMs)
+             updateLatestGlyphColorProgress(silenceElapsedMs: silenceElapsedMs)
+             if silenceElapsedMs < 1000 {
+                 lastAlarmHapticSecond = 0
+@@ -1037,7 +1119,7 @@ final class WriteViewModel: ObservableObject {
+         guard !displayedGlyphs.isEmpty else {
+             return
+         }
+-        let progress = min(1, max(0, Double(silenceElapsedMs) / Double(AnkyDuration.terminalSilenceMs)))
++        let progress = min(1, max(0, Double(silenceElapsedMs) / Double(terminalSilenceMs)))
+         displayedGlyphs[displayedGlyphs.count - 1].silenceProgress = progress
+     }
+ 
+@@ -1074,18 +1156,4 @@ final class WriteViewModel: ObservableObject {
+         todayAnkyCount = sessions.completeRitualCount(on: now, calendar: .ankyUTC)
+     }
+ 
+-    private func resetDotAnkyIfNeeded(now: Date = Date(), calendar: Calendar = .ankyUTC) {
+-        guard let draft = draftStore.load(),
+-              let parsed = try? AnkyParser.parse(draft) else {
+-            return
+-        }
+-
+-        let createdAt = Date(timeIntervalSince1970: TimeInterval(parsed.startEpochMs) / 1000)
+-        guard !calendar.isDate(createdAt, inSameDayAs: now) else {
+-            return
+-        }
+-
+-        draftStore.clear()
+-        try? sessionIndexStore.clear()
+-    }
+ }
+diff --git a/apps/ios/docs/specs/phase-3-boundary.md b/apps/ios/docs/specs/phase-3-boundary.md
+index e9bc73c..716e2e3 100644
+--- a/apps/ios/docs/specs/phase-3-boundary.md
++++ b/apps/ios/docs/specs/phase-3-boundary.md
+@@ -27,17 +27,15 @@ that has to touch any of it.
+ | Journey map (pager page 2) | ✗ veiled | ✓ |
+ 
+ Free-tier sessions make **zero LLM calls**: clients never ask, and the server
+-answers `402 ENTITLEMENT_REQUIRED` if they do. The DeviceCheck "2 free device
+-reflections" gift is off (`anky.automaticTrials` = false); the 3-day
+-subscription trial is the only trial. Previously **purchased** credits and
+-the x402 crypto path are still honored — paid value is never clawed back.
++answers `402 ENTITLEMENT_REQUIRED` if they do. The 3-day subscription trial is
++the only trial; the former virtual-currency and x402 paths are removed from
++production.
+ 
+ ## Server truth: how the backend learns subscription state
+ 
+-**Choice: client-pushed StoreKit 2 transaction JWS + App Store Server
+-Notifications V2. Not a RevenueCat webhook** — purchases are pure StoreKit 2
+-(no RC SDK in the app; RevenueCat is only the legacy virtual-currency credit
+-ledger), so RC never sees subscription events.
++**Current choice: RevenueCat SDK + RevenueCat webhook.** The app identifies the
++wallet/account to RevenueCat, the backend refreshes entitlement through
++RevenueCat when needed, and RevenueCat webhooks update `subscription_state`.
+ 
+ - `POST /subscription/sync` `{signedTransaction}` — EIP-712 signed like every
+   Anky request. The app pushes its current entitlement JWS after purchase,
+@@ -72,9 +70,8 @@ ordering the fast path.
+ 
+ ## Server gates
+ 
+-- `/anky` (reflection + nudge intents): entitled → reflect with **no credit
+-  spend** (`source: "subscription"`); free → purchased-credit balance or
+-  x402, else `ENTITLEMENT_REQUIRED`.
++- `/anky` (reflection + nudge intents): entitled → reflect through the
++  subscription gate; free → `ENTITLEMENT_REQUIRED`.
+ - `/level/prepare`: `level > 2` requires entitlement, checked **before** any
+   pipeline state so pre-generation never spends for free accounts.
+   `FREE_GENERATION_MAX_LEVEL = 2` (painting/routes.ts).
+diff --git a/Anky/Tests/DraftRecoveryTests.swift b/Anky/Tests/DraftRecoveryTests.swift
+new file mode 100644
+index 0000000..ee4dc25
+--- /dev/null
++++ b/Anky/Tests/DraftRecoveryTests.swift
+@@ -0,0 +1,93 @@
++import XCTest
++@testable import Anky
++
++@MainActor
++final class DraftRecoveryTests: XCTestCase {
++    private func temporaryDirectory() throws -> URL {
++        let url = FileManager.default.temporaryDirectory
++            .appendingPathComponent("anky-draft-tests-\(UUID().uuidString)", isDirectory: true)
++        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
++        return url
++    }
++
++    private func draftStore() throws -> (ActiveDraftStore, URL) {
++        let directory = try temporaryDirectory()
++        return (ActiveDraftStore(baseDirectory: directory), directory)
++    }
++
++    func testLaunchAndForegroundRecoveryLoadsValidOpenDraft() throws {
++        let (store, _) = try draftStore()
++        store.save("""
++        1770000000000 h
++        250 i
++        """)
++
++        let recovery = try XCTUnwrap(store.loadRecoverableDraft())
++
++        XCTAssertEqual(recovery.text, "1770000000000 h\n250 i")
++        XCTAssertEqual(recovery.durationMs, 250)
++        XCTAssertEqual(recovery.wordCount, 1)
++        XCTAssertEqual(recovery.createdAt, Date(timeIntervalSince1970: 1_770_000_000))
++    }
++
++    func testRecoveredDraftResumePreservesLargePlainIntegerDelta() throws {
++        let draft = """
++        1770000000000 h
++        250 i
++        """
++        var engine = try WritingSessionEngine(draftText: draft)
++
++        _ = engine.accept("!", at: 1_770_086_400_250)
++
++        XCTAssertEqual(engine.protocolText, """
++        1770000000000 h
++        250 i
++        86400000 !
++        """)
++        let parsed = try AnkyParser.parse(engine.protocolText)
++        XCTAssertEqual(parsed.events.last?.deltaMs, 86_400_000)
++        XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "hi!")
++    }
++
++    func testDiscardConfirmationClearsTheDraft() throws {
++        let (store, _) = try draftStore()
++        store.save("1770000000000 h")
++
++        XCTAssertNotNil(store.loadRecoverableDraft())
++
++        // The UI owns the confirmation; once confirmed, discard is exactly this clear.
++        store.clear()
++
++        XCTAssertNil(store.loadRecoverableDraft())
++        XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path))
++    }
++
++    func testCorruptDraftIsQuarantinedAndOriginalIsPreserved() throws {
++        let (store, directory) = try draftStore()
++        try "not a valid .anky draft".write(to: store.fileURL, atomically: true, encoding: .utf8)
++
++        XCTAssertNil(store.loadRecoverableDraft())
++
++        let quarantineDirectory = directory
++            .appendingPathComponent("ActiveDrafts", isDirectory: true)
++            .appendingPathComponent("Quarantine", isDirectory: true)
++        let quarantined = try FileManager.default.contentsOfDirectory(
++            at: quarantineDirectory,
++            includingPropertiesForKeys: nil
++        )
++        XCTAssertEqual(quarantined.count, 1)
++        XCTAssertEqual(try String(contentsOf: quarantined[0], encoding: .utf8), "not a valid .anky draft")
++        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path))
++    }
++
++    func testTerminalizedOrReflectedImmutableDraftIsNotRecoverable() throws {
++        let (store, _) = try draftStore()
++        store.save("""
++        1770000000000 h
++        480000 i
++        8000
++        """)
++
++        XCTAssertNil(store.loadRecoverableDraft())
++    }
++}
+diff --git a/Anky/Tests/JourneyAnchorTests.swift b/Anky/Tests/JourneyAnchorTests.swift
+new file mode 100644
+index 0000000..4a121d8
+--- /dev/null
++++ b/Anky/Tests/JourneyAnchorTests.swift
+@@ -0,0 +1,92 @@
++import XCTest
++@testable import Anky
++
++@MainActor
++final class JourneyAnchorTests: XCTestCase {
++    private let calendar = Calendar.ankyUTC
++    private let fileURL = URL(fileURLWithPath: "/tmp/journey-anchor-test.anky")
++
++    private func day(_ offset: Int) -> Date {
++        calendar.date(
++            byAdding: .day,
++            value: offset,
++            to: Date(timeIntervalSince1970: 1_770_000_000)
++        )!
++    }
++
++    private func summary(day offset: Int, complete: Bool = true, hash: String? = nil) -> SessionSummary {
++        SessionSummary(
++            hash: hash ?? String(format: "%064d", offset + 1),
++            createdAt: day(offset),
++            localFileURL: fileURL,
++            durationMs: complete ? 480_000 : 60_000,
++            isComplete: complete,
++            preview: "writing",
++            hasReflection: false,
++            reflectionTitle: nil
++        )
++    }
++
++    private func journeyDay(nowOffset: Int, sessions: [SessionSummary]) -> Int {
++        let state = JourneyState()
++        state.refresh(summaries: sessions, now: day(nowOffset), calendar: calendar)
++        return state.currentJourneyDay
++    }
++
++    func testFirstSealedWritingIsDayOne() {
++        let sessions = [
++            summary(day: -3, complete: false),
++            summary(day: 0, complete: true),
++        ]
++
++        XCTAssertEqual(JourneyAnchor.firstSealedDay(in: sessions, calendar: calendar), calendar.startOfDay(for: day(0)))
++        XCTAssertEqual(journeyDay(nowOffset: 0, sessions: sessions), 1)
++    }
++
++    func testJourneyBoundariesAroundDaysEightAndNine() {
++        let sessions = [summary(day: 0)]
++
++        XCTAssertEqual(journeyDay(nowOffset: 7, sessions: sessions), 8)
++        XCTAssertEqual(journeyDay(nowOffset: 8, sessions: sessions), 9)
++    }
++
++    func testJourneyBoundariesAroundDaysTwelveAndThirteen() {
++        let sessions = [summary(day: 0)]
++
++        XCTAssertEqual(journeyDay(nowOffset: 11, sessions: sessions), 12)
++        XCTAssertEqual(journeyDay(nowOffset: 12, sessions: sessions), 13)
++    }
++
++    func testJourneyBoundariesAroundDaysNinetyFiveAndNinetySix() {
++        let sessions = [summary(day: 0)]
++
++        XCTAssertEqual(journeyDay(nowOffset: 94, sessions: sessions), 95)
++        XCTAssertEqual(journeyDay(nowOffset: 95, sessions: sessions), 96)
++    }
++
++    func testPostDayNinetySixHoldsAtCompletion() {
++        let sessions = [summary(day: 0)]
++
++        XCTAssertEqual(journeyDay(nowOffset: 96, sessions: sessions), 96)
++        XCTAssertEqual(journeyDay(nowOffset: 400, sessions: sessions), 96)
++    }
++
++    func testNoProductionJourneyCodeUsesFirstAppOpenAnchoring() throws {
++        let repoRoot = URL(fileURLWithPath: #filePath)
++            .deletingLastPathComponent()
++            .deletingLastPathComponent()
++            .deletingLastPathComponent()
++        let files = [
++            "Anky/Features/Painting/Journey/JourneyTilePositions.swift",
++            "Anky/Features/Map/MapViewModel.swift",
++            "Anky/Features/Reveal/RevealViewModel.swift",
++            "Anky/Features/You/YouView.swift",
++        ]
++
++        for file in files {
++            let text = try String(contentsOf: repoRoot.appendingPathComponent(file), encoding: .utf8)
++            XCTAssertFalse(text.contains("AppOpenStore().loadOrCreate"), file)
++            XCTAssertFalse(text.contains("appOpenStore.loadOrCreate"), file)
++        }
++    }
++}
+diff --git a/PRIVACY_TRUTH_TABLE.md b/PRIVACY_TRUTH_TABLE.md
+new file mode 100644
+index 0000000..95ffeeb
+--- /dev/null
++++ b/PRIVACY_TRUTH_TABLE.md
+@@ -0,0 +1,26 @@
++# Privacy Truth Table
++
++Generated from the final iOS and backend code on 2026-07-09.
++
++| Flow | Off-device payload | Linked to identity | Tracking | App Store data type | Purpose |
++| --- | --- | --- | --- | --- | --- |
++| `POST /anky` reflection/nudge | Exact `.anky` bytes transiently, EIP-712 account headers, artifact hash returned, intent, app version/client metadata | Yes | No | Other User Content, User ID, Product Interaction | App Functionality |
++| `POST /level/prepare` | Writing text transiently for painting distillation, level, signed account headers | Yes | No | Other User Content, User ID, Product Interaction | App Functionality |
++| `POST /level/sessions` | Session artifact hash, seconds, sealed timestamp, signed account headers | Yes | No | Product Interaction, User ID | App Functionality, Analytics |
++| `GET /level/status` | Signed account headers over empty body | Yes | No | User ID, Product Interaction | App Functionality |
++| `POST /level/ceremony-shown` | Level number, signed account headers | Yes | No | Product Interaction, User ID | App Functionality, Analytics |
++| `GET /level/assets/:level/:file` | Signed account headers, requested level/file | Yes | No | User ID, Product Interaction | App Functionality |
++| `POST /events/emergency-unlock` | Event name/time/origin metadata, signed account headers; backend stores hashed account | Yes | No | Product Interaction, User ID | App Functionality, Analytics |
++| `POST /events/funnel` | Whitelisted funnel event/origin, signed account headers; backend stores hashed account | Yes | No | Product Interaction, User ID | Analytics |
++| `POST /subscription/identify` | RevenueCat app user id/account, signed account headers; backend refreshes entitlement | Yes | No | Purchases, User ID | App Functionality |
++| RevenueCat SDK | App user id, subscription/purchase status, StoreKit purchase metadata handled by RevenueCat SDK | Yes | No | Purchases, User ID, Device ID as declared by SDK | App Functionality |
++| `DELETE /account` | Signed empty-body account deletion request | Yes | No | User ID, Product Interaction | App Functionality |
++| Screen Time extensions | App Group `UserDefaults` and local shield state only | No off-device payload | No | Not collected by Anky server | App Functionality |
++| Widget | Local App Group reads only | No off-device payload | No | Not collected by Anky server | App Functionality |
++
++Backend commitment: writings are never persisted server-side. `.anky` bytes and level-prepare text exist only in request memory long enough to validate, reflect, or distill. Logs and durable tables store hashes, timestamps, account hashes/ids where required for auth/subscription, subscription state, level/session metadata, generated painting metadata/assets, and whitelisted usage events.
++
++Privacy manifest mapping:
++- App manifest declares User ID, Device ID, Other User Content, Purchases, Product Interaction; all tracking flags are false.
++- Extension manifests declare required-reason UserDefaults access for App Group reads/writes; no collection categories.
++- `NUTRITION_LABEL.md` is the manual App Store Connect transcription artifact.
+diff --git a/Anky/Core/Storage/JourneyAnchor.swift b/Anky/Core/Storage/JourneyAnchor.swift
+new file mode 100644
+index 0000000..be856ea
+--- /dev/null
++++ b/Anky/Core/Storage/JourneyAnchor.swift
+@@ -0,0 +1,22 @@
++import Foundation
++
++enum JourneyAnchor {
++    static func firstSealedDay(
++        in summaries: [SessionSummary],
++        calendar: Calendar = .current
++    ) -> Date? {
++        summaries
++            .filter(\.isComplete)
++            .map { calendar.startOfDay(for: $0.createdAt) }
++            .min()
++    }
++
++    static func anchorDay(
++        in summaries: [SessionSummary],
++        fallback: Date = Date(),
++        calendar: Calendar = .current
++    ) -> Date {
++        firstSealedDay(in: summaries, calendar: calendar)
++            ?? calendar.startOfDay(for: fallback)
++    }
++}

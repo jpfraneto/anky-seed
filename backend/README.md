@@ -2,7 +2,7 @@
 
 One file matters: [server.ts](server.ts).
 
-It defines public protocol values at the top, exposes `GET /health` and `POST /anky`, verifies Base EIP-712 identity, accepts x402 payment when credits are absent, asks the mirror provider, returns markdown text, and forgets the writing.
+It defines public protocol values at the top, exposes `GET /health` and `POST /anky`, verifies Base EIP-712 identity, asks the mirror provider, returns markdown text, and forgets the writing.
 
 ```sh
 bun install
@@ -23,12 +23,9 @@ X-Anky-Request-Time: <epoch_ms>
 X-Anky-Client: ios | android | other
 ```
 
-When a writer has no available credit, the endpoint stays open through x402:
-
-1. Server returns `402` with `PAYMENT-REQUIRED`.
-2. Client signs a payment payload.
-3. Client retries with `PAYMENT-SIGNATURE`.
-4. Server verifies the payment against the current provider quote, reflects, settles, and returns `PAYMENT-RESPONSE`.
+Subscription is required for reflection and painting generation. A non-entitled
+account receives `402 ENTITLEMENT_REQUIRED`; the app opens the subscription
+paywall and retries only after RevenueCat entitlement syncs.
 
 Successful reflections are `text/plain; charset=utf-8` markdown. Error responses are JSON.
 
@@ -37,9 +34,5 @@ Only private integration keys are read from the host:
 ```txt
 OPENROUTER_API_KEY
 REVENUECAT_SECRET_KEY
-REVENUECAT_PROJECT_ID
-APPLE_DEVICECHECK_TEAM_ID
-APPLE_DEVICECHECK_KEY_ID
-APPLE_DEVICECHECK_PRIVATE_KEY
-STRIPE_SECRET_KEY
+REVENUECAT_WEBHOOK_AUTH
 ```

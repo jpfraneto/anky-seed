@@ -9,6 +9,9 @@ export type ParsedAnky = {
   terminalSilenceMs: number | null;
 };
 
+const MIN_TERMINAL_SILENCE_MS = 1000;
+const MAX_TERMINAL_SILENCE_MS = 8000;
+
 export function parseAnky(text: string): ParsedAnky {
   const lines = text.split(/\r?\n/);
   if (lines.at(-1) === "") lines.pop();
@@ -19,9 +22,10 @@ export function parseAnky(text: string): ParsedAnky {
   let terminalSilenceMs: number | null = null;
 
   for (const line of lines.slice(1)) {
-    if (line === "8000") {
+    const terminalMs = terminalSilenceMsFromLine(line);
+    if (terminalMs !== null) {
       if (terminalSilenceMs !== null) throw new Error("DUPLICATE_TERMINAL_SILENCE");
-      terminalSilenceMs = 8000;
+      terminalSilenceMs = terminalMs;
       continue;
     }
     if (terminalSilenceMs !== null) throw new Error("EVENT_AFTER_TERMINAL_SILENCE");
@@ -34,6 +38,19 @@ export function parseAnky(text: string): ParsedAnky {
     events,
     terminalSilenceMs,
   };
+}
+
+function terminalSilenceMsFromLine(line: string): number | null {
+  if (!/^\d+$/.test(line)) return null;
+  const value = Number(line);
+  if (
+    !Number.isSafeInteger(value) ||
+    value < MIN_TERMINAL_SILENCE_MS ||
+    value > MAX_TERMINAL_SILENCE_MS
+  ) {
+    return null;
+  }
+  return value;
 }
 
 function parseWritingLine(line: string, isFirst: boolean): { time: number; char: string } {

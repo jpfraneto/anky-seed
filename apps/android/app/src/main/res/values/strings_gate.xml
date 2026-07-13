@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Write Before You Scroll — Android runtime chrome. Registry-toned copy for
+  Android-only surfaces (the iOS lines these mirror live verbatim in
+  AnkyCopyRegistry.kt and are used directly by the composables). Localized
+  variants belong to the localization workstream.
+-->
+<resources>
+    <!-- Foreground-service notification (channel `anky_gate`, low importance, quiet) -->
+    <string name="gate_channel_name" translatable="false">the gate</string>
+    <string name="gate_channel_description" translatable="false">A quiet presence while the writing gate holds the door.</string>
+    <string name="gate_notification_title" translatable="false">the gate is standing.</string>
+    <string name="gate_notification_text" translatable="false">your chosen apps wait behind the door until you write.</string>
+
+    <!-- specialUse foreground-service subtype explanation (Play declaration) -->
+    <string name="gate_fgs_special_use_explanation" translatable="false">User-enabled digital-wellbeing app blocker: continuously watches for the user\'s self-selected distracting apps opening while their writing gate is locked, and shows a full-screen writing prompt instead. Runs only while the user keeps the gate turned on.</string>
+
+    <!-- Gate setup (port of iOS GateSetupView) -->
+    <string name="gate_setup_title" translatable="false">Put a door before the noise.</string>
+    <string name="gate_setup_caption_authorize" translatable="false">anky needs to see when a chosen app opens, so it can hold the door.</string>
+    <string name="gate_setup_caption_choose" translatable="false">pick the apps that pull you out of yourself.</string>
+    <string name="gate_setup_caption_turn_on" translatable="false">from now on, those apps wait until you have written.</string>
+    <string name="gate_setup_caption_done" translatable="false">the door is standing. write, and it opens.</string>
+    <string name="gate_setup_button_allow_usage" translatable="false">Allow usage access</string>
+    <string name="gate_setup_button_allow_overlay" translatable="false">Allow display over apps</string>
+    <string name="gate_setup_button_choose_apps" translatable="false">Choose apps</string>
+    <string name="gate_setup_button_turn_on" translatable="false">Turn on the gate</string>
+    <string name="gate_setup_button_done" translatable="false">Done</string>
+    <string name="gate_setup_later" translatable="false">later</string>
+
+    <!-- Permission funnel rows -->
+    <string name="gate_setup_permission_usage" translatable="false">Usage access</string>
+    <string name="gate_setup_permission_usage_caption" translatable="false">anky only sees which app opens — never what happens inside it.</string>
+    <string name="gate_setup_permission_overlay" translatable="false">Display over other apps</string>
+    <string name="gate_setup_permission_overlay_caption" translatable="false">so the door can appear in front of a blocked app.</string>
+    <string name="gate_setup_permission_optional_caption" translatable="false">optional on this phone.</string>
+    <string name="gate_setup_permission_notifications" translatable="false">Notifications</string>
+    <string name="gate_setup_permission_notifications_caption" translatable="false">one quiet line while the gate stands. nothing else.</string>
+    <string name="gate_setup_permission_battery" translatable="false">Let anky stay awake</string>
+    <string name="gate_setup_permission_battery_caption" translatable="false">some phones put anky to sleep to save battery. this keeps the door standing on those phones.</string>
+
+    <!-- Blocked apps panel -->
+    <string name="gate_setup_blocked_apps" translatable="false">Blocked apps</string>
+    <string name="gate_setup_choose" translatable="false">Choose</string>
+    <string name="gate_setup_change" translatable="false">Change</string>
+    <string name="gate_setup_choose_empty" translatable="false">Choose the apps you want Anky to hold behind the writing door.</string>
+    <string name="gate_setup_selected_status" translatable="false">%1$d apps</string>
+
+    <!-- App picker -->
+    <string name="gate_picker_header" translatable="false">Pick the apps that pull you out of yourself.</string>
+    <string name="gate_picker_footer" translatable="false">Anky will put a writing gate before them.</string>
+    <string name="gate_picker_search_hint" translatable="false">Search apps</string>
+    <string name="gate_picker_save" translatable="false">Save</string>
+    <string name="gate_picker_cancel" translatable="false">Cancel</string>
+
+    <!-- Shield -->
+    <string name="gate_shield_write_button" translatable="false">Write ⊙</string>
+
+    <!-- Emergency breath -->
+    <string name="gate_cancel" translatable="false">Cancel</string>
+</resources>

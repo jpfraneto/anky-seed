@@ -1,0 +1,15 @@
+{
+  "title": "The Door",
+  "palette": [
+    "#1d1611",
+    "#3f2f27",
+    "#714a28",
+    "#64555c",
+    "#957978",
+    "#d2a47e"
+  ],
+  "level": 1,
+  "thresholdSeconds": 0,
+  "provider": "bundled",
+  "generatedAtMs": 0
+}

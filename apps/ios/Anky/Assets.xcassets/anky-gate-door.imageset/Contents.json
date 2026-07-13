@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "anky-gate-door.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

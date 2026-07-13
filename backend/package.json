@@ -19,9 +19,12 @@
   },
   "dependencies": {
     "@anky/protocol": "file:../protocol/implementations/typescript",
-    "hono": "^4.10.6",
+    "hono": "^4.12.28",
     "sharp": "^0.35.3",
-    "viem": "^2.50.4"
+    "viem": "^2.55.0"
+  },
+  "overrides": {
+    "ws": "8.21.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

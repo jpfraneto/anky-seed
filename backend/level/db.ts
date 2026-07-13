@@ -34,6 +34,18 @@ export type SessionReportResult = {
   rejected: number;
 };
 
+export type AccountDeletionCounts = Record<
+  | "subscription_state"
+  | "session_ledger"
+  | "level_state"
+  | "painting_meta"
+  | "generation_log"
+  | "funnel_events"
+  | "request_idempotency"
+  | "account_daily_quota",
+  number
+>;
+
 export type LevelStatus = {
   totalSeconds: number;
   level: number;
@@ -54,6 +66,11 @@ export function openLevelDb(path: string): Database {
   db.exec("PRAGMA journal_mode = WAL;");
   migrateSubscriptionStateToRevenueCat(db);
   db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version TEXT PRIMARY KEY,
+      applied_at_ms INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS session_ledger (
       account TEXT NOT NULL,
       session_hash TEXT NOT NULL,
@@ -129,7 +146,59 @@ export function openLevelDb(path: string): Database {
     CREATE INDEX IF NOT EXISTS idx_funnel_events_created
       ON funnel_events (created_at_ms);
   `);
+  runSchemaMigrations(db);
   return db;
+}
+
+const SCHEMA_MIGRATIONS: Array<{ version: string; sql: string }> = [
+  {
+    version: "20260709_session_ledger_account_sealed_at",
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_session_ledger_account_sealed_at
+        ON session_ledger (account, sealed_at_ms);
+    `,
+  },
+  {
+    version: "20260709_request_idempotency_and_daily_quota",
+    sql: `
+      CREATE TABLE IF NOT EXISTS request_idempotency (
+        key TEXT PRIMARY KEY,
+        account TEXT NOT NULL,
+        intent TEXT NOT NULL,
+        artifact_hash TEXT NOT NULL,
+        status TEXT NOT NULL,
+        updated_at_ms INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_request_idempotency_account
+        ON request_idempotency (account, updated_at_ms);
+
+      CREATE TABLE IF NOT EXISTS account_daily_quota (
+        route TEXT NOT NULL,
+        account TEXT NOT NULL,
+        day_utc TEXT NOT NULL,
+        count INTEGER NOT NULL,
+        updated_at_ms INTEGER NOT NULL,
+        PRIMARY KEY (route, account, day_utc)
+      );
+    `,
+  },
+];
+
+function runSchemaMigrations(db: Database): void {
+  const applied = new Set(
+    (db
+      .prepare("SELECT version FROM schema_migrations")
+      .all() as { version: string }[]).map((row) => row.version),
+  );
+  const migrate = db.transaction((migration: { version: string; sql: string }) => {
+    db.exec(migration.sql);
+    db.prepare(
+      "INSERT INTO schema_migrations (version, applied_at_ms) VALUES (?1, ?2)",
+    ).run(migration.version, Date.now());
+  });
+  for (const migration of SCHEMA_MIGRATIONS) {
+    if (!applied.has(migration.version)) migrate(migration);
+  }
 }
 
 /**
@@ -368,4 +437,125 @@ export function logGeneration(
     entry.detail ?? null,
     entry.nowMs,
   );
+}
+
+export type DailyQuotaResult =
+  | { allowed: true; remaining: number }
+  | { allowed: false; retryAfterSeconds: number };
+
+export function consumeAccountDailyQuota(
+  db: Database,
+  input: { route: string; account: string; limit: number; nowMs: number },
+): DailyQuotaResult {
+  const dayUtc = new Date(input.nowMs).toISOString().slice(0, 10);
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil(
+      (Date.parse(`${dayUtc}T00:00:00.000Z`) + 24 * 60 * 60 * 1000 - input.nowMs) /
+        1000,
+    ),
+  );
+  const current = db
+    .prepare(
+      `SELECT count FROM account_daily_quota
+       WHERE route = ?1 AND account = ?2 AND day_utc = ?3`,
+    )
+    .get(input.route, input.account, dayUtc) as { count: number } | null;
+  if (current && current.count >= input.limit) {
+    return { allowed: false, retryAfterSeconds };
+  }
+  db.prepare(
+    `INSERT INTO account_daily_quota (route, account, day_utc, count, updated_at_ms)
+     VALUES (?1, ?2, ?3, 1, ?4)
+     ON CONFLICT(route, account, day_utc) DO UPDATE SET
+       count = account_daily_quota.count + 1,
+       updated_at_ms = excluded.updated_at_ms`,
+  ).run(input.route, input.account, dayUtc, input.nowMs);
+  return { allowed: true, remaining: Math.max(0, input.limit - ((current?.count ?? 0) + 1)) };
+}
+
+export function beginRequestIdempotency(
+  db: Database,
+  input: {
+    key: string;
+    account: string;
+    intent: string;
+    artifactHash: string;
+    nowMs: number;
+  },
+): { acquired: true } | { acquired: false; status: string } {
+  const existing = db
+    .prepare("SELECT status FROM request_idempotency WHERE key = ?1")
+    .get(input.key) as { status: string } | null;
+  if (existing?.status === "processing" || existing?.status === "succeeded") {
+    return { acquired: false, status: existing.status };
+  }
+  db.prepare(
+    `INSERT INTO request_idempotency
+       (key, account, intent, artifact_hash, status, updated_at_ms)
+     VALUES (?1, ?2, ?3, ?4, 'processing', ?5)
+     ON CONFLICT(key) DO UPDATE SET
+       status = 'processing',
+       updated_at_ms = excluded.updated_at_ms`,
+  ).run(input.key, input.account, input.intent, input.artifactHash, input.nowMs);
+  return { acquired: true };
+}
+
+export function markRequestIdempotency(
+  db: Database,
+  key: string,
+  status: "succeeded" | "failed",
+  nowMs: number,
+): void {
+  db.prepare(
+    `UPDATE request_idempotency
+     SET status = ?2, updated_at_ms = ?3
+     WHERE key = ?1`,
+  ).run(key, status, nowMs);
+}
+
+export function deleteAccountScopedRows(
+  db: Database,
+  account: string,
+  accountHash: string,
+): AccountDeletionCounts {
+  const emptyCounts: AccountDeletionCounts = {
+    subscription_state: 0,
+    session_ledger: 0,
+    level_state: 0,
+    painting_meta: 0,
+    generation_log: 0,
+    funnel_events: 0,
+    request_idempotency: 0,
+    account_daily_quota: 0,
+  };
+  const tx = db.transaction(() => {
+    const counts = { ...emptyCounts };
+    counts.subscription_state = db
+      .prepare("DELETE FROM subscription_state WHERE account = ?1")
+      .run(account).changes;
+    counts.session_ledger = db
+      .prepare("DELETE FROM session_ledger WHERE account = ?1")
+      .run(account).changes;
+    counts.level_state = db
+      .prepare("DELETE FROM level_state WHERE account = ?1")
+      .run(account).changes;
+    counts.painting_meta = db
+      .prepare("DELETE FROM painting_meta WHERE account = ?1")
+      .run(account).changes;
+    counts.generation_log = db
+      .prepare("DELETE FROM generation_log WHERE account = ?1")
+      .run(account).changes;
+    counts.funnel_events = db
+      .prepare("DELETE FROM funnel_events WHERE account_hash = ?1")
+      .run(accountHash).changes;
+    counts.request_idempotency = db
+      .prepare("DELETE FROM request_idempotency WHERE account = ?1")
+      .run(account).changes;
+    counts.account_daily_quota = db
+      .prepare("DELETE FROM account_daily_quota WHERE account = ?1")
+      .run(account).changes;
+    return counts;
+  });
+  return tx();
 }

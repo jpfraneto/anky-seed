@@ -106,7 +106,7 @@ function webhookBody(overrides: WebhookEventOverrides = {}) {
       type: "INITIAL_PURCHASE",
       app_user_id: "0xabc",
       entitlement_ids: ["pro"],
-      product_id: "anky.yearly",
+      product_id: "anky.annual",
       period_type: "NORMAL",
       store: "APP_STORE",
       environment: "PRODUCTION",
@@ -143,7 +143,7 @@ function seedEntitledState(
     {
       account,
       entitlementId: "pro",
-      productId: "anky.yearly",
+      productId: "anky.annual",
       store: "app_store",
       periodType: "normal",
       expiresAtMs: NOW + 30 * DAY,
@@ -186,7 +186,7 @@ describe("POST /webhooks/revenuecat", () => {
 
     const entitlement = accountEntitlement(db, "0xabc", NOW);
     expect(entitlement.entitled).toBe(true);
-    expect(entitlement.productId).toBe("anky.yearly");
+    expect(entitlement.productId).toBe("anky.annual");
     expect(entitlement.expiresAtMs).toBe(NOW + 30 * DAY);
     expect(entitlement.store).toBe("APP_STORE");
     expect(entitlement.isPromotional).toBe(false);
@@ -350,12 +350,12 @@ describe("POST /subscription/identify", () => {
                 entitlements: {
                   pro: {
                     expires_date: expiresAt,
-                    product_identifier: "anky.yearly",
+                    product_identifier: "anky.annual",
                     period_type: "normal",
                   },
                 },
                 subscriptions: {
-                  "anky.yearly": { store: "app_store", period_type: "normal" },
+                  "anky.annual": { store: "app_store", period_type: "normal" },
                 },
               },
             }),
@@ -375,7 +375,7 @@ describe("POST /subscription/identify", () => {
     const json = await res.json();
     expect(json).toEqual({
       entitled: true,
-      productId: "anky.yearly",
+      productId: "anky.annual",
       expiresAtMs: Date.parse(expiresAt),
       store: "app_store",
       periodType: "normal",
@@ -406,7 +406,7 @@ describe("POST /subscription/sync", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       entitled: true,
-      productId: "anky.yearly",
+      productId: "anky.annual",
       expiresAtMs: NOW + 30 * DAY,
       isTrial: false,
       deprecated: true,

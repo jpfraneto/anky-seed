@@ -92,6 +92,19 @@ describe(".anky protocol", () => {
     expect(validation.isComplete).toBe(false);
   });
 
+  test("parser accepts configured terminal stillness markers", () => {
+    for (const terminalSilenceMs of [1000, 3000, 8000]) {
+      const parsed = parseAnky(`1770000000000 h\n42 i\n${terminalSilenceMs}`);
+      expect(parsed.terminalSilenceMs).toBe(terminalSilenceMs);
+      expect(reconstructText(parsed)).toBe("hi");
+    }
+  });
+
+  test("parser rejects terminal stillness markers outside the supported range", () => {
+    expect(() => parseAnky("1770000000000 h\n999")).toThrow("MALFORMED_LINE");
+    expect(() => parseAnky("1770000000000 h\n8001")).toThrow("MALFORMED_LINE");
+  });
+
   test("session stats count user-written characters and protocol duration", () => {
     expect(sessionStats("1770000000000 h\n42 SPACE\n8000")).toEqual({
       chars: 2,

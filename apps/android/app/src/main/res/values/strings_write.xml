@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WS7 writing-surface + sealing-flow strings (iOS WriteView.swift /
+  PostSessionSealingView in AppRoot.swift). Marked translatable="false"
+  until the localization workstream (WS9) carries them across the six
+  locales — verbatim iOS English until then.
+-->
+<resources>
+    <string name="write_back" translatable="false">Back</string>
+    <string name="write_timer_caption_remaining" translatable="false">remaining</string>
+    <string name="write_timer_caption_written" translatable="false">written</string>
+    <string name="write_pill_empty" translatable="false">write one true thing</string>
+    <string name="write_pill_writing" translatable="false">finish a sentence · opens a 15-min pass</string>
+    <string name="write_pill_writing_daily_only" translatable="false">write to your target · opens the day</string>
+    <string name="write_pill_quick" translatable="false">stop to unlock · 15 min</string>
+    <string name="write_pill_daily" translatable="false">stop to unlock · rest of day</string>
+    <string name="write_sealing_done" translatable="false">Done</string>
+    <string name="write_sealing_continue" translatable="false">Continue</string>
+    <string name="write_sealing_go_back_to" translatable="false">go back to %1$s</string>
+    <string name="write_sealing_the_app" translatable="false">the app</string>
+    <string name="write_sealing_stay_format" translatable="false">or stay · %1$s to complete your daily target</string>
+    <string name="write_sealing_fallback" translatable="false">Sealed. Words kept.</string>
+    <string name="write_sealing_first_gate_line" translatable="false">You just wrote before you scrolled.\nThat is the whole practice.</string>
+</resources>

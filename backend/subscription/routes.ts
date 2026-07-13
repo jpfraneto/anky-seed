@@ -36,6 +36,12 @@ import {
   type RevenueCatFetch,
   type RevenueCatWebhookEvent,
 } from "./revenuecat";
+import {
+  BodyTooLargeError,
+  clientIp,
+  rateLimitedResponse,
+  readLimitedBody,
+} from "../security";
 
 export type SubscriptionRouteContext = {
   getDb: () => Database | null;
@@ -46,6 +52,9 @@ export type SubscriptionRouteContext = {
   revenueCatEntitlementId: string;
   now?: () => number;
   log?: (line: Record<string, unknown>) => void;
+  checkWebhookIp?: (
+    ip: string,
+  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
   // Test seam
   revenueCatFetch?: RevenueCatFetch;
 };
@@ -58,6 +67,13 @@ function isAuthError(
 
 function errorJson(c: Context, status: number, error: string) {
   return c.json({ error }, status as 400);
+}
+
+function authErrorResponse(c: Context, error: LevelAuthError) {
+  if (error.status === 429) {
+    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
+  }
+  return errorJson(c, error.status, error.errorCode);
 }
 
 async function hashedAccount(accountId: string): Promise<string> {
@@ -81,6 +97,17 @@ function entitlementJson(entitlement: AccountEntitlement) {
   };
 }
 
+async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
+  try {
+    return await readLimitedBody(c, maxBodyBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return errorJson(c, 413, "BODY_TOO_LARGE");
+    }
+    throw error;
+  }
+}
+
 export function registerSubscriptionRoutes(
   app: Hono,
   ctx: SubscriptionRouteContext,
@@ -97,15 +124,13 @@ export function registerSubscriptionRoutes(
     const db = ctx.getDb();
     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
 
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
 
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
     const account = identity.accountId;
 
@@ -151,14 +176,12 @@ export function registerSubscriptionRoutes(
     const db = ctx.getDb();
     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
 
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
     const nowMs = now();
     const entitlement = accountEntitlement(db, identity.accountId, nowMs);
@@ -178,11 +201,10 @@ export function registerSubscriptionRoutes(
   });
 
   app.post("/webhooks/revenuecat", async (c: Context) => {
-    const db = ctx.getDb();
-    if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
-
     // Fail closed on configuration: without a shared secret nothing can
-    // be trusted to mutate entitlement state.
+    // be trusted to mutate entitlement state. Wrong/missing secrets are
+    // rejected before DB access or body parsing, keeping abusive webhook
+    // probes cheap and non-observable.
     if (!ctx.revenueCatWebhookAuth) {
       return errorJson(c, 503, "WEBHOOK_AUTH_UNCONFIGURED");
     }
@@ -190,11 +212,17 @@ export function registerSubscriptionRoutes(
     if (authorization !== ctx.revenueCatWebhookAuth) {
       return errorJson(c, 401, "INVALID_WEBHOOK_AUTH");
     }
-
-    const raw = await c.req.arrayBuffer();
-    if (raw.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
+    const webhookLimit = ctx.checkWebhookIp?.(clientIp(c));
+    if (webhookLimit && !webhookLimit.allowed) {
+      return rateLimitedResponse(webhookLimit.retryAfterSeconds);
     }
+
+    const db = ctx.getDb();
+    if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
+
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const raw = body;
     let event: RevenueCatWebhookEvent | null = null;
     try {
       const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
@@ -261,6 +289,10 @@ export function registerSubscriptionRoutes(
       return c.json({ ok: true, ignored: true });
     }
 
+    // Account deletion intentionally does not cancel RevenueCat/App Store
+    // subscriptions. A later authenticated webhook may recreate the minimal
+    // subscription_state row for the still-active App Store entitlement, but
+    // it must not resurrect session, level, funnel, generation, or writing data.
     const record = applyWebhookEvent(
       db,
       appUserId,

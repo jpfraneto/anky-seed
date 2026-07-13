@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legal documents (subscription-reality text, effective July 6, 2026),
+  ported from the iOS localized PrivacyPolicy.md / TermsAndConditions.md
+  with Android adaptations: Google Play purchases, encrypted backups and
+  device secure storage instead of the iOS platform services. CDATA markdown.
+-->
+<resources>
+    <string name="privacy_article_body"><![CDATA[Anky, Inc. - Effective July 6, 2026
+
+> The short version: Anky is local-first. Your writing stays on your device unless you choose to export it, back it up, contact support, or ask Anky for a reflection. When you ask for a reflection, your writing is sent to Anky’s mirror service and AI providers so a reflection can be generated. We use providers that don’t store your writing. We do not sell your data, use it for advertising, or use your writing to train our own models.
+
+## 1. Who We Are
+
+Anky is operated by **Anky, Inc.**, a Delaware corporation.
+
+Contact: **[support@anky.app](mailto:support@anky.app)**
+
+This Privacy Policy explains how Anky handles information when you use the Anky mobile app, website, mirror service, purchases, support, and related services.
+
+## 2. What Anky Is
+
+Anky is a local-first writing and reflection app.
+
+The core artifact is the `.anky` file: a forward-only writing session created under constraint. The app lets you write, save, revisit, export, import, delete, and optionally reflect on that writing.
+
+Anky is not a therapist, medical service, crisis service, financial advisor, legal advisor, or spiritual authority.
+
+## 3. What Stays On Your Device By Default
+
+The following data is stored locally on your device unless you choose to export it, back it up, recover it elsewhere, contact support, or request a reflection:
+
+- Your `.anky` writing files
+- Active writing drafts
+- Reconstructed readable writing
+- Local reflections returned by Anky
+- Session history and Map data
+- Local app settings
+- Daily reminder settings
+- Local Anky access information
+- Private recovery material stored in secure device storage
+- Local subscription entitlement cache
+- Local export/import files you create
+
+Writing, saving, revealing, copying, browsing Map, and viewing local history do not require sending your writing to Anky’s server.
+
+## 4. What Leaves Your Device
+
+Data leaves your device in these situations:
+
+### Asking Anky for a reflection or writing nudge
+
+When you tap **Ask Anky** or request a writing nudge, the app sends the exact `.anky` file bytes to Anky’s mirror service.
+
+The mirror service:
+
+- Verifies the request
+- Verifies the `.anky` format and hash
+- Reconstructs readable text from the `.anky`
+- Sends the reconstructed writing and prompt to AI service providers
+- Receives the generated reflection or nudge
+- Returns the result to your device
+- Checks that an active subscription or trial covers the reflection
+
+The returned reflection is stored locally on your device.
+
+### Purchases and subscriptions
+
+If you subscribe to Anky, the store handles the whole transaction. Purchases are processed by Google Play and managed through RevenueCat. We do not receive or store your credit card number.
+
+Anky offers an auto-renewing yearly subscription ($88/year, with a 3-day free trial for new subscribers) and a monthly subscription ($11.99/month). Subscriptions renew automatically until you cancel them in your Google Play subscription settings; the yearly free trial converts to a paid subscription when it ends unless cancelled at least 24 hours before.
+
+Anky uses purchase-related records, product identifiers, entitlement information, app user identifiers, transaction status, and related metadata from Google and RevenueCat to recognize and manage your subscription.
+
+### Local access and request safety
+
+Anky creates a private local profile for your device. Reflection and nudge requests include limited verification metadata so the mirror service can accept the request, prevent abuse, and attribute it to the right profile.
+
+Subscription checks identify your RevenueCat customer record with your Anky profile so your subscription is recognized by the mirror service.
+
+Your private recovery material is not sent to Anky.
+
+For free trials, fraud prevention, abuse prevention, and request safety, the app may ask Android platform integrity or device attestation services for a token when supported. Reflection and nudge requests may send that token to the mirror service as trial proof.
+
+### Backups, secure storage, export, and import
+
+When you enable backup, recovery, or export features, the selected writing, reflections, recovery information, or related files are stored using encrypted backups, device secure storage, device backup services, or the destination you choose through the share sheet or file picker.
+
+Anky cannot control the privacy of files after you export or share them.
+
+### Support
+
+If you contact support, you choose what to send. Support messages include the email address you send from and any Anky support ID, platform, app version, text, screenshots, files, or context you include.
+
+## 5. What We Do Not Collect
+
+Anky does not require:
+
+- Your legal name
+- Your phone number
+- Your contacts
+- Your precise location
+- Your camera
+- Your microphone
+- Your photos
+- Your social accounts
+- A traditional username/password login
+
+Anky does not sell personal data.
+
+Anky does not use your writing for advertising.
+
+Anky does not use your writing to train Anky-owned AI models.
+
+## 6. Third-Party Services
+
+Anky uses the following third-party services for the app features described in this policy:
+
+- **Google** - Google Play purchases, refunds, device services, Android backup services when enabled, notifications, device attestation, and platform services.
+- **RevenueCat** - purchase management, subscription entitlements, and transaction-related records.
+- **OpenRouter** - routing reflection requests to AI model providers.
+- **AI model providers** - generating reflections from the text you choose to send.
+- **Cloud hosting / infrastructure providers** - operating Anky’s mirror service, logs, security, and reliability.
+- **Email/support providers** - receiving and responding to support requests.
+
+These providers process data according to their own terms and privacy policies.
+
+## 7. AI Processing
+
+When you ask for a reflection, your writing is processed by AI systems.
+
+AI-generated reflections can be inaccurate, incomplete, unexpected, emotionally intense, or not useful. Reflections are generated automatically and should not be treated as professional advice.
+
+We design Anky’s mirror service to avoid permanently storing raw `.anky` writing, reconstructed writing, or reflection text unless needed for a user-requested support/debugging flow, security, abuse prevention, legal compliance, or another clearly stated purpose.
+
+AI providers process requests according to their own data-handling policies. We use privacy-protective settings where available, but we cannot promise that every downstream provider has identical retention practices.
+
+## 8. Operational Metadata
+
+To operate Anky, we collect and process limited metadata, such as:
+
+- Anky support ID or app user identifier
+- Request timestamps
+- Request hashes
+- App version
+- Platform
+- Subscription entitlement state and transaction records
+- Purchase product identifiers
+- Error states
+- Provider usage metadata
+- Security and abuse-prevention signals
+- Support request metadata
+
+We use this data to provide reflections, manage subscriptions, prevent abuse, debug issues, respond to support, comply with law, and operate the service.
+
+## 9. Payments
+
+Payments are handled by Google Play and managed with RevenueCat.
+
+Anky’s plans are auto-renewing subscriptions ($88/year with a 3-day free trial, or $11.99/month). They renew until cancelled in your Google Play subscription settings; cancel at least 24 hours before the current period ends to avoid the next charge.
+
+We do not receive your full payment card details.
+
+Refunds, billing disputes, and purchase history are handled according to Google Play’s policies.
+
+## 10. Recovery Words
+
+Your private recovery material remains on your device unless you export, reveal, back up, or otherwise share it.
+
+Never share your recovery words. If you lose them, Anky cannot restore access without a backup you control.
+
+## 11. Data Retention
+
+Local data remains on your device until you delete it, delete the app, reset the app, or remove backups.
+
+Reflection-related operational metadata is retained as long as needed to operate the service, manage subscriptions, prevent fraud or abuse, comply with legal obligations, resolve disputes, and maintain security.
+
+Purchase records are retained by Google, RevenueCat, and Anky as needed for billing, accounting, fraud prevention, tax, legal, and support purposes.
+
+Support emails are retained as long as needed to respond to you, keep records, and protect Anky.
+
+## 12. Deletion
+
+You can delete local writing, local reflections, private access, and local app data from inside the app where deletion tools are available, or by deleting the app from your device.
+
+Deleting the app does not delete data outside the app, including:
+
+- Files you exported or shared
+- Device backups controlled by Google or device settings
+- Google Play purchase records
+- RevenueCat purchase records
+- Support emails you sent
+- Backend metadata needed for security, subscription accounting, fraud prevention, legal compliance, or dispute resolution
+- Public network data
+
+To request deletion of data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**.
+
+## 13. Children
+
+Anky is not intended for children under 13.
+
+If you are under 18, use Anky only with permission from a parent or guardian.
+
+We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information, contact **[support@anky.app](mailto:support@anky.app)**.
+
+## 14. Your Rights
+
+Depending on where you live, your rights can include access, correction, deletion, export, restriction, or objection to certain uses of your personal data.
+
+Because Anky is local-first, much of your data is only on your device and can be managed by you directly.
+
+For requests about data Anky controls, contact **[support@anky.app](mailto:support@anky.app)**.
+
+## 15. Security
+
+We use reasonable technical and organizational measures to protect data we process.
+
+No system is perfectly secure. You are responsible for protecting your device, passcode, recovery words, exported files, Google account, and any place where you store or share your writing.
+
+## 16. International Users
+
+Anky, Inc. is based in the United States. Data sent to Anky or its service providers is processed in the United States or other countries where those providers operate.
+
+## 17. Changes
+
+We update this Privacy Policy when the policy changes.
+
+When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated policy.
+
+## 18. Contact
+
+**Anky, Inc.**
+
+Contact: **[support@anky.app](mailto:support@anky.app)**]]></string>
+
+    <string name="terms_article_body"><![CDATA[Anky, Inc. - Effective July 6, 2026
+
+> Important: Anky is a writing and reflection app. It is not therapy, medical care, crisis support, financial advice, legal advice, or spiritual authority. By using Anky, you agree that you remain responsible for your writing, your decisions, your device, your recovery words, your purchases, and how you use AI-generated reflections.
+
+## 1. Acceptance
+
+These Terms and Conditions are an agreement between you and **Anky, Inc.**, a Delaware corporation.
+
+By downloading, accessing, or using Anky, you agree to these Terms.
+
+If you do not agree, do not use Anky.
+
+## 2. What Anky Provides
+
+Anky lets you:
+
+- Write forward-only `.anky` sessions
+- Save writing locally
+- Revisit local writing history
+- Export or import writing files
+- Manage private Anky access
+- Subscribe to the full practice
+- Ask Anky for AI-generated reflections
+- Use related features we provide over time
+
+We may change, suspend, or discontinue any part of Anky at any time.
+
+## 3. Age Requirement
+
+Anky is not intended for children under 13.
+
+If you are under 18, you may use Anky only with permission from a parent or guardian.
+
+By using Anky, you represent that you meet these requirements.
+
+## 4. Anky Is Not Professional Advice
+
+Anky is not a therapist, doctor, emergency service, financial advisor, legal advisor, religious authority, or spiritual authority.
+
+AI-generated reflections are for personal writing reflection only.
+
+They may be inaccurate, incomplete, unexpected, emotionally intense, or not useful.
+
+Do not rely on Anky for medical, mental health, legal, financial, emergency, or safety decisions.
+
+If you may hurt yourself or someone else, or if you are in immediate danger, contact local emergency services or a trusted person immediately.
+
+## 5. Your Writing
+
+You own your writing.
+
+By using Anky, you give Anky, Inc. a limited permission to process your writing only as needed to provide the features you choose, such as saving locally, generating a reflection, exporting, importing, backing up, debugging, support, security, and abuse prevention.
+
+You are responsible for what you write, export, send, share, or back up.
+
+Do not write, upload, export, or share content through Anky in a way that violates the law or harms others.
+
+## 6. Local-First Design
+
+Anky is designed to be local-first.
+
+Your writing normally stays on your device.
+
+When you ask for a reflection, you understand that your writing is sent to Anky’s mirror service and AI service providers to generate the reflection. We use providers that don’t store your writing.
+
+When you export, share, back up, or contact support, you are choosing to send or store data outside the app.
+
+## 7. Private Access And Recovery
+
+Anky may create private local access for your device.
+
+You are responsible for protecting your recovery words, device passcode, biometric access, account backups, and exported files.
+
+Never share your recovery words.
+
+If you lose your recovery words, Anky may not be able to restore your profile state, subscription linkage, or related data.
+
+Anky is not responsible for losses caused by lost recovery words, compromised devices, shared credentials, or unauthorized access to your device or accounts.
+
+## 8. Purchases, Subscriptions, and Refunds
+
+Everything you have written always stays readable on your device, subscribed or not.
+
+The full practice — the gate, Anky’s reflections, the paintings past the free boundary, and the daily unlock — requires an auto-renewing subscription (see Section 10).
+
+Purchases are processed through Google Play and managed with RevenueCat.
+
+We do not handle or store your full payment card details.
+
+Refunds are handled by Google according to Google Play’s policies.
+
+We may change pricing or plans at any time, subject to applicable law and Google Play rules. Price changes never apply retroactively to a period you already paid for.
+
+## 9. AI-Generated Reflections
+
+AI-generated reflections are produced automatically.
+
+You understand that reflections may:
+
+- Be wrong
+- Miss important context
+- Sound more certain than they are
+- Be emotionally uncomfortable
+- Fail to understand your language, tone, or intent
+- Contain unexpected content
+- Be unavailable because of technical errors
+
+You remain responsible for interpreting and using any reflection.
+
+Anky, Inc. is not responsible for decisions you make based on AI-generated content.
+
+## 10. Auto-Renewing Subscriptions
+
+Anky offers two subscription plans:
+
+- **Yearly** — $88 USD per year, with a 3-day free trial for new subscribers.
+- **Monthly** — $11.99 USD per month, with no free trial.
+
+Prices may vary by country; Google Play shows the exact price in your currency before you confirm.
+
+Unless cancelled, subscriptions renew automatically at the end of each period, and the yearly free trial converts to a paid yearly subscription when the trial ends.
+
+Payment is charged to your Google account. Your account is charged for renewal within 24 hours before the end of the current period.
+
+You can cancel anytime in your Google Play subscription settings (Play Store → Payments & subscriptions → Subscriptions). To avoid a charge, cancel at least 24 hours before the trial or current period ends. Cancelling stops future renewals; access continues until the end of the period already paid for (or the trial).
+
+You can restore previous purchases on any device signed into the same Google account with "Restore Purchases" in Anky.
+
+Deleting the app does not cancel a subscription.
+
+## 11. User Conduct
+
+You agree not to:
+
+- Use Anky if you do not meet the age requirements
+- Use Anky for illegal activity
+- Abuse, attack, disrupt, or overload Anky’s systems
+- Circumvent subscriptions, paywalls, trials, or security controls
+- Reverse engineer, scrape, extract, or publish Anky’s private prompts, model instructions, or backend systems
+- Use bots, scripts, or automation to abuse the app
+- Attempt to access another person’s data, recovery words, private access, or account
+- Upload or share content that violates another person’s rights
+- Use Anky to generate instructions for harming yourself or others
+- Misrepresent Anky, Anky, Inc., or any affiliation with us
+
+We may suspend, restrict, or terminate access if we believe you violated these Terms, abused the service, created risk, or used Anky unlawfully.
+
+## 12. Intellectual Property
+
+Anky, Inc. owns Anky’s software, design, name, logos, characters, visual assets, prompts, product concepts, documentation, and related intellectual property.
+
+You may not copy, modify, distribute, sell, reverse engineer, or create derivative works from Anky except where allowed by law or by an open-source license we explicitly provide.
+
+You retain ownership of your own writing.
+
+## 13. Feedback
+
+If you send us feedback, ideas, suggestions, bug reports, or feature requests, you give Anky, Inc. permission to use them without restriction or compensation.
+
+This does not give us ownership of your private writing.
+
+## 14. Third-Party Services
+
+Anky depends on third-party services, which may include Google, RevenueCat, OpenRouter, AI model providers, cloud hosting providers, email providers, and public networks.
+
+We are not responsible for third-party services, terms, outages, policies, prices, decisions, or data practices.
+
+Your use of third-party services may be subject to their terms and privacy policies.
+
+## 15. Google Play Terms
+
+If you downloaded Anky from Google Play, Google’s terms also apply.
+
+Google is not responsible for Anky, its content, support, warranties, or claims, except as required by applicable law or Google’s own terms.
+
+## 16. Availability
+
+Anky may be unavailable, delayed, interrupted, inaccurate, or discontinued.
+
+We do not guarantee that Anky will always work, that reflections will always be available, that subscription state will always sync instantly, or that local data will never be lost.
+
+Back up anything important.
+
+## 17. Termination
+
+You may stop using Anky at any time.
+
+You can delete the app and delete local data where the app provides deletion tools.
+
+We may suspend, limit, or terminate your access to Anky at any time if we believe it is necessary to protect Anky, users, third parties, or the integrity of the service.
+
+## 18. Disclaimer of Warranties
+
+ANKY IS PROVIDED "AS IS" AND "AS AVAILABLE."
+
+TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RELIABILITY.
+
+YOUR USE OF ANKY IS AT YOUR OWN RISK.
+
+## 19. Limitation of Liability
+
+TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC. AND ITS OWNERS, DIRECTORS, OFFICERS, EMPLOYEES, CONTRACTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, LOST DATA, LOST WRITING, LOST SUBSCRIPTION TIME, LOST RECOVERY ACCESS, DEVICE COMPROMISE, EMOTIONAL DISTRESS, OR DECISIONS MADE BASED ON AI-GENERATED CONTENT.
+
+TO THE FULLEST EXTENT PERMITTED BY LAW, ANKY, INC.’S TOTAL LIABILITY FOR ANY CLAIM WILL NOT EXCEED THE GREATER OF:
+
+(A) THE AMOUNT YOU PAID TO ANKY, INC. THROUGH THE APP IN THE 12 MONTHS BEFORE THE CLAIM, OR
+
+(B) $50 USD.
+
+Some jurisdictions do not allow certain limitations, so some of these limits may not apply to you.
+
+## 20. Indemnification
+
+You agree to defend, indemnify, and hold harmless Anky, Inc. and its owners, directors, officers, employees, contractors, service providers, and affiliates from claims, damages, losses, liabilities, costs, and expenses arising from:
+
+- Your use of Anky
+- Your writing or exported content
+- Your violation of these Terms
+- Your violation of law
+- Your violation of another person’s rights
+- Your misuse of AI-generated reflections
+- Your recovery, backup, or export activity
+
+## 21. Governing Law
+
+These Terms are governed by the laws of the State of Delaware, without regard to conflict-of-law principles, except where your local law requires otherwise.
+
+## 22. Disputes and Arbitration
+
+To the fullest extent permitted by law, disputes between you and Anky, Inc. will be resolved through binding individual arbitration, not in a class action or jury trial.
+
+You and Anky, Inc. agree to bring claims only on an individual basis.
+
+This section does not prevent either party from seeking relief in small claims court or seeking injunctive relief for intellectual property, security, or unauthorized access issues.
+
+If this arbitration section is not enforceable where you live, the rest of these Terms still apply.
+
+## 23. Changes
+
+We may update these Terms from time to time.
+
+When we do, we will update the effective date. Continued use of Anky after changes means you accept the updated Terms.
+
+## 24. Contact
+
+**Anky, Inc.**
+
+Contact: **[support@anky.app](mailto:support@anky.app)**]]></string>
+</resources>

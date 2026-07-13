@@ -26,6 +26,7 @@ import {
   STATIC_LEVEL_MAX,
 } from "./config";
 import { levelStateAllowsPrepare, runPaintingPipeline } from "./pipeline";
+import { BodyTooLargeError, clientIp, rateLimitedResponse, readLimitedBody } from "../security";
 
 // Levels 1–8 are shared static defaults with no generation at all (cost
 // decision 2026-07-08), so every actual generation — level 9 up — belongs to
@@ -46,6 +47,26 @@ export type PaintingRouteContext = {
     account: string,
     nowMs: number,
   ) => { entitled: boolean } | Promise<{ entitled: boolean }>;
+  checkPrepareIp?: (
+    ip: string,
+  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
+  checkPrepareBurst?: (
+    account: string,
+  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
+  consumePrepareDailyQuota?: (
+    account: string,
+    nowMs: number,
+  ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
+  beginPrepareIdempotency?: (
+    account: string,
+    level: number,
+    nowMs: number,
+  ) => ({ key?: string } & ({ acquired: true } | { acquired: false; status: string }));
+  markPrepareIdempotency?: (
+    key: string,
+    status: "succeeded" | "failed",
+    nowMs: number,
+  ) => void;
 };
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -72,6 +93,24 @@ function errorJson(c: Context, status: number, error: string) {
   return c.json({ error }, status as 400);
 }
 
+function authErrorResponse(c: Context, error: LevelAuthError) {
+  if (error.status === 429) {
+    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
+  }
+  return errorJson(c, error.status, error.errorCode);
+}
+
+async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
+  try {
+    return await readLimitedBody(c, maxBodyBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return errorJson(c, 413, "BODY_TOO_LARGE");
+    }
+    throw error;
+  }
+}
+
 function pipelinesToday(db: Database, account: string, nowMs: number): number {
   const dayStart = new Date(nowMs);
   dayStart.setUTCHours(0, 0, 0, 0);
@@ -82,6 +121,17 @@ function pipelinesToday(db: Database, account: string, nowMs: number): number {
     )
     .get(account, dayStart.getTime()) as { n: number };
   return row.n;
+}
+
+function retryAfterUtcMidnight(nowMs: number): number {
+  const dayUtc = new Date(nowMs).toISOString().slice(0, 10);
+  return Math.max(
+    1,
+    Math.ceil(
+      (Date.parse(`${dayUtc}T00:00:00.000Z`) + 24 * 60 * 60 * 1000 - nowMs) /
+        1000,
+    ),
+  );
 }
 
 function hasRecentSession(db: Database, account: string, nowMs: number): boolean {
@@ -99,18 +149,21 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
   const now = ctx.now ?? (() => Date.now());
 
   app.post("/level/prepare", async (c) => {
+    const ipGate = ctx.checkPrepareIp?.(clientIp(c));
+    if (ipGate && !ipGate.allowed) {
+      return rateLimitedResponse(ipGate.retryAfterSeconds);
+    }
+
     const db = ctx.getDb();
     if (!db) return errorJson(c, 503, "LEVEL_STORE_UNAVAILABLE");
 
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return errorJson(c, 413, "BODY_TOO_LARGE");
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
 
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
     const account = identity.accountId;
 
@@ -186,8 +239,34 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     if (!hasRecentSession(db, account, nowMs)) {
       return errorJson(c, 403, "NO_RECENT_SESSIONS");
     }
+    const idempotency = ctx.beginPrepareIdempotency?.(account, level, nowMs);
+    const idempotencyKey = idempotency?.key;
+    if (idempotency && !idempotency.acquired) {
+      return c.json(
+        {
+          status: levelStatusFor(db, account),
+          phase: "generationPending",
+          idempotency: idempotency.status,
+        },
+        idempotency.status === "succeeded" ? 200 : 202,
+      );
+    }
+
+    const burstGate = ctx.checkPrepareBurst?.(account);
+    if (burstGate && !burstGate.allowed) {
+      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
+      return rateLimitedResponse(burstGate.retryAfterSeconds);
+    }
+
     if (pipelinesToday(db, account, nowMs) >= paintingConfig().maxGenerationsPerAccountPerDay) {
-      return errorJson(c, 429, "DAILY_GENERATION_CAP");
+      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
+      return rateLimitedResponse(retryAfterUtcMidnight(nowMs));
+    }
+
+    const dailyGate = ctx.consumePrepareDailyQuota?.(account, nowMs);
+    if (dailyGate && !dailyGate.allowed) {
+      if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", nowMs);
+      return rateLimitedResponse(dailyGate.retryAfterSeconds);
     }
 
     const key = `${account}:${level}`;
@@ -205,7 +284,12 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
           sync: false,
           nowMs,
         })
-          .catch(() => {})
+          .then(() => {
+            if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "succeeded", now());
+          })
+          .catch(() => {
+            if (idempotencyKey) ctx.markPrepareIdempotency?.(idempotencyKey, "failed", now());
+          })
           .finally(() => inFlight.delete(key));
         inFlight.set(key, run);
       }
@@ -254,7 +338,19 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
                 sync: true,
                 nowMs,
                 progress: (stage, message) => send("update", { stage, message }),
-              }).finally(() => inFlight.delete(key));
+              })
+                .then(() => {
+                  if (idempotencyKey) {
+                    ctx.markPrepareIdempotency?.(idempotencyKey, "succeeded", now());
+                  }
+                })
+                .catch((error) => {
+                  if (idempotencyKey) {
+                    ctx.markPrepareIdempotency?.(idempotencyKey, "failed", now());
+                  }
+                  throw error;
+                })
+                .finally(() => inFlight.delete(key));
               inFlight.set(key, run);
               await run;
             }
@@ -264,7 +360,7 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
               JSON.stringify({
                 event: "painting_sync_failed",
                 level,
-                detail: error instanceof Error ? error.message : String(error),
+                detail: error instanceof Error ? error.name : "unknown",
               }),
             );
             send("error", {
@@ -304,7 +400,7 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
 
     const identity = await ctx.authenticate(c, new Uint8Array());
     if (isAuthError(identity)) {
-      return errorJson(c, identity.status, identity.errorCode);
+      return authErrorResponse(c, identity);
     }
 
     const level = Number(c.req.param("level"));

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The 13-screen Write Before You Scroll onboarding (WS6).
+  Copy is verbatim from ios/Anky/Features/Onboarding/OnboardingView.swift.
+  Owned by feature/onboarding; the legacy onboarding_line_*/onboarding_cta_*
+  keys in strings.xml belong to the old 3-image flow and die with it.
+
+  translatable="false" is deliberate parity: iOS AnkyLocalization.ui falls
+  back to the English key for this copy — none of it is in any
+  Localizable.strings table yet, so every locale sees English there too.
+  Flip to translatable when iOS grows the translations.
+-->
+<resources>
+    <!-- Root accessibility -->
+    <string translatable="false" name="onboarding_flow_accessibility">Anky onboarding</string>
+
+    <!-- Screen 1 · The problem -->
+    <string translatable="false" name="onboarding_problem_title">The world is thinking for you.</string>
+    <string translatable="false" name="onboarding_problem_body">Every morning, someone else decides what will shape your day.</string>
+    <string translatable="false" name="onboarding_problem_cta">I know.</string>
+
+    <!-- Screen 2 · The solution -->
+    <string translatable="false" name="onboarding_solution_title">Anky puts a door before the noise.</string>
+    <string translatable="false" name="onboarding_solution_body">Your apps stay locked until you\'ve heard from yourself first.</string>
+    <string translatable="false" name="onboarding_solution_cta">How does it work?</string>
+
+    <!-- Screen 3 · The mechanism -->
+    <string translatable="false" name="onboarding_mechanism_title">Write before you scroll.</string>
+    <string translatable="false" name="onboarding_mechanism_body_quick">One sentence opens your apps for 15 minutes.</string>
+    <string translatable="false" name="onboarding_mechanism_body_daily">Your daily writing opens them for the rest of the day.</string>
+    <string translatable="false" name="onboarding_mechanism_cta">Show me the cost.</string>
+
+    <!-- Screen 4 · Make it personal -->
+    <string translatable="false" name="onboarding_hours_title">How many hours a day are you on your phone?</string>
+    <string translatable="false" name="onboarding_hours_body">Be honest.</string>
+    <string translatable="false" name="onboarding_hours_bracket_1_2">1–2 hours</string>
+    <string translatable="false" name="onboarding_hours_bracket_3_4">3–4 hours</string>
+    <string translatable="false" name="onboarding_hours_bracket_5_6">5–6 hours</string>
+    <string translatable="false" name="onboarding_hours_bracket_7_plus">7+ hours</string>
+
+    <!-- Screen 5 · The visceral math -->
+    <string translatable="false" name="onboarding_math_years_format">That\'s %1$d years</string>
+    <string translatable="false" name="onboarding_math_waking_life">of your waking life.</string>
+    <string translatable="false" name="onboarding_math_question">What if you used a small part of that to connect with yourself first?</string>
+    <string translatable="false" name="onboarding_math_cta">Show me how.</string>
+
+    <!-- Screen 6 · Meet Anky (dawn) -->
+    <string translatable="false" name="onboarding_meet_title">This is Anky.</string>
+    <string translatable="false" name="onboarding_meet_body">I hold the door. I open it when you write with me. I\'m not here to keep you out — I\'m here to make sure you go in first.</string>
+    <string translatable="false" name="onboarding_meet_cta">Hi, Anky.</string>
+
+    <!-- Screen 7 · The name -->
+    <string translatable="false" name="onboarding_name_title">What should I call you?</string>
+    <string translatable="false" name="onboarding_name_placeholder">Your name</string>
+    <string translatable="false" name="onboarding_name_privacy">Stays on this phone. Nothing you write ever leaves unsealed.</string>
+    <string translatable="false" name="onboarding_name_cta">Continue</string>
+    <string translatable="false" name="onboarding_name_later">later</string>
+    <string translatable="false" name="onboarding_selfie_add">add a selfie</string>
+    <string translatable="false" name="onboarding_selfie_retake">retake</string>
+    <string translatable="false" name="onboarding_selfie_accessibility">Take a selfie</string>
+
+    <!-- Screen 8 · The target -->
+    <string translatable="false" name="onboarding_target_title">Choose a daily writing target.</string>
+    <string translatable="false" name="onboarding_target_minutes_one">1 minute a day</string>
+    <string translatable="false" name="onboarding_target_minutes_format">%1$d minutes a day</string>
+    <string translatable="false" name="onboarding_target_floor">This is a floor, not a ceiling. I will never stop you at the target — and I\'ll never cut you off.</string>
+    <string translatable="false" name="onboarding_target_cta_format">Commit to %1$d minutes a day.</string>
+
+    <!-- Screen 9 · The journey container -->
+    <string translatable="false" name="onboarding_journey_title">Your first 8 days.</string>
+    <string translatable="false" name="onboarding_journey_day1">You pick the apps you want Anky to guard.</string>
+    <string translatable="false" name="onboarding_journey_day1_named_format">%1$s picks the apps you want Anky to guard.</string>
+    <string translatable="false" name="onboarding_journey_day2_format">When you try to open one, you write what is on your mind first. Your target is %1$d minutes.</string>
+    <string translatable="false" name="onboarding_journey_day3">The first block may feel annoying. Good. You found the hook.</string>
+    <string translatable="false" name="onboarding_journey_day4">Instead of pushing through, you write what is happening. You feel something new.</string>
+    <string translatable="false" name="onboarding_journey_day4_named">You write about that. Or whatever you want. You feel something new.</string>
+    <string translatable="false" name="onboarding_journey_day5">Anky reflects something back. Not advice — a mirror.</string>
+    <string translatable="false" name="onboarding_journey_day6">The feed is still there. But now there is a pause before it.</string>
+    <string translatable="false" name="onboarding_journey_day6_named">The feed is still there. But there was a pause before it. You discover you were there.</string>
+    <string translatable="false" name="onboarding_journey_day7">Some days you enter anyway. Some days you do not need to.</string>
+    <string translatable="false" name="onboarding_journey_day8">The gate becomes yours. Anky was only holding it until you could feel the choice.</string>
+    <string translatable="false" name="onboarding_journey_footnote">Day 1 begins the moment you close this screen.</string>
+    <string translatable="false" name="onboarding_journey_cta">Begin.</string>
+
+    <!-- Screen 11 · Notifications -->
+    <string translatable="false" name="onboarding_notifications_title">When your apps knock, I\'ll answer.</string>
+    <string translatable="false" name="onboarding_notifications_body">When a blocked app tries to open, I send you a notification. Tap it, write with me, and the door opens. Without this, the door has no handle.</string>
+    <string translatable="false" name="onboarding_notifications_denied">You can turn this on later in Settings.</string>
+    <string translatable="false" name="onboarding_notifications_cta">Allow notifications</string>
+
+    <!-- Screen 13 · Day 1 threshold overlay -->
+    <string translatable="false" name="onboarding_day_one_title">Day 1.</string>
+    <string translatable="false" name="onboarding_day_one_body">Write whatever is in your mind.</string>
+    <string translatable="false" name="onboarding_day_one_cta">Start writing</string>
+</resources>

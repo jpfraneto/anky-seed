@@ -20,6 +20,7 @@ import {
   STATIC_LEVEL_MAX,
 } from "../painting/config";
 import { runPaintingPipeline } from "../painting/pipeline";
+import { BodyTooLargeError, readLimitedBody } from "../security";
 
 export type DebugRouteDeps = {
   distillImpl?: typeof distillWriting;
@@ -48,6 +49,17 @@ function bearerMatches(c: Context, adminKey: string): boolean {
 
 function notFound(c: Context) {
   return c.json({ error: "NOT_FOUND" }, 404);
+}
+
+async function debugBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
+  try {
+    return await readLimitedBody(c, maxBodyBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+    }
+    throw error;
+  }
 }
 
 // Detached default-painting seed runs, keyed by level. Module-level on
@@ -143,17 +155,15 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
     if (!db) return c.json({ error: "LEVEL_STORE_UNAVAILABLE" }, 503);
     if (!ctx.dataDir) return c.json({ error: "DATA_DIR_UNAVAILABLE" }, 503);
 
-    const raw = await c.req.arrayBuffer();
-    if (raw.byteLength > ctx.maxBodyBytes) {
-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
-    }
+    const body = await debugBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
 
     let level = 0;
     let text = "";
     let scene = "";
     let title = "";
     try {
-      const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
+      const parsed = JSON.parse(new TextDecoder().decode(body)) as {
         level?: unknown;
         text?: unknown;
         scene?: unknown;
@@ -206,7 +216,7 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
       .catch((error: unknown) => {
         seedResults.set(level, {
           ok: false,
-          error: error instanceof Error ? error.message : "PIPELINE_FAILED",
+          error: error instanceof Error ? error.name : "PIPELINE_FAILED",
           finishedAtMs: Date.now(),
         });
       })
@@ -248,14 +258,12 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
   app.post("/debug/distill", async (c) => {
     if (!bearerMatches(c, ctx.adminKey)) return notFound(c);
 
-    const raw = await c.req.arrayBuffer();
-    if (raw.byteLength > ctx.maxBodyBytes) {
-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
-    }
+    const body = await debugBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
 
     let text = "";
     try {
-      const parsed = JSON.parse(new TextDecoder().decode(raw)) as {
+      const parsed = JSON.parse(new TextDecoder().decode(body)) as {
         text?: unknown;
       };
       text = typeof parsed.text === "string" ? parsed.text : "";
@@ -294,7 +302,7 @@ export function registerDebugRoutes(app: Hono, ctx: DebugRouteContext): void {
         usage: usage ?? null,
       });
     } catch (error) {
-      const code = error instanceof Error ? error.message : "DISTILL_FAILED";
+      const code = error instanceof Error && error.name !== "Error" ? error.name : "DISTILL_FAILED";
       return c.json({ error: code }, 502);
     }
   });

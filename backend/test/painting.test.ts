@@ -18,7 +18,7 @@ import type { PaintingGeneration } from "../painting/providers";
 
 const referencesDir = resolve(
   import.meta.dir,
-  "../../apps/write-8-minutes/ios/references",
+  "../../apps/ios/references",
 );
 
 async function fixture(name: string): Promise<Uint8Array> {
@@ -377,7 +377,7 @@ describe("POST /level/prepare guardrails", () => {
       {
         account,
         entitlementId: "pro",
-        productId: "anky.yearly",
+        productId: "anky.annual",
         store: "app_store",
         periodType: "normal",
         expiresAtMs: Date.now() + 30 * 24 * 60 * 60 * 1000,

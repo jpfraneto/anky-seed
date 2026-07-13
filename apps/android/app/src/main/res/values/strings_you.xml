@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  You-tab strings added by the WS8 rework (subscription-era home).
+  Marked translatable="false" for now: the WS9 localization pass owns
+  translating these across the 5 locale dirs and flipping the flag.
+-->
+<resources>
+    <string name="app_name_anky" translatable="false">Anky</string>
+    <string name="you_customize_row_title" translatable="false">Customize your Anky experience</string>
+    <string name="you_customize_row_subtitle" translatable="false">Daily target, name, writing, font, protection.</string>
+    <string name="you_wbs_row_title" translatable="false">Write Before You Scroll</string>
+    <string name="you_wbs_row_subtitle" translatable="false">Choose the apps Anky gates.</string>
+    <string name="you_daily_target" translatable="false">Daily target</string>
+    <string name="you_daily_target_pending_format" translatable="false">%1$d min today · %2$d min from tomorrow</string>
+    <string name="you_daily_target_subtitle_one" translatable="false">%1$d minute of writing opens the day</string>
+    <string name="you_daily_target_subtitle_other" translatable="false">%1$d minutes of writing opens the day</string>
+    <string name="you_daily_target_increase" translatable="false">Increase daily target</string>
+    <string name="you_daily_target_decrease" translatable="false">Decrease daily target</string>
+    <string name="you_subscription" translatable="false">Subscription</string>
+    <string name="you_subscription_page_subtitle" translatable="false">The full practice</string>
+    <string name="you_subscription_manage" translatable="false">Manage in Google Play</string>
+    <string name="you_subscription_manage_note" translatable="false">Renewal and cancellation live in your Google Play subscriptions.</string>
+    <string name="you_subscription_restore_note" translatable="false">Restore brings back a subscription bought on this Google account.</string>
+    <string name="you_founder_chat" translatable="false">Chat with the founder</string>
+    <string name="you_founder_chat_subtitle" translatable="false">Telegram — a human answers.</string>
+    <string name="you_app_version_format" translatable="false">Version %1$s</string>
+    <string name="you_status_recovery_words_invalid_checksum" translatable="false">These words don\'t form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed.</string>
+    <string name="you_status_subscription_unavailable" translatable="false">Subscriptions are not wired up on this build yet.</string>
+    <string name="you_status_subscription_restored" translatable="false">Restored. Your practice is active.</string>
+    <string name="you_status_subscription_nothing_to_restore" translatable="false">No purchases to restore on this Google account.</string>
+    <string name="you_status_subscription_restore_failed" translatable="false">Restore didn\'t finish. Check your connection and try again.</string>
+    <string name="you_status_subscription_store_unreachable" translatable="false">Google Play can\'t be reached right now. Check your connection and try again.</string>
+</resources>

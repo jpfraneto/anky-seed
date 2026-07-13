@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
+  FULL_PROMPT_EXPERIMENT_ID,
   buildReflectPrompt,
   buildReflectPromptFromText,
+  fullPromptVariantForAnkyHash,
   parseDotAnky,
   PROMPT_DIP,
   PROMPT_FULL,
+  PROMPT_FULL_ATTENTIVE,
   PROMPT_SENTENCE,
   reconstructText,
   reflectDotAnkyToMarkdown,
@@ -121,5 +124,42 @@ describe("dotAnky reflection helpers", () => {
     expect(fullPrompt.startsWith(PROMPT_FULL)).toBe(true);
     expect(fullPrompt).toBe(buildReflectPromptFromText("the full thread"));
     expect(fullPrompt).toBe(`${PROMPT_FULL}\n\n---\n\nthe full thread`);
+  });
+
+  test("builds the attentive full-tier treatment without a placeholder", () => {
+    const prompt = buildReflectPrompt(
+      "the exact living thread",
+      "full",
+      "attentive",
+    );
+
+    expect(prompt).toBe(
+      `${PROMPT_FULL_ATTENTIVE}\n\n---\n\nthe exact living thread`,
+    );
+    expect(prompt).toContain("Begin by simply confirming that you read it.");
+    expect(prompt).toContain("End with a short three-line reflection");
+    expect(prompt).not.toContain("[INSERT ANKY]");
+  });
+
+  test("full prompt assignment is deterministic and namespaced", async () => {
+    expect(FULL_PROMPT_EXPERIMENT_ID).toBe("full-reflection-prompt-v1");
+    expect(await fullPromptVariantForAnkyHash("0".repeat(64))).toBe(
+      "attentive",
+    );
+    expect(await fullPromptVariantForAnkyHash("1".repeat(64))).toBe(
+      "control",
+    );
+    expect(await fullPromptVariantForAnkyHash("A".repeat(64))).toBe(
+      await fullPromptVariantForAnkyHash("a".repeat(64)),
+    );
+  });
+
+  test("full prompt variants cannot affect shorter tiers", () => {
+    expect(buildReflectPrompt("one line", "sentence", "attentive")).toBe(
+      `${PROMPT_SENTENCE}\n\n---\n\none line`,
+    );
+    expect(buildReflectPrompt("one dip", "dip", "attentive")).toBe(
+      `${PROMPT_DIP}\n\n---\n\none dip`,
+    );
   });
 });

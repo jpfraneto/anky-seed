@@ -1,0 +1,773 @@
+{
+ "version": 1,
+ "days": [
+  {
+   "index": 0,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 1,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 2,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 3,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 4,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 5,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 6,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 7,
+   "kind": "tile",
+   "kingdom": 0,
+   "image": 0,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 8,
+   "kind": "threshold",
+   "kingdom": 0,
+   "image": 1,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 9,
+   "kind": "threshold",
+   "kingdom": 0,
+   "image": 1,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 10,
+   "kind": "threshold",
+   "kingdom": 0,
+   "image": 1,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 11,
+   "kind": "threshold",
+   "kingdom": 0,
+   "image": 1,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 12,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 13,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 14,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 15,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 16,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 17,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 18,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 19,
+   "kind": "tile",
+   "kingdom": 1,
+   "image": 1,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 20,
+   "kind": "threshold",
+   "kingdom": 1,
+   "image": 2,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 21,
+   "kind": "threshold",
+   "kingdom": 1,
+   "image": 2,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 22,
+   "kind": "threshold",
+   "kingdom": 1,
+   "image": 2,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 23,
+   "kind": "threshold",
+   "kingdom": 1,
+   "image": 2,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 24,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 25,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 26,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 27,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 28,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 29,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 30,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 31,
+   "kind": "tile",
+   "kingdom": 2,
+   "image": 2,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 32,
+   "kind": "threshold",
+   "kingdom": 2,
+   "image": 3,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 33,
+   "kind": "threshold",
+   "kingdom": 2,
+   "image": 3,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 34,
+   "kind": "threshold",
+   "kingdom": 2,
+   "image": 3,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 35,
+   "kind": "threshold",
+   "kingdom": 2,
+   "image": 3,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 36,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 37,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 38,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 39,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 40,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 41,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 42,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 43,
+   "kind": "tile",
+   "kingdom": 3,
+   "image": 3,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 44,
+   "kind": "threshold",
+   "kingdom": 3,
+   "image": 4,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 45,
+   "kind": "threshold",
+   "kingdom": 3,
+   "image": 4,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 46,
+   "kind": "threshold",
+   "kingdom": 3,
+   "image": 4,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 47,
+   "kind": "threshold",
+   "kingdom": 3,
+   "image": 4,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 48,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 49,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 50,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 51,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 52,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 53,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 54,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 55,
+   "kind": "tile",
+   "kingdom": 4,
+   "image": 4,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 56,
+   "kind": "threshold",
+   "kingdom": 4,
+   "image": 5,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 57,
+   "kind": "threshold",
+   "kingdom": 4,
+   "image": 5,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 58,
+   "kind": "threshold",
+   "kingdom": 4,
+   "image": 5,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 59,
+   "kind": "threshold",
+   "kingdom": 4,
+   "image": 5,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 60,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 61,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 62,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 63,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 64,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 65,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 66,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 67,
+   "kind": "tile",
+   "kingdom": 5,
+   "image": 5,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 68,
+   "kind": "threshold",
+   "kingdom": 5,
+   "image": 6,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 69,
+   "kind": "threshold",
+   "kingdom": 5,
+   "image": 6,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 70,
+   "kind": "threshold",
+   "kingdom": 5,
+   "image": 6,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 71,
+   "kind": "threshold",
+   "kingdom": 5,
+   "image": 6,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 72,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 73,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 74,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 75,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 76,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 77,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 78,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 79,
+   "kind": "tile",
+   "kingdom": 6,
+   "image": 6,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 80,
+   "kind": "threshold",
+   "kingdom": 6,
+   "image": 7,
+   "x": 0.482,
+   "y": 0.99
+  },
+  {
+   "index": 81,
+   "kind": "threshold",
+   "kingdom": 6,
+   "image": 7,
+   "x": 0.518,
+   "y": 0.945
+  },
+  {
+   "index": 82,
+   "kind": "threshold",
+   "kingdom": 6,
+   "image": 7,
+   "x": 0.482,
+   "y": 0.9
+  },
+  {
+   "index": 83,
+   "kind": "threshold",
+   "kingdom": 6,
+   "image": 7,
+   "x": 0.518,
+   "y": 0.855
+  },
+  {
+   "index": 84,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.52,
+   "y": 0.82
+  },
+  {
+   "index": 85,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.47,
+   "y": 0.7214
+  },
+  {
+   "index": 86,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.55,
+   "y": 0.6229
+  },
+  {
+   "index": 87,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.46,
+   "y": 0.5243
+  },
+  {
+   "index": 88,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.54,
+   "y": 0.4257
+  },
+  {
+   "index": 89,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.47,
+   "y": 0.3271
+  },
+  {
+   "index": 90,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.53,
+   "y": 0.2286
+  },
+  {
+   "index": 91,
+   "kind": "tile",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.5,
+   "y": 0.13
+  },
+  {
+   "index": 92,
+   "kind": "threshold",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.482,
+   "y": 0.095
+  },
+  {
+   "index": 93,
+   "kind": "threshold",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.518,
+   "y": 0.067
+  },
+  {
+   "index": 94,
+   "kind": "threshold",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.482,
+   "y": 0.039
+  },
+  {
+   "index": 95,
+   "kind": "threshold",
+   "kingdom": 7,
+   "image": 7,
+   "x": 0.518,
+   "y": 0.011
+  }
+ ]
+}

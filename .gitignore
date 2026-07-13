@@ -16,6 +16,9 @@ bun.lockb
 # SwiftPM
 .build/
 
+# Local Cloudflare/Wrangler state
+.wrangler/
+
 # Xcode
 DerivedData/
 *.xcworkspace/xcuserdata/

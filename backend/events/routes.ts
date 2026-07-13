@@ -12,6 +12,7 @@
 import type { Context, Hono } from "hono";
 import type { Database } from "bun:sqlite";
 import type { LevelAuthenticator, LevelIdentity, LevelAuthError } from "../level/routes";
+import { BodyTooLargeError, rateLimitedResponse, readLimitedBody } from "../security";
 
 export const FUNNEL_EVENTS = [
   "ceremony_1_shown",
@@ -43,6 +44,13 @@ function isAuthError(
   return (result as LevelAuthError).errorCode !== undefined;
 }
 
+function authErrorResponse(c: Context, error: LevelAuthError) {
+  if (error.status === 429) {
+    return rateLimitedResponse(error.retryAfterSeconds ?? 60);
+  }
+  return c.json({ error: error.errorCode }, error.status as 401);
+}
+
 async function hashedAccount(accountId: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -54,20 +62,29 @@ async function hashedAccount(accountId: string): Promise<string> {
     .slice(0, 16);
 }
 
+async function routeBody(c: Context, maxBodyBytes: number): Promise<Uint8Array | Response> {
+  try {
+    return await readLimitedBody(c, maxBodyBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return c.json({ error: "BODY_TOO_LARGE" }, 413);
+    }
+    throw error;
+  }
+}
+
 export function registerEventRoutes(app: Hono, ctx: EventRouteContext): void {
   const log =
     ctx.log ?? ((line: Record<string, unknown>) => console.log(JSON.stringify(line)));
 
   app.post("/events/emergency-unlock", async (c: Context) => {
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
 
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return c.json({ error: identity.errorCode }, identity.status as 401);
+      return authErrorResponse(c, identity);
     }
 
     log({
@@ -79,15 +96,13 @@ export function registerEventRoutes(app: Hono, ctx: EventRouteContext): void {
   });
 
   app.post("/events/funnel", async (c: Context) => {
-    const raw = await c.req.arrayBuffer();
-    const bodyBytes = new Uint8Array(raw);
-    if (bodyBytes.byteLength > ctx.maxBodyBytes) {
-      return c.json({ error: "BODY_TOO_LARGE" }, 413);
-    }
+    const body = await routeBody(c, ctx.maxBodyBytes);
+    if (body instanceof Response) return body;
+    const bodyBytes = body;
 
     const identity = await ctx.authenticate(c, bodyBytes);
     if (isAuthError(identity)) {
-      return c.json({ error: identity.errorCode }, identity.status as 401);
+      return authErrorResponse(c, identity);
     }
 
     let event = "";

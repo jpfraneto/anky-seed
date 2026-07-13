@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paywall copy, ported verbatim from iOS `Anky/Purchases/PaywallView.swift`
+  and the free-target-moment block of `AppRoot.swift` / `AnkyCopyRegistry`.
+  Store-specific sentences say Google Play where iOS says App Store.
+
+  translatable="false" until the localization workstream (PARITY WS9) adds
+  all six locales — flip the attribute (or drop it) when values-es/fr/de/hi/
+  zh-rCN gain these keys, and update LocalizationResourceTest counts.
+-->
+<resources>
+    <!-- Titles -->
+    <string name="paywall_title_entitled_gift" translatable="false">Anky is open — a gift</string>
+    <string name="paywall_title_entitled_trial" translatable="false">Your trial is open</string>
+    <string name="paywall_title_entitled" translatable="false">Anky is open</string>
+    <string name="paywall_title_onboarding_trial" translatable="false">Try Anky for $0</string>
+    <string name="paywall_title_onboarding" translatable="false">Write before you scroll.</string>
+    <string name="paywall_title_lapsed" translatable="false">The door is still here</string>
+    <string name="paywall_title_veil" translatable="false">the deepening</string>
+
+    <!-- Voice lines -->
+    <string name="paywall_voice_entitled_gift" translatable="false">Your access was granted — nothing is charged, nothing renews. The mirror, the paintings, the journey, and the daily door are open.</string>
+    <string name="paywall_voice_entitled_trial" translatable="false">You are already inside the deepening. The door stays open until your trial ends.</string>
+    <string name="paywall_voice_entitled" translatable="false">Your practice is active. The mirror, the paintings, the journey, and the daily door are open.</string>
+    <string name="paywall_voice_onboarding" translatable="false">Walk the first three days of the gate with me. If it isn\'t yours, leave freely.</string>
+    <string name="paywall_voice_lapsed" translatable="false">Everything you sealed stays yours to read, always. The gate, new sessions, and my reflections need the practice to be alive.</string>
+    <string name="paywall_voice_veil" translatable="false">the mirror, the paintings, the journey, the daily door — they open together.</string>
+
+    <!-- Trial timeline (3 nodes) -->
+    <string name="paywall_timeline_today_label" translatable="false">Today</string>
+    <string name="paywall_timeline_today_line" translatable="false">The door opens. Full practice, nothing held back.</string>
+    <string name="paywall_timeline_day2_label" translatable="false">Day 2</string>
+    <string name="paywall_timeline_day2_line" translatable="false">I\'ll remind you before your trial ends. No surprises.</string>
+    <string name="paywall_timeline_day3_label" translatable="false">Day 3</string>
+    <string name="paywall_timeline_day3_line" translatable="false">First Daily Unlock. Stay if this is yours.</string>
+
+    <!-- Plan selector -->
+    <string name="paywall_plan_yearly_trial" translatable="false">Yearly — 3 days free, then %1$s/year</string>
+    <string name="paywall_plan_yearly" translatable="false">Yearly — %1$s/year</string>
+    <string name="paywall_plan_monthly" translatable="false">%1$s/month · no free trial</string>
+    <string name="paywall_weekly_breakdown" translatable="false">%1$s/wk</string>
+
+    <!-- Payment honesty line (full body legibility, never fine print) -->
+    <string name="paywall_payment_trial" translatable="false">No payment due today. Then %1$s/year — auto-renews until you cancel.</string>
+    <string name="paywall_payment_immediate" translatable="false">Billed today. Auto-renews until you cancel.</string>
+    <string name="paywall_payment_promo_open_ended" translatable="false">Complimentary access, open-ended. Nothing will ever be charged for it.</string>
+    <string name="paywall_payment_promo_through" translatable="false">Complimentary access through %1$s. Nothing will be charged — when it ends, the door simply asks again.</string>
+    <string name="paywall_payment_active_unknown_renewal" translatable="false">Your subscription is active on this Google account. Manage it from Google Play subscriptions.</string>
+    <string name="paywall_payment_active_trial" translatable="false">Your free trial is active. You will be charged %1$s on %2$s unless you cancel in Google Play subscriptions.</string>
+    <string name="paywall_payment_active" translatable="false">Your subscription is active. You will be charged %1$s on %2$s unless you cancel in Google Play subscriptions.</string>
+    <string name="paywall_price_per_month" translatable="false">%1$s/month</string>
+    <string name="paywall_price_per_year" translatable="false">%1$s/year</string>
+
+    <!-- CTA -->
+    <string name="paywall_cta_done" translatable="false">Done</string>
+    <string name="paywall_cta_trial" translatable="false">Start my 3 free days</string>
+    <string name="paywall_cta_yearly" translatable="false">Continue — %1$s/year</string>
+    <string name="paywall_cta_monthly" translatable="false">Begin — %1$s/month</string>
+
+    <!-- Footer & store-unreachable retry -->
+    <string name="paywall_restore" translatable="false">Restore Purchases</string>
+    <string name="paywall_restoring" translatable="false">Restoring…</string>
+    <string name="paywall_terms" translatable="false">Terms</string>
+    <string name="paywall_privacy" translatable="false">Privacy</string>
+    <string name="paywall_later" translatable="false">later</string>
+    <string name="paywall_try_again" translatable="false">Try again</string>
+
+    <!-- Free-tier target moment copy deliberately lives in
+         core/copy/AnkyCopyRegistry (like iOS) — FreeTargetMomentCard reads
+         it there, so the registry stays the single source of that voice. -->
+</resources>

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "anky-flow-apps-knock.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
