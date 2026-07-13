@@ -136,6 +136,13 @@ final class YouViewModel: ObservableObject {
         sensitiveIdentityConfirmed = await biometricAuth.confirm(reason: AnkyLocalization.ui("Confirm access to Anky private settings."))
     }
 
+    /// The revealed phrase split into its 12 words (empty until revealed).
+    var recoveryPhraseWords: [String] {
+        recoveryPhraseText
+            .split(whereSeparator: { $0 == " " || $0 == "\n" })
+            .map(String.init)
+    }
+
     func revealRecoveryPhrase() async {
         guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Show your Anky recovery words.")) else {
             errorMessage = AnkyLocalization.ui("Could not confirm access.")

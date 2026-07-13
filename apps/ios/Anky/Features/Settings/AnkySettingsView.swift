@@ -67,6 +67,7 @@ struct AnkySettingsView: View {
                         writingSection
                         typefaceSection
                         protectionSection
+                        identitySection
                         accountDeletionSection
                         paintingsSection
                         supportSection
@@ -97,9 +98,15 @@ struct AnkySettingsView: View {
             refreshDailyTarget()
             writerName = WritingAnchorStore().writerName ?? ""
             writingPreferences = WritingPreferencesStore().load()
+            // Always open with the recovery phrase concealed.
+            viewModel.hideRecoveryPhrase()
             Task {
                 await entitlements.loadPackages()
             }
+        }
+        .onDisappear {
+            // Never leave the seed words sitting in memory once Settings closes.
+            viewModel.hideRecoveryPhrase()
         }
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
@@ -562,6 +569,121 @@ struct AnkySettingsView: View {
         }
     }
 
+    // MARK: Identity (self-sovereign keys)
+
+    /// The writer owns their account outright: a public address anyone can
+    /// verify their writing against, and the 12 words that ARE the account —
+    /// held only on this device, never on an Anky server.
+    private var identitySection: some View {
+        section(title: "Your keys") {
+            VeilCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Public address — safe to share, the writer's identity
+                    // on Base. Derived from the recovery phrase.
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "key.horizontal")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundStyle(Color.ankyViolet)
+                            Text(AnkyLocalization.ui("Public address"))
+                                .font(.ankyLabel)
+                                .foregroundStyle(Color.ankyInk)
+                            Spacer()
+                            Button {
+                                ClipboardClient().copy(viewModel.accountId)
+                                AnkyHaptics.light()
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(Color.ankyInkSoft)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(AnkyLocalization.ui("Copy public address"))
+                        }
+
+                        Text(viewModel.accountId)
+                            .font(.system(size: 12, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Color.ankyInkSoft)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+
+                        Text(AnkyLocalization.ui("Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours."))
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
+                            .lineSpacing(3)
+                    }
+
+                    LazureDivider()
+
+                    // Recovery phrase — the account itself. Revealed only
+                    // behind a device-owner check; never leaves the device.
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "lock.shield")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundStyle(Color.ankyViolet)
+                            Text(AnkyLocalization.ui("Recovery phrase"))
+                                .font(.ankyLabel)
+                                .foregroundStyle(Color.ankyInk)
+                        }
+
+                        Text(AnkyLocalization.ui("These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach."))
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(Color.ankyInkSoft)
+                            .lineSpacing(3)
+
+                        if viewModel.recoveryPhraseText.isEmpty {
+                            Button {
+                                Task { await viewModel.revealRecoveryPhrase() }
+                            } label: {
+                                Text(AnkyLocalization.ui("Reveal recovery phrase"))
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Color.ankyInk)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.ankyGold.opacity(0.20), in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Color.ankyGold.opacity(0.5), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            RecoveryWordsGrid(words: viewModel.recoveryPhraseWords)
+
+                            HStack(spacing: 10) {
+                                Button {
+                                    ClipboardClient().copy(viewModel.recoveryPhraseText)
+                                    AnkyHaptics.light()
+                                } label: {
+                                    Label(AnkyLocalization.ui("Copy"), systemImage: "doc.on.doc")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(Color.ankyInk)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(Color.ankyPaper.opacity(0.5), in: Capsule())
+                                        .overlay(Capsule().strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    viewModel.hideRecoveryPhrase()
+                                } label: {
+                                    Text(AnkyLocalization.ui("Hide"))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(Color.ankyInkSoft)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(Color.ankyPaper.opacity(0.5), in: Capsule())
+                                        .overlay(Capsule().strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var accountDeletionSection: some View {
         section(title: "Delete account") {
             Button(role: .destructive) {
@@ -963,5 +1085,41 @@ struct AnkySettingsView: View {
                 .tint(Color.ankyGold)
         }
         .padding(18)
+    }
+}
+
+/// The revealed recovery phrase as a numbered two-column grid — the shape
+/// people expect to copy onto paper, one word at a time.
+private struct RecoveryWordsGrid: View {
+    let words: [String]
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(Array(words.enumerated()), id: \.offset) { index, word in
+                HStack(spacing: 8) {
+                    Text("\(index + 1)")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.6))
+                        .frame(width: 18, alignment: .trailing)
+                    Text(word)
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.ankyInk)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(Color.ankyPaper.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.ankyGold.opacity(0.22), lineWidth: 0.5)
+                )
+            }
+        }
     }
 }
