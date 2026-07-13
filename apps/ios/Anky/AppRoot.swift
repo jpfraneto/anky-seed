@@ -1849,21 +1849,20 @@ private enum WriteBeforeScrollReturnTarget {
 
 private struct PostSessionSealingView: View {
     private enum Phase: Int {
-        case seal
-        case choice
+        /// The writer's own words, returned to them on the mirror, with the
+        /// slide-to-reflect control. Nothing has left the device here.
+        case writing
+        /// The reflection streaming onto the mirror after the slide.
         case mirror
+        /// The closing beat — unlock / continue / done.
         case gate
     }
 
     @StateObject private var mirrorViewModel: RevealViewModel
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var phase: Phase = .seal
+    @State private var phase: Phase = .writing
     @State private var didStart = false
-    @State private var sealMinimumElapsed = false
     @State private var mirrorResolved = false
     @State private var didAttemptReflection = false
-    @State private var didLeaveDuringSeal = false
-    @State private var skipsSealMotion = false
     @State private var isFirstGate = false
     @State private var showsPaywallSheet = false
     @State private var paywallOrigin = "reflection"
@@ -1903,11 +1902,9 @@ private struct PostSessionSealingView: View {
         self.onUnlock = onUnlock
         self.onDone = onDone
         self.onStay = onStay
-        // Re-entry from the back button of a continued session: the seal
-        // already played once — land straight on the gate beat.
-        _phase = State(initialValue: startsAtGate ? .gate : .seal)
-        _sealMinimumElapsed = State(initialValue: startsAtGate)
-        _skipsSealMotion = State(initialValue: startsAtGate)
+        // Re-entry from the back button of a continued session: land straight
+        // on the gate beat.
+        _phase = State(initialValue: startsAtGate ? .gate : .writing)
         _mirrorViewModel = StateObject(wrappedValue: RevealViewModel(artifact: artifact))
     }
 
@@ -1916,35 +1913,22 @@ private struct PostSessionSealingView: View {
             ZStack {
                 SealingBackground()
 
-                if phase == .seal || phase == .choice {
-                    SealingAnkyStageView(
-                        isReady: phase == .choice,
-                        isActivelyReflecting: didAttemptReflection && mirrorViewModel.isAskingAnky && !mirrorResolved,
-                        didFailReflection: didFailReflection,
-                        showsReflectionVeil: reflectionVeiled,
-                        isReflectionReady: mirrorViewModel.reflection != nil,
-                        showsContinueWriting: !didAttemptReflection && mirrorViewModel.reflection == nil,
-                        onRead: {
-                            if didFailReflection || mirrorViewModel.reflection == nil {
-                                beginReflectionRequest()
-                            } else if reflectionVeiled {
-                                paywallOrigin = "reflection"
-                                showsPaywallSheet = true
-                            } else {
-                                showGate()
-                            }
-                        },
-                        onContinueWriting: onStay
+                if phase == .writing {
+                    SealingWritingBeatView(
+                        writing: artifact.reconstructedText,
+                        onReflect: onReflectSlideCompleted,
+                        onContinueWriting: onStay,
+                        onSkip: skipReflection
                     )
+                    .padding(.top, max(geometry.safeAreaInsets.top, 18))
+                    .padding(.bottom, max(geometry.safeAreaInsets.bottom, 18))
+                    .transition(.opacity)
                 } else {
                     MirrorAndGateBeatView(
                         reflectionText: reflectionText,
                         didFailReflection: didFailReflection,
-                        showsReflectionVeil: reflectionVeiled,
-                        onVeilTap: {
-                            paywallOrigin = "reflection"
-                            showsPaywallSheet = true
-                        },
+                        isReflecting: didAttemptReflection && !mirrorResolved,
+                        showsReflectionVeil: false,
                         gateTitle: gateTitle,
                         firstGateLine: firstGateLine,
                         showsGate: phase == .gate,
@@ -1968,24 +1952,6 @@ private struct PostSessionSealingView: View {
             PaywallSheet(store: entitlements, origin: paywallOrigin)
         }
         .onAppear(perform: startIfNeeded)
-        .onChange(of: scenePhase) { newPhase in
-            switch newPhase {
-            case .background:
-                if phase == .seal {
-                    didLeaveDuringSeal = true
-                }
-            case .active:
-                if didLeaveDuringSeal {
-                    sealMinimumElapsed = true
-                    skipsSealMotion = true
-                    advancePastSealIfReady()
-                }
-            case .inactive:
-                break
-            @unknown default:
-                break
-            }
-        }
     }
 
     private var reflectionText: String {
@@ -1997,6 +1963,12 @@ private struct PostSessionSealingView: View {
         let streaming = mirrorViewModel.streamingReflectionMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
         if !streaming.isEmpty {
             return Self.dedupedReflection(streaming)
+        }
+
+        // Actively reflecting but nothing has streamed yet: the indicator
+        // carries the moment — don't flash the closing line.
+        if didAttemptReflection && !mirrorResolved {
+            return ""
         }
 
         return AnkyLocalization.ui("Sealed. Words kept.")
@@ -2042,59 +2014,53 @@ private struct PostSessionSealingView: View {
         didStart = true
         isFirstGate = unlockGrant != nil && !FirstGateStore().hasCompletedFirstGate
         dismissKeyboard()
-
+        // Load the accent color and any reflection ALREADY cached on this
+        // device. This never sends the writing anywhere — the artifact only
+        // leaves the phone when the writer completes the slide below.
         Task {
             await mirrorViewModel.prepareAfterFirstRender()
-            await MainActor.run {
-                mirrorResolved = true
-                advancePastSealIfReady()
-            }
-        }
-
-        Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await MainActor.run {
-                sealMinimumElapsed = true
-                advancePastSealIfReady()
-            }
         }
     }
 
-    private func advancePastSealIfReady() {
-        guard phase == .seal, sealMinimumElapsed, mirrorResolved else {
-            return
-        }
-
-        withAnimation(.easeInOut(duration: 0.82)) {
-            phase = .choice
-        }
-    }
-
-    private func beginReflectionRequest() {
+    /// The writer completed the slide — the single deliberate act that lets
+    /// their writing leave the device. A free writer meets the offer instead;
+    /// nothing is sent until they choose to subscribe.
+    private func onReflectSlideCompleted() {
         guard entitlements.isEntitledForGating else {
             paywallOrigin = "reflection"
             showsPaywallSheet = true
             return
         }
+        // A reflection already cached on device (e.g. a re-entered session):
+        // reveal it, don't ask again.
+        if mirrorViewModel.reflection != nil {
+            mirrorResolved = true
+            withAnimation(.easeInOut(duration: 0.6)) {
+                phase = .gate
+            }
+            if showsFreeTargetMoment {
+                onMomentShown()
+            }
+            return
+        }
         didAttemptReflection = true
         mirrorResolved = false
-        sealMinimumElapsed = true
-        withAnimation(.easeInOut(duration: 0.35)) {
-            phase = .seal
+        withAnimation(.easeInOut(duration: 0.6)) {
+            phase = .mirror
         }
         Task {
             await mirrorViewModel.askAnkyForSealedSession()
             await MainActor.run {
                 mirrorResolved = true
-                if mirrorViewModel.reflection != nil {
-                    withAnimation(.easeInOut(duration: 0.82)) {
-                        phase = .choice
-                    }
-                } else {
-                    advancePastSealIfReady()
-                }
+                showGate()
             }
         }
+    }
+
+    /// The writer chose not to reflect — close the loop with their words never
+    /// having left the device.
+    private func skipReflection() {
+        showGate()
     }
 
     private func showGate() {
@@ -2180,258 +2146,167 @@ private struct PostSessionSealingView: View {
     }
 }
 
-private struct SealBeatView: View {
-    let skipsMotion: Bool
-    @State private var gathersThread = false
-
-    var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.ankyViolet.opacity(gathersThread ? 0.20 : 0.10))
-                    .frame(width: 126, height: 126)
-                    .blur(radius: 26)
-
-                // The companion overlay is already anky on this surface —
-                // a second, larger anky here read as a duplicate. The thread
-                // gathers on its own now.
-                SealingThreadTangle(isGathered: gathersThread || skipsMotion)
-                    .offset(y: gathersThread || skipsMotion ? 8 : -86)
-                    .scaleEffect(gathersThread || skipsMotion ? 0.7 : 1.25)
-                    .opacity(skipsMotion ? 0.76 : 0.9)
-            }
-            .frame(width: 240, height: 230)
-
-            // No protocol arcana here — just a quiet loading state while
-            // anky reads.
-            HStack(spacing: 9) {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(Color.ankyInkSoft.opacity(0.75))
-                Text(AnkyLocalization.ui(AnkyCopyRegistry.reflectionWait))
-                    .font(.system(size: 14, weight: .regular, design: .serif))
-                    .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            guard !skipsMotion else {
-                gathersThread = true
-                return
-            }
-            withAnimation(.easeInOut(duration: 2.75)) {
-                gathersThread = true
-            }
-        }
-    }
-}
-
-private struct SealingThreadTangle: View {
-    let isGathered: Bool
-
-    var body: some View {
-        ZStack {
-            ForEach(0..<14, id: \.self) { index in
-                Text(glyph(for: index))
-                    .font(.system(size: isGathered ? 16 : 21, weight: .medium, design: .serif))
-                    .foregroundStyle(color(for: index).opacity(isGathered ? 0.72 : 0.42))
-                    .rotationEffect(.degrees(Double(index * 23)))
-                    .offset(
-                        x: isGathered ? CGFloat((index % 5) - 2) * 4 : CGFloat((index % 7) - 3) * 22,
-                        y: isGathered ? CGFloat((index % 4) - 2) * 3 : CGFloat((index % 5) - 2) * 18
-                    )
-            }
-        }
-        .frame(width: 116, height: 86)
-        .blur(radius: isGathered ? 0.4 : 0)
-    }
-
-    private func glyph(for index: Int) -> String {
-        let glyphs = ["a", "n", "k", "y", ".", "w", "o", "r", "d", "s", "·", "i", "n", "k"]
-        return glyphs[index % glyphs.count]
-    }
-
-    private func color(for index: Int) -> Color {
-        let colors = [
-            Color.ankyGold,
-            Color.ankyViolet,
-            Color.ankySlate,
-            Color.ankyInkSoft
-        ]
-        return colors[index % colors.count]
-    }
-}
-
-private struct SealingAnkyStageView: View {
-    let isReady: Bool
-    let isActivelyReflecting: Bool
-    let didFailReflection: Bool
-    let showsReflectionVeil: Bool
-    let isReflectionReady: Bool
-    let showsContinueWriting: Bool
-    let onRead: () -> Void
+/// The mirror after a session: the writer's own words returned to them, with
+/// the slide-to-reflect control beneath. The writing never leaves the device
+/// from here — only a completed slide sends it.
+private struct SealingWritingBeatView: View {
+    let writing: String
+    let onReflect: () -> Void
     let onContinueWriting: () -> Void
-
-    @State private var breathes = false
-    @State private var sweepOffset: CGFloat = -180
+    let onSkip: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
+        VStack(spacing: 20) {
+            Spacer(minLength: 8)
 
-            ZStack {
-                WatercolorVeilView(register: .pale)
-                    .opacity(0.82)
-
-                Image("anky-reading")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 320)
-                    .opacity(isReady ? 0 : 1)
-                    .scaleEffect(breathes ? 1.018 : 1)
-                    .offset(y: isReady ? 12 : 0)
-                    .accessibilityHidden(true)
-
-                Image("anky-reflection-ready")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 336)
-                    .opacity(isReady ? 1 : 0)
-                    .scaleEffect(breathes ? 1.012 : 1)
-                    .offset(y: isReady ? 0 : -10)
-                    .accessibilityHidden(true)
-
-                if !isReady {
-                    LinearGradient(
-                        colors: [
-                            Color.clear,
-                            Color.ankyGoldLight.opacity(0.32),
-                            Color.ankyViolet.opacity(0.18),
-                            Color.clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 120)
-                    .offset(y: sweepOffset)
-                    .mask(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
+            // The mirror: their own words, held in the frame.
+            ScrollView(showsIndicators: false) {
+                Text(displayWriting)
+                    .font(.system(size: 17, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInk)
+                    .lineSpacing(6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
             }
-            .frame(height: 350)
             .frame(maxWidth: .infinity)
-            .shadow(color: Color.ankyGold.opacity(isReady ? 0.20 : 0.14), radius: 22, y: 8)
-            .animation(.easeInOut(duration: 0.92), value: isReady)
-            .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: breathes)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.ankyPaper.opacity(0.55))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(Color.ankyGold.opacity(0.18), lineWidth: 0.7)
+                    )
+            )
+            .shadow(color: Color.ankyViolet.opacity(0.12), radius: 16, y: 6)
 
-            HStack(spacing: 10) {
-                if !isReady {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.ankyViolet)
-                        .transition(.opacity.combined(with: .scale))
-                }
+            SlideToReflect(label: "slide to reflect", onComplete: onReflect)
+                .padding(.horizontal, 2)
 
-                Text(AnkyLocalization.ui(isReady ? title : AnkyCopyRegistry.reflectionWait))
-                    .font(.system(size: isReady ? 16 : 14, weight: .regular, design: .serif))
-                    .foregroundStyle(Color.ankyInkSoft.opacity(0.92))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-            }
-            .frame(minHeight: 28)
-            .animation(.easeInOut(duration: 0.5), value: isReady)
-
-            VStack(spacing: 13) {
-                Button(action: onRead) {
-                    Text(AnkyLocalization.ui(primaryTitle))
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.ankyInk)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                        .padding(.horizontal, 22)
-                        .frame(minHeight: 46)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.ankyGoldLight, Color.ankyGold],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            in: Capsule()
-                        )
-                        .overlay(Capsule().stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
-                        .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
+            HStack(spacing: 24) {
+                Button(action: onContinueWriting) {
+                    Text(AnkyLocalization.ui("continue writing"))
+                        .font(.system(size: 14, weight: .medium, design: .serif))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .underline()
                 }
                 .buttonStyle(.plain)
 
-                if showsContinueWriting {
-                    Button(action: onContinueWriting) {
-                        Text(AnkyLocalization.ui("or continue writing"))
-                            .font(.system(size: 13, weight: .medium, design: .serif))
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .underline()
-                    }
-                    .buttonStyle(.plain)
+                Button(action: onSkip) {
+                    Text(AnkyLocalization.ui("skip"))
+                        .font(.system(size: 14, weight: .medium, design: .serif))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.78))
                 }
+                .buttonStyle(.plain)
             }
-            .opacity(isReady ? 1 : 0)
-            .offset(y: isReady ? 0 : 12)
-            .allowsHitTesting(isReady)
-            .animation(.easeInOut(duration: 0.58).delay(isReady ? 0.16 : 0), value: isReady)
 
-            Spacer()
+            Spacer(minLength: 4)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 26)
         .frame(maxWidth: 620)
         .frame(maxWidth: .infinity)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                breathes = true
-            }
-            withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: false)) {
-                sweepOffset = 210
-            }
-        }
-        .task(id: isActivelyReflecting) {
-            guard isActivelyReflecting else { return }
-            let heartbeat = UIImpactFeedbackGenerator(style: .soft)
-            while !Task.isCancelled {
-                heartbeat.prepare()
-                heartbeat.impactOccurred(intensity: 0.16)
-                try? await Task.sleep(nanoseconds: 1_900_000_000)
-            }
-        }
     }
 
-    private var title: String {
-        if didFailReflection {
-            return "I couldn't return a reflection right now."
-        }
-        if showsReflectionVeil {
-            return "I'm ready to show what I saw."
-        }
-        if !isReflectionReady {
-            return "Your writing is ready."
-        }
-        return "I saw something in your words."
+    private var displayWriting: String {
+        let trimmed = writing.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? AnkyLocalization.ui("Sealed. Words kept.") : trimmed
     }
+}
 
-    private var primaryTitle: String {
-        if didFailReflection {
-            return "Retry reflection"
+/// The single deliberate act that lets a writer's words leave the device: a
+/// left-to-right slide, ticking a soft haptic as it travels, sending only
+/// when it completes past the threshold. Until then, nothing is transmitted.
+private struct SlideToReflect: View {
+    let label: String
+    let onComplete: () -> Void
+
+    @State private var dragX: CGFloat = 0
+    @State private var completed = false
+    @State private var lastTickStep = 0
+
+    private let knob: CGFloat = 52
+    private let inset: CGFloat = 5
+
+    var body: some View {
+        GeometryReader { geo in
+            let travel = max(1, geo.size.width - knob - inset * 2)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.ankyInk.opacity(0.07))
+                    .overlay(Capsule().strokeBorder(Color.ankyGold.opacity(0.30), lineWidth: 0.5))
+
+                Text(AnkyLocalization.ui(label))
+                    .font(.system(size: 15, weight: .semibold, design: .serif))
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .frame(maxWidth: .infinity)
+                    .opacity(0.9 * Double(1 - min(1, dragX / travel)))
+
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.ankyGoldLight, Color.ankyGold],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .overlay(Circle().strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
+                        .shadow(color: Color.ankyViolet.opacity(0.18), radius: 8, y: 3)
+                    Image(systemName: completed ? "checkmark" : "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.ankyInk)
+                }
+                .frame(width: knob, height: knob)
+                .offset(x: inset + dragX)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            guard !completed else { return }
+                            let x = min(max(0, value.translation.width), travel)
+                            dragX = x
+                            let step = Int(x / 20)
+                            if step != lastTickStep {
+                                lastTickStep = step
+                                UIImpactFeedbackGenerator(style: .soft)
+                                    .impactOccurred(intensity: 0.35 + 0.5 * Double(x / travel))
+                            }
+                        }
+                        .onEnded { _ in
+                            guard !completed else { return }
+                            if dragX >= travel * 0.9 {
+                                completed = true
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.72)) {
+                                    dragX = travel
+                                }
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                onComplete()
+                                // Ready the control again for the free-writer
+                                // paywall bounce; if we advanced past .writing
+                                // this view is already gone.
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                    completed = false
+                                    lastTickStep = 0
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                                        dragX = 0
+                                    }
+                                }
+                            } else {
+                                lastTickStep = 0
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                                    dragX = 0
+                                }
+                            }
+                        }
+                )
+            }
         }
-        if showsReflectionVeil {
-            return "See what I saw"
-        }
-        if !isReflectionReady {
-            return "Reflect your writing"
-        }
-        return "Read my reflection"
+        .frame(height: knob + inset * 2)
     }
 }
 
 private struct MirrorAndGateBeatView: View {
     let reflectionText: String
     let didFailReflection: Bool
+    var isReflecting: Bool = false
     var showsReflectionVeil: Bool = false
     var onVeilTap: () -> Void = {}
     let gateTitle: String
@@ -2461,6 +2336,19 @@ private struct MirrorAndGateBeatView: View {
                     .frame(height: 235)
                     .frame(maxWidth: .infinity)
                 } else {
+                    if isReflecting {
+                        HStack(spacing: 9) {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(Color.ankyViolet)
+                            Text(AnkyLocalization.ui(AnkyCopyRegistry.reflectionWait))
+                                .font(.system(size: 14, weight: .regular, design: .serif))
+                                .foregroundStyle(Color.ankyInkSoft.opacity(0.92))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                    }
+
                     RawReflectionMarkdownText(
                         markdown: reflectionText,
                         didFailReflection: didFailReflection
