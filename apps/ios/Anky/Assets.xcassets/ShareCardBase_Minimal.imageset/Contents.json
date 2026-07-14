@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "ShareCardBase_Minimal.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
