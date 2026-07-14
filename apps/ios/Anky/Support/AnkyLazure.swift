@@ -348,6 +348,208 @@ struct WashButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - 6a. Shared button components (the one primary, the one secondary)
+
+/// The canonical primary action button.
+///
+/// P0-3: onboarding's button is the reference — pale parchment thread
+/// (`PaperThreadButtonStyle`), serif, full-width, breathing on press. Every
+/// primary CTA in the app (reveal, reflection, settings, paywall) routes
+/// through this one component so nothing drifts from onboarding again. It also
+/// carries onboarding's tap behavior: a light haptic before the action fires.
+struct AnkyPrimaryButton: View {
+    private let title: String
+    private let systemImage: String?
+    private let isEnabled: Bool
+    private let isLoading: Bool
+    private let action: () -> Void
+
+    init(
+        _ title: String,
+        systemImage: String? = nil,
+        isEnabled: Bool = true,
+        isLoading: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.isEnabled = isEnabled
+        self.isLoading = isLoading
+        self.action = action
+    }
+
+    var body: some View {
+        Button {
+            AnkyHaptics.light()
+            action()
+        } label: {
+            ZStack {
+                // Keep the label mounted while loading so the capsule never
+                // resizes — the spinner simply veils the title.
+                HStack(spacing: 9) {
+                    if let systemImage {
+                        Image(systemName: systemImage)
+                    }
+                    Text(AnkyLocalization.ui(title))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .opacity(isLoading ? 0 : 1)
+
+                if isLoading {
+                    ProgressView()
+                        .tint(Color.ankyInk)
+                }
+            }
+        }
+        .buttonStyle(PaperThreadButtonStyle())
+        .disabled(!isEnabled || isLoading)
+        .opacity(isEnabled ? 1 : 0.5)
+        .animation(.easeInOut(duration: 0.2), value: isEnabled)
+    }
+}
+
+/// The canonical secondary action button: the design system's quieter slate
+/// wash (`WashButtonStyle`), for the second choice beside a primary. Onboarding
+/// itself expresses "secondary" as a bare underlined text link; where a filled
+/// secondary is wanted, this is the shared form so it never gets reinvented.
+struct AnkySecondaryButton: View {
+    private let title: String
+    private let isEnabled: Bool
+    private let action: () -> Void
+
+    init(
+        _ title: String,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.isEnabled = isEnabled
+        self.action = action
+    }
+
+    var body: some View {
+        Button {
+            AnkyHaptics.light()
+            action()
+        } label: {
+            Text(AnkyLocalization.ui(title))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .buttonStyle(WashButtonStyle())
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.5)
+    }
+}
+
+// MARK: - 6b. Fraunces (the brand serif)
+
+/// Fraunces — the brand serif — bundled under the `Fonts/` folder reference and
+/// registered at runtime (so it works whether the files land at the bundle root
+/// or inside the folder). Every Fraunces access registers first, then falls back
+/// to the system serif if a face is somehow missing, so text always renders.
+enum AnkyFraunces {
+    enum Weight {
+        case light, regular, semibold, bold, black
+
+        var postScriptName: String {
+            switch self {
+            case .light:    return "Fraunces72pt-Light"
+            case .regular:  return "Fraunces72pt-Regular"
+            case .semibold: return "Fraunces72pt-SemiBold"
+            case .bold:     return "Fraunces72pt-Bold"
+            case .black:    return "Fraunces72pt-Black"
+            }
+        }
+
+        var italicPostScriptName: String {
+            switch self {
+            case .bold, .black: return "Fraunces72pt-BoldItalic"
+            default:            return "Fraunces72pt-Italic"
+            }
+        }
+
+        var uiWeight: UIFont.Weight {
+            switch self {
+            case .light:    return .light
+            case .regular:  return .regular
+            case .semibold: return .semibold
+            case .bold:     return .bold
+            case .black:    return .black
+            }
+        }
+    }
+
+    /// Idempotent: the first call registers every bundled Fraunces face with
+    /// Core Text; later calls are no-ops. Safe to call from app launch and from
+    /// each font accessor.
+    private static let didRegister: Bool = {
+        let urls = Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts")
+            ?? Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil)
+            ?? []
+        for url in urls where url.lastPathComponent.hasPrefix("Fraunces") {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+        return true
+    }()
+
+    static func register() {
+        _ = didRegister
+    }
+
+    /// SwiftUI font. `relativeTo` opts the face into Dynamic Type scaling.
+    static func font(
+        _ size: CGFloat,
+        weight: Weight = .regular,
+        italic: Bool = false,
+        relativeTo textStyle: Font.TextStyle = .body
+    ) -> Font {
+        register()
+        let name = italic ? weight.italicPostScriptName : weight.postScriptName
+        if UIFont(name: name, size: size) != nil {
+            return .custom(name, size: size, relativeTo: textStyle)
+        }
+        return .system(size: size, weight: weight.uiWeight.swiftUIWeight, design: .serif)
+    }
+
+    /// UIKit font, for the ImageRenderer / Core Graphics share-card path.
+    static func uiFont(_ size: CGFloat, weight: Weight = .regular, italic: Bool = false) -> UIFont {
+        register()
+        let name = italic ? weight.italicPostScriptName : weight.postScriptName
+        if let font = UIFont(name: name, size: size) {
+            return font
+        }
+        let base = UIFont.systemFont(ofSize: size, weight: weight.uiWeight)
+        let descriptor = base.fontDescriptor.withDesign(.serif) ?? base.fontDescriptor
+        return UIFont(descriptor: descriptor, size: size)
+    }
+}
+
+private extension UIFont.Weight {
+    var swiftUIWeight: Font.Weight {
+        switch self {
+        case .light:    return .light
+        case .semibold: return .semibold
+        case .bold:     return .bold
+        case .black:    return .black
+        default:        return .regular
+        }
+    }
+}
+
+extension Font {
+    /// Convenience for the brand serif — `.fraunces(20, weight: .semibold)`.
+    static func fraunces(
+        _ size: CGFloat,
+        weight: AnkyFraunces.Weight = .regular,
+        italic: Bool = false,
+        relativeTo textStyle: Font.TextStyle = .body
+    ) -> Font {
+        AnkyFraunces.font(size, weight: weight, italic: italic, relativeTo: textStyle)
+    }
+}
+
 // MARK: - 7. Letterforms
 
 /// Steiner's world is humanist: serifs for what is *said*, warmth for

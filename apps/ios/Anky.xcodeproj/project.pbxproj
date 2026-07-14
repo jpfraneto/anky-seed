@@ -46,6 +46,7 @@
 		8A0000030000000000000007 /* BIP39WordList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001007 /* BIP39WordList.swift */; };
 		8A0000030000000000000008 /* BackupImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001008 /* BackupImporter.swift */; };
 		8A0000040000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000040000000000001001 /* Assets.xcassets */; };
+		8A0000FF0000000000000001 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000FF0000000000001001 /* Fonts */; };
 		8A0000050000000000000001 /* AnkyPresenceOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001001 /* AnkyPresenceOverlay.swift */; };
 		8A0000050000000000000002 /* AnkyWitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001002 /* AnkyWitnessView.swift */; };
 		8A0000050000000000000003 /* AnkySpriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001003 /* AnkySpriteView.swift */; };
@@ -276,6 +277,7 @@
 		8A0000030000000000001007 /* BIP39WordList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BIP39WordList.swift; sourceTree = "<group>"; };
 		8A0000030000000000001008 /* BackupImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupImporter.swift; sourceTree = "<group>"; };
 		8A0000040000000000001001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8A0000FF0000000000001001 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		8A0000050000000000001001 /* AnkyPresenceOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyPresenceOverlay.swift; sourceTree = "<group>"; };
 		8A0000050000000000001002 /* AnkyWitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyWitnessView.swift; sourceTree = "<group>"; };
 		8A0000050000000000001003 /* AnkySpriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySpriteView.swift; sourceTree = "<group>"; };
@@ -473,6 +475,7 @@
 			isa = PBXGroup;
 			children = (
 				8A0000040000000000001001 /* Assets.xcassets */,
+				8A0000FF0000000000001001 /* Fonts */,
 				8A0000B0000000000000100A /* StarterPainting */,
 				8A0000B00000000000001017 /* JourneyKingdoms */,
 				8A0000100000000000001001 /* PrivacyInfo.xcprivacy */,
@@ -1065,6 +1068,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A0000040000000000000001 /* Assets.xcassets in Resources */,
+				8A0000FF0000000000000001 /* Fonts in Resources */,
 				8A0000B0000000000000000A /* StarterPainting in Resources */,
 				8A0000B00000000000000017 /* JourneyKingdoms in Resources */,
 				8A0000100000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
