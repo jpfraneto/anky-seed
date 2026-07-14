@@ -1197,29 +1197,7 @@ private struct RetryReflectionButton: View {
     let onRetry: () -> Void
 
     var body: some View {
-        Button(action: onRetry) {
-            Text(AnkyLocalization.ui("ask for the reflection again"))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.ankyInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .padding(.horizontal, 22)
-                .frame(minHeight: 46)
-                .frame(maxWidth: .infinity)
-                .background(
-                    LinearGradient(
-                        colors: [Color.ankyGoldLight, Color.ankyGold],
-                        startPoint: .top, endPoint: .bottom
-                    ),
-                    in: Capsule()
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
-                )
-                .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
-        }
-        .buttonStyle(.plain)
+        AnkyPrimaryButton("ask for the reflection again", action: onRetry)
     }
 }
 

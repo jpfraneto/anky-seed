@@ -2376,29 +2376,7 @@ private struct MirrorAndGateBeatView: View {
                                 .transition(.opacity)
                         }
 
-                        Button(action: onGate) {
-                            Text(gateTitle)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Color.ankyInk)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.72)
-                                .padding(.horizontal, 22)
-                                .frame(minHeight: 46)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color.ankyGoldLight, Color.ankyGold],
-                                        startPoint: .top, endPoint: .bottom
-                                    ),
-                                    in: Capsule()
-                                )
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
-                                )
-                                .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
-                        }
-                        .buttonStyle(.plain)
+                        AnkyPrimaryButton(gateTitle, action: onGate)
 
                     }
                     .padding(.top, 10)
@@ -2439,29 +2417,7 @@ private struct MirrorAndGateBeatView: View {
                 .lineSpacing(4)
                 .frame(maxWidth: .infinity)
 
-            Button(action: onMomentSubscribe) {
-                Text(AnkyLocalization.ui(AnkyCopyRegistry.freeTargetMomentCTA))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.ankyInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .padding(.horizontal, 22)
-                    .frame(minHeight: 46)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.ankyGoldLight, Color.ankyGold],
-                            startPoint: .top, endPoint: .bottom
-                        ),
-                        in: Capsule()
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
-                    )
-                    .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
-            }
-            .buttonStyle(.plain)
+            AnkyPrimaryButton(AnkyCopyRegistry.freeTargetMomentCTA, action: onMomentSubscribe)
 
             if showsEmergencyLink {
                 Button(action: onEmergency) {
@@ -2836,30 +2792,11 @@ private struct ICloudRestorePromptView: View {
                         .padding(.horizontal, 10)
                 }
 
-                Button(action: restore) {
-                    HStack(spacing: 10) {
-                        if isRestoring {
-                            ProgressView()
-                                .tint(Color.ankyInk.opacity(0.82))
-                        }
-                        Text(AnkyLocalization.ui(isRestoring ? "Restoring" : "Restore From iCloud"))
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .foregroundStyle(Color.ankyInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 58)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.ankyGoldLight, Color.ankyGold],
-                            startPoint: .top, endPoint: .bottom
-                        ),
-                        in: Capsule()
-                    )
-                    .overlay(Capsule().stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
-                    .shadow(color: Color.ankyViolet.opacity(0.14), radius: 16, y: 6)
-                }
-                .buttonStyle(.plain)
-                .disabled(isRestoring)
+                AnkyPrimaryButton(
+                    isRestoring ? "Restoring" : "Restore From iCloud",
+                    isLoading: isRestoring,
+                    action: restore
+                )
                 .padding(.top, 8)
 
                 Button(AnkyLocalization.ui("Create new account"), action: createNew)

@@ -354,29 +354,12 @@ private struct WritingStatsSheet: View {
                         WritingStatTile(value: longestSessionText, label: AnkyLocalization.ui("longest session"))
                     }
 
-                    Button {
+                    AnkyPrimaryButton(
+                        "Export all writings",
+                        systemImage: "square.and.arrow.up"
+                    ) {
                         exportURL = makeExportURL()
-                    } label: {
-                        HStack(spacing: 9) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(AnkyLocalization.ui("Export all writings"))
-                                .font(.system(size: 15, weight: .semibold))
-                        }
-                        .foregroundStyle(Color.ankyInk)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.ankyGoldLight, Color.ankyGold],
-                                startPoint: .top, endPoint: .bottom
-                            ),
-                            in: Capsule()
-                        )
-                        .overlay(Capsule().stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
-                        .shadow(color: Color.ankyViolet.opacity(0.14), radius: 12, y: 4)
                     }
-                    .buttonStyle(.plain)
                     .padding(.top, 8)
                 }
                 .padding(24)

@@ -97,12 +97,8 @@ struct GateSetupView: View {
 
                     selectedAppsPanel
 
-                    Button(action: stepAction) {
-                        Text(AnkyLocalization.ui(stepButtonTitle))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(PaperThreadButtonStyle())
-                    .padding(.top, 2)
+                    AnkyPrimaryButton(stepButtonTitle, action: stepAction)
+                        .padding(.top, 2)
 
                     if currentStep != .done {
                         Button(action: onDone) {

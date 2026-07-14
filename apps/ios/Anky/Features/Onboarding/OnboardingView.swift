@@ -822,14 +822,11 @@ struct AnkyOnboardingView: View {
     }
 
     private func onboardingCTA(_ title: String, action: @escaping () -> Void) -> some View {
-        Button {
-            AnkyHaptics.light()
-            action()
-        } label: {
-            Text(AnkyLocalization.ui(title))
-        }
-        .buttonStyle(PaperThreadButtonStyle())
-        .padding(.top, 12)
+        // The canonical primary button is extracted from exactly this style —
+        // onboarding now routes through the shared component so the reference
+        // and every other screen stay one thing (P0-3).
+        AnkyPrimaryButton(title, action: action)
+            .padding(.top, 12)
     }
 }
 

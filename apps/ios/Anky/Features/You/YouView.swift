@@ -710,43 +710,13 @@ private struct YouAllAnkysHistoryView: View {
                 .font(.system(size: 36, weight: .bold))
                 .foregroundStyle(MapDayPalette.gold)
 
-            Button(action: onWriteRequested) {
-                HStack(spacing: 10) {
-                    Text(AnkyLocalization.ui("WRITE %d MINUTES", AnkyDuration.completeRitualMinutes))
-                        .font(.system(size: 16, weight: .semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
-                .foregroundStyle(MapDayPalette.paper)
-                .frame(maxWidth: .infinity)
-                .frame(height: 66)
-                .background(historyCTAFill, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(MapDayPalette.gold.opacity(0.42), lineWidth: 1)
-                )
-                .shadow(color: Color.ankyViolet.opacity(0.18), radius: 18, y: 8)
-                .shadow(color: MapDayPalette.gold.opacity(0.18), radius: 18)
-            }
-            .buttonStyle(.plain)
+            AnkyPrimaryButton(
+                AnkyLocalization.ui("WRITE %d MINUTES", AnkyDuration.completeRitualMinutes),
+                action: onWriteRequested
+            )
 
             Spacer(minLength: 96)
         }
-    }
-
-    private var historyCTAFill: LinearGradient {
-        let summaries = SessionIndexStore().load()
-        let anchor = JourneyAnchor.anchorDay(in: summaries, calendar: .ankyUTC)
-        let accent = AnkyverseDayPalette.color(for: AnkyverseCalendar(firstOpenDate: anchor, calendar: .ankyUTC).position(for: Date()).dayInRegion)
-        return LinearGradient(
-            colors: [
-                accent.opacity(0.34),
-                Color.ankyPaper.opacity(0.92),
-                accent.opacity(0.20)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 }
 

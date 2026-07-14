@@ -98,30 +98,11 @@ private struct CheckInHomeView: View {
                     )
                     .padding(.horizontal, 32)
 
-                    Button(action: openDeepWrite) {
-                        HStack(spacing: 14) {
-                            Image(systemName: "circle.dotted")
-                                .font(.system(size: 27, weight: .medium))
-                            Text(AnkyLocalization.ui("Deep Write · 8 min"))
-                                .font(.system(size: 21, weight: .medium, design: .serif))
-                        }
-                        .foregroundStyle(CheckInPalette.lavender)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 66)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.ankyPaper.opacity(0.85), Color.ankyPaperDeep.opacity(0.65)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .overlay(Capsule().stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.5))
-                                .shadow(color: Color.ankyViolet.opacity(0.12), radius: 12, y: 5)
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    AnkyPrimaryButton(
+                        "Deep Write · 8 min",
+                        systemImage: "circle.dotted",
+                        action: openDeepWrite
+                    )
                     .padding(.horizontal, 70)
                     .padding(.top, 36)
 
