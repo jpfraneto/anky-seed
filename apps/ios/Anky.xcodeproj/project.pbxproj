@@ -12,6 +12,7 @@
 		8A0000010000000000000003 /* WriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001003 /* WriteView.swift */; };
 		8A0000010000000000000004 /* WriteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001004 /* WriteViewModel.swift */; };
 		8A0000010000000000000005 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001005 /* RevealView.swift */; };
+		8A0000FE0000000000000001 /* AnkyRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000FE0000000000001001 /* AnkyRecordingView.swift */; };
 		8A0000010000000000000006 /* RevealViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001006 /* RevealViewModel.swift */; };
 		8A0000010000000000000007 /* AnkyLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001007 /* AnkyLine.swift */; };
 		8A0000010000000000000008 /* AnkyWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001008 /* AnkyWriter.swift */; };
@@ -242,6 +243,7 @@
 		8A0000010000000000001003 /* WriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteView.swift; sourceTree = "<group>"; };
 		8A0000010000000000001004 /* WriteViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteViewModel.swift; sourceTree = "<group>"; };
 		8A0000010000000000001005 /* RevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealView.swift; sourceTree = "<group>"; };
+		8A0000FE0000000000001001 /* AnkyRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyRecordingView.swift; sourceTree = "<group>"; };
 		8A0000010000000000001006 /* RevealViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealViewModel.swift; sourceTree = "<group>"; };
 		8A0000010000000000001007 /* AnkyLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLine.swift; sourceTree = "<group>"; };
 		8A0000010000000000001008 /* AnkyWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyWriter.swift; sourceTree = "<group>"; };
@@ -535,6 +537,7 @@
 			isa = PBXGroup;
 			children = (
 				8A0000010000000000001005 /* RevealView.swift */,
+				8A0000FE0000000000001001 /* AnkyRecordingView.swift */,
 				8A0000010000000000001006 /* RevealViewModel.swift */,
 				8A0000090000000000001001 /* TagSessionsListView.swift */,
 			);
@@ -1158,6 +1161,7 @@
 				8A0000010000000000000003 /* WriteView.swift in Sources */,
 				8A0000010000000000000004 /* WriteViewModel.swift in Sources */,
 				8A0000010000000000000005 /* RevealView.swift in Sources */,
+				8A0000FE0000000000000001 /* AnkyRecordingView.swift in Sources */,
 				8A0000010000000000000006 /* RevealViewModel.swift in Sources */,
 				8A0000010000000000000007 /* AnkyLine.swift in Sources */,
 				8A0000010000000000000008 /* AnkyWriter.swift in Sources */,

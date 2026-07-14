@@ -23,6 +23,14 @@
 		<key>AnnualProduct</key>
 		<string>anky.annual</string>
 	</dict>
+	<!-- P2 Anky Recording: reading a reflection aloud to camera. Capture stays
+	     on device; the clip only leaves if the writer shares it. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Anky uses the camera so you can read your reflection aloud to camera and keep the video.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Anky uses the microphone to record your voice while you read your reflection aloud.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Anky saves your reading videos to your photo library when you choose to keep them.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
