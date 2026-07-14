@@ -1923,11 +1923,23 @@ private struct PostSessionSealingView: View {
                     .padding(.top, max(geometry.safeAreaInsets.top, 18))
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom, 18))
                     .transition(.opacity)
+                } else if isReadingChamber {
+                    // P0-2: the wait after sliding to send is a decompression
+                    // chamber, not a spinner. It crossfades to the reflection
+                    // the moment the first token streams (isReadingChamber flips
+                    // false once streamingReflectionMarkdown fills).
+                    AnkyReadingChamber(
+                        wordCount: mirrorViewModel.wordCount,
+                        durationText: readingDurationText
+                    )
+                    // Full-bleed: no safe-area padding — the chamber's own
+                    // background runs edge to edge under the status bar and home
+                    // indicator; its content stays centered via internal spacers.
+                    .transition(.opacity)
                 } else {
                     MirrorAndGateBeatView(
                         reflectionText: reflectionText,
                         didFailReflection: didFailReflection,
-                        isReflecting: didAttemptReflection && !mirrorResolved,
                         showsReflectionVeil: false,
                         gateTitle: gateTitle,
                         firstGateLine: firstGateLine,
@@ -1947,11 +1959,35 @@ private struct PostSessionSealingView: View {
                 }
             }
             .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.55), value: isReadingChamber)
         }
         .sheet(isPresented: $showsPaywallSheet) {
             PaywallSheet(store: entitlements, origin: paywallOrigin)
         }
         .onAppear(perform: startIfNeeded)
+    }
+
+    /// P0-2: true while the mirror is being asked but nothing has streamed
+    /// back yet — the beat that becomes the reading chamber. Flips false the
+    /// moment the first reflection token lands (or the request resolves), which
+    /// crossfades the chamber into the streaming reflection.
+    private var isReadingChamber: Bool {
+        phase == .mirror
+            && didAttemptReflection
+            && !mirrorResolved
+            && mirrorViewModel.reflection == nil
+            && mirrorViewModel.streamingReflectionMarkdown
+                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// A friendly whole-minute phrasing for the acknowledgment line
+    /// ("You wrote 847 words in 8 minutes") — the raw `AnkyDuration.formatted`
+    /// ("8m 03s") reads wrong inside a sentence.
+    private var readingDurationText: String {
+        let minutes = max(1, Int((Double(artifact.durationMs) / 60_000.0).rounded()))
+        return minutes == 1
+            ? AnkyLocalization.ui("1 minute")
+            : AnkyLocalization.ui("%d minutes", minutes)
     }
 
     private var reflectionText: String {
@@ -1962,7 +1998,13 @@ private struct PostSessionSealingView: View {
 
         let streaming = mirrorViewModel.streamingReflectionMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
         if !streaming.isEmpty {
-            return Self.dedupedReflection(streaming)
+            // P0-1: the accumulated buffer only ever grows — render it as-is so
+            // the text streams monotonically. `dedupedReflection` strips heading
+            // echoes and repeated openings by scanning the *whole* text, which
+            // is non-monotonic mid-stream (a line present one tick is removed the
+            // next) and reads as paragraphs flashing in and out. Dedup belongs to
+            // the finished reflection above, applied once when it resolves.
+            return streaming
         }
 
         // Actively reflecting but nothing has streamed yet: the indicator
@@ -2306,7 +2348,6 @@ private struct SlideToReflect: View {
 private struct MirrorAndGateBeatView: View {
     let reflectionText: String
     let didFailReflection: Bool
-    var isReflecting: Bool = false
     var showsReflectionVeil: Bool = false
     var onVeilTap: () -> Void = {}
     let gateTitle: String
@@ -2336,19 +2377,9 @@ private struct MirrorAndGateBeatView: View {
                     .frame(height: 235)
                     .frame(maxWidth: .infinity)
                 } else {
-                    if isReflecting {
-                        HStack(spacing: 9) {
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(Color.ankyViolet)
-                            Text(AnkyLocalization.ui(AnkyCopyRegistry.reflectionWait))
-                                .font(.system(size: 14, weight: .regular, design: .serif))
-                                .foregroundStyle(Color.ankyInkSoft.opacity(0.92))
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .transition(.opacity)
-                    }
-
+                    // The pre-stream wait is handled upstream by the reading
+                    // chamber (P0-2); by the time this beat shows, the reflection
+                    // is streaming or resolved — no spinner here.
                     RawReflectionMarkdownText(
                         markdown: reflectionText,
                         didFailReflection: didFailReflection
@@ -2437,6 +2468,127 @@ private struct MirrorAndGateBeatView: View {
         }
         .padding(.top, 10)
         .transition(.opacity)
+    }
+}
+
+/// P0-2: the decompression chamber.
+///
+/// The writer just emptied themselves for eight minutes and slid to send. This
+/// is where they land while Anky reads — not a spinner, a held breath. A
+/// full-bleed lazure ground, the Anky character breathing in the lower third,
+/// one line naming what just happened, and a slow rotation of witness-lines
+/// beneath it. It holds until the reflection begins to stream, then crossfades
+/// away. Serif is New York (`design: .serif`) — the app's Fraunces stand-in,
+/// since Fraunces is not bundled.
+private struct AnkyReadingChamber: View {
+    let wordCount: Int
+    let durationText: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var breatheIn = false
+    @State private var witnessIndex = 0
+
+    /// Quiet, not mystical-kitsch — the register of a witness, not an oracle.
+    private static let witnessLines: [String] = [
+        "Nothing you wrote is wasted.",
+        "It stays between you two.",
+        "No one else will ever read this.",
+        "You showed up. That is the whole practice.",
+        "The page kept every word.",
+        "This was yours before it was anything.",
+        "Whatever it was, it is out of you now.",
+        "You met yourself for eight minutes."
+    ]
+
+    private let rotation = Timer.publish(every: 7, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ZStack {
+            background
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 24)
+
+                VStack(spacing: 16) {
+                    Text(acknowledgment)
+                        .font(.fraunces(20, weight: .semibold, relativeTo: .title3))
+                        .foregroundStyle(Color.ankyInk)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(AnkyLocalization.ui(Self.witnessLines[witnessIndex]))
+                        .font(.fraunces(16, weight: .regular))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.86))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .id(witnessIndex)
+                        .transition(.opacity)
+                }
+                .padding(.horizontal, 40)
+
+                Spacer(minLength: 32)
+
+                // Lower third: the character, breathing.
+                ankyImage
+                    .frame(height: 200)
+                    .scaleEffect(breatheIn ? 1.03 : 1.0)
+                    .opacity(breatheIn ? 1.0 : 0.9)
+                    .shadow(color: Color.ankyGold.opacity(0.18), radius: 22, y: 10)
+                    .accessibilityHidden(true)
+
+                Spacer(minLength: 40)
+            }
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true)) {
+                breatheIn = true
+            }
+        }
+        .onReceive(rotation) { _ in
+            withAnimation(.easeInOut(duration: 0.9)) {
+                witnessIndex = (witnessIndex + 1) % Self.witnessLines.count
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(acknowledgment)
+    }
+
+    private var acknowledgment: String {
+        AnkyLocalization.ui(
+            "You wrote %d words in %@. Anky is reading them now.",
+            wordCount,
+            durationText
+        )
+    }
+
+    @ViewBuilder
+    private var ankyImage: some View {
+        Image("anky-reading")
+            .resizable()
+            .scaledToFit()
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        if let image = UIImage(named: "ReadingScreenBackground") {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            // Soft violet→gold lazure placeholder until the asset lands.
+            LinearGradient(
+                colors: [
+                    Color.ankyViolet.opacity(0.16),
+                    Color.ankyPaper,
+                    Color.ankyGoldLight.opacity(0.30)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
     }
 }
 
