@@ -23,6 +23,12 @@ struct RevealView: View {
     @State private var hasObservedScrollOffset = false
     @State private var didCopyWriting = false
     @State private var didClaimWriteBeforeScrollUnlock = false
+    /// P1: the live text selection inside the rendered reflection, if any.
+    /// Empty → Share falls back to the reflection's opening passage.
+    @State private var selectedReflectionText = ""
+    @State private var shareQuote: String?
+    /// P2: full-screen teleprompter recording, opened once a reflection exists.
+    @State private var isShowingRecording = false
     private let onBack: (() -> Void)?
     private let onDeleted: () -> Void
     private let onTryAgain: () -> Void
@@ -127,7 +133,8 @@ struct RevealView: View {
                                 ReflectionMarkdownPanel(
                                     title: reflection.title,
                                     markdown: reflection.reflection,
-                                    showsStandaloneTitle: viewModel.isComplete
+                                    showsStandaloneTitle: viewModel.isComplete,
+                                    onSelectionChange: { selectedReflectionText = $0 }
                                 )
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
@@ -138,7 +145,8 @@ struct RevealView: View {
                                 ReflectionMarkdownPanel(
                                     title: nil,
                                     markdown: viewModel.streamingReflectionMarkdown,
-                                    showsStandaloneTitle: viewModel.isComplete
+                                    showsStandaloneTitle: viewModel.isComplete,
+                                    isStreaming: true
                                 )
                                 .opacity(0.92)
                                 .padding(.top, 36)
@@ -300,6 +308,32 @@ struct RevealView: View {
                         .accessibilityLabel(AnkyLocalization.ui(didCopyWriting ? "Writing copied" : "Copy writing"))
                         .accessibilityHint(AnkyLocalization.ui("Long press to copy the reflection prompt for your own AI tool."))
 
+                    if viewModel.reflection != nil {
+                        Button {
+                            AnkyHaptics.light()
+                            isShowingRecording = true
+                        } label: {
+                            Image(systemName: "video")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(RevealPalette.paper)
+                                .frame(width: 34, height: 38)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel(AnkyLocalization.ui("Record yourself reading this"))
+
+                        Button {
+                            shareReflectionCard()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(RevealPalette.paper)
+                                .frame(width: 34, height: 38)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel(AnkyLocalization.ui("Share as a card"))
+                        .accessibilityHint(AnkyLocalization.ui("Select a passage first, or share the opening."))
+                    }
+
                     Button {
                         AnkyHaptics.warning()
                         confirmDelete = true
@@ -332,6 +366,22 @@ struct RevealView: View {
         }
         .sheet(isPresented: $isShowingPaywallSheet) {
             PaywallSheet(store: entitlements, origin: "reflection")
+        }
+        .sheet(isPresented: Binding(
+            get: { shareQuote != nil },
+            set: { if !$0 { shareQuote = nil } }
+        )) {
+            if let shareQuote {
+                ShareCardPreviewView(quote: shareQuote)
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingRecording) {
+            if let reflection = viewModel.reflection {
+                AnkyRecordingView(
+                    reflectionText: ReflectionShareQuote.plainText(reflection.reflection),
+                    onClose: { isShowingRecording = false }
+                )
+            }
         }
         .onAppear {
             Task {
@@ -503,6 +553,18 @@ struct RevealView: View {
                 didCopyWriting = false
             }
         }
+    }
+
+    /// P1: render the branded "anky method" cards from the reader's selection
+    /// (or the reflection's opening if nothing is selected) and hand them to the
+    /// native share sheet. Copy is untouched — this is a separate affordance.
+    private func shareReflectionCard() {
+        guard let reflection = viewModel.reflection else { return }
+        AnkyHaptics.light()
+        shareQuote = ReflectionShareQuote.make(
+            selection: selectedReflectionText,
+            fullReflection: reflection.reflection
+        )
     }
 
     private func copyReflectionPrompt() {
@@ -991,9 +1053,15 @@ private struct ReflectionMarkdownPanel: View {
     /// of those is the first line said twice. Below the full ritual the
     /// reflection renders as it came, with no standalone heading.
     var showsStandaloneTitle = true
+    /// While the reflection is still streaming we render the full accumulated
+    /// buffer inline through the incremental text view — no title pull-out, so
+    /// the structure never churns as characters arrive (P0-1).
+    var isStreaming = false
+    /// Reports the reader's live text selection up so Share can quote it (P1).
+    var onSelectionChange: ((String) -> Void)?
 
     private var displayTitle: String {
-        guard separatesLeadingTitle, showsStandaloneTitle else {
+        guard !isStreaming, separatesLeadingTitle, showsStandaloneTitle else {
             return ""
         }
         guard let resolved = (title ?? markdown.firstMarkdownHeadingText)?
@@ -1018,6 +1086,9 @@ private struct ReflectionMarkdownPanel: View {
     }
 
     private var displayBody: String {
+        if isStreaming {
+            return markdown.softWrappedMarkdownForDisplay()
+        }
         let body = showsStandaloneTitle
             ? (displayTitle.isEmpty
                 ? markdown
@@ -1057,7 +1128,11 @@ private struct ReflectionMarkdownPanel: View {
                     .textSelection(.enabled)
             }
 
-            SelectableReflectionText(text: displayBody)
+            if isStreaming {
+                ReflectionStreamingText(text: displayBody)
+            } else {
+                SelectableReflectionText(text: displayBody, onSelectionChange: onSelectionChange)
+            }
         }
     }
 }
@@ -1263,19 +1338,10 @@ private enum ReflectionTextStyle {
     }
 }
 
-private struct SelectableReflectionText: UIViewRepresentable {
-    let text: String
-    var style: ReflectionTextStyle = .standard
-
-    init(
-        text: String,
-        style: ReflectionTextStyle = .standard
-    ) {
-        self.text = text
-        self.style = style
-    }
-
-    func makeUIView(context: Context) -> UITextView {
+/// Shared configuration for the reflection text views so the completed and
+/// streaming variants render into identically-configured UITextViews.
+private enum ReflectionTextViewFactory {
+    static func make() -> UITextView {
         let textView = UITextView()
         textView.backgroundColor = .clear
         textView.isEditable = false
@@ -1291,7 +1357,109 @@ private struct SelectableReflectionText: UIViewRepresentable {
         textView.adjustsFontForContentSizeCategory = true
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textView.layer.cornerRadius = 0
         return textView
+    }
+
+    static func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView) -> CGSize? {
+        let width = proposal.width ?? UIScreen.main.bounds.width - 56
+        uiView.bounds.size.width = width
+        uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
+        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: size.height)
+    }
+}
+
+/// The finished reflection: static text, rendered in full on each update.
+/// Copy yields plain text (the attributed string carries no markdown markers),
+/// and the live selection is reported up so Share can quote it (P1).
+private struct SelectableReflectionText: UIViewRepresentable {
+    let text: String
+    var style: ReflectionTextStyle = .standard
+    var onSelectionChange: ((String) -> Void)?
+
+    init(
+        text: String,
+        style: ReflectionTextStyle = .standard,
+        onSelectionChange: ((String) -> Void)? = nil
+    ) {
+        self.text = text
+        self.style = style
+        self.onSelectionChange = onSelectionChange
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onSelectionChange: onSelectionChange)
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = ReflectionTextViewFactory.make()
+        textView.delegate = context.coordinator
+        return textView
+    }
+
+    func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.onSelectionChange = onSelectionChange
+        textView.backgroundColor = .clear
+        if textView.bounds.width > 0 {
+            textView.textContainer.size = CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude)
+        }
+        textView.attributedText = ReflectionAttributedRenderer(text: text, style: style).attributed()
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        ReflectionTextViewFactory.sizeThatFits(proposal, uiView: uiView)
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var onSelectionChange: ((String) -> Void)?
+
+        init(onSelectionChange: ((String) -> Void)?) {
+            self.onSelectionChange = onSelectionChange
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard let range = textView.selectedTextRange,
+                  let selected = textView.text(in: range), !selected.isEmpty else {
+                onSelectionChange?("")
+                return
+            }
+            onSelectionChange?(selected)
+        }
+    }
+}
+
+/// The live-streaming reflection.
+///
+/// P0-1: the reflection arrives as paragraph-sized SSE deltas that the view
+/// model appends into a single accumulated buffer. Re-setting the full
+/// `attributedText` on every delta re-lays-out the entire (growing) document
+/// and reads as a flash — each paragraph appearing to be removed and replaced.
+///
+/// Here we still render markdown from the *full accumulated buffer* every
+/// update — so formatting stays correct and identity is stable — but we splice
+/// only the changed tail into the text view's `textStorage`. The already
+/// laid-out prefix is never rebuilt: no flash, no O(n) relayout per chunk, no
+/// scroll jump. A markdown token that only closes later (`**bo` + `ld**`)
+/// renders as plain text until it closes; when it does, the earlier range
+/// restyles and we fall back to a single full re-render for that update. Text
+/// is never dropped and the parser never crashes on a partial token.
+private struct ReflectionStreamingText: UIViewRepresentable {
+    let text: String
+    var style: ReflectionTextStyle = .standard
+
+    final class Coordinator {
+        /// The plain-string contents currently laid out in the text view,
+        /// used to detect the pure-append fast path.
+        var renderedString: String = ""
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        ReflectionTextViewFactory.make()
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
@@ -1299,17 +1467,48 @@ private struct SelectableReflectionText: UIViewRepresentable {
         if textView.bounds.width > 0 {
             textView.textContainer.size = CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude)
         }
-        textView.attributedText = attributedReflection()
-        textView.layer.cornerRadius = 0
+
+        let attributed = ReflectionAttributedRenderer(text: text, style: style).attributed()
+        let newString = attributed.string as NSString
+        let previous = context.coordinator.renderedString as NSString
+
+        if newString.isEqual(to: context.coordinator.renderedString) {
+            return
+        }
+
+        let storage = textView.textStorage
+        // Longest common prefix in UTF-16 units.
+        let ceiling = min(newString.length, previous.length)
+        var prefix = 0
+        while prefix < ceiling,
+              newString.character(at: prefix) == previous.character(at: prefix) {
+            prefix += 1
+        }
+
+        storage.beginEditing()
+        if previous.length > 0, prefix == previous.length {
+            // Pure append: keep the laid-out prefix, splice only the new tail.
+            let tailRange = NSRange(location: prefix, length: newString.length - prefix)
+            storage.append(attributed.attributedSubstring(from: tailRange))
+        } else {
+            // First render, or a token closing restyled an earlier range.
+            storage.setAttributedString(attributed)
+        }
+        storage.endEditing()
+
+        context.coordinator.renderedString = attributed.string
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let width = proposal.width ?? UIScreen.main.bounds.width - 56
-        uiView.bounds.size.width = width
-        uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
-        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        return CGSize(width: width, height: size.height)
+        ReflectionTextViewFactory.sizeThatFits(proposal, uiView: uiView)
     }
+}
+
+/// Builds the styled reflection body from Anky's lightweight markdown. Shared
+/// by the completed view and the live streaming view so both render identically.
+private struct ReflectionAttributedRenderer {
+    let text: String
+    var style: ReflectionTextStyle = .standard
 
     private var lines: [String] {
         text.replacingOccurrences(of: "\r\n", with: "\n")
@@ -1317,8 +1516,9 @@ private struct SelectableReflectionText: UIViewRepresentable {
             .map(String.init)
     }
 
-    private func attributedReflection() -> NSAttributedString {
+    func attributed() -> NSAttributedString {
         let result = NSMutableAttributedString()
+        let lines = self.lines
         for (index, line) in lines.enumerated() {
             result.append(attributedLine(line))
             if index < lines.count - 1 {
@@ -1437,6 +1637,11 @@ private struct SelectableReflectionText: UIViewRepresentable {
                 let contentStart = text.index(index, offsetBy: 2)
                 append(String(text[contentStart..<end.lowerBound]), to: result, inlineStyle: .strong, paragraph: paragraph)
                 index = end.upperBound
+            } else if text[index...].hasPrefix("**") {
+                // Unclosed bold marker mid-stream (`**bo` before `ld**` lands):
+                // show the marker literally until it closes, never drop it.
+                append("**", to: result, inlineStyle: .normal, paragraph: paragraph)
+                index = text.index(index, offsetBy: 2)
             } else if text[index] == "*",
                       let end = text[text.index(after: index)...].firstIndex(of: "*") {
                 let contentStart = text.index(after: index)
@@ -1526,4 +1731,323 @@ enum RevealPalette {
     static let violet = Color.ankyViolet
     static let goldSoft = gold.opacity(0.82)
     static let buttonFill = Color.ankyGoldLight.opacity(0.62)
+}
+
+// MARK: - P1: branded share cards ("the anky method")
+
+/// The output shapes. 4:5 is the default feed card; 9:16 is the story card.
+private enum ShareCardFormat: CaseIterable, Hashable {
+    case ratio4x5
+    case ratio9x16
+
+    /// Logical size in points; rendered at scale 3 → 1080×1350 and 1080×1920.
+    var logicalSize: CGSize {
+        switch self {
+        case .ratio4x5:  return CGSize(width: 360, height: 450)
+        case .ratio9x16: return CGSize(width: 360, height: 640)
+        }
+    }
+
+    /// Long quotes need the quieter ground: a 4:5 whose quote runs past ~380
+    /// characters uses the Minimal base instead. 9:16 always uses its own base.
+    static let minimalThreshold = 380
+
+    func baseAssetName(quoteLength: Int) -> String {
+        switch self {
+        case .ratio9x16:
+            return "ShareCardBase_9x16"
+        case .ratio4x5:
+            return quoteLength > Self.minimalThreshold ? "ShareCardBase_Minimal" : "ShareCardBase_4x5"
+        }
+    }
+}
+
+/// Chooses what the card quotes: the reader's live selection if there is one,
+/// otherwise the reflection's opening passage — always plain text, markdown
+/// stripped, so the composited card stays clean whatever the source markup.
+enum ReflectionShareQuote {
+    /// A selection may run long (up to `selectionLimit`) so the Minimal-base
+    /// rule can engage; with no selection we quote the opening `openingLimit`.
+    static func make(
+        selection: String,
+        fullReflection: String,
+        selectionLimit: Int = 600,
+        openingLimit: Int = 280
+    ) -> String {
+        let selected = plainText(selection)
+        if !selected.isEmpty {
+            return clamp(selected, to: selectionLimit)
+        }
+        return clamp(plainText(fullReflection), to: openingLimit)
+    }
+
+    /// Strips lightweight markdown so a quote reads as prose, never as markup.
+    static func plainText(_ text: String) -> String {
+        var lines = text.replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> String in
+                var trimmed = line.trimmingCharacters(in: .whitespaces)
+                // Leading block markers: heading hashes, quote carets.
+                while let first = trimmed.first, first == "#" || first == ">" {
+                    trimmed.removeFirst()
+                    trimmed = trimmed.trimmingCharacters(in: .whitespaces)
+                }
+                if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+                    trimmed.removeFirst(2)
+                }
+                return trimmed
+            }
+        while lines.first?.isEmpty == true { lines.removeFirst() }
+        while lines.last?.isEmpty == true { lines.removeLast() }
+
+        var joined = lines.joined(separator: " ")
+        for marker in ["**", "`", "*", "_"] {
+            joined = joined.replacingOccurrences(of: marker, with: "")
+        }
+        while joined.contains("  ") {
+            joined = joined.replacingOccurrences(of: "  ", with: " ")
+        }
+        return joined.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Keeps the quote at/under `limit` characters, preferring to end on a
+    /// sentence boundary, then a word boundary; adds an ellipsis if it cut mid.
+    private static func clamp(_ text: String, to limit: Int) -> String {
+        guard text.count > limit else { return text }
+
+        let capped = String(text.prefix(limit))
+        let sentenceEnders: Set<Character> = [".", "!", "?", "\u{2026}"]
+        if let lastSentence = capped.lastIndex(where: { sentenceEnders.contains($0) }),
+           capped.distance(from: capped.startIndex, to: lastSentence) >= limit / 2 {
+            let end = capped.index(after: lastSentence)
+            return String(capped[..<end]).trimmingCharacters(in: .whitespaces)
+        }
+        if let lastSpace = capped.lastIndex(of: " ") {
+            return String(capped[..<lastSpace]).trimmingCharacters(in: .whitespaces) + "\u{2026}"
+        }
+        return capped + "\u{2026}"
+    }
+}
+
+/// One share card — a lazure base with the quote composited in Fraunces (never
+/// baked into the asset, so any quote length stays crisp), "— Anky", and the
+/// "the anky method" wordmark. The quote sits in each base's calm center field,
+/// clear of the violet borders (4:5) or the bottom fifth (9:16). It auto-scales
+/// to fit that field down to a ~17pt floor, then truncates with an ellipsis.
+private struct ReflectionShareCard: View {
+    let format: ShareCardFormat
+    let quote: String
+
+    private var size: CGSize { format.logicalSize }
+
+    /// Deep violet-umber ink (#3D2E4F) — never pure black, per the lazure rule.
+    private let quoteInk = Color(red: 0.239, green: 0.180, blue: 0.310)
+
+    /// Starting quote size; steps down with length before auto-scaling engages.
+    private var startFontSize: CGFloat {
+        switch quote.count {
+        case ..<90:   return 30
+        case ..<170:  return 26
+        case ..<260:  return 22
+        default:      return 19
+        }
+    }
+
+    /// The floor: below this the quote truncates rather than shrinking further.
+    /// 17pt at the logical (÷3) canvas is ~17pt "equivalent at export."
+    private let floorFontSize: CGFloat = 17
+
+    private struct Placement {
+        let quoteRect: CGRect
+        let footerCenter: CGPoint
+        let attributionInFooter: Bool
+    }
+
+    private var placement: Placement {
+        let w = size.width, h = size.height
+        switch format {
+        case .ratio9x16:
+            // Quote in the upper cream field, clear of the bottom fifth; the
+            // attribution and wordmark live down there, above the gold thread.
+            return Placement(
+                quoteRect: CGRect(x: w * 0.12, y: h * 0.15, width: w * 0.76, height: h * 0.50),
+                footerCenter: CGPoint(x: w / 2, y: h * 0.88),
+                attributionInFooter: true
+            )
+        case .ratio4x5:
+            // Centered field, clear of the violet corners and the right thread.
+            return Placement(
+                quoteRect: CGRect(x: w * 0.16, y: h * 0.14, width: w * 0.68, height: h * 0.56),
+                footerCenter: CGPoint(x: w / 2, y: h * 0.925),
+                attributionInFooter: false
+            )
+        }
+    }
+
+    var body: some View {
+        let place = placement
+        ZStack {
+            base
+
+            Group {
+                if place.attributionInFooter {
+                    quoteText(maxHeight: place.quoteRect.height)
+                } else {
+                    VStack(spacing: 14) {
+                        quoteText(maxHeight: place.quoteRect.height - 42)
+                        attribution
+                    }
+                }
+            }
+            .frame(width: place.quoteRect.width, height: place.quoteRect.height)
+            .position(x: place.quoteRect.midX, y: place.quoteRect.midY)
+
+            Group {
+                if place.attributionInFooter {
+                    VStack(spacing: 12) {
+                        attribution
+                        wordmark
+                    }
+                } else {
+                    wordmark
+                }
+            }
+            .position(x: place.footerCenter.x, y: place.footerCenter.y)
+        }
+        .frame(width: size.width, height: size.height)
+        .clipped()
+    }
+
+    private func quoteText(maxHeight: CGFloat) -> some View {
+        let lineHeight = floorFontSize * 1.34
+        let maxLines = max(1, Int(maxHeight / lineHeight))
+        return Text("\u{201C}\(quote)\u{201D}")
+            .font(.fraunces(startFontSize, weight: .regular))
+            .foregroundStyle(quoteInk)
+            .lineSpacing(startFontSize * 0.24)
+            .multilineTextAlignment(.center)
+            .lineLimit(maxLines)
+            .minimumScaleFactor(floorFontSize / startFontSize)
+            .truncationMode(.tail)
+    }
+
+    @ViewBuilder
+    private var base: some View {
+        if let image = UIImage(named: format.baseAssetName(quoteLength: quote.count)) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            // Lazure placeholder until the base assets land.
+            LinearGradient(
+                colors: [
+                    Color.ankyViolet.opacity(0.14),
+                    Color.ankyPaper,
+                    Color.ankyGoldLight.opacity(0.34)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    private var attribution: some View {
+        Text("— Anky")
+            .font(.fraunces(15, weight: .semibold, italic: true))
+            .foregroundStyle(Color.ankyGold)
+    }
+
+    private var wordmark: some View {
+        HStack(spacing: 8) {
+            AnkySunGlyph(size: 15, color: Color.ankyGold)
+            Text("the anky method")
+                .font(.fraunces(13, weight: .semibold))
+                .tracking(1.5)
+                .foregroundStyle(Color.ankyGold)
+        }
+    }
+}
+
+/// Rasterizes one card at export resolution, composited in-app so text is never
+/// baked into an asset. Main-actor because `ImageRenderer` is.
+private enum ReflectionShareCardRenderer {
+    @MainActor
+    static func image(for format: ShareCardFormat, quote: String) -> UIImage? {
+        let renderer = ImageRenderer(content: ReflectionShareCard(format: format, quote: quote))
+        renderer.scale = 3
+        renderer.proposedSize = ProposedViewSize(format.logicalSize)
+        renderer.isOpaque = true
+        return renderer.uiImage
+    }
+}
+
+private struct ShareCardImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+/// The single Share entry point opens this preview. Ratio choice (4:5 default /
+/// 9:16) happens here on the card, not in the system share sheet; the Share
+/// button exports the selected ratio only.
+private struct ShareCardPreviewView: View {
+    let quote: String
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var format: ShareCardFormat
+    @State private var shareItem: ShareCardImage?
+
+    init(quote: String) {
+        self.quote = quote
+        // A long quote would truncate on 4:5, so open on 9:16 (which shows it
+        // whole); the reader can still toggle back to the Minimal 4:5 card.
+        let initial: ShareCardFormat = quote.count > ShareCardFormat.minimalThreshold ? .ratio9x16 : .ratio4x5
+        _format = State(initialValue: initial)
+    }
+
+    var body: some View {
+        VStack(spacing: 22) {
+            GeometryReader { geo in
+                let logical = format.logicalSize
+                let scale = min(geo.size.width / logical.width, geo.size.height / logical.height)
+                ReflectionShareCard(format: format, quote: quote)
+                    .frame(width: logical.width, height: logical.height)
+                    .scaleEffect(scale)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: Color.ankyViolet.opacity(0.16), radius: 18, y: 8)
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 24)
+
+            Picker("", selection: $format) {
+                Text(AnkyLocalization.ui("4:5")).tag(ShareCardFormat.ratio4x5)
+                Text(AnkyLocalization.ui("9:16")).tag(ShareCardFormat.ratio9x16)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 220)
+
+            AnkyPrimaryButton("Share") {
+                if let image = ReflectionShareCardRenderer.image(for: format, quote: quote) {
+                    shareItem = ShareCardImage(image: image)
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 24)
+        }
+        .background(Color.ankyPaper.ignoresSafeArea())
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.image])
+        }
+    }
+}
+
+/// Thin bridge to the native share sheet.
+private struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
