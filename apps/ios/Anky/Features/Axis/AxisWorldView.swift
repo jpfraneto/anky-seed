@@ -25,6 +25,14 @@ struct AxisWorldView: View {
     @StateObject private var vigil = VigilController()
     /// Fires the reflection request at the sentinel so the vigil hides latency.
     @StateObject private var reflection = AxisReflectionCoordinator()
+    /// The one-time onboarding rehearsal (spec §9): the first channel-close
+    /// shows the hint and the Anchor's single inhale, and the first vigil is the
+    /// first real offering. Set true once the writer completes it.
+    @AppStorage("anky.axisRehearsalDone") private var rehearsalDone = false
+
+    private var showRehearsalHint: Bool {
+        axis.phase == .channelClosed && !rehearsalDone
+    }
 
     var body: some View {
         ZStack {
@@ -35,8 +43,22 @@ struct AxisWorldView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if axis.anchorIsVisible {
-                AnchorView(axis: axis, vigil: vigil)
+                AnchorView(axis: axis, vigil: vigil, rehearsalInhale: showRehearsalHint)
                     .zIndex(1000)
+            }
+
+            // The one-time rehearsal hint, resting just above the Anchor.
+            if showRehearsalHint {
+                VStack(spacing: 0) {
+                    Spacer()
+                    Text("hold, and don't let go")
+                        .font(.fraunces(17, weight: .light, italic: true))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .padding(.bottom, 170)
+                }
+                .transition(.opacity)
+                .allowsHitTesting(false)
+                .zIndex(1001)
             }
 
             #if DEBUG
@@ -50,10 +72,21 @@ struct AxisWorldView: View {
         .onChange(of: axis.phase) { newPhase in
             switch newPhase {
             case .writing:
+                // The rehearsal shortens the sentinel so the reveal — and the
+                // long-press vigil — is discoverable quickly (spec §9). Set
+                // before the reset so the first session picks it up.
+                writeViewModel.terminalSilenceOverrideMs = rehearsalDone ? nil : 4000
                 // Tapping the Anchor to write begins a fresh session; the
                 // previous day is already sealed, so the engine can reset.
                 writeViewModel.beginBlankSessionFromWriteTab()
                 reflection.discard()
+            case .reflection:
+                // The first vigil completed: the rehearsal is over, and it is
+                // never explained again.
+                if !rehearsalDone {
+                    rehearsalDone = true
+                    writeViewModel.terminalSilenceOverrideMs = nil
+                }
             case .channelClosed:
                 // Fire the reflection at the sentinel — the vigil will hide the
                 // latency (spec §12). Safe even if the writer never sends; it is

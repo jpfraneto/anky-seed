@@ -18,6 +18,9 @@ import SwiftUI
 struct AnchorView: View {
     @ObservedObject var axis: AxisState
     @ObservedObject var vigil: VigilController
+    /// The one-time onboarding rehearsal (spec §9): the Anchor takes a single
+    /// slow inhale up the first station and back down, under the hint.
+    var rehearsalInhale: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The medallion's center sits this far above the safe-area bottom. Keep
@@ -29,6 +32,7 @@ struct AnchorView: View {
     /// (spec §2): it swells faintly and drains. No charge begins.
     @State private var emptyPulse: CGFloat = 0
     @State private var pressStart: Date?
+    @State private var inhaleOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,9 +57,16 @@ struct AnchorView: View {
                     )
                     .frame(width: Self.diameter, height: Self.diameter)
                     .scaleEffect(1.0 + 0.02 * breath + 0.06 * emptyPulse)
+                    .offset(y: inhaleOffset)
                 }
             }
             .padding(.bottom, Self.bottomInset)
+        }
+        .onChange(of: rehearsalInhale) { on in
+            guard on, !reduceMotion else { return }
+            // A single slow breath up the first station and back — shown once.
+            withAnimation(.easeInOut(duration: 1.5)) { inhaleOffset = -34 }
+            withAnimation(.easeInOut(duration: 1.5).delay(1.6)) { inhaleOffset = 0 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .contentShape(Circle().size(width: 108, height: 108))
