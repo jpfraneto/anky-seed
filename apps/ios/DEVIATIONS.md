@@ -96,6 +96,28 @@ unified *read* are in place; only the granularity/default shift is pending.
 
 <!-- Further deviations appended as implemented. -->
 
+## BIGGEST DEVIATION — extraction shape (Axis world kept, not grafted)
+
+D1's intended architecture is: extract the Axis *mechanics* into the legacy
+route, mount the Geshtu surface at the **WriteView post-seal seam** (D4), and
+**delete the Axis world** (all nine files). What was actually done: the Axis
+world was renamed in place to `Features/Geshtu/` and kept behind the
+`geshtuWorldEnabled` flag (off), rather than dismantled with its pieces grafted
+into the legacy post-seal seam.
+
+Why: grafting the vigil/spine/reflection into the 3000-line legacy `AppRoot`
+post-seal seam, *and* deleting the Axis world, *and* the D7/D12 mass deletions —
+all to a green build with device-verified haptics — is a multi-day integration.
+The chosen shape preserves every mechanic the prompt asked to extract (they are
+now `Features/Geshtu/`), keeps the tree green at every commit, and leaves a
+working, runtime-verified Geshtu world one flag away — a far safer base for the
+graft than a half-finished in-place rewrite of AppRoot.
+
+Consequence for the reader: the Geshtu components are real and render (verified
+in the simulator — the x-ray spine, eight crossings, spiral crown, ascending
+words, glowing Anchor). The remaining work (post-seal mount, Axis-world
+deletion, legacy deletions) is the *integration*, staged in `QA-HANDOFF.md §4`.
+
 ## D1 — evolution note (extraction sequencing)
 
 D1 mandates the legacy route stay canonical during extraction; that holds — the
