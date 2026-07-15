@@ -167,10 +167,10 @@ struct ReflectionLinesView: View {
                 VStack(spacing: 22) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
                         Text(line)
-                            .font(.fraunces(index == 0 ? 22 : 19,
-                                             weight: index == 0 ? .regular : .light,
-                                             italic: index != 0))
-                            .foregroundStyle(Color.ankyInk.opacity(index == 0 ? 0.95 : 0.78))
+                            // Glaze, applied identically to every line (addendum
+                            // A4); the topmost stays slightly more luminous (§6).
+                            .glazeVoice()
+                            .opacity(index == 0 ? 1.0 : 0.82)
                             .multilineTextAlignment(.center)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .offset(y: -8)),

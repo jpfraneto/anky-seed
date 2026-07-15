@@ -270,9 +270,8 @@ struct ChannelClosedView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(session?.reconstructedText ?? "")
-                .font(.fraunces(19, weight: .regular))
-                .foregroundStyle(Color.ankyInk)
-                .lineSpacing(7)
+                // The sealed writing at rest — ore (addendum A4).
+                .oreVoice()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 30)
                 .padding(.top, 40)

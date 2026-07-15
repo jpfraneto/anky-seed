@@ -36,6 +36,13 @@ extension Color {
     static let ankyInk        = Color(.displayP3, red: 0.239, green: 0.216, blue: 0.310) // deep violet-slate
     static let ankyInkSoft    = Color(.displayP3, red: 0.396, green: 0.369, blue: 0.475) // secondary text
 
+    // Two voices at rest within the lazure register (addendum A4). Ore is the
+    // writer's own words — sediment: grayer, rawer, desaturated. Glaze is Anky's
+    // reflection — deeper, more luminous, richer violet. Typography (see the
+    // ore/glaze voice tokens) carries the distinction; the ink pair anchors it.
+    static let ankyOre        = Color(.displayP3, red: 0.322, green: 0.306, blue: 0.353) // sediment, grayed
+    static let ankyGlaze      = Color(.displayP3, red: 0.227, green: 0.184, blue: 0.353) // luminous violet-ink
+
     // The writing ink — warm umber, sepia on parchment (phase-2 §7 sepia pass).
     static let ankyUmber      = Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
 

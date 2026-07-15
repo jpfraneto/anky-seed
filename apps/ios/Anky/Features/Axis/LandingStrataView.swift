@@ -300,11 +300,9 @@ private struct OpenedStrataEntry: View {
         let hasReflection = !(reflection ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
         VStack(alignment: .leading, spacing: 0) {
-            // The writing — ore (retrofit to tokens in addendum A4).
+            // The writing — ore (addendum A4).
             Text(entry.reconstructedText)
-                .font(.fraunces(18, weight: .regular))
-                .foregroundStyle(Color.ankyInk)
-                .lineSpacing(6)
+                .oreVoice()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 6)
 
@@ -314,9 +312,8 @@ private struct OpenedStrataEntry: View {
                     .padding(.vertical, 34)
 
                 Text(reflection)
-                    .font(.fraunces(20, weight: .regular, italic: true))
-                    .foregroundStyle(Color.ankyInk.opacity(0.9))
-                    .lineSpacing(10)
+                    // Anky's reflection at rest — glaze (addendum A4).
+                    .glazeVoice()
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 OpenedEntryAffordances(
