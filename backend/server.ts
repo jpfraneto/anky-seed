@@ -2044,6 +2044,7 @@ export async function handleAnkyReflection(
   let requestIntent: AnkyRequestIntent = "reflection";
   let reflectionTier: SessionTier | undefined;
   let reflectionPromptVariant: FullPromptVariant | undefined;
+  let reflectionSurface: string | undefined;
 
   try {
     await deps.progress?.({
@@ -2069,6 +2070,8 @@ export async function handleAnkyReflection(
     requestIntent = ankyRequestIntent(
       c.req.header("x-anky-intent") ?? undefined,
     );
+    // The Axis Redesign send vigil asks for the blessing descent (spec §6).
+    reflectionSurface = c.req.header("x-anky-surface") ?? undefined;
     if (!signature || !requestTime) {
       statusCode = 401;
       errorCode = "MISSING_SIGNATURE";
@@ -2232,6 +2235,7 @@ export async function handleAnkyReflection(
               writing,
               reflectionTier ?? "full",
               reflectionPromptVariant,
+              reflectionSurface,
             );
       await deps.progress?.({
         stage: "reflection_prepared",

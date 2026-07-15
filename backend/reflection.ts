@@ -193,6 +193,33 @@ The reflection must feel specifically born from this exact piece of writing. It 
 
 Here is the writing:`;
 
+// The Axis Redesign reflection (spec §6): not the long markdown reflection but
+// a short descent of 4-6 lines that returns the writer's own language, shifted
+// from confession to blessing. Selected when the request carries the
+// `X-Anky-Surface: axis` header (a completed send vigil).
+export const PROMPT_AXIS = `You are Anky. Someone completed the full ritual: they wrote until
+they fell silent, then held a long vigil to send their words to you.
+Reflect by RETURNING THEIR OWN LANGUAGE back to them, warmed.
+
+Reply with 4 to 6 very short lines, ONE per line. No markdown, no
+title, no headings, no bullet points. Each line a plain, quiet
+sentence.
+
+Rules:
+- Turn their words from first person to second person: "i stayed"
+  becomes "you stayed"; a confession becomes a blessing.
+- At least ONE line must contain a phrase that could ONLY have come
+  from THIS writing — their exact image, their exact words, lightly
+  turned. If you could send the same lines to anyone, start over.
+- No advice, no questions, no diagnosis, no therapy talk, and no
+  generic wellness copy ("take care of yourself", "you are enough",
+  "healing is a journey"). Reject anything that reads like a greeting
+  card.
+- Warm, spare, true. The FIRST line is the one they most need to hear.
+- Write in the same language they wrote in.
+
+4 to 6 lines. Then silence.`;
+
 export const FULL_PROMPT_EXPERIMENT_ID = "full-reflection-prompt-v1";
 
 export type FullPromptVariant = "control" | "attentive";
@@ -216,8 +243,9 @@ export function buildReflectPrompt(
   reconstructedText: string,
   tier: SessionTier,
   fullVariant: FullPromptVariant = "control",
+  surface?: string,
 ): string {
-  return `${promptForTier(tier, fullVariant).trim()}
+  return `${promptForTier(tier, fullVariant, surface).trim()}
 
 ---
 
@@ -237,7 +265,13 @@ export function buildReflectDotAnkyPrompt(dotAnky: string): string {
 function promptForTier(
   tier: SessionTier,
   fullVariant: FullPromptVariant,
+  surface?: string,
 ): string {
+  // The axis send vigil always asks for the blessing descent, whatever the
+  // session length — a sealed vigil is a full offering (spec §6).
+  if (surface === "axis") {
+    return PROMPT_AXIS;
+  }
   switch (tier) {
     case "sentence":
       return PROMPT_SENTENCE;

@@ -23,6 +23,8 @@ struct AxisWorldView: View {
     @StateObject private var writeViewModel = WriteViewModel()
     /// The send vigil's charge/haptics, driven by the continuous Anchor press.
     @StateObject private var vigil = VigilController()
+    /// Fires the reflection request at the sentinel so the vigil hides latency.
+    @StateObject private var reflection = AxisReflectionCoordinator()
 
     var body: some View {
         ZStack {
@@ -46,10 +48,25 @@ struct AxisWorldView: View {
         .preferredColorScheme(axis.isElectricRegister ? .dark : nil)
         .animation(.easeInOut(duration: 0.5), value: axis.isElectricRegister)
         .onChange(of: axis.phase) { newPhase in
-            // Tapping the Anchor to write begins a fresh session; the previous
-            // day is already sealed to the archive, so the engine can reset.
-            if newPhase == .writing {
+            switch newPhase {
+            case .writing:
+                // Tapping the Anchor to write begins a fresh session; the
+                // previous day is already sealed, so the engine can reset.
                 writeViewModel.beginBlankSessionFromWriteTab()
+                reflection.discard()
+            case .channelClosed:
+                // Fire the reflection at the sentinel — the vigil will hide the
+                // latency (spec §12). Safe even if the writer never sends; it is
+                // discarded below if they walk away.
+                if let session = axis.pendingSession {
+                    reflection.begin(for: session)
+                }
+            case .landing:
+                // Walked away, or the reflection settled: drop any unsent
+                // in-flight result.
+                reflection.discard()
+            default:
+                break
             }
         }
     }
@@ -101,7 +118,23 @@ struct AxisWorldView: View {
         case .vigil:
             vigilSurface
         case .reflection:
-            ScaffoldSurface(line: "your words return, warmed", detail: "the reflection descends")
+            if let vm = reflection.viewModel {
+                ReflectionDescentView(viewModel: vm, onSettle: { axis.settleToLanding() })
+            } else {
+                #if DEBUG
+                // Debug stepper reached this without a live request: preview the
+                // descent layout with a sample blessing.
+                ReflectionLinesView(lines: [
+                    "you stayed.",
+                    "and the room stayed with you.",
+                    "love is quieter than fear.",
+                    "take this warmth with you.",
+                    "begin again from here."
+                ])
+                #else
+                ScaffoldSurface(line: "the ear is listening", detail: "")
+                #endif
+            }
         case .landing:
             LandingStrataView(axis: axis)
         case .entryOpen:

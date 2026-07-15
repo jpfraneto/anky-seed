@@ -50,6 +50,10 @@ final class RevealViewModel: ObservableObject {
     private let reflectionRetryLimit: TimeInterval = 120
     private var activeReflectionHash: String?
     private var didPrepareAfterFirstRender = false
+    /// The Axis Redesign send vigil sets this to "axis" so the backend returns
+    /// the blessing descent (spec §6). Nil everywhere else — the legacy reveal
+    /// keeps the long markdown reflection.
+    var reflectionSurface: String?
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
     private static let localHeaderFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -304,6 +308,7 @@ final class RevealViewModel: ObservableObject {
                 bytes: Data(requestText.utf8),
                 identity: identity,
                 appVersion: AnkyAppVersion.headerValue,
+                surface: reflectionSurface,
                 progress: { [weak self] event in
                     await MainActor.run {
                         self?.progressStage = event.stage
