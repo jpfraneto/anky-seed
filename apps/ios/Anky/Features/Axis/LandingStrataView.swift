@@ -115,6 +115,12 @@ struct LandingStrataView: View {
 
 /// The sediment column itself, without a scroll view of its own, so it can be
 /// embedded beneath the reflection in one continuous scroll (spec §7).
+///
+/// Tapping a stub decompresses the day in place — inline, within the column,
+/// pushing its neighbours apart (addendum A2). There is no pushed screen, no
+/// sheet, no modal: the map never stops being a map. While a day is open its
+/// date header pins to the top; tapping the pinned header compresses it back.
+/// One day open at a time — opening another seals the current one first.
 struct StrataColumn: View {
     @ObservedObject var axis: AxisState
     let entries: [SavedAnky]
@@ -122,19 +128,40 @@ struct StrataColumn: View {
     /// The living edge — the scroll target for surfacing-to-now (addendum A1).
     static let topID = "axis.strata.top"
 
+    // The opened day's quiet affordances (addendum A2.5): share the day's
+    // reflection as a card, or record it. Nothing floats over the writing —
+    // these are reached from the bottom of the opened day.
+    @State private var recordRequest: AxisRecordRequest?
+    @State private var shareRequest: AxisShareRequest?
+
     var body: some View {
-        VStack(spacing: 34) {
+        LazyVStack(spacing: 34, pinnedViews: axis.openedEntry != nil ? [.sectionHeaders] : []) {
             // A little breath before the newest day.
             Color.clear.frame(height: 24)
                 .id(Self.topID)
 
             ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                StrataEntryRow(entry: entry, ageOpacity: Self.ageOpacity(for: index))
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        AnkyHaptics.selection()
-                        axis.openEntry(entry)
+                if entry.id == axis.openedEntry?.id {
+                    // The day, decompressed in place. Its date header is the
+                    // pinned section header (sticky, tap-to-close).
+                    Section {
+                        OpenedStrataEntry(
+                            entry: entry,
+                            onRecord: { recordRequest = AxisRecordRequest(text: $0) },
+                            onShare: { shareRequest = AxisShareRequest(quote: $0) }
+                        )
+                        .transition(.opacity)
+                    } header: {
+                        OpenedStrataHeader(entry: entry) { axis.closeEntry() }
                     }
+                } else {
+                    StrataEntryRow(entry: entry, ageOpacity: Self.ageOpacity(for: index))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            AnkyHaptics.selection()
+                            axis.openEntry(entry)
+                        }
+                }
             }
 
             // Beneath the oldest entry: the seed.
@@ -146,6 +173,14 @@ struct StrataColumn: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 32)
+        // AnkyRecordingView is reached only from here (spec §12); the share card
+        // inherits RevealView's renderer. Both quiet, in the lazure register.
+        .fullScreenCover(item: $recordRequest) { request in
+            AnkyRecordingView(reflectionText: request.text) { recordRequest = nil }
+        }
+        .sheet(item: $shareRequest) { request in
+            ShareCardPreviewView(quote: request.quote)
+        }
     }
 
     /// Entries grow fainter with age (spec §7). Newest is full presence; the
@@ -156,6 +191,9 @@ struct StrataColumn: View {
         return max(0.16, 1.0 - Double(index) * step)
     }
 }
+
+private struct AxisRecordRequest: Identifiable { let id = UUID(); let text: String }
+private struct AxisShareRequest: Identifiable { let id = UUID(); let quote: String }
 
 // MARK: - A single stratum
 
@@ -204,44 +242,134 @@ private struct StrataEntryRow: View {
     }()
 }
 
-// MARK: - Opened entry (read in full)
+// MARK: - Opened entry (decompressed in place — addendum A2)
 
-/// A past day brightened back to full presence and opened to read (spec §7).
-/// Phase 2 is the plain read; the copy / share-card / record affordances of
-/// RevealView graft on here in a later phase (spec §12).
-struct AxisEntryReadView: View {
+/// The pinned date header of an opened day. Sticky at the top of the screen
+/// while the day is open; tapping it compresses the day back into its stub,
+/// neighbours closing around it (addendum A2.3). A soft paper scrim keeps it
+/// legible as the writing scrolls beneath — no bar, no chrome, in register.
+private struct OpenedStrataHeader: View {
     let entry: SavedAnky
+    let onClose: () -> Void
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 20) {
-                Text(dateLine)
-                    .font(.fraunces(13, weight: .light))
-                    .foregroundStyle(Color.ankyInkSoft)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 28)
-
-                Text(entry.reconstructedText)
-                    .font(.fraunces(19, weight: .regular))
-                    .foregroundStyle(Color.ankyInk)
-                    .lineSpacing(7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        Text(Self.dateFormatter.string(from: entry.createdAt).lowercased())
+            .font(.fraunces(13, weight: .light))
+            .foregroundStyle(Color.ankyInkSoft)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 20)
+            .padding(.bottom, 14)
+            .background(
+                LinearGradient(
+                    colors: [Color.ankyPaper, Color.ankyPaper.opacity(0.0)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .padding(.top, -40)
+                .allowsHitTesting(false)
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                AnkyHaptics.selection()
+                onClose()
             }
-            .padding(.horizontal, 30)
-            .padding(.bottom, 200)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Text("\(Self.dateFormatter.string(from: entry.createdAt)). Close this day."))
     }
 
-    private var dateLine: String {
-        AxisEntryReadView.dateFormatter.string(from: entry.createdAt).lowercased()
-    }
-
-    private static let dateFormatter: DateFormatter = {
+    static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "dd MMMM yyyy"
         return f
     }()
+}
+
+/// The body of an opened day, in its original orientation (addendum A2.2): the
+/// user's writing first, in full, at the top; then — after a quiet seam — Anky's
+/// reflection, reached only by scrolling down through one's own words. There is
+/// no control, chip, or tab that shows the reflection directly; it is never
+/// separately addressable. An unsent day contains the writing only and ends
+/// where the writing ends (addendum A3.2).
+private struct OpenedStrataEntry: View {
+    let entry: SavedAnky
+    let onRecord: (String) -> Void
+    let onShare: (String) -> Void
+
+    var body: some View {
+        // One disk read per open; the opened day re-renders rarely.
+        let reflection = ReflectionStore().load(hash: entry.hash)?.reflection
+        let hasReflection = !(reflection ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        VStack(alignment: .leading, spacing: 0) {
+            // The writing — ore (retrofit to tokens in addendum A4).
+            Text(entry.reconstructedText)
+                .font(.fraunces(18, weight: .regular))
+                .foregroundStyle(Color.ankyInk)
+                .lineSpacing(6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 6)
+
+            if hasReflection, let reflection {
+                // A quiet seam, then the reflection — glaze (retrofit in A4).
+                Seam()
+                    .padding(.vertical, 34)
+
+                Text(reflection)
+                    .font(.fraunces(20, weight: .regular, italic: true))
+                    .foregroundStyle(Color.ankyInk.opacity(0.9))
+                    .lineSpacing(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                OpenedEntryAffordances(
+                    onRecord: { onRecord(reflection) },
+                    onShare: { onShare(reflection) }
+                )
+                .padding(.top, 44)
+            }
+            // Clearance so the day's tail is never hidden behind the Anchor.
+            Color.clear.frame(height: 40)
+        }
+    }
+}
+
+/// The quiet break between the writing and the reflection — a short gold
+/// hairline, centered. Never labelled; typography and this seam carry the shift
+/// from one voice to the other (addendum A2.2, A4).
+private struct Seam: View {
+    var body: some View {
+        Capsule()
+            .fill(Color.ankyGold.opacity(0.30))
+            .frame(width: 46, height: 1.5)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+/// The share / record affordances at the bottom of an opened, sent day
+/// (addendum A2.5). Quiet, lowercase, in the lazure register; nothing floats.
+private struct OpenedEntryAffordances: View {
+    let onRecord: () -> Void
+    let onShare: () -> Void
+
+    var body: some View {
+        HStack(spacing: 30) {
+            affordance("share", action: onShare)
+            affordance("record", action: onRecord)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func affordance(_ title: String, action: @escaping () -> Void) -> some View {
+        Button {
+            AnkyHaptics.light()
+            action()
+        } label: {
+            Text(title)
+                .font(.fraunces(15, weight: .regular, italic: true))
+                .foregroundStyle(Color.ankyInkSoft)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 // MARK: - The seed

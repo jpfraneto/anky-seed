@@ -232,16 +232,11 @@ struct AxisWorldView: View {
                 ScaffoldSurface(line: "the ear is listening", detail: "")
                 #endif
             }
-        case .landing:
+        case .landing, .entryOpen:
+            // Landing and an opened entry are the same surface — the entry
+            // decompresses in place within the strata (addendum A2). The map
+            // never stops being a map; there is no pushed read screen.
             LandingStrataView(axis: axis)
-        case .entryOpen:
-            if let entry = axis.openedEntry {
-                InteractiveBackSwipeContainer(onBack: { axis.closeEntry() }) {
-                    AxisEntryReadView(entry: entry)
-                }
-            } else {
-                Color.clear.onAppear { axis.closeEntry() }
-            }
         case .seed:
             InteractiveBackSwipeContainer(onBack: { axis.closeSeed() }) {
                 AnkySettingsView(

@@ -2137,7 +2137,10 @@ private struct ShareCardImage: Identifiable {
 /// The single Share entry point opens this preview. One shape only — 9:16, the
 /// story card — no options; the Share button exports it straight to the system
 /// sheet.
-private struct ShareCardPreviewView: View {
+/// Internal (not private) so the axis opened-entry affordances can present the
+/// same reflection share card (addendum A2.5). Its renderer and helpers below
+/// stay private to this file.
+struct ShareCardPreviewView: View {
     let quote: String
     var voice: ShareCardVoice = .anky
 
