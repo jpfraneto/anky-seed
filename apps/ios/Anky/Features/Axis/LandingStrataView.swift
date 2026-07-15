@@ -40,37 +40,8 @@ struct LandingStrataView: View {
 
     private var strata: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 34) {
-                // A little breath below the notch before the newest day.
-                Color.clear.frame(height: 24)
-
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    StrataEntryRow(entry: entry, ageOpacity: ageOpacity(for: index))
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            AnkyHaptics.selection()
-                            axis.openEntry(entry)
-                        }
-                }
-
-                // Beneath the oldest entry: the seed.
-                SeedGlyph { axis.openSeed() }
-                    .padding(.top, 26)
-
-                // Clearance so the last strata never hides behind the Anchor.
-                Color.clear.frame(height: 220)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 32)
+            StrataColumn(axis: axis, entries: entries)
         }
-    }
-
-    /// Entries grow fainter with age (spec §7). Newest is full presence; the
-    /// column sinks toward the pigment. Floored so the oldest is still faintly
-    /// legible, never fully gone.
-    private func ageOpacity(for index: Int) -> Double {
-        let step = 0.11
-        return max(0.16, 1.0 - Double(index) * step)
     }
 
     // MARK: - Empty state (day one)
@@ -92,6 +63,48 @@ struct LandingStrataView: View {
 
     private func reload() {
         entries = LocalAnkyArchive().list()
+    }
+}
+
+// MARK: - The column (shared by the landing and the reflection settle)
+
+/// The sediment column itself, without a scroll view of its own, so it can be
+/// embedded beneath the reflection in one continuous scroll (spec §7).
+struct StrataColumn: View {
+    @ObservedObject var axis: AxisState
+    let entries: [SavedAnky]
+
+    var body: some View {
+        VStack(spacing: 34) {
+            // A little breath before the newest day.
+            Color.clear.frame(height: 24)
+
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                StrataEntryRow(entry: entry, ageOpacity: Self.ageOpacity(for: index))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        AnkyHaptics.selection()
+                        axis.openEntry(entry)
+                    }
+            }
+
+            // Beneath the oldest entry: the seed.
+            SeedGlyph { axis.openSeed() }
+                .padding(.top, 26)
+
+            // Clearance so the last strata never hides behind the Anchor.
+            Color.clear.frame(height: 220)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 32)
+    }
+
+    /// Entries grow fainter with age (spec §7). Newest is full presence; the
+    /// column sinks toward the pigment. Floored so the oldest is still faintly
+    /// legible, never fully gone.
+    static func ageOpacity(for index: Int) -> Double {
+        let step = 0.11
+        return max(0.16, 1.0 - Double(index) * step)
     }
 }
 

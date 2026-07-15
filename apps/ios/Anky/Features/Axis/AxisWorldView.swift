@@ -119,7 +119,7 @@ struct AxisWorldView: View {
             vigilSurface
         case .reflection:
             if let vm = reflection.viewModel {
-                ReflectionDescentView(viewModel: vm, onSettle: { axis.settleToLanding() })
+                ReflectionSettleView(viewModel: vm, axis: axis)
             } else {
                 #if DEBUG
                 // Debug stepper reached this without a live request: preview the

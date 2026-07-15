@@ -54,34 +54,78 @@ final class AxisReflectionCoordinator: ObservableObject {
     }
 }
 
-// MARK: - The descent
+// MARK: - The descent → settle (one continuous scroll)
 
-struct ReflectionDescentView: View {
+/// The reflection and the landing strata are one continuous scroll (spec §7).
+/// The reflection sits at the top; scrolling past it melts it away (fading and
+/// shrinking on the scroll) and reveals the strata beneath — where the day just
+/// sent is already the newest layer. When the reflection has fully left, the
+/// axis settles to the landing.
+struct ReflectionSettleView: View {
     @ObservedObject var viewModel: RevealViewModel
-    /// Walk on: scroll past the last line to let the reflection settle into the
-    /// strata (spec §7). Phase 6 turns this into the scroll-driven melt.
-    var onSettle: () -> Void
+    @ObservedObject var axis: AxisState
 
+    @State private var entries: [SavedAnky] = []
+    @State private var didSettle = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private static let space = "reflSettle"
+
     var body: some View {
-        ReflectionLinesView(lines: lines, reduceMotion: reduceMotion)
-            .contentShape(Rectangle())
-            // Walk on — settle into the strata (Phase 6 makes this a scroll-melt).
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 40)
-                    .onEnded { value in
-                        if value.translation.height < -70 {
-                            AnkyHaptics.light()
-                            onSettle()
-                        }
+        GeometryReader { outer in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 0) {
+                    reflectionBlock
+                        .frame(height: outer.size.height)
+
+                    StrataColumn(axis: axis, entries: entries)
+                        .background(settleSentinel)
+                }
+            }
+            .coordinateSpace(name: Self.space)
+        }
+        .onAppear { entries = LocalAnkyArchive().list() }
+    }
+
+    @ViewBuilder
+    private var reflectionBlock: some View {
+        let content = ReflectionLinesView(lines: lines, reduceMotion: reduceMotion)
+        if #available(iOS 17.0, *) {
+            content.scrollTransition(.interactive, axis: .vertical) { view, phase in
+                // Melts away as it scrolls up: fades and shrinks toward the
+                // strata (spec §7). Untouched while it rests at identity.
+                view
+                    .opacity(phase.isIdentity ? 1 : max(0, 1 + phase.value))
+                    .scaleEffect(phase.isIdentity ? 1 : 0.86)
+                    .blur(radius: phase.isIdentity ? 0 : 3)
+            }
+        } else {
+            content
+        }
+    }
+
+    /// Fires once when the strata's top has risen past the screen top — the
+    /// reflection has fully melted; the day takes its place among the days.
+    private var settleSentinel: some View {
+        GeometryReader { geo in
+            let minY = geo.frame(in: .named(Self.space)).minY
+            Color.clear
+                .onChange(of: minY) { y in
+                    if y < 6, !didSettle {
+                        didSettle = true
+                        axis.settleToLanding()
                     }
-            )
+                }
+        }
     }
 
     /// The reflection as 4–6 short lines. Prefers the finished text; otherwise
     /// shows whatever has streamed in so far.
     private var lines: [String] {
+        Self.lines(from: viewModel)
+    }
+
+    static func lines(from viewModel: RevealViewModel) -> [String] {
         let source = viewModel.reflection?.reflection ?? viewModel.streamingReflectionMarkdown
         return source
             .split(separator: "\n", omittingEmptySubsequences: true)
