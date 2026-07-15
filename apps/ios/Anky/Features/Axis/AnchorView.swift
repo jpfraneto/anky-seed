@@ -17,6 +17,7 @@ import SwiftUI
 
 struct AnchorView: View {
     @ObservedObject var axis: AxisState
+    @ObservedObject var vigil: VigilController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The medallion's center sits this far above the safe-area bottom. Keep
@@ -27,6 +28,7 @@ struct AnchorView: View {
     /// A soft one-shot pulse when the Anchor is touched with nothing to carry
     /// (spec §2): it swells faintly and drains. No charge begins.
     @State private var emptyPulse: CGFloat = 0
+    @State private var pressStart: Date?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,48 +45,90 @@ struct AnchorView: View {
 
                 TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: reduceMotion)) { context in
                     let breath = reduceMotion ? 0.5 : AnkyBreath.phase(at: context.date)
-                    AnchorMedallion(breath: breath, atRest: axis.phase == .reflection)
-                        .frame(width: Self.diameter, height: Self.diameter)
-                        .scaleEffect(1.0 + 0.02 * breath + 0.06 * emptyPulse)
+                    AnchorMedallion(
+                        breath: breath,
+                        atRest: axis.phase == .reflection,
+                        electric: axis.isElectricRegister,
+                        charge: vigil.charge
+                    )
+                    .frame(width: Self.diameter, height: Self.diameter)
+                    .scaleEffect(1.0 + 0.02 * breath + 0.06 * emptyPulse)
                 }
             }
             .padding(.bottom, Self.bottomInset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .contentShape(Circle().size(width: 96, height: 96))
-        .allowsHitTesting(axis.phase == .landing || axis.phase == .channelClosed)
-        // Tap: enters writing from the landing surface; a soft pulse at a
-        // closed channel; suspended elsewhere (spec §2).
-        .onTapGesture {
-            if axis.anchorTapEntersWriting {
-                AnkyHaptics.selection()
-                axis.anchorTapped()
-            } else {
-                pulseOnce()
-            }
-        }
-        // Long press: the send vigil, when a session rests unsent. With nothing
-        // to carry, at most a faint pulse that drains (spec §2).
-        // NOTE (Phase 4): the real vigil replaces this with a continuous press
-        // that drives `charge` 0→1 and drains on early release; for now the
-        // long press simply begins the vigil phase.
-        .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 40) {
-            if axis.anchorSupportsVigil {
-                axis.beginVigil()
-            } else {
-                pulseOnce()
-            }
-        }
+        .contentShape(Circle().size(width: 108, height: 108))
+        .allowsHitTesting(axis.phase == .landing || axis.phase == .channelClosed || axis.phase == .vigil)
+        // One continuous press drives everything (spec §2, §5): a quick tap
+        // enters writing from the landing surface or soft-pulses at a closed
+        // channel; a sustained hold at a closed channel is the send vigil,
+        // arming, charging, and completing — or draining on early release.
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard pressStart == nil else { return }
+                    pressStart = Date()
+                    if axis.anchorSupportsVigil {
+                        configureVigil()
+                        vigil.press(duration: effectiveVigilDuration)
+                    }
+                }
+                .onEnded { _ in
+                    let held = pressStart.map { Date().timeIntervalSince($0) } ?? 0
+                    pressStart = nil
+                    if axis.phase == .vigil || vigil.stage != .idle {
+                        vigil.lift()
+                    } else if held < 0.35 {
+                        if axis.anchorTapEntersWriting {
+                            AnkyHaptics.selection()
+                            axis.anchorTapped()
+                        } else {
+                            pulseOnce()
+                        }
+                    } else if !axis.anchorTapEntersWriting {
+                        // A long hold with nothing to carry: a faint pulse.
+                        pulseOnce()
+                    }
+                }
+        )
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(accessibilityHint)
         .accessibilityAddTraits(.isButton)
+        // Direct completion for assistive users — the offering without the hold.
+        .accessibilityAction(named: Text("Send to Anky")) {
+            if axis.anchorSupportsVigil {
+                axis.beginVigil()
+                axis.vigilCompleted()
+            } else if axis.anchorTapEntersWriting {
+                axis.anchorTapped()
+            }
+        }
     }
 
     private func pulseOnce() {
         AnkyHaptics.light()
         withAnimation(.easeOut(duration: 0.18)) { emptyPulse = 1 }
         withAnimation(.easeIn(duration: 0.5).delay(0.18)) { emptyPulse = 0 }
+    }
+
+    /// The ritual is attention, not endurance (spec §5): when assistive
+    /// settings are active, the required hold is shortened. VoiceOver/Switch
+    /// Control users also get a direct completion action (below).
+    private var effectiveVigilDuration: TimeInterval {
+        let base = axis.vigilDuration
+        if reduceMotion || UIAccessibility.isSwitchControlRunning || UIAccessibility.isVoiceOverRunning {
+            return max(AxisState.vigilFloorSeconds, min(base, 3))
+        }
+        return base
+    }
+
+    private func configureVigil() {
+        vigil.onActivate = { axis.beginVigil() }
+        vigil.onComplete = { axis.vigilCompleted() }
+        vigil.onDrain = { axis.vigilDrained() }
+        vigil.onTap = { AnkyHaptics.light() }
     }
 
     private var accessibilityLabel: Text {
@@ -110,48 +154,60 @@ struct AnchorView: View {
 private struct AnchorMedallion: View {
     var breath: Double
     var atRest: Bool
+    var electric: Bool = false
+    var charge: Double = 0
 
     private let spiralSize: CGFloat = 26
+    private var cyan: Color { Color(.displayP3, red: 0.55, green: 0.80, blue: 1.0) }
 
     var body: some View {
         // The disc defines the layout size; the glow sits behind it without
         // expanding the footprint, so the Anchor's touch target stays small.
         Circle()
             .fill(
-                RadialGradient(
-                    colors: [Color.ankyGoldLight, Color.ankyGold, Color.ankyApricot.opacity(0.92)],
-                    center: UnitPoint(x: 0.44, y: 0.40),
-                    startRadius: 1, endRadius: 30
-                )
+                electric
+                    ? RadialGradient(
+                        colors: [cyan.opacity(0.9), cyan.opacity(0.5),
+                                 Color(.displayP3, red: 0.08, green: 0.12, blue: 0.24)],
+                        center: UnitPoint(x: 0.44, y: 0.40),
+                        startRadius: 1, endRadius: 30)
+                    : RadialGradient(
+                        colors: [Color.ankyGoldLight, Color.ankyGold, Color.ankyApricot.opacity(0.92)],
+                        center: UnitPoint(x: 0.44, y: 0.40),
+                        startRadius: 1, endRadius: 30)
             )
-            // A carved rim — a hair of ink, then a warm inner bevel.
-            .overlay(Circle().strokeBorder(Color.ankyUmber.opacity(0.30), lineWidth: 1))
+            // A carved rim — a hair of ink, then a bevel (warm on paper, cool
+            // in the electric register).
+            .overlay(Circle().strokeBorder((electric ? Color.black : Color.ankyUmber).opacity(0.30), lineWidth: 1))
             .overlay(
                 Circle()
-                    .strokeBorder(Color.ankyGoldLight.opacity(0.7), lineWidth: 0.5)
+                    .strokeBorder((electric ? cyan : Color.ankyGoldLight).opacity(0.7), lineWidth: 0.5)
                     .padding(1.5)
             )
             // The engraved spiral — a dark valley under a light rim, centered.
             .overlay {
                 ZStack {
                     AnchorSpiral()
-                        .stroke(Color.ankyUmber.opacity(0.55),
+                        .stroke((electric ? Color.black : Color.ankyUmber).opacity(0.55),
                                 style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
                         .frame(width: spiralSize, height: spiralSize)
                     AnchorSpiral()
-                        .stroke(Color.ankyGoldLight.opacity(0.9),
+                        .stroke((electric ? cyan : Color.ankyGoldLight).opacity(0.9),
                                 style: StrokeStyle(lineWidth: 1.0, lineCap: .round))
                         .frame(width: spiralSize, height: spiralSize)
                         .offset(y: -0.5)
                 }
             }
             .shadow(color: Color.ankyViolet.opacity(0.20), radius: 5, y: 2)
-            // The glow it rests in — warm air, breathing, never a hard halo.
+            // The glow it rests in — warm air, breathing; in the electric
+            // register it cools to cyan and brightens as the offering climbs.
             .background {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.ankyGoldLight.opacity(atRest ? 0.28 : 0.38 + 0.16 * breath),
+                            colors: [electric
+                                        ? cyan.opacity(0.35 + 0.5 * charge)
+                                        : Color.ankyGoldLight.opacity(atRest ? 0.28 : 0.38 + 0.16 * breath),
                                      .clear],
                             center: .center, startRadius: 4, endRadius: 58
                         )

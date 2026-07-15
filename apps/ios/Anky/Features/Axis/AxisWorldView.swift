@@ -21,6 +21,8 @@ struct AxisWorldView: View {
     /// its 62.5Hz ticker, per-keystroke atomic writes, and the 8s sentinel. The
     /// axis only listens for the seal; it never reimplements the mechanics.
     @StateObject private var writeViewModel = WriteViewModel()
+    /// The send vigil's charge/haptics, driven by the continuous Anchor press.
+    @StateObject private var vigil = VigilController()
 
     var body: some View {
         ZStack {
@@ -31,7 +33,7 @@ struct AxisWorldView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if axis.anchorIsVisible {
-                AnchorView(axis: axis)
+                AnchorView(axis: axis, vigil: vigil)
                     .zIndex(1000)
             }
 
@@ -63,6 +65,18 @@ struct AxisWorldView: View {
         }
     }
 
+    // The electric vigil surface — a pure function of the controller's charge.
+    @ViewBuilder
+    private var vigilSurface: some View {
+        #if DEBUG
+        let sample = "tonight i sat with the kind of quiet that has weight not empty but full in a way i cannot always explain i stayed i kept choosing life love is quieter than fear"
+        VigilView(charge: vigil.charge, text: axis.pendingSession?.reconstructedText ?? sample)
+            .onAppear { if vigil.stage == .idle { vigil.debugDemo() } }
+        #else
+        VigilView(charge: vigil.charge, text: axis.pendingSession?.reconstructedText ?? "")
+        #endif
+    }
+
     // MARK: - Per-phase surface (scaffolds until later phases)
 
     @ViewBuilder
@@ -85,7 +99,7 @@ struct AxisWorldView: View {
                 onSettle: { axis.settleToLanding() }
             )
         case .vigil:
-            ScaffoldSurface(line: "the offering is carried", detail: "seven stations to the spiral ear", electric: true)
+            vigilSurface
         case .reflection:
             ScaffoldSurface(line: "your words return, warmed", detail: "the reflection descends")
         case .landing:
