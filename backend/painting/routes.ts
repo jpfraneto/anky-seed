@@ -23,16 +23,17 @@ import {
   paintingPackageDir,
   staticPaintingPackageDir,
   PAINTING_PACKAGE_FILES,
+  FREE_LEVEL_MAX,
   STATIC_LEVEL_MAX,
 } from "./config";
 import { levelStateAllowsPrepare, runPaintingPipeline } from "./pipeline";
 import { BodyTooLargeError, clientIp, rateLimitedResponse, readLimitedBody } from "../security";
 
-// Levels 1–8 are shared static defaults with no generation at all (cost
-// decision 2026-07-08), so every actual generation — level 9 up — belongs to
-// the subscription. Assets already generated stay downloadable forever — a
-// lapse or refund gates the next painting, never a delivered one.
-export const FREE_GENERATION_MAX_LEVEL = STATIC_LEVEL_MAX;
+// The free/paid line. Levels above it require a subscription — whether the art
+// is shared-static (9..STATIC_LEVEL_MAX) or dynamically generated (beyond it).
+// Assets already delivered stay downloadable forever — a lapse or refund gates
+// the next painting, never a delivered one.
+export const FREE_GENERATION_MAX_LEVEL = FREE_LEVEL_MAX;
 
 export type PaintingRouteContext = {
   getDb: () => Database | null;
@@ -193,6 +194,18 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     // client's normal download flow picks the package up from the shared
     // defaults dir (seeded once by scripts/seed-default-paintings.ts).
     if (level <= STATIC_LEVEL_MAX) {
+      // Shared static art, but the paid line still applies: levels above the
+      // free tier are a subscription feature even though they no longer
+      // generate. Gate before any state flips so an unpaid account can never
+      // pull the curated paintings.
+      if (level > FREE_LEVEL_MAX) {
+        const entitlement = ctx.entitlementFor
+          ? await ctx.entitlementFor(account, nowMs)
+          : accountEntitlement(db, account, nowMs);
+        if (!entitlement.entitled) {
+          return errorJson(c, 402, "ENTITLEMENT_REQUIRED");
+        }
+      }
       const staticGate = levelStateAllowsPrepare(db, account, level);
       if (!staticGate.allowed) {
         return c.json({ status: levelStatusFor(db, account), phase: staticGate.phase });

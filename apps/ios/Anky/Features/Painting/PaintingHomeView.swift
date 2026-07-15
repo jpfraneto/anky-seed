@@ -596,33 +596,40 @@ struct PaintingHomeView: View {
         // Adopted / updated writers land at their true level, no ceremony
         // crawl through the shared static paintings.
         store.reconcileCeremonyPointerIfNeeded()
-        // The free tier presents the boundary — level 8 serenely
-        // complete — while the counter underneath keeps every second.
         let entitled = entitlements.isEntitledForGating
-        levelProgress = store.presentedProgress(entitled: entitled)
-        atBoundary = store.isAtBoundary(entitled: entitled)
-        ceremonyOwed = store.owedCeremonyLevel != nil && !atBoundary
 
         let assetStore = PaintingAssetStore()
         assetStore.installStarterIfNeeded()
 
-        // Past level 8 the painting is custom and summoned by ritual. The
-        // owed custom level whose canvas doesn't exist yet waits with the
-        // invitation — never the previous painting stuck at a false 100%.
+        // Recovery: a writer whose paid painting was lost (reinstall / OS purge)
+        // can carry a "shown" ceremony past the newest painting on disk. Heal it
+        // before presenting, so the painting is re-owed and re-downloaded rather
+        // than a previous one hanging at a false 100%.
+        store.healOrphanedCustomCeremonies { assetStore.installedPackage(forLevel: $0) != nil }
+
+        // The free tier presents the boundary — level 8 serenely
+        // complete — while the counter underneath keeps every second.
+        levelProgress = store.presentedProgress(entitled: entitled)
+        atBoundary = store.isAtBoundary(entitled: entitled)
+        ceremonyOwed = store.owedCeremonyLevel != nil && !atBoundary
+
+        // The summon ritual is retired: 9–15 are shared static paintings that
+        // download automatically (prepared on seal / foreground). While a paid
+        // second-octave painting for the writer's current level is still landing,
+        // show the quiet "preparing" canvas — never a previous painting stuck at
+        // a false 100%. The unveiling plays the moment the package arrives.
+        needsRitual = false
+        let currentLevel = levelProgress.level
         if entitled,
-           let owed = store.owedCeremonyLevel,
-           owed > LevelProgressStore.freeBoundaryLevel,
-           assetStore.installedPackage(forLevel: owed) == nil {
-            needsRitual = true
-            ritualLevel = owed
-            isSummoningPainting = store.phase(forLevel: owed) != .accumulating
+           currentLevel > LevelProgressStore.freeBoundaryLevel,
+           currentLevel <= LevelProgressStore.staticLevelMax,
+           assetStore.installedPackage(forLevel: currentLevel) == nil {
             package = nil
             revealAssets = nil
             theme = .fallback
             displayedProgress = 0
             return
         }
-        needsRitual = false
 
         // The painting for the level the writer is IN; if it isn't installed
         // (yet), fall back to the newest one we have.

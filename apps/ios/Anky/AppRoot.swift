@@ -53,6 +53,15 @@ struct AppRoot: View {
     @State private var sealingArtifact: SavedAnky?
     @State private var sealingUnlockGrant: UnlockGrant?
     @State private var sealingShowsFreeTargetMoment = false
+    /// The on-surface post-session beat picked "reflect" (entitled): open the
+    /// mirror directly — the separate writing-recap screen is gone.
+    @State private var startsSealingAtMirror = false
+    /// The on-surface beat picked "skip" on a gate session: fall through to the
+    /// closing gate so an earned unlock is still one deliberate tap away.
+    @State private var startsSealingAtGate = false
+    /// A free writer completed the slide on the writing surface: the paywall
+    /// meets them here, and nothing is sent if they decline.
+    @State private var showsReflectPaywall = false
     @State private var isUnlocked = false
     @State private var isAuthenticating = false
     @State private var suppressFaceIDPrivacyPromptUntilNextActivation = false
@@ -316,9 +325,14 @@ struct AppRoot: View {
         sealingShowsFreeTargetMoment = writeViewModel.writeBeforeScrollFreeTargetMomentPending
             && !entitlements.isEntitledForGating
             && sealingUnlockGrant == nil
+        startsSealingAtMirror = false
+        startsSealingAtGate = false
         selectedTab = 0
         showsLaunchDialogue = false
-        writeSurface = .sealing
+        // The words stay on the surface they were written on: the keyboard
+        // withdraws and the post-session beat rises where it stood, right here
+        // on the writing view. Only reflect / skip advance to the mirror/gate.
+        writeSurface = .deepWrite
         ankyCompanion.hideBubble()
         backUpToICloudIfEnabled()
         levelPainting.handleSealCompleted()
@@ -332,6 +346,8 @@ struct AppRoot: View {
         let endedQuickPass = sealingUnlockGrant?.tier == .quick
         sealingArtifact = nil
         sealingUnlockGrant = nil
+        startsSealingAtMirror = false
+        startsSealingAtGate = false
         revealAfterWriting = nil
         writeViewModel.clearCompletedSession()
         showsLaunchDialogue = false
@@ -450,6 +466,34 @@ struct AppRoot: View {
         syncWriteBubble()
     }
 
+    /// The on-surface beat's "slide to reflect": the single deliberate act
+    /// that lets the writing leave the device. A free writer meets the paywall
+    /// right here — nothing is sent unless they subscribe. An entitled writer
+    /// advances into the mirror, where anky reflects on the sealed session.
+    private func reflectFromWritingSurface() {
+        guard entitlements.isEntitledForGating else {
+            showsReflectPaywall = true
+            return
+        }
+        startsSealingAtMirror = true
+        startsSealingAtGate = false
+        writeSurface = .sealing
+    }
+
+    /// The on-surface beat's "skip": the words never left the device. A gate
+    /// session still falls through to its closing gate (the only place apps
+    /// open — never before the writer crosses it); an organic session closes
+    /// straight to the main landing.
+    private func skipFromWritingSurface() {
+        if sealingUnlockGrant != nil {
+            startsSealingAtMirror = false
+            startsSealingAtGate = true
+            writeSurface = .sealing
+        } else {
+            finishSealingToMainScreen()
+        }
+    }
+
     private func stayAfterSealing() {
         guard let artifact = sealingArtifact else {
             showDeepWriteInterface()
@@ -457,6 +501,8 @@ struct AppRoot: View {
         }
         sealingArtifact = nil
         sealingUnlockGrant = nil
+        startsSealingAtMirror = false
+        startsSealingAtGate = false
         revealAfterWriting = nil
         showsLaunchDialogue = false
         writeSurface = .deepWrite
@@ -549,7 +595,10 @@ struct AppRoot: View {
                                         } else {
                                             showMap()
                                         }
-                                    }
+                                    },
+                                    onReflect: reflectFromWritingSurface,
+                                    onSkip: skipFromWritingSurface,
+                                    onContinueWriting: stayAfterSealing
                                 )
                             case .sealing:
                                 if let sealingArtifact {
@@ -558,7 +607,8 @@ struct AppRoot: View {
                                         unlockGrant: sealingUnlockGrant,
                                         isGateOriginated: writeViewModel.isGateOriginatedSession,
                                         showsFreeTargetMoment: sealingShowsFreeTargetMoment,
-                                        startsAtGate: writeViewModel.isWaitingToResumeContinuedDraft,
+                                        startsAtGate: writeViewModel.isWaitingToResumeContinuedDraft || startsSealingAtGate,
+                                        startsAtMirror: startsSealingAtMirror,
                                         quickPassesRemaining: writeViewModel.writeBeforeScrollQuickPassesRemaining,
                                         onMomentShown: {
                                             // The day's one showing is spent only
@@ -846,6 +896,9 @@ struct AppRoot: View {
             GateSetupView(viewModel: writeBeforeScrollSpike) {
                 showsGateSetup = false
             }
+        }
+        .sheet(isPresented: $showsReflectPaywall) {
+            PaywallSheet(store: entitlements, origin: "reflection")
         }
         .overlay {
             if let pendingDraftRecovery {
@@ -1878,6 +1931,9 @@ private struct PostSessionSealingView: View {
     private let onUnlock: () -> Void
     private let onDone: () -> Void
     private let onStay: () -> Void
+    /// The on-surface beat already played the slide: open on the mirror and
+    /// send at once, skipping the (now-retired) in-flow writing recap.
+    private let startsAtMirror: Bool
 
     init(
         artifact: SavedAnky,
@@ -1885,6 +1941,7 @@ private struct PostSessionSealingView: View {
         isGateOriginated: Bool = false,
         showsFreeTargetMoment: Bool = false,
         startsAtGate: Bool = false,
+        startsAtMirror: Bool = false,
         quickPassesRemaining: Int = UnlockPolicy.quickPassDailyAllowance,
         onMomentShown: @escaping () -> Void = {},
         onEmergency: @escaping () -> Void = {},
@@ -1896,15 +1953,17 @@ private struct PostSessionSealingView: View {
         self.unlockGrant = unlockGrant
         self.isGateOriginated = isGateOriginated
         self.showsFreeTargetMoment = showsFreeTargetMoment
+        self.startsAtMirror = startsAtMirror
         self.quickPassesRemaining = quickPassesRemaining
         self.onMomentShown = onMomentShown
         self.onEmergency = onEmergency
         self.onUnlock = onUnlock
         self.onDone = onDone
         self.onStay = onStay
-        // Re-entry from the back button of a continued session: land straight
-        // on the gate beat.
-        _phase = State(initialValue: startsAtGate ? .gate : .writing)
+        // Entry phase: the writer reflected on the writing surface → mirror;
+        // re-entry from a continued session's back button → gate; otherwise
+        // the legacy in-flow writing beat.
+        _phase = State(initialValue: startsAtMirror ? .mirror : (startsAtGate ? .gate : .writing))
         _mirrorViewModel = StateObject(wrappedValue: RevealViewModel(artifact: artifact))
     }
 
@@ -2061,6 +2120,12 @@ private struct PostSessionSealingView: View {
         // leaves the phone when the writer completes the slide below.
         Task {
             await mirrorViewModel.prepareAfterFirstRender()
+            // The writer already completed the slide on the writing surface
+            // (entitlement was checked there): send now — the cached reflection,
+            // if any, resolves in prepareAfterFirstRender just above.
+            if startsAtMirror {
+                await MainActor.run { onReflectSlideCompleted() }
+            }
         }
     }
 
@@ -2258,7 +2323,9 @@ private struct SealingWritingBeatView: View {
 /// The single deliberate act that lets a writer's words leave the device: a
 /// left-to-right slide, ticking a soft haptic as it travels, sending only
 /// when it completes past the threshold. Until then, nothing is transmitted.
-private struct SlideToReflect: View {
+/// Shared by the post-session action bar (on the writing surface) and the
+/// re-entry sealing flow. Internal, not private, so `WriteView` can host it.
+struct SlideToReflect: View {
     let label: String
     let onComplete: () -> Void
 

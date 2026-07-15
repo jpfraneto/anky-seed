@@ -27,6 +27,9 @@ struct RevealView: View {
     /// Empty → Share falls back to the reflection's opening passage.
     @State private var selectedReflectionText = ""
     @State private var shareQuote: String?
+    /// Whose words the share card signs — ANKY for the reflection, YOU for the
+    /// writer's own text.
+    @State private var shareVoice: ShareCardVoice = .anky
     /// P2: full-screen teleprompter recording, opened once a reflection exists.
     @State private var isShowingRecording = false
     private let onBack: (() -> Void)?
@@ -94,8 +97,13 @@ struct RevealView: View {
                                 .transition(.opacity)
                             }
 
-                            SelectableWritingText(
-                                text: viewModel.reconstructedText
+                            // The writer's own words: tap a paragraph to share
+                            // it signed YOU (long-press still selects freely).
+                            TappableReflectionText(
+                                text: viewModel.reconstructedText,
+                                voice: .you,
+                                accent: viewModel.ctaAccentColor,
+                                onShare: { shareParagraphCard($0, voice: .you) }
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 8)
@@ -133,6 +141,9 @@ struct RevealView: View {
                                 ReflectionMarkdownPanel(
                                     title: reflection.title,
                                     markdown: reflection.reflection,
+                                    onShareParagraph: { shareParagraphCard($0, voice: .anky) },
+                                    shareVoice: .anky,
+                                    accent: viewModel.ctaAccentColor,
                                     showsStandaloneTitle: viewModel.isComplete,
                                     onSelectionChange: { selectedReflectionText = $0 }
                                 )
@@ -372,7 +383,7 @@ struct RevealView: View {
             set: { if !$0 { shareQuote = nil } }
         )) {
             if let shareQuote {
-                ShareCardPreviewView(quote: shareQuote)
+                ShareCardPreviewView(quote: shareQuote, voice: shareVoice)
             }
         }
         .fullScreenCover(isPresented: $isShowingRecording) {
@@ -561,10 +572,18 @@ struct RevealView: View {
     private func shareReflectionCard() {
         guard let reflection = viewModel.reflection else { return }
         AnkyHaptics.light()
+        shareVoice = .anky
         shareQuote = ReflectionShareQuote.make(
             selection: selectedReflectionText,
             fullReflection: reflection.reflection
         )
+    }
+
+    /// A tapped paragraph → the 9:16 share card, signed ANKY (reflection) or
+    /// YOU (the writer's own words).
+    private func shareParagraphCard(_ paragraph: String, voice: ShareCardVoice) {
+        shareVoice = voice
+        shareQuote = ReflectionShareQuote.plainText(paragraph)
     }
 
     private func copyReflectionPrompt() {
@@ -1048,6 +1067,13 @@ private struct SelectableWritingText: UIViewRepresentable {
 private struct ReflectionMarkdownPanel: View {
     let title: String?
     let markdown: String
+    /// When set, paragraphs become tap-to-select (lazure blob + corner share);
+    /// the closure receives the tapped paragraph as a quote. The `voice` signs
+    /// the share card (ANKY here). When nil, falls back to plain native
+    /// selection.
+    var onShareParagraph: ((String) -> Void)?
+    var shareVoice: ShareCardVoice = .anky
+    var accent: Color = .ankyViolet
     var separatesLeadingTitle = true
     /// Short writings get short reflections — a brute-forced title over one
     /// of those is the first line said twice. Below the full ritual the
@@ -1130,6 +1156,13 @@ private struct ReflectionMarkdownPanel: View {
 
             if isStreaming {
                 ReflectionStreamingText(text: displayBody)
+            } else if let onShareParagraph {
+                TappableReflectionText(
+                    text: displayBody,
+                    voice: shareVoice,
+                    accent: accent,
+                    onShare: onShareParagraph
+                )
             } else {
                 SelectableReflectionText(text: displayBody, onSelectionChange: onSelectionChange)
             }
@@ -1426,6 +1459,105 @@ private struct SelectableReflectionText: UIViewRepresentable {
             }
             onSelectionChange?(selected)
         }
+    }
+}
+
+/// Tap a paragraph → it's chosen whole and a soft lazure "blob" blooms behind
+/// it (the day's accent, blurred to organic edges); a share button rides the
+/// bottom-right corner. Long-press still gives native free selection. Share
+/// hands the paragraph up as a quote to be signed in `voice` (ANKY / YOU).
+private struct TappableReflectionText: View {
+    let text: String
+    var voice: ShareCardVoice = .anky
+    var accent: Color = .ankyViolet
+    let onShare: (String) -> Void
+
+    @State private var selected: Int?
+
+    private var paragraphs: [String] {
+        text.replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: "\n")
+            .map(cleanLine)
+            .filter { !$0.isEmpty }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
+                paragraphRow(index: index, paragraph: paragraph)
+            }
+        }
+    }
+
+    private func paragraphRow(index: Int, paragraph: String) -> some View {
+        let isSelected = selected == index
+        return Text(inlineMarkdown(paragraph))
+            .font(.system(size: 18, weight: .regular, design: .serif))
+            .foregroundStyle(Color.ankyInk)
+            .lineSpacing(6)
+            .fixedSize(horizontal: false, vertical: true)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, isSelected ? 18 : 0)
+            .padding(.vertical, isSelected ? 14 : 0)
+            .background(selectionBlob(isSelected))
+            .overlay(alignment: .bottomTrailing) {
+                if isSelected { shareButton(paragraph) }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                AnkyHaptics.light()
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.74)) {
+                    selected = isSelected ? nil : index
+                }
+            }
+    }
+
+    private func selectionBlob(_ active: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(accent.opacity(active ? 0.20 : 0))
+            .blur(radius: active ? 10 : 0)
+            .scaleEffect(active ? 1.05 : 0.94)
+            .animation(.spring(response: 0.34, dampingFraction: 0.74), value: active)
+    }
+
+    private func shareButton(_ paragraph: String) -> some View {
+        Button {
+            AnkyHaptics.light()
+            onShare(paragraph)
+        } label: {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(accent, in: Circle())
+                .overlay(Circle().stroke(Color.ankyPaper.opacity(0.92), lineWidth: 2))
+                .shadow(color: accent.opacity(0.45), radius: 9, y: 3)
+        }
+        .buttonStyle(.plain)
+        .offset(x: 12, y: 16)
+        .transition(.scale.combined(with: .opacity))
+    }
+
+    /// Strip leading block markers so a paragraph reads as prose; keep inline
+    /// emphasis for the markdown pass.
+    private func cleanLine(_ line: String) -> String {
+        var trimmed = line.trimmingCharacters(in: .whitespaces)
+        while let first = trimmed.first, first == "#" || first == ">" {
+            trimmed.removeFirst()
+            trimmed = trimmed.trimmingCharacters(in: .whitespaces)
+        }
+        if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
+            trimmed.removeFirst(2)
+        }
+        return trimmed
+    }
+
+    private func inlineMarkdown(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
 
@@ -1735,6 +1867,20 @@ enum RevealPalette {
 
 // MARK: - P1: branded share cards ("the anky method")
 
+/// Who the quoted words belong to. This is the marketing myth: Anky's words are
+/// signed "ANKY"; the writer's own words are signed "YOU".
+enum ShareCardVoice {
+    case anky
+    case you
+
+    var attribution: String {
+        switch self {
+        case .anky: return "— ANKY"
+        case .you:  return "— YOU"
+        }
+    }
+}
+
 /// The output shapes. 4:5 is the default feed card; 9:16 is the story card.
 private enum ShareCardFormat: CaseIterable, Hashable {
     case ratio4x5
@@ -1837,6 +1983,7 @@ enum ReflectionShareQuote {
 private struct ReflectionShareCard: View {
     let format: ShareCardFormat
     let quote: String
+    var voice: ShareCardVoice = .anky
 
     private var size: CGSize { format.logicalSize }
 
@@ -1952,8 +2099,9 @@ private struct ReflectionShareCard: View {
     }
 
     private var attribution: some View {
-        Text("— Anky")
+        Text(voice.attribution)
             .font(.fraunces(15, weight: .semibold, italic: true))
+            .tracking(1.5)
             .foregroundStyle(Color.ankyGold)
     }
 
@@ -1972,8 +2120,8 @@ private struct ReflectionShareCard: View {
 /// baked into an asset. Main-actor because `ImageRenderer` is.
 private enum ReflectionShareCardRenderer {
     @MainActor
-    static func image(for format: ShareCardFormat, quote: String) -> UIImage? {
-        let renderer = ImageRenderer(content: ReflectionShareCard(format: format, quote: quote))
+    static func image(for format: ShareCardFormat, quote: String, voice: ShareCardVoice) -> UIImage? {
+        let renderer = ImageRenderer(content: ReflectionShareCard(format: format, quote: quote, voice: voice))
         renderer.scale = 3
         renderer.proposedSize = ProposedViewSize(format.logicalSize)
         renderer.isOpaque = true
@@ -1986,30 +2134,24 @@ private struct ShareCardImage: Identifiable {
     let image: UIImage
 }
 
-/// The single Share entry point opens this preview. Ratio choice (4:5 default /
-/// 9:16) happens here on the card, not in the system share sheet; the Share
-/// button exports the selected ratio only.
+/// The single Share entry point opens this preview. One shape only — 9:16, the
+/// story card — no options; the Share button exports it straight to the system
+/// sheet.
 private struct ShareCardPreviewView: View {
     let quote: String
+    var voice: ShareCardVoice = .anky
 
     @Environment(\.dismiss) private var dismiss
-    @State private var format: ShareCardFormat
     @State private var shareItem: ShareCardImage?
 
-    init(quote: String) {
-        self.quote = quote
-        // A long quote would truncate on 4:5, so open on 9:16 (which shows it
-        // whole); the reader can still toggle back to the Minimal 4:5 card.
-        let initial: ShareCardFormat = quote.count > ShareCardFormat.minimalThreshold ? .ratio9x16 : .ratio4x5
-        _format = State(initialValue: initial)
-    }
+    private let format: ShareCardFormat = .ratio9x16
 
     var body: some View {
         VStack(spacing: 22) {
             GeometryReader { geo in
                 let logical = format.logicalSize
                 let scale = min(geo.size.width / logical.width, geo.size.height / logical.height)
-                ReflectionShareCard(format: format, quote: quote)
+                ReflectionShareCard(format: format, quote: quote, voice: voice)
                     .frame(width: logical.width, height: logical.height)
                     .scaleEffect(scale)
                     .frame(width: geo.size.width, height: geo.size.height)
@@ -2019,15 +2161,8 @@ private struct ShareCardPreviewView: View {
             .padding(.horizontal, 30)
             .padding(.top, 24)
 
-            Picker("", selection: $format) {
-                Text(AnkyLocalization.ui("4:5")).tag(ShareCardFormat.ratio4x5)
-                Text(AnkyLocalization.ui("9:16")).tag(ShareCardFormat.ratio9x16)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 220)
-
             AnkyPrimaryButton("Share") {
-                if let image = ReflectionShareCardRenderer.image(for: format, quote: quote) {
+                if let image = ReflectionShareCardRenderer.image(for: format, quote: quote, voice: voice) {
                     shareItem = ShareCardImage(image: image)
                 }
             }

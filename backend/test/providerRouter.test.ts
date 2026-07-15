@@ -123,10 +123,10 @@ describe("provider router", () => {
     expect(chunks).toEqual(["# living ", "thread\n\nbody"]);
   });
 
-  test("default provider order tries OpenRouter before Bankr before Poiesis", async () => {
+  test("default provider order tries Bankr before OpenRouter before Poiesis", async () => {
     const providers = ankyWorld().providerOrder;
 
-    expect(providers).toEqual(["openrouter", "bankr", "poiesis", "default"]);
+    expect(providers).toEqual(["bankr", "openrouter", "poiesis", "default"]);
   });
 
   test("falls back from exhausted OpenRouter quota to Bankr", async () => {

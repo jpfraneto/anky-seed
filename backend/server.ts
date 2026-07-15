@@ -105,7 +105,7 @@ export const mapOfThisFile = {
   subscription: "accountEntitlement -> entitlementWithFallback (RevenueCat)",
   privacyDiagnostics: "createSafeLogger -> ConsoleDiagnosticsSink",
   providers:
-    "routeReflection -> OpenRouter -> Bankr -> Poiesis -> defaultFallbackProvider",
+    "routeReflection -> Bankr -> OpenRouter -> Poiesis -> defaultFallbackProvider",
   prompt: "buildReflectPromptFromText / buildNudgePrompt",
   endpoint: "handleAnkyReflection",
   startServer: "import.meta.main",
@@ -248,7 +248,10 @@ export const anky = {
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
   dataDir: "/data",
-  providerOrder: ["openrouter", "bankr", "poiesis", "default"] as const,
+  // Bankr LLM gateway is the primary lane: the inference of the company is
+  // paid for by the trading fees of $anky, routed through Bankr. OpenRouter is
+  // the overflow/fallback when Bankr is unconfigured, unconfirmed, or exhausted.
+  providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,

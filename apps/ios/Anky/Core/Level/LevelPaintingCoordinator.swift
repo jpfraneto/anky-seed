@@ -96,11 +96,11 @@ final class LevelPaintingCoordinator: ObservableObject {
     /// with no painting yet and nothing already generating. This is the ritual
     /// that replaces automatic generation past level 8.
     func pendingRitualLevel() -> Int? {
-        guard entitledForGating, let owed = owedCeremonyLevel else { return nil }
-        guard owed > LevelProgressStore.freeBoundaryLevel else { return nil }
-        guard assetStore.installedPackage(forLevel: owed) == nil else { return nil }
-        guard progressStore.phase(forLevel: owed) == .accumulating else { return nil }
-        return owed
+        // The per-writer summon ritual is retired. Levels 9–15 are shared static
+        // art now, auto-prepared and downloaded like 2–8 (no hand-summoning, no
+        // multi-minute generation); beyond the curated set the client holds the
+        // last painting. Nothing is ever summoned by hand.
+        return nil
     }
 
     /// The writer offers their chapter: begin generating the owed custom
@@ -179,12 +179,16 @@ final class LevelPaintingCoordinator: ObservableObject {
         guard assetStore.installedPackage(forLevel: targetLevel) == nil else {
             return
         }
-        // Static levels (≤ 8) pre-generate their shared default so the
-        // ceremony is ready the moment it's crossed. Custom levels (≥ 9) are
-        // never automatic — the writer summons them through the ritual
-        // (`beginPaintingRitual`); automatic generation there was unreliable
-        // and stripped the moment of its intention.
-        guard targetLevel <= LevelProgressStore.freeBoundaryLevel else {
+        // Shared static levels pre-fetch their default package so the ceremony
+        // is ready the moment the level is crossed. This spans the curated set
+        // through 15: 2–8 are free, 9–15 are the paid second octave — the same
+        // shared art either way, entitlement-gated for the paid range. Beyond
+        // the curated set the client holds the last painting, so nothing
+        // auto-prepares there.
+        guard targetLevel <= LevelProgressStore.staticLevelMax else {
+            return
+        }
+        if targetLevel > LevelProgressStore.freeBoundaryLevel, !entitledForGating {
             return
         }
         let phase = progressStore.phase(forLevel: targetLevel)
@@ -211,7 +215,10 @@ final class LevelPaintingCoordinator: ObservableObject {
             artifacts: archive.list(),
             sinceMs: progressStore.lastLevelUpAtMs
         )
-        guard text.count >= 80 else {
+        // Shared static paintings (≤ staticLevelMax) need no chapter text — the
+        // server serves a pre-seeded package. Only dynamic generation beyond the
+        // curated set requires the writing.
+        if level > LevelProgressStore.staticLevelMax, text.count < 80 {
             return // not enough writing in the chapter yet
         }
         isPreparing = true

@@ -113,6 +113,14 @@ struct LevelProgressStore {
     /// FREE_GENERATION_MAX_LEVEL.
     static let freeBoundaryLevel = 8
 
+    /// The static/dynamic line (distinct from the free/paid line above). Levels
+    /// at or below it are shared static paintings — the same art for every
+    /// writer, downloaded instantly, no per-writer generation. Levels 2–8 are
+    /// free; 9–15 are the curated paid "second octave" (still shared art, just
+    /// entitlement-gated). Beyond it the client holds the last painting. Mirrors
+    /// the backend's STATIC_LEVEL_MAX — keep the two in lockstep.
+    static let staticLevelMax = 15
+
     /// What the UI shows. Entitled writers see the true curve; a free writer
     /// past the boundary sees level 8 serenely complete at 100%. The counter
     /// underneath keeps every second — nothing is ever lost, and the true
@@ -240,6 +248,47 @@ struct LevelProgressStore {
         for level in 2...max(2, fastForwarded) where level <= fastForwarded {
             snapshot.phaseByLevel[String(level)] = .ceremonyShown
         }
+    }
+
+    /// Backwards-compat / recovery heal for custom paintings (levels 9+).
+    ///
+    /// A "shown" ceremony implies a delivered canvas — but a writer who
+    /// updated into the ritual feature, or whose package was lost to a
+    /// reinstall or an OS purge, can carry `lastCeremonyShownLevel` past the
+    /// newest custom painting actually installed. Left alone, the home screen
+    /// hangs the previous (static) painting at a false 100% with no way
+    /// forward. This rolls the ceremony pointer back to the highest
+    /// contiguously-installed custom level (never below the free boundary,
+    /// whose paintings are shared statics that need no package) and reopens
+    /// the orphaned custom levels so their ritual invitation returns and the
+    /// canvas can be re-summoned. Idempotent: a healthy writer, or one still
+    /// inside the static levels, is left untouched. Returns true if it
+    /// changed anything.
+    @discardableResult
+    func healOrphanedCustomCeremonies(isInstalled: (Int) -> Bool) -> Bool {
+        var snapshot = load()
+        let shown = snapshot.lastCeremonyShownLevel ?? 1
+        guard shown > Self.freeBoundaryLevel else {
+            return false
+        }
+        // Highest custom level whose painting is really on disk, walking up
+        // from the boundary and stopping at the first gap.
+        var healedShown = Self.freeBoundaryLevel
+        var probe = Self.freeBoundaryLevel + 1
+        while probe <= shown, isInstalled(probe) {
+            healedShown = probe
+            probe += 1
+        }
+        guard healedShown < shown else {
+            return false
+        }
+        snapshot.lastCeremonyShownLevel = healedShown
+        // Reopen every orphaned custom level so its ritual invitation returns.
+        for level in (healedShown + 1)...shown where !isInstalled(level) {
+            snapshot.phaseByLevel[String(level)] = .accumulating
+        }
+        save(snapshot)
+        return true
     }
 
     /// The strokes owed to the next visit of the painting page.

@@ -2,6 +2,7 @@ type StoreBadgeProps = {
   store: "ios" | "android";
   href?: string;
   compact?: boolean;
+  locale?: "en" | "es";
 };
 
 const iosAppStoreUrl = "https://apps.apple.com/us/app/anky-app/id6760663033";
@@ -48,15 +49,28 @@ function PlayIcon() {
   );
 }
 
-function StoreBadge({ store, href, compact = false }: StoreBadgeProps) {
+function StoreBadge({
+  store,
+  href,
+  compact = false,
+  locale = "en",
+}: StoreBadgeProps) {
   const isIos = store === "ios";
+  const eyebrow =
+    locale === "es"
+      ? isIos
+        ? "Descárgalo en el"
+        : "Disponible en"
+      : isIos
+        ? "Download on the"
+        : "Get it on";
   const className = `inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-white/14 bg-black px-3 text-white shadow-[0_18px_45px_rgba(0,0,0,0.28)] transition hover:border-white/32 hover:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-gold-200 sm:min-w-[190px] sm:flex-none sm:justify-start sm:gap-3 sm:px-4 ${compact ? "py-2.5" : "py-3"}`;
   const content = (
     <>
       {isIos ? <AppleIcon /> : <PlayIcon />}
       <span className="text-left leading-none">
         <span className="block text-[8px] uppercase text-white/78 sm:text-[10px]">
-          {isIos ? "Download on the" : "Get it on"}
+          {eyebrow}
         </span>
         <span className="mt-1 block text-sm font-semibold sm:text-xl">
           {isIos ? "App Store" : "Google Play"}
@@ -65,22 +79,10 @@ function StoreBadge({ store, href, compact = false }: StoreBadgeProps) {
     </>
   );
 
-  if (!isIos) {
-    return (
-      <button
-        className={className}
-        type="button"
-        onClick={() => window.open(androidPlayStoreUrl, "_blank")}
-      >
-        {content}
-      </button>
-    );
-  }
-
   return (
     <a
       className={className}
-      href={href ?? iosAppStoreUrl}
+      href={href ?? (isIos ? iosAppStoreUrl : androidPlayStoreUrl)}
       rel="noreferrer"
       target="_blank"
     >

@@ -204,6 +204,70 @@ final class LevelProgressStoreTests: XCTestCase {
         XCTAssertEqual(store.owedCeremonyLevel, 9)
     }
 
+    func testHealReopensACustomLevelWhosePaintingWasLost() {
+        let store = temporaryStore()
+        // A Pro writer who reached level 9, witnessed its ceremony, then lost
+        // the canvas (reinstall / purge / updated into the ritual feature).
+        let toLevelNine = Int64(AnkyLevel.thresholdSeconds(forLevel: 9) + 30) * 1000
+        store.creditSealedSession(hash: hash(43), durationMs: toLevelNine)
+        store.markCeremonyShown(level: 9)
+        XCTAssertEqual(store.lastCeremonyShownLevel, 9)
+        XCTAssertNil(store.owedCeremonyLevel)
+        XCTAssertEqual(store.phase(forLevel: 9), .ceremonyShown)
+
+        // No level-9 package on disk → heal rolls the pointer back so the
+        // ritual can summon it again, instead of hanging level 8 at 100%.
+        XCTAssertTrue(store.healOrphanedCustomCeremonies { _ in false })
+        XCTAssertEqual(store.lastCeremonyShownLevel, 8)
+        XCTAssertEqual(store.owedCeremonyLevel, 9)
+        XCTAssertEqual(store.phase(forLevel: 9), .accumulating)
+
+        // Idempotent once healed.
+        XCTAssertFalse(store.healOrphanedCustomCeremonies { _ in false })
+    }
+
+    func testHealLeavesAnInstalledCustomPaintingAlone() {
+        let store = temporaryStore()
+        let toLevelNine = Int64(AnkyLevel.thresholdSeconds(forLevel: 9) + 30) * 1000
+        store.creditSealedSession(hash: hash(44), durationMs: toLevelNine)
+        store.markCeremonyShown(level: 9)
+
+        // Its canvas is present → nothing to heal.
+        XCTAssertFalse(store.healOrphanedCustomCeremonies { $0 == 9 })
+        XCTAssertEqual(store.lastCeremonyShownLevel, 9)
+        XCTAssertNil(store.owedCeremonyLevel)
+    }
+
+    func testHealIsANoOpInsideTheStaticLevels() {
+        let store = temporaryStore()
+        let toLevelFour = Int64(AnkyLevel.thresholdSeconds(forLevel: 4) + 30) * 1000
+        store.backfillIfNeeded(from: [makeSummary(hash: hash(45), durationMs: toLevelFour)])
+        XCTAssertEqual(store.lastCeremonyShownLevel, 4)
+
+        // Static levels ship as shared defaults with no package requirement.
+        XCTAssertFalse(store.healOrphanedCustomCeremonies { _ in false })
+        XCTAssertEqual(store.lastCeremonyShownLevel, 4)
+    }
+
+    func testHealStopsAtTheFirstGapAboveInstalledCustomPaintings() {
+        let store = temporaryStore()
+        // A writer at level 11 who has witnessed ceremonies 9, 10 and 11 but
+        // whose level-10 canvas went missing.
+        let toLevelEleven = Int64(AnkyLevel.thresholdSeconds(forLevel: 11) + 30) * 1000
+        store.creditSealedSession(hash: hash(46), durationMs: toLevelEleven)
+        store.markCeremonyShown(level: 9)
+        store.markCeremonyShown(level: 10)
+        store.markCeremonyShown(level: 11)
+
+        // Only level 9 is on disk → the pointer rolls back to 9 so level 10 is
+        // re-summoned first; level 11 reopens too and follows in turn.
+        XCTAssertTrue(store.healOrphanedCustomCeremonies { $0 == 9 })
+        XCTAssertEqual(store.lastCeremonyShownLevel, 9)
+        XCTAssertEqual(store.owedCeremonyLevel, 10)
+        XCTAssertEqual(store.phase(forLevel: 10), .accumulating)
+        XCTAssertEqual(store.phase(forLevel: 11), .accumulating)
+    }
+
     func testLegacySnapshotMissingNewFieldsLoadsWithoutDataLoss() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("anky-tests-\(UUID().uuidString)")

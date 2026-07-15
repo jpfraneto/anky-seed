@@ -7,24 +7,45 @@ struct WriteView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var keyboardFrame: CGRect?
     @State private var lastObservedKeyboardHeight: CGFloat?
+    /// The keyboard's last global top edge, held past dismissal so the sealed
+    /// beat can occupy the identical footprint and the words never move.
+    @State private var lastObservedKeyboardMinY: CGFloat?
     @State private var writingPreferences = WritingPreferencesStore().load()
     @State private var dailyTargetMs = DailyTargetStore().effectiveTargetMs()
     @State private var appsOpenForDay = false
     @State private var targetMetToday = false
+    /// The writer tapped Anky's eyes or the timer: a quiet sheet to retune
+    /// how long they mean to write and how long a stillness seals the page.
+    @State private var showsQuickSettings = false
+    /// The status pill can be dismissed to bare paper with a tap — its
+    /// footprint stays, invisible, and a tap on that space brings it back.
+    @State private var isPillDimmed = false
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
+    /// Post-session beat, played in place the moment a session seals: the
+    /// keyboard withdraws and these rise where it stood — the words never
+    /// leave the surface they were written on.
+    private let onReflect: () -> Void
+    private let onSkip: () -> Void
+    private let onContinueWriting: () -> Void
 
     init(
         viewModel: WriteViewModel,
         shouldFocus: Bool,
         onCompleted: @escaping (SavedAnky) -> Void,
-        onCloseToMap: @escaping () -> Void
+        onCloseToMap: @escaping () -> Void,
+        onReflect: @escaping () -> Void = {},
+        onSkip: @escaping () -> Void = {},
+        onContinueWriting: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFocus = shouldFocus
         self.onCompleted = onCompleted
         self.onCloseToMap = onCloseToMap
+        self.onReflect = onReflect
+        self.onSkip = onSkip
+        self.onContinueWriting = onContinueWriting
     }
 
     var body: some View {
@@ -32,14 +53,22 @@ struct WriteView: View {
             GeometryReader { geometry in
                 let globalFrame = geometry.frame(in: .global)
                 let shouldPreReserveKeyboard = shouldFocus && viewModel.canAcceptInput && keyboardFrame == nil
-                let keyboardTop = keyboardFrame?.minY ?? (
-                    shouldPreReserveKeyboard
-                    ? globalFrame.maxY - reservedKeyboardHeight(
-                        containerSize: geometry.size,
-                        safeAreaBottom: geometry.safeAreaInsets.bottom
-                    )
-                    : globalFrame.maxY
+                let reservedKeyboard = reservedKeyboardHeight(
+                    containerSize: geometry.size,
+                    safeAreaBottom: geometry.safeAreaInsets.bottom
                 )
+                // Once sealed, the beat inherits the keyboard's EXACT top edge,
+                // so the written words keep the identical bottom inset and do
+                // not shift a pixel as the keyboard withdraws behind the beat.
+                let keyboardTop: CGFloat = {
+                    if showsPostSessionBeat {
+                        return lastObservedKeyboardMinY ?? (globalFrame.maxY - reservedKeyboard)
+                    }
+                    if let minY = keyboardFrame?.minY {
+                        return minY
+                    }
+                    return shouldPreReserveKeyboard ? globalFrame.maxY - reservedKeyboard : globalFrame.maxY
+                }()
                 let keyboardOverlap = max(0, globalFrame.maxY - keyboardTop)
                 let keyboardIsVisible = keyboardTop < globalFrame.maxY
                 let textViewHeight = max(1, geometry.size.height)
@@ -99,7 +128,8 @@ struct WriteView: View {
 
                 WritingTopChrome(
                     state: writingPillState,
-                    isPillInteractive: !viewModel.hasStarted,
+                    isPillInteractive: !viewModel.hasStarted && !pillIsStatusOnly,
+                    isPillDimmed: isPillDimmed,
                     timeText: timerText,
                     timeCaption: timerCaption,
                     silenceProgress: silenceProgress,
@@ -110,6 +140,14 @@ struct WriteView: View {
                     },
                     onFocus: {
                         viewModel.focusWritingKeyboard()
+                    },
+                    onOpenSettings: {
+                        AnkyHaptics.light()
+                        showsQuickSettings = true
+                    },
+                    onTogglePillDim: {
+                        AnkyHaptics.selection()
+                        isPillDimmed.toggle()
                     }
                 )
                 .padding(.horizontal, 14)
@@ -130,6 +168,24 @@ struct WriteView: View {
                     .animation(.easeInOut(duration: 0.4), value: showsSilenceBar)
                     .allowsHitTesting(false)
                     .zIndex(22)
+
+                // The post-session beat fills the keyboard's exact footprint —
+                // top edge at the keyboard's old top, extending to the physical
+                // bottom — so the words above stay put and are never covered.
+                if showsPostSessionBeat {
+                    let beatTop = keyboardTop - globalFrame.minY
+                    let beatHeight = max(1, globalFrame.maxY - keyboardTop
+                        + geometry.safeAreaInsets.bottom)
+                    PostSessionActionBar(
+                        onReflect: onReflect,
+                        onContinueWriting: onContinueWriting,
+                        onSkip: onSkip
+                    )
+                    .frame(width: geometry.size.width, height: beatHeight, alignment: .top)
+                    .position(x: geometry.size.width / 2, y: beatTop + beatHeight / 2)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(24)
+                }
             }
         }
         // Phase-2 §7 sepia pass: the writing surface is parchment — utterly
@@ -154,6 +210,14 @@ struct WriteView: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .sheet(isPresented: $showsQuickSettings, onDismiss: {
+            writingPreferences = WritingPreferencesStore().load()
+            dailyTargetMs = DailyTargetStore().effectiveTargetMs()
+            refreshOpenDayState()
+        }) {
+            WritingQuickSettingsSheet()
+        }
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: showsPostSessionBeat)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(showsMapButton ? .visible : .hidden, for: .navigationBar)
@@ -216,6 +280,12 @@ struct WriteView: View {
     /// bottom edge ~162) and releases the page fully a few lines below it.
     private static let chromeMeltHeight: CGFloat = 210
 
+    /// The session has sealed: the words are frozen (still scrollable) and the
+    /// keyboard has withdrawn, so the post-session options take its place.
+    private var showsPostSessionBeat: Bool {
+        viewModel.completedArtifact != nil
+    }
+
     private var writingTextOpacity: Double {
         1
     }
@@ -236,6 +306,13 @@ struct WriteView: View {
 
     private var showsMapButton: Bool {
         false
+    }
+
+    /// The "day open" / "target met" pills are pure status — no door left to
+    /// promise — so a tap folds them away rather than reaching for the keyboard,
+    /// even before the writer has typed a word.
+    private var pillIsStatusOnly: Bool {
+        writingPillState == .dayOpen || writingPillState == .dayOpenTargetMet
     }
 
     private var writingPillState: WritingSessionPillState {
@@ -293,6 +370,7 @@ struct WriteView: View {
             let height = max(0, UIScreen.main.bounds.maxY - frame.minY)
             if height > 0 {
                 lastObservedKeyboardHeight = height
+                lastObservedKeyboardMinY = frame.minY
             }
         }
 
@@ -326,6 +404,211 @@ struct WriteView: View {
         return min(upperBound, max(lowerBound, containerSize.height * ratio)) + safeAreaBottom
     }
 
+}
+
+/// The post-session beat, resting where the keyboard stood. No writing card —
+/// the writer's words are already the surface behind it; these are only the
+/// three quiet ways forward: reflect (the one act that sends it), keep
+/// writing, or let it be.
+private struct PostSessionActionBar: View {
+    let onReflect: () -> Void
+    let onContinueWriting: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            SlideToReflect(label: "slide to reflect", onComplete: onReflect)
+                .padding(.horizontal, 2)
+
+            HStack(spacing: 24) {
+                Button(action: onContinueWriting) {
+                    Text(AnkyLocalization.ui("continue writing"))
+                        .font(.system(size: 14, weight: .medium, design: .serif))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onSkip) {
+                    Text(AnkyLocalization.ui("skip"))
+                        .font(.system(size: 14, weight: .medium, design: .serif))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.78))
+                }
+                .buttonStyle(.plain)
+            }
+
+            // The controls rest at the top of the footprint — right where the
+            // keys began, a breath under the last line — and the shelf fills
+            // the rest of the space the keyboard held.
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 26)
+        .padding(.top, 22)
+        .frame(maxWidth: 620)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(
+            // A parchment shelf that lifts the options off the words above:
+            // the page fades up into a frosted ledge, hairline-gold at its lip.
+            ZStack(alignment: .top) {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        LinearGradient(
+                            colors: [Color.ankyPaper.opacity(0), Color.ankyPaper.opacity(0.5)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                Rectangle()
+                    .fill(Color.ankyGold.opacity(0.16))
+                    .frame(height: 0.5)
+            }
+        )
+    }
+}
+
+/// A quiet dial the writer reaches from Anky's eyes or the timer: how long
+/// they mean to write today, and how long a stillness has to hold before the
+/// page seals. Both persist through the same stores the Settings screen uses.
+private struct WritingQuickSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var targetMinutes: Double = Double(DailyTargetStore.defaultMinutes)
+    @State private var effectiveTargetMinutes = DailyTargetStore.defaultMinutes
+    @State private var pendingTargetMinutes: Int?
+    @State private var stillnessSeconds: Double = Double(AnkyDuration.defaultTerminalSilenceMs / 1000)
+
+    private var silenceRange: ClosedRange<Double> {
+        Double(AnkyDuration.minTerminalSilenceMs / 1000)...Double(AnkyDuration.maxTerminalSilenceMs / 1000)
+    }
+
+    var body: some View {
+        VStack(spacing: 22) {
+            Capsule()
+                .fill(Color.ankyInk.opacity(0.14))
+                .frame(width: 40, height: 5)
+                .padding(.top, 10)
+
+            Text(AnkyLocalization.ui("Tune this session"))
+                .font(.ankyTitle)
+                .foregroundStyle(Color.ankyInk)
+
+            VeilCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(AnkyLocalization.ui("minute count format", Int(targetMinutes)))
+                            .font(.ankyHeading)
+                            .foregroundStyle(Color.ankyInk)
+                            .contentTransition(.numericText())
+                            .animation(.easeOut(duration: 0.15), value: Int(targetMinutes))
+                        Spacer()
+                        AnkySunGlyph(size: 22, color: .ankyGold)
+                    }
+
+                    Slider(
+                        value: $targetMinutes,
+                        in: Double(DailyTargetStore.minutesRange.lowerBound)...Double(DailyTargetStore.minutesRange.upperBound),
+                        step: 1
+                    ) { isEditing in
+                        if !isEditing { commitDailyTarget() }
+                    }
+                    .tint(Color.ankyGold)
+
+                    Text(AnkyLocalization.ui(dailyTargetFootnote))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+                }
+            }
+
+            VeilCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(AnkyLocalization.ui("Stillness before reflection"))
+                            .font(.ankyLabel)
+                            .foregroundStyle(Color.ankyInk)
+                        Spacer()
+                        Text(AnkyLocalization.ui("%d seconds", Int(stillnessSeconds)))
+                            .font(.ankyCaption)
+                            .foregroundStyle(Color.ankyInkSoft)
+                            .contentTransition(.numericText())
+                            .animation(.easeOut(duration: 0.15), value: Int(stillnessSeconds))
+                    }
+
+                    Slider(
+                        value: $stillnessSeconds,
+                        in: silenceRange,
+                        step: 1
+                    ) { isEditing in
+                        if !isEditing { commitStillness() }
+                    }
+                    .tint(Color.ankyViolet)
+
+                    Text(AnkyLocalization.ui("How long the page must go quiet before it seals. You can also change this in Settings."))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(
+            LinearGradient(
+                colors: [Color.ankyPaper, Color.ankyPaperDeep],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.hidden)
+        .onAppear(perform: refresh)
+    }
+
+    private var dailyTargetFootnote: String {
+        if let pendingTargetMinutes, pendingTargetMinutes != effectiveTargetMinutes {
+            return AnkyLocalization.ui(
+                "Today stays at %d min; your new target of %d min begins tomorrow.",
+                effectiveTargetMinutes,
+                pendingTargetMinutes
+            )
+        }
+        return AnkyLocalization.ui("Your daily target — the writing that opens your apps. Sessions are never cut short.")
+    }
+
+    private func refresh() {
+        let store = DailyTargetStore()
+        effectiveTargetMinutes = store.effectiveTargetMinutes()
+        pendingTargetMinutes = store.pendingTargetMinutes()
+        targetMinutes = Double(pendingTargetMinutes ?? effectiveTargetMinutes)
+        let preferences = WritingPreferencesStore().load()
+        stillnessSeconds = Double(preferences.effectiveTerminalSilenceMs / 1000)
+    }
+
+    private func commitDailyTarget() {
+        AnkyHaptics.selection()
+        let change = DailyTargetStore().requestTargetChange(to: Int(targetMinutes))
+        WriteBeforeScrollEventLogStore().append(
+            .targetChanged,
+            metadata: [
+                "oldMinutes": "\(change.oldMinutes)",
+                "newMinutes": "\(change.newMinutes)"
+            ]
+        )
+        let store = DailyTargetStore()
+        effectiveTargetMinutes = store.effectiveTargetMinutes()
+        pendingTargetMinutes = store.pendingTargetMinutes()
+    }
+
+    private func commitStillness() {
+        AnkyHaptics.selection()
+        WritingPreferencesStore().update { preferences in
+            preferences.terminalSilenceMs = Int64(stillnessSeconds.rounded()) * 1000
+        }
+    }
 }
 
 private enum WritingSessionPillState: Equatable {
@@ -389,23 +672,30 @@ private enum WritingSessionPillState: Equatable {
 private struct WritingTopChrome: View {
     let state: WritingSessionPillState
     let isPillInteractive: Bool
+    let isPillDimmed: Bool
     let timeText: String
     let timeCaption: String
     let silenceProgress: Double
     let showsBackButton: Bool
     let onBack: () -> Void
     let onFocus: () -> Void
+    let onOpenSettings: () -> Void
+    let onTogglePillDim: () -> Void
 
     var body: some View {
         VStack(spacing: 18) {
             ZStack {
                 // Anky's eyes hold the center — she watches over the page.
+                // A tap opens the quiet dial for session length and stillness.
                 Image("anky-flow-writing-eyes")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 80)
                     .opacity(chromeOpacity)
-                    .accessibilityHidden(true)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onOpenSettings)
+                    .accessibilityLabel(AnkyLocalization.ui("Writing settings"))
+                    .accessibilityAddTraits(.isButton)
 
                 HStack(alignment: .top) {
                     Group {
@@ -444,16 +734,21 @@ private struct WritingTopChrome: View {
                             .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
                     }
                     .opacity(chromeOpacity)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onOpenSettings)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(AnkyLocalization.ui("Writing time %@", "\(timeText) \(timeCaption)"))
+                    .accessibilityAddTraits(.isButton)
                 }
             }
 
             WritingStatePill(
                 state: state,
                 isInteractive: isPillInteractive,
+                isDimmed: isPillDimmed,
                 opacity: chromeOpacity,
-                onFocus: onFocus
+                onFocus: onFocus,
+                onToggleDim: onTogglePillDim
             )
         }
         .animation(.easeInOut(duration: 0.9), value: state)
@@ -469,8 +764,10 @@ private struct WritingTopChrome: View {
 private struct WritingStatePill: View {
     let state: WritingSessionPillState
     let isInteractive: Bool
+    let isDimmed: Bool
     let opacity: Double
     let onFocus: () -> Void
+    let onToggleDim: () -> Void
 
     var body: some View {
         Group {
@@ -480,11 +777,22 @@ private struct WritingStatePill: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                pillContent
+                // Once writing is underway the pill is only a quiet status —
+                // a tap folds it into the page, another tap calls it back.
+                Button(action: onToggleDim) {
+                    pillContent
+                }
+                .buttonStyle(.plain)
             }
         }
-        .allowsHitTesting(isInteractive)
-        .accessibilityAddTraits(isInteractive ? .isButton : [])
+        // The dimmed pill keeps its footprint and stays tappable, so the bare
+        // space it leaves behind can summon it again.
+        .opacity(isDimmed ? 0 : 1)
+        .animation(.easeInOut(duration: 0.5), value: isDimmed)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(isDimmed
+            ? AnkyLocalization.ui("Show status")
+            : AnkyLocalization.ui(state.title))
     }
 
     private var pillContent: some View {
