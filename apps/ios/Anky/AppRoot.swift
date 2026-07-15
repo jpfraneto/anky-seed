@@ -556,6 +556,11 @@ struct AppRoot: View {
     /// `selectedTab` / `writeSurface` router below is untouched. Flip to `true`
     /// to build and verify the axis experience; Phase 8 removes the legacy path
     /// entirely and this flag with it.
+    ///
+    /// Geshtu v2 (D1): the Axis route is now a quarry. The legacy route is
+    /// canonical while its press/charge/recession mechanics, gathering spiral,
+    /// and accessibility direct-action pattern are extracted into the new
+    /// Geshtu components, after which the Axis route is deleted entirely.
     private let axisWorldEnabled = false
 
     var body: some View {
