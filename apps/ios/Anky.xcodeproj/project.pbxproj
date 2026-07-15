@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		8A0000010000000000000001 /* AnkyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001001 /* AnkyApp.swift */; };
 		8A0000010000000000000002 /* AppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001002 /* AppRoot.swift */; };
+		8A0000C10000000000000012 /* LandingStrataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000012 /* LandingStrataView.swift */; };
 		8A0000C10000000000000011 /* AxisState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000011 /* AxisState.swift */; };
 		8A0000C10000000000000003 /* AxisWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000003 /* AxisWorldView.swift */; };
 		8A0000C10000000000000002 /* AnchorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000002 /* AnchorView.swift */; };
@@ -243,6 +244,7 @@
 /* Begin PBXFileReference section */
 		8A0000010000000000001001 /* AnkyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyApp.swift; sourceTree = "<group>"; };
 		8A0000010000000000001002 /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
+		8A0000C20000000000000012 /* LandingStrataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Axis/LandingStrataView.swift"; sourceTree = "<group>"; };
 		8A0000C20000000000000011 /* AxisState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Axis/AxisState.swift"; sourceTree = "<group>"; };
 		8A0000C20000000000000003 /* AxisWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Axis/AxisWorldView.swift"; sourceTree = "<group>"; };
 		8A0000C20000000000000002 /* AnchorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Features/Axis/AnchorView.swift"; sourceTree = "<group>"; };
@@ -492,6 +494,7 @@
 				8A0000120000000000003001 /* TermsAndConditions.md */,
 				8A0000010000000000001001 /* AnkyApp.swift */,
 				8A0000010000000000001002 /* AppRoot.swift */,
+				8A0000C20000000000000012 /* LandingStrataView.swift */,
 				8A0000C20000000000000011 /* AxisState.swift */,
 				8A0000C20000000000000003 /* AxisWorldView.swift */,
 				8A0000C20000000000000002 /* AnchorView.swift */,
@@ -1167,6 +1170,7 @@
 			files = (
 				8A0000010000000000000001 /* AnkyApp.swift in Sources */,
 				8A0000010000000000000002 /* AppRoot.swift in Sources */,
+				8A0000C10000000000000012 /* LandingStrataView.swift in Sources */,
 				8A0000C10000000000000011 /* AxisState.swift in Sources */,
 				8A0000C10000000000000003 /* AxisWorldView.swift in Sources */,
 				8A0000C10000000000000002 /* AnchorView.swift in Sources */,

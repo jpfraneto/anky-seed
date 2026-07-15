@@ -66,11 +66,19 @@ struct AxisWorldView: View {
         case .reflection:
             ScaffoldSurface(line: "your words return, warmed", detail: "the reflection descends")
         case .landing:
-            ScaffoldSurface(line: "your days, settled around the anchor", detail: "tap the anchor to write · scroll to remember")
+            LandingStrataView(axis: axis)
         case .entryOpen:
-            ScaffoldSurface(line: "a day, opened to read in full", detail: "copy · share · record live here")
+            if let entry = axis.openedEntry {
+                InteractiveBackSwipeContainer(onBack: { axis.closeEntry() }) {
+                    AxisEntryReadView(entry: entry)
+                }
+            } else {
+                Color.clear.onAppear { axis.closeEntry() }
+            }
         case .seed:
-            ScaffoldSurface(line: "the seed", detail: "settings · subscription · the recovery phrase")
+            InteractiveBackSwipeContainer(onBack: { axis.closeSeed() }) {
+                ScaffoldSurface(line: "the seed", detail: "settings · subscription · the recovery phrase\n\nswipe from the left edge to return")
+            }
         }
     }
 }
