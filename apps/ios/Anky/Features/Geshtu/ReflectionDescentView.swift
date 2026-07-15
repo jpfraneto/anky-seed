@@ -1,6 +1,6 @@
 //
 //  ReflectionDescentView.swift
-//  Anky — the Axis Redesign (spec §6).
+//  Anky — the Geshtu Redesign (spec §6).
 //
 //  Anky's reflection descends: 4–6 short lines settling top-to-bottom onto the
 //  lazure ground, the topmost line slightly more luminous. The writer's own
@@ -22,7 +22,7 @@ import SwiftUI
 /// sentinel so the vigil hides the latency. Discarded when the writer walks
 /// away unsent, per the existing privacy posture.
 @MainActor
-final class AxisReflectionCoordinator: ObservableObject {
+final class GeshtuReflectionCoordinator: ObservableObject {
     @Published private(set) var viewModel: RevealViewModel?
 
     private var task: Task<Void, Never>?
@@ -74,7 +74,7 @@ final class AxisReflectionCoordinator: ObservableObject {
 /// axis settles to the landing.
 struct ReflectionSettleView: View {
     @ObservedObject var viewModel: RevealViewModel
-    @ObservedObject var axis: AxisState
+    @ObservedObject var axis: GeshtuState
 
     @State private var entries: [SavedAnky] = []
     @State private var didSettle = false

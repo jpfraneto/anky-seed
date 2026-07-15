@@ -1,6 +1,6 @@
 //
-//  AxisDebugSeed.swift
-//  Anky — the Axis Redesign (dev-only test infrastructure).
+//  GeshtuDebugSeed.swift
+//  Anky — the Geshtu Redesign (dev-only test infrastructure).
 //
 //  Populates the local archive — and, for sent days, the reflection store —
 //  with synthetic strata so the landing surface (§7 / addendum A1), the opened
@@ -15,7 +15,7 @@
 #if DEBUG
 import Foundation
 
-enum AxisDebugSeed {
+enum GeshtuDebugSeed {
 
     /// A small, hand-authored showcase: sent days (with reflections) and unsent
     /// days (writing only) interleaved, so the column's refusal to distinguish

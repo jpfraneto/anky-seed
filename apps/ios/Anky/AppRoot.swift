@@ -551,21 +551,17 @@ struct AppRoot: View {
         }
     }
 
-    /// The Axis Redesign (see docs/axis-redesign/SPEC.md). While the new
-    /// vertical world is under construction it is gated off, so the shipping
-    /// `selectedTab` / `writeSurface` router below is untouched. Flip to `true`
-    /// to build and verify the axis experience; Phase 8 removes the legacy path
-    /// entirely and this flag with it.
-    ///
-    /// Geshtu v2 (D1): the Axis route is now a quarry. The legacy route is
-    /// canonical while its press/charge/recession mechanics, gathering spiral,
-    /// and accessibility direct-action pattern are extracted into the new
-    /// Geshtu components, after which the Axis route is deleted entirely.
-    private let axisWorldEnabled = false
+    /// The Geshtu world (extracted from the former Axis route). While the
+    /// legacy `selectedTab` / `writeSurface` router remains canonical (D1), the
+    /// vertical Geshtu world is gated off. The extraction lives in
+    /// `Features/Geshtu/` — press/charge/recession vigil, the gathering spiral,
+    /// the eight-crossing spine, and the accessibility direct-action pattern.
+    /// Flip to `true` to build and verify the Geshtu experience.
+    private let geshtuWorldEnabled = false
 
     var body: some View {
-        if axisWorldEnabled {
-            AxisWorldView()
+        if geshtuWorldEnabled {
+            GeshtuWorldView()
         } else {
             legacyBody
         }

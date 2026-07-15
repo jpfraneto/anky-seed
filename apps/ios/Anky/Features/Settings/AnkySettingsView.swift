@@ -248,7 +248,7 @@ struct AnkySettingsView: View {
             return AnkyLocalization.ui("Anky unlocked active plan format", activeSubscriptionPriceLine)
         }
         if entitlements.packages.isEmpty {
-            return "Plans are loading. You can still write for free."
+            return "The plans are settling in. You can still write for free."
         }
         return "Writing and core features stay free. Tap to compare Anky Pro plans."
     }

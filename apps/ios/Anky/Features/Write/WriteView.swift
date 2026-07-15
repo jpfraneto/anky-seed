@@ -21,7 +21,7 @@ struct WriteView: View {
     /// footprint stays, invisible, and a tap on that space brings it back.
     @State private var isPillDimmed = false
     let shouldFocus: Bool
-    /// The Axis Redesign writing surface (spec §3): the keyboard is the only
+    /// The Geshtu Redesign writing surface (spec §3): the keyboard is the only
     /// chrome. The top chrome (back, eyes, timer, quick-settings) is gone —
     /// session config lives at the seed — and the in-place post-session beat is
     /// suppressed, because when the channel closes the axis swaps to the

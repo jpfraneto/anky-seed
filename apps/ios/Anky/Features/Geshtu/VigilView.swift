@@ -1,6 +1,6 @@
 //
 //  VigilView.swift
-//  Anky — the Axis Redesign (spec §5).
+//  Anky — the Geshtu Redesign (spec §5).
 //
 //  The electric register: the Geshtu interior as X-ray. A luminous spine with
 //  exactly seven stops rises from the Anchor to the spiral ear at the top. As

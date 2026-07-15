@@ -1,6 +1,6 @@
 //
-//  AxisState.swift
-//  Anky — the Axis Redesign (spec §1, §2, §11).
+//  GeshtuState.swift
+//  Anky — the Geshtu Redesign (spec §1, §2, §11).
 //
 //  The app is no longer a set of screens. It is one vertical world
 //  organized around a single fixed point: the Anchor. This is the state
@@ -16,7 +16,7 @@
 import SwiftUI
 
 @MainActor
-final class AxisState: ObservableObject {
+final class GeshtuState: ObservableObject {
 
     /// The stations of the vertical world. There are no other destinations —
     /// no tabs, no nav stack, no back buttons (spec §1).

@@ -1,6 +1,6 @@
 //
 //  VigilController.swift
-//  Anky — the Axis Redesign (spec §5).
+//  Anky — the Geshtu Redesign (spec §5).
 //
 //  The send vigil is the heart of the app. A single continuous press on the
 //  Anchor drives a charge 0→1 over the hold duration; the writing climbs a
@@ -9,7 +9,7 @@
 //
 //  This controller owns the timing and the haptics. The visuals (VigilView)
 //  are a pure function of `charge`. The register flip and phase transitions
-//  live in AxisState, driven through the callbacks below.
+//  live in GeshtuState, driven through the callbacks below.
 //
 //  Restraint is doctrine: intensity builds like breath deepening, not a weapon
 //  charging. The haptics escalate; there are no fireworks.
@@ -40,7 +40,7 @@ final class VigilController: ObservableObject {
     var onDrain: () -> Void = {}      // released early: energy drained to zero
     var onTap: () -> Void = {}        // released during the arm: it was only a tap
 
-    private var duration: TimeInterval = AxisState.vigilDefaultSeconds
+    private var duration: TimeInterval = GeshtuState.vigilDefaultSeconds
     private var loop: Task<Void, Never>?
     private var pressStart: Date?
     private var chargeStart: Date?

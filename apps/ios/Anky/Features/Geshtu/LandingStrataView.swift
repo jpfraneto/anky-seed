@@ -1,6 +1,6 @@
 //
 //  LandingStrataView.swift
-//  Anky — the Axis Redesign (spec §7).
+//  Anky — the Geshtu Redesign (spec §7).
 //
 //  The landing surface: everything "outside the writing." A single centered
 //  column of past sessions rising from the Anchor — first line of the writing
@@ -18,7 +18,7 @@
 import SwiftUI
 
 struct LandingStrataView: View {
-    @ObservedObject var axis: AxisState
+    @ObservedObject var axis: GeshtuState
 
     /// The days, newest first. Loaded from the local archive — the same store
     /// the writing session seals into.
@@ -122,7 +122,7 @@ struct LandingStrataView: View {
 /// date header pins to the top; tapping the pinned header compresses it back.
 /// One day open at a time — opening another seals the current one first.
 struct StrataColumn: View {
-    @ObservedObject var axis: AxisState
+    @ObservedObject var axis: GeshtuState
     let entries: [SavedAnky]
 
     /// The living edge — the scroll target for surfacing-to-now (addendum A1).
@@ -131,8 +131,8 @@ struct StrataColumn: View {
     // The opened day's quiet affordances (addendum A2.5): share the day's
     // reflection as a card, or record it. Nothing floats over the writing —
     // these are reached from the bottom of the opened day.
-    @State private var recordRequest: AxisRecordRequest?
-    @State private var shareRequest: AxisShareRequest?
+    @State private var recordRequest: GeshtuRecordRequest?
+    @State private var shareRequest: GeshtuShareRequest?
 
     var body: some View {
         LazyVStack(spacing: 34, pinnedViews: axis.openedEntry != nil ? [.sectionHeaders] : []) {
@@ -147,8 +147,8 @@ struct StrataColumn: View {
                     Section {
                         OpenedStrataEntry(
                             entry: entry,
-                            onRecord: { recordRequest = AxisRecordRequest(text: $0) },
-                            onShare: { shareRequest = AxisShareRequest(quote: $0) }
+                            onRecord: { recordRequest = GeshtuRecordRequest(text: $0) },
+                            onShare: { shareRequest = GeshtuShareRequest(quote: $0) }
                         )
                         .transition(.opacity)
                     } header: {
@@ -192,8 +192,8 @@ struct StrataColumn: View {
     }
 }
 
-private struct AxisRecordRequest: Identifiable { let id = UUID(); let text: String }
-private struct AxisShareRequest: Identifiable { let id = UUID(); let quote: String }
+private struct GeshtuRecordRequest: Identifiable { let id = UUID(); let text: String }
+private struct GeshtuShareRequest: Identifiable { let id = UUID(); let quote: String }
 
 // MARK: - A single stratum
 

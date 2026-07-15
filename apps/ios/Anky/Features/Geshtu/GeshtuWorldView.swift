@@ -1,9 +1,9 @@
 //
-//  AxisWorldView.swift
-//  Anky — the Axis Redesign (spec §1, §11).
+//  GeshtuWorldView.swift
+//  Anky — the Geshtu Redesign (spec §1, §11).
 //
 //  The container of the vertical world: it renders whatever surface the
-//  current AxisState.Phase calls for, with the Anchor overlaid above the
+//  current GeshtuState.Phase calls for, with the Anchor overlaid above the
 //  entire hierarchy at its fixed, eternal position. The registers switch here
 //  — warm lazure for the human world, electric indigo only during the vigil.
 //
@@ -15,8 +15,8 @@
 
 import SwiftUI
 
-struct AxisWorldView: View {
-    @StateObject private var axis = AxisState()
+struct GeshtuWorldView: View {
+    @StateObject private var axis = GeshtuState()
     /// The axis world owns one writing engine — the real WriteViewModel, with
     /// its 62.5Hz ticker, per-keystroke atomic writes, and the 8s sentinel. The
     /// axis only listens for the seal; it never reimplements the mechanics.
@@ -24,7 +24,7 @@ struct AxisWorldView: View {
     /// The send vigil's charge/haptics, driven by the continuous Anchor press.
     @StateObject private var vigil = VigilController()
     /// Fires the reflection request at the sentinel so the vigil hides latency.
-    @StateObject private var reflection = AxisReflectionCoordinator()
+    @StateObject private var reflection = GeshtuReflectionCoordinator()
     /// The one-time onboarding rehearsal (spec §9): the first channel-close
     /// shows the hint and the Anchor's single inhale, and the first vigil is the
     /// first real offering. Set true once the writer completes it.
@@ -90,7 +90,7 @@ struct AxisWorldView: View {
             }
 
             #if DEBUG
-            DebugAxisStepper(axis: axis)
+            DebugGeshtuStepper(axis: axis)
                 .zIndex(2000)
             #endif
         }
@@ -114,17 +114,15 @@ struct AxisWorldView: View {
         .sheet(isPresented: $showsGateSetup) {
             GateSetupView(viewModel: gateViewModel, onDone: { showsGateSetup = false })
         }
+        // The state machine is born in `.writing`, and SwiftUI's onChange never
+        // observes an initial value — so the very first session (the rehearsal,
+        // where the fast sentinel matters most) would miss its writing-phase
+        // setup. Prime it once on first appearance.
+        .onAppear(perform: enterWritingPhase)
         .onChange(of: axis.phase) { newPhase in
             switch newPhase {
             case .writing:
-                // The rehearsal shortens the sentinel so the reveal — and the
-                // long-press vigil — is discoverable quickly (spec §9). Set
-                // before the reset so the first session picks it up.
-                writeViewModel.terminalSilenceOverrideMs = rehearsalDone ? nil : 4000
-                // Tapping the Anchor to write begins a fresh session; the
-                // previous day is already sealed, so the engine can reset.
-                writeViewModel.beginBlankSessionFromWriteTab()
-                reflection.discard()
+                enterWritingPhase()
             case .reflection:
                 // A vigil completed: the offering was carried. Only now does the
                 // held reflection reach the store (addendum A3 / Q4) — an unsent
@@ -154,12 +152,24 @@ struct AxisWorldView: View {
         }
     }
 
+    /// The front door opens: prime the writing engine for a fresh session. The
+    /// rehearsal shortens the sentinel so the reveal — and the long-press vigil
+    /// — is discoverable quickly (spec §9); set it before the reset so the first
+    /// session picks it up. A previous day is already sealed, so the engine can
+    /// reset, and any unsent in-flight reflection is dropped.
+    private func enterWritingPhase() {
+        guard axis.phase == .writing else { return }
+        writeViewModel.terminalSilenceOverrideMs = rehearsalDone ? nil : 4000
+        writeViewModel.beginBlankSessionFromWriteTab()
+        reflection.discard()
+    }
+
     #if DEBUG
     private func applyDebugLaunchEnv() {
         let env = ProcessInfo.processInfo.environment
         switch env["AXIS_DEBUG_SEED"] {
-        case "showcase": AxisDebugSeed.seedShowcase()
-        case "bulk":     AxisDebugSeed.seedBulk(500)
+        case "showcase": GeshtuDebugSeed.seedShowcase()
+        case "bulk":     GeshtuDebugSeed.seedBulk(500)
         default:         break
         }
         if env["AXIS_DEBUG_OPEN_FIRST"] == "1", let first = LocalAnkyArchive().list().first {
@@ -354,10 +364,10 @@ private struct ScaffoldSurface: View {
 #if DEBUG
 /// Dev-only phase stepper so the whole machine is walkable while surfaces are
 /// scaffolds (Phase 1). Removed in Phase 8.
-private struct DebugAxisStepper: View {
-    @ObservedObject var axis: AxisState
+private struct DebugGeshtuStepper: View {
+    @ObservedObject var axis: GeshtuState
 
-    private let order: [(String, AxisState.Phase)] = [
+    private let order: [(String, GeshtuState.Phase)] = [
         ("write", .writing),
         ("closed", .channelClosed),
         ("vigil", .vigil),
@@ -386,9 +396,9 @@ private struct DebugAxisStepper: View {
                 ForEach(["seed", "seed500", "wipe"], id: \.self) { action in
                     Button(action) {
                         switch action {
-                        case "seed":    AxisDebugSeed.seedShowcase()
-                        case "seed500": AxisDebugSeed.seedBulk(500)
-                        default:        AxisDebugSeed.wipe()
+                        case "seed":    GeshtuDebugSeed.seedShowcase()
+                        case "seed500": GeshtuDebugSeed.seedBulk(500)
+                        default:        GeshtuDebugSeed.wipe()
                         }
                         axis.debugSetPhase(.landing)
                         axis.debugReloadLanding()

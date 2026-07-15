@@ -1,6 +1,6 @@
 //
-//  AxisVoices.swift
-//  Anky — the Axis Redesign (spec §10 addition, addendum A4).
+//  GeshtuVoices.swift
+//  Anky — the Geshtu Redesign (spec §10 addition, addendum A4).
 //
 //  Two voices within the lazure register. The user's writing and Anky's
 //  reflection must read as two substances in one world — never labelled,

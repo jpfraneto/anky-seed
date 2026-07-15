@@ -195,7 +195,7 @@ struct PaywallView: View {
         }
         guard let price = selectedPrice else {
             return store.isLoadingPackages
-                ? "Loading the localized App Store price…"
+                ? "The price is settling in…"
                 : "This plan is unavailable right now. Retry, restore purchases, or continue with free writing."
         }
         switch plan {
@@ -287,7 +287,7 @@ struct PaywallView: View {
     private var annualDetail: String {
         guard let price = SubscriptionPriceFormatter.price(store.annualPackage?.storeProduct) else {
             return store.isLoadingPackages
-                ? "1 year · loading App Store price"
+                ? "1 year · price settling in"
                 : "1 year · price unavailable"
         }
         if annualTrialIsConfirmed {
@@ -299,7 +299,7 @@ struct PaywallView: View {
     private var monthlyDetail: String {
         guard let price = SubscriptionPriceFormatter.price(store.monthlyPackage?.storeProduct) else {
             return store.isLoadingPackages
-                ? "1 month · loading App Store price"
+                ? "1 month · price settling in"
                 : "1 month · price unavailable · no introductory trial"
         }
         return AnkyLocalization.ui("Monthly plan detail format", price)
@@ -406,7 +406,7 @@ struct PaywallView: View {
             return "Done"
         }
         guard let price = selectedPrice else {
-            return store.isLoadingPackages ? "Loading App Store…" : "Plan unavailable"
+            return store.isLoadingPackages ? "Settling…" : "Plan unavailable"
         }
         switch plan {
         case .annual where annualTrialIsConfirmed:

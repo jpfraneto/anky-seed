@@ -50,11 +50,11 @@ final class RevealViewModel: ObservableObject {
     private let reflectionRetryLimit: TimeInterval = 120
     private var activeReflectionHash: String?
     private var didPrepareAfterFirstRender = false
-    /// The Axis Redesign send vigil sets this to "axis" so the backend returns
+    /// The Geshtu Redesign send vigil sets this to "axis" so the backend returns
     /// the blessing descent (spec §6). Nil everywhere else — the legacy reveal
     /// keeps the long markdown reflection.
     var reflectionSurface: String?
-    /// The Axis Redesign fires generation at the sentinel (channel close), before
+    /// The Geshtu Redesign fires generation at the sentinel (channel close), before
     /// the writer has chosen to send (spec §12, addendum A3 / verification Q4). A
     /// reflection for a session that is never sent must never be written to disk
     /// or attached to the entry as if it had been received. When this is false the

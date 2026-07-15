@@ -1,6 +1,6 @@
 //
 //  AnchorView.swift
-//  Anky — the Axis Redesign (spec §2).
+//  Anky — the Geshtu Redesign (spec §2).
 //
 //  The Anchor is the app's only navigation primitive. It lives in the axis
 //  world as a ZStack overlay above the entire hierarchy, and its absolute
@@ -16,7 +16,7 @@
 import SwiftUI
 
 struct AnchorView: View {
-    @ObservedObject var axis: AxisState
+    @ObservedObject var axis: GeshtuState
     @ObservedObject var vigil: VigilController
     /// The one-time onboarding rehearsal (spec §9): the Anchor takes a single
     /// slow inhale up the first station and back down, under the hint.
@@ -151,7 +151,7 @@ struct AnchorView: View {
     private var effectiveVigilDuration: TimeInterval {
         let base = axis.vigilDuration
         if reduceMotion || UIAccessibility.isSwitchControlRunning || UIAccessibility.isVoiceOverRunning {
-            return max(AxisState.vigilFloorSeconds, min(base, 3))
+            return max(GeshtuState.vigilFloorSeconds, min(base, 3))
         }
         return base
     }
