@@ -74,6 +74,11 @@ struct AnchorView: View {
             withAnimation(.easeInOut(duration: 1.5).delay(1.6)) { inhaleOffset = 0 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        // The Anchor's absolute screen position never changes, ever — including
+        // when a keyboard is up (spec §2, §3; verification Q3). Ignore the
+        // keyboard safe-area inset so a rising keyboard never lifts the Anchor
+        // from its eternal place at the base.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .contentShape(Circle().size(width: 108, height: 108))
         .allowsHitTesting(axis.phase == .landing || axis.phase == .channelClosed || axis.phase == .vigil || axis.phase == .entryOpen)
         // One continuous press drives everything (spec §2, §5): a quick tap

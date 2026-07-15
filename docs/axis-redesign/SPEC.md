@@ -2,6 +2,8 @@
 
 **Status: ratified July 14, 2026. This spec is authoritative. Where the current codebase disagrees with this document, the codebase changes, not the spec.**
 
+> **Addendum 1 (ratified July 15, 2026) governs above this spec.** See `ADDENDUM-1.md`. Where the addendum conflicts with this document, the addendum wins. It adds: the Anchor's surfacing context on the landing surface (§A1, extends the §2 grammar table); the exact geometry of the opened strata entry — decompress-in-place, sticky header, writing-then-reflection order (§A2, refines §7/§12); unsent-session coexistence with no shame marking (§A3, refines §4/§7); and the ore/glaze voice pair within the lazure register (§A4, extends §10). The Rive→SwiftUI (§5) and melt→crossfade (§7) deviations below are folded in.
+
 Reference images in `./reference/`:
 1. `ascent.png` — the send vigil, mid-charge (electric register, thumb pressing spine)
 2. `channel-closed.png` — sentinel fired, keyboard fallen, medallion Anchor revealed with filament
@@ -61,7 +63,7 @@ Long-press-and-hold the Anchor for a sustained duration. **Default 8 seconds** �
 - **Haptic detents:** charge crosses one station ~per second (7 stations over the hold). Each crossing = a small haptic tick, slightly firmer than the last. Arrival at the spiral (sec 8) = a different, softer terminal haptic. Eight beats total.
 - **Interruption:** thumb lifts before completion → energy drains fully back down the spine, visibly, slightly faster than it rose. Next attempt starts from zero. No partial credit, no resume. Ever.
 - **Restraint is doctrine:** builds like breath deepening, not a weapon charging. NO particle fireworks, NO lens flares, NO screen shake. An X-ray of an offering. If it feels spectacular, dial it down.
-- Rive: one state machine, single `charge` input (0→1) driven by press duration, `release` trigger, `drain` transition. The 57-frame Anky character does NOT appear here — only the vessel is seen carrying.
+- **Implementation (amended by Addendum 1, ratified): SwiftUI-native, not Rive.** One controller drives a `charge` (0→1) from press duration, with release/drain. The 57-frame Anky character does NOT appear here — only the vessel is seen carrying. Acceptance is behavioral, not toolkit-bound: seven escalating haptic detents ~1/sec, a distinct softer terminal beat, a full visible drain on early release, charge monotonic with press duration.
 - **Accessibility (non-negotiable):** when assistive settings are active (AssistiveTouch, Switch Control, reduced motion), offer an alternate completion path — reduced hold or press-then-confirm. The ritual is attention, not endurance.
 
 ## 6. The reflection (image 3)
@@ -76,6 +78,8 @@ On vigil completion, register flips warm. Electric dims; warmth blooms downward 
 ## 7. The settle → landing surface (image 4)
 
 Scroll past the reflection's last line → the reflection **melts into the strata:** its frame interpolates into one history entry (first line + small date) as the newest layer. No modal dismissal, no push/pop — scroll-driven transformation (SwiftUI `scrollTransition` / scroll-position interpolation). Reflection and landing are one continuous scroll view.
+
+> **Shipped state (Addendum 1, verification Q2):** this is a **disciplined crossfade**, not a true geometric melt. As the reflection block scrolls up it fades, shrinks (~0.86), and blurs while the newest strata stub is revealed beneath in one continuous scroll; the multi-line reflection does not geometrically interpolate into the one-line stub. Ratified as acceptable for this release. A true melt remains a future refinement, not a silent gap.
 
 Landing surface (everything "outside writing"):
 - Lazure ground. Anchor at base, breathing. Above it, a single centered column of past sessions: **first line + small date. Nothing else.** Newest at top; entries grow fainter with age, absorbed like sediment strata.

@@ -32,6 +32,12 @@ struct AxisWorldView: View {
     /// Writing is free; the vigil is the paid act. The first vigil is free so
     /// the rehearsal completes with a real reflection and the paywall is first
     /// met on day two (product decision, ratified).
+    ///
+    /// TODO(server-reconcile): this is device-side (@AppStorage → UserDefaults),
+    /// so a reinstall grants a second free vigil (verification Q1). Before ship
+    /// it must key to account identity — the RevenueCat appUserID or the writer's
+    /// wallet address — reconciled server-side, so the free vigil is spent once
+    /// per person, not once per install.
     @AppStorage("anky.axisFirstVigilUsed") private var firstVigilUsed = false
     @StateObject private var entitlements = EntitlementStore()
     @State private var showsPaywall = false
