@@ -17,6 +17,10 @@ import SwiftUI
 
 struct AxisWorldView: View {
     @StateObject private var axis = AxisState()
+    /// The axis world owns one writing engine — the real WriteViewModel, with
+    /// its 62.5Hz ticker, per-keystroke atomic writes, and the 8s sentinel. The
+    /// axis only listens for the seal; it never reimplements the mechanics.
+    @StateObject private var writeViewModel = WriteViewModel()
 
     var body: some View {
         ZStack {
@@ -39,6 +43,13 @@ struct AxisWorldView: View {
         .environmentObject(axis)
         .preferredColorScheme(axis.isElectricRegister ? .dark : nil)
         .animation(.easeInOut(duration: 0.5), value: axis.isElectricRegister)
+        .onChange(of: axis.phase) { newPhase in
+            // Tapping the Anchor to write begins a fresh session; the previous
+            // day is already sealed to the archive, so the engine can reset.
+            if newPhase == .writing {
+                writeViewModel.beginBlankSessionFromWriteTab()
+            }
+        }
     }
 
     // MARK: - Register (the ground the world is painted on)
@@ -58,9 +69,21 @@ struct AxisWorldView: View {
     private var surface: some View {
         switch axis.phase {
         case .writing:
-            ScaffoldSurface(line: "the writing session lives here", detail: "keyboard up · fall silent to close the channel")
+            // The front door: the real writing engine, keyboard up, only the
+            // sentinel can close it. On seal the channel closes and the axis
+            // swaps away — the post-session beat never mounts (spec §3).
+            WriteView(
+                viewModel: writeViewModel,
+                shouldFocus: true,
+                axisMode: true,
+                onCompleted: { saved in axis.channelDidClose(session: saved) },
+                onCloseToMap: {}
+            )
         case .channelClosed:
-            ScaffoldSurface(line: "the channel is closed", detail: "hold the anchor to send · or walk away to keep the day")
+            ChannelClosedView(
+                session: axis.pendingSession,
+                onSettle: { axis.settleToLanding() }
+            )
         case .vigil:
             ScaffoldSurface(line: "the offering is carried", detail: "seven stations to the spiral ear", electric: true)
         case .reflection:
@@ -80,6 +103,53 @@ struct AxisWorldView: View {
                 ScaffoldSurface(line: "the seed", detail: "settings · subscription · the recovery phrase\n\nswipe from the left edge to return")
             }
         }
+    }
+}
+
+/// The channel is closed (spec §4): the keyboard has fallen and the session's
+/// writing rests above, settled on the parchment, fading toward the Anchor
+/// revealed at the base. From here there are exactly two moves — hold the
+/// Anchor to send (handled by the overlay), or swipe up to let the day settle
+/// unsent into the strata. No buttons, no "Send to Anky" label.
+struct ChannelClosedView: View {
+    let session: SavedAnky?
+    let onSettle: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(session?.reconstructedText ?? "")
+                .font(.fraunces(19, weight: .regular))
+                .foregroundStyle(Color.ankyInk)
+                .lineSpacing(7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 30)
+                .padding(.top, 40)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // The writing thins as it nears the Anchor — the day is already spoken.
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0.0),
+                    .init(color: .black, location: 0.55),
+                    .init(color: .clear, location: 0.82)
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .contentShape(Rectangle())
+        // Swipe up: walk away. The day settles into the strata, still saved —
+        // unsent ≠ lost.
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    if value.translation.height < -70 {
+                        AnkyHaptics.light()
+                        onSettle()
+                    }
+                }
+        )
     }
 }
 

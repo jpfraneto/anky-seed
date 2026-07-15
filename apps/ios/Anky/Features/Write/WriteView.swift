@@ -21,6 +21,12 @@ struct WriteView: View {
     /// footprint stays, invisible, and a tap on that space brings it back.
     @State private var isPillDimmed = false
     let shouldFocus: Bool
+    /// The Axis Redesign writing surface (spec §3): the keyboard is the only
+    /// chrome. The top chrome (back, eyes, timer, quick-settings) is gone —
+    /// session config lives at the seed — and the in-place post-session beat is
+    /// suppressed, because when the channel closes the axis swaps to the
+    /// channel-closed surface and reveals the Anchor instead.
+    private let axisMode: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
     /// Post-session beat, played in place the moment a session seals: the
@@ -33,6 +39,7 @@ struct WriteView: View {
     init(
         viewModel: WriteViewModel,
         shouldFocus: Bool,
+        axisMode: Bool = false,
         onCompleted: @escaping (SavedAnky) -> Void,
         onCloseToMap: @escaping () -> Void,
         onReflect: @escaping () -> Void = {},
@@ -41,6 +48,7 @@ struct WriteView: View {
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFocus = shouldFocus
+        self.axisMode = axisMode
         self.onCompleted = onCompleted
         self.onCloseToMap = onCloseToMap
         self.onReflect = onReflect
@@ -126,34 +134,36 @@ struct WriteView: View {
                     .allowsHitTesting(false)
                     .zIndex(18)
 
-                WritingTopChrome(
-                    state: writingPillState,
-                    isPillInteractive: !viewModel.hasStarted && !pillIsStatusOnly,
-                    isPillDimmed: isPillDimmed,
-                    timeText: timerText,
-                    timeCaption: timerCaption,
-                    silenceProgress: silenceProgress,
-                    showsBackButton: !viewModel.hasStarted || viewModel.isWaitingToResumeContinuedDraft,
-                    onBack: {
-                        viewModel.persistForNavigation()
-                        onCloseToMap()
-                    },
-                    onFocus: {
-                        viewModel.focusWritingKeyboard()
-                    },
-                    onOpenSettings: {
-                        AnkyHaptics.light()
-                        showsQuickSettings = true
-                    },
-                    onTogglePillDim: {
-                        AnkyHaptics.selection()
-                        isPillDimmed.toggle()
-                    }
-                )
-                .padding(.horizontal, 14)
-                .frame(width: geometry.size.width, height: 156, alignment: .top)
-                .position(x: geometry.size.width / 2, y: 84)
-                .zIndex(20)
+                if !axisMode {
+                    WritingTopChrome(
+                        state: writingPillState,
+                        isPillInteractive: !viewModel.hasStarted && !pillIsStatusOnly,
+                        isPillDimmed: isPillDimmed,
+                        timeText: timerText,
+                        timeCaption: timerCaption,
+                        silenceProgress: silenceProgress,
+                        showsBackButton: !viewModel.hasStarted || viewModel.isWaitingToResumeContinuedDraft,
+                        onBack: {
+                            viewModel.persistForNavigation()
+                            onCloseToMap()
+                        },
+                        onFocus: {
+                            viewModel.focusWritingKeyboard()
+                        },
+                        onOpenSettings: {
+                            AnkyHaptics.light()
+                            showsQuickSettings = true
+                        },
+                        onTogglePillDim: {
+                            AnkyHaptics.selection()
+                            isPillDimmed.toggle()
+                        }
+                    )
+                    .padding(.horizontal, 14)
+                    .frame(width: geometry.size.width, height: 156, alignment: .top)
+                    .position(x: geometry.size.width / 2, y: 84)
+                    .zIndex(20)
+                }
 
                 // The life-bar: the eight seconds of sealing silence made
                 // visible, a hair above the keyboard. It surfaces after two
@@ -172,7 +182,7 @@ struct WriteView: View {
                 // The post-session beat fills the keyboard's exact footprint —
                 // top edge at the keyboard's old top, extending to the physical
                 // bottom — so the words above stay put and are never covered.
-                if showsPostSessionBeat {
+                if showsPostSessionBeat && !axisMode {
                     let beatTop = keyboardTop - globalFrame.minY
                     let beatHeight = max(1, globalFrame.maxY - keyboardTop
                         + geometry.safeAreaInsets.bottom)
