@@ -106,11 +106,16 @@ public struct AnkyWriter {
         return replacementCharacters
     }
 
+    /// Close the protocol string. The line appended is always the canonical
+    /// `8000` sentinel token (D3): a fixed symbol marking the seal, not the
+    /// configured inactivity threshold that triggered it. The parameter is kept
+    /// for call-site compatibility but no longer varies the written marker.
     public mutating func closeWithTerminalSilence(after terminalSilenceMs: Int64 = AnkyDuration.defaultTerminalSilenceMs) {
         guard isStarted, !isClosed else {
             return
         }
-        lines.append("\(AnkyDuration.clampedTerminalSilenceMs(terminalSilenceMs))")
+        _ = terminalSilenceMs
+        lines.append("\(AnkyDuration.canonicalSentinelToken)")
         isClosed = true
     }
 
