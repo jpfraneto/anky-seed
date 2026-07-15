@@ -55,6 +55,24 @@ final class AxisState: ObservableObject {
     /// A past session opened from the strata (`entryOpen`).
     @Published private(set) var openedEntry: SavedAnky?
 
+    // MARK: - Landing surface scroll position (addendum A1)
+
+    /// The living edge: true when the strata rests at — or within ~half a screen
+    /// of — the newest entry at the top of the column. Updated by the landing
+    /// surface's scroll sentinel. Tap resolution reads it: a writing session is
+    /// only ever launched from a person who has arrived at now, never from deep
+    /// in memory. "At rest at the top" has tolerance; no pixel-hunting.
+    @Published var landingAtTop: Bool = true
+
+    /// A monotonic signal the landing surface observes to surface-to-now: come
+    /// up for air, fast, with a slight overshoot that settles at the newest
+    /// entry. Incremented by `requestSurface()`; never chained to writing.
+    @Published private(set) var surfaceTick: Int = 0
+
+    func requestSurface() {
+        surfaceTick &+= 1
+    }
+
     // MARK: - Vigil duration (spec §5)
 
     private let vigilDurationKey = "anky.vigilDurationSeconds"
@@ -87,11 +105,18 @@ final class AxisState: ObservableObject {
         phase != .writing
     }
 
-    /// Tap does something only on the landing surface (enter writing). At
-    /// `channelClosed` a tap is at most a soft pulse; elsewhere it is
-    /// suspended (spec §2).
+    /// A quick Anchor tap is navigational on the warm surfaces where the strata
+    /// lives — the landing column and an opened entry (addendum A1). Elsewhere a
+    /// tap is suspended or, at `channelClosed`, at most a soft pulse (spec §2).
+    var anchorTapIsNavigational: Bool {
+        phase == .landing || phase == .entryOpen
+    }
+
+    /// A quick tap would begin a writing session only when at rest at the living
+    /// edge (spec §2, refined by addendum A1). Scrolled deep in the strata, the
+    /// same tap surfaces to now instead — writing never launches from momentum.
     var anchorTapEntersWriting: Bool {
-        phase == .landing
+        phase == .landing && landingAtTop
     }
 
     /// The long-press vigil is available only when a channel has closed with an
@@ -158,11 +183,27 @@ final class AxisState: ObservableObject {
         withAnimation(.easeInOut(duration: 0.55)) { phase = .landing }
     }
 
-    /// The Anchor was tapped. Only the landing surface answers (enter writing);
-    /// everywhere else a tap is suspended or a soft pulse (spec §2).
+    /// The Anchor was tapped on a warm surface. Its meaning resolves by where
+    /// the strata rests (addendum A1):
+    ///   - at rest at the living edge → enter a writing session
+    ///   - scrolled deep in memory   → surface to now (come up for air)
+    ///   - an entry is open          → close it, then surface
+    /// One tap, one meaning: surfacing and writing are never chained. Writing
+    /// begins from a person who has arrived at now.
     func anchorTapped() {
-        guard anchorTapEntersWriting else { return }
-        openWriting()
+        switch phase {
+        case .landing:
+            if landingAtTop {
+                openWriting()
+            } else {
+                requestSurface()
+            }
+        case .entryOpen:
+            closeEntry()
+            requestSurface()
+        default:
+            break
+        }
     }
 
     /// Open a past entry to read in full (spec §7). Memory brightens.
@@ -186,6 +227,10 @@ final class AxisState: ObservableObject {
     }
 
     #if DEBUG
+    /// Dev-only: force the landing surface to re-read the archive after seeding.
+    @Published private(set) var debugReloadTick = 0
+    func debugReloadLanding() { debugReloadTick &+= 1 }
+
     /// Dev-only escape hatch: step the machine directly while the phase
     /// surfaces are still Phase-1 scaffolds. Removed in Phase 8 once every
     /// transition is driven by real wiring (writing seal, held Anchor, scroll).

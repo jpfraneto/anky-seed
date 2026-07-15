@@ -34,13 +34,56 @@ struct LandingStrataView: View {
             }
         }
         .onAppear(perform: reload)
+        #if DEBUG
+        .onChange(of: axis.debugReloadTick) { _ in reload() }
+        #endif
     }
 
     // MARK: - The strata column
 
+    private static let space = "landingStrata"
+
     private var strata: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            StrataColumn(axis: axis, entries: entries)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                StrataColumn(axis: axis, entries: entries)
+                    // The column's own top offset in the scroll space tells us
+                    // whether we rest at the living edge or are deep in memory
+                    // (addendum A1). O(1) per scroll — it never touches a stratum.
+                    .background(scrollSentinel)
+            }
+            .coordinateSpace(name: Self.space)
+            // Surface to now: come up for air — fast, a slight overshoot,
+            // settling at the newest entry (addendum A1). Not scrollTo(0).
+            .onChange(of: axis.surfaceTick) { _ in
+                AnkyHaptics.light()
+                withAnimation(reduceMotion
+                    ? .easeOut(duration: 0.3)
+                    : .spring(response: 0.34, dampingFraction: 0.62)) {
+                    proxy.scrollTo(StrataColumn.topID, anchor: .top)
+                }
+            }
+        }
+    }
+
+    /// Reports whether the strata rests at (or within ~half a screen of) the
+    /// top. Tolerance is deliberate — no pixel-hunting (addendum A1).
+    private var scrollSentinel: some View {
+        GeometryReader { geo in
+            let minY = geo.frame(in: .named(Self.space)).minY
+            Color.clear
+                .onChange(of: minY) { y in
+                    updateAtTop(minY: y)
+                }
+                .onAppear { updateAtTop(minY: minY) }
+        }
+    }
+
+    private func updateAtTop(minY: CGFloat) {
+        let tolerance = UIScreen.main.bounds.height * 0.5
+        let atTop = minY > -tolerance
+        if axis.landingAtTop != atTop {
+            axis.landingAtTop = atTop
         }
     }
 
@@ -63,6 +106,8 @@ struct LandingStrataView: View {
 
     private func reload() {
         entries = LocalAnkyArchive().list()
+        // Arriving fresh at the landing, we rest at the living edge.
+        axis.landingAtTop = true
     }
 }
 
@@ -74,10 +119,14 @@ struct StrataColumn: View {
     @ObservedObject var axis: AxisState
     let entries: [SavedAnky]
 
+    /// The living edge — the scroll target for surfacing-to-now (addendum A1).
+    static let topID = "axis.strata.top"
+
     var body: some View {
         VStack(spacing: 34) {
             // A little breath before the newest day.
             Color.clear.frame(height: 24)
+                .id(Self.topID)
 
             ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                 StrataEntryRow(entry: entry, ageOpacity: Self.ageOpacity(for: index))

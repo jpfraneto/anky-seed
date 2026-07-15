@@ -91,6 +91,14 @@ struct AxisWorldView: View {
         .environmentObject(axis)
         .preferredColorScheme(axis.isElectricRegister ? .dark : nil)
         .animation(.easeInOut(duration: 0.5), value: axis.isElectricRegister)
+        #if DEBUG
+        // Deterministic launch-driven seeding + navigation, so the addendum
+        // surfaces can be screenshot-verified without a tap tool. Env keys:
+        //   AXIS_DEBUG_SEED = showcase | bulk
+        //   AXIS_DEBUG_PHASE = landing | entry | reflection | ...
+        //   AXIS_DEBUG_OPEN_FIRST = 1   (open the newest strata entry)
+        .onAppear(perform: applyDebugLaunchEnv)
+        #endif
         // The paid act: a quiet lazure paywall rises from the bottom when an
         // unentitled writer holds. Dismissing returns to the closed channel;
         // the session settles unsent and is never lost.
@@ -135,6 +143,30 @@ struct AxisWorldView: View {
             }
         }
     }
+
+    #if DEBUG
+    private func applyDebugLaunchEnv() {
+        let env = ProcessInfo.processInfo.environment
+        switch env["AXIS_DEBUG_SEED"] {
+        case "showcase": AxisDebugSeed.seedShowcase()
+        case "bulk":     AxisDebugSeed.seedBulk(500)
+        default:         break
+        }
+        if env["AXIS_DEBUG_OPEN_FIRST"] == "1", let first = LocalAnkyArchive().list().first {
+            axis.openEntry(first)
+            return
+        }
+        switch env["AXIS_DEBUG_PHASE"] {
+        case "landing":    axis.debugSetPhase(.landing)
+        case "entry":      axis.debugSetPhase(.entryOpen)
+        case "reflection": axis.debugSetPhase(.reflection)
+        case "closed":     axis.debugSetPhase(.channelClosed)
+        case "vigil":      axis.debugSetPhase(.vigil)
+        case "seed":       axis.debugSetPhase(.seed)
+        default:           break
+        }
+    }
+    #endif
 
     // MARK: - Register (the ground the world is painted on)
 
@@ -327,7 +359,7 @@ private struct DebugAxisStepper: View {
     ]
 
     var body: some View {
-        VStack {
+        VStack(spacing: 4) {
             HStack(spacing: 6) {
                 ForEach(order, id: \.0) { label, phase in
                     Button(label) { axis.debugSetPhase(phase) }
@@ -339,6 +371,26 @@ private struct DebugAxisStepper: View {
                 }
             }
             .padding(.top, 4)
+            // Seed synthetic strata so the landing/opened-entry/surfacing paths
+            // can be seen and measured (addendum A1–A3, Q6). Dev-only.
+            HStack(spacing: 6) {
+                ForEach(["seed", "seed500", "wipe"], id: \.self) { action in
+                    Button(action) {
+                        switch action {
+                        case "seed":    AxisDebugSeed.seedShowcase()
+                        case "seed500": AxisDebugSeed.seedBulk(500)
+                        default:        AxisDebugSeed.wipe()
+                        }
+                        axis.debugSetPhase(.landing)
+                        axis.debugReloadLanding()
+                    }
+                    .font(.system(size: 10, weight: .semibold))
+                    .padding(.vertical, 4).padding(.horizontal, 7)
+                    .background(Color.ankyViolet.opacity(0.55))
+                    .foregroundStyle(Color.white)
+                    .clipShape(Capsule())
+                }
+            }
             Spacer()
         }
     }

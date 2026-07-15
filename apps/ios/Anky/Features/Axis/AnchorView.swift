@@ -75,7 +75,7 @@ struct AnchorView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .contentShape(Circle().size(width: 108, height: 108))
-        .allowsHitTesting(axis.phase == .landing || axis.phase == .channelClosed || axis.phase == .vigil)
+        .allowsHitTesting(axis.phase == .landing || axis.phase == .channelClosed || axis.phase == .vigil || axis.phase == .entryOpen)
         // One continuous press drives everything (spec §2, §5): a quick tap
         // enters writing from the landing surface or soft-pulses at a closed
         // channel; a sustained hold at a closed channel is the send vigil,
@@ -102,15 +102,15 @@ struct AnchorView: View {
                     pressStart = nil
                     if axis.phase == .vigil || vigil.stage != .idle {
                         vigil.lift()
-                    } else if held < 0.35 {
-                        if axis.anchorTapEntersWriting {
-                            AnkyHaptics.selection()
-                            axis.anchorTapped()
-                        } else {
-                            pulseOnce()
-                        }
-                    } else if !axis.anchorTapEntersWriting {
-                        // A long hold with nothing to carry: a faint pulse.
+                    } else if axis.anchorTapIsNavigational {
+                        // Landing or opened entry: resolve tap by scroll position
+                        // — enter writing, surface to now, or close-then-surface
+                        // (addendum A1). Held or quick, the release navigates.
+                        AnkyHaptics.selection()
+                        axis.anchorTapped()
+                    } else {
+                        // channelClosed with nothing to carry, or a stray press:
+                        // a faint pulse. The Geshtu does not carry empty offerings.
                         pulseOnce()
                     }
                 }
@@ -128,7 +128,7 @@ struct AnchorView: View {
                 } else {
                     onNeedsPaywall()
                 }
-            } else if axis.anchorTapEntersWriting {
+            } else if axis.anchorTapIsNavigational {
                 axis.anchorTapped()
             }
         }
@@ -160,7 +160,11 @@ struct AnchorView: View {
 
     private var accessibilityLabel: Text {
         switch axis.phase {
-        case .landing:       return Text("Anchor. Begin writing.")
+        case .landing:
+            return axis.landingAtTop
+                ? Text("Anchor. Begin writing.")
+                : Text("Anchor. Return to the present.")
+        case .entryOpen:     return Text("Anchor. Close this day and return to the present.")
         case .channelClosed: return Text("Anchor. Hold to send your writing to Anky.")
         default:             return Text("Anchor.")
         }
