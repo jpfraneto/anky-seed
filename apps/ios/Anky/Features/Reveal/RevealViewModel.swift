@@ -54,6 +54,13 @@ final class RevealViewModel: ObservableObject {
     /// the blessing descent (spec §6). Nil everywhere else — the legacy reveal
     /// keeps the long markdown reflection.
     var reflectionSurface: String?
+    /// The Axis Redesign fires generation at the sentinel (channel close), before
+    /// the writer has chosen to send (spec §12, addendum A3 / verification Q4). A
+    /// reflection for a session that is never sent must never be written to disk
+    /// or attached to the entry as if it had been received. When this is false the
+    /// generated reflection is held in memory only; `persistPendingReflection()`
+    /// commits it to the store once — and only once — the vigil actually sends.
+    var persistsReflection = true
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
     private static let localHeaderFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -201,6 +208,16 @@ final class RevealViewModel: ObservableObject {
 
     func askAnkyForSealedSession() async {
         await submitReflectionRequest(allowWhileAsking: true)
+    }
+
+    /// The vigil sent: commit the held reflection to the store (addendum A3 / Q4).
+    /// Persists now if generation has already finished; otherwise flips the flag
+    /// so the in-flight request persists on arrival. Idempotent.
+    func persistPendingReflection() {
+        persistsReflection = true
+        guard let reflection else { return }
+        try? reflectionStore.save(reflection)
+        try? sessionIndexStore.updateReflection(hash: reflection.hash, title: reflection.title, tags: reflection.tags)
     }
 
     func prepareAfterFirstRender() async {
@@ -367,8 +384,12 @@ final class RevealViewModel: ObservableObject {
                 tags: response.tags,
                 createdAt: Date()
             )
-            try reflectionStore.save(saved)
-            try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title, tags: response.tags)
+            // Hold-in-memory for the axis until the vigil sends (Q4). Everywhere
+            // else this stays true and persists immediately, as before.
+            if persistsReflection {
+                try reflectionStore.save(saved)
+                try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title, tags: response.tags)
+            }
             requestStore.clear(hash: response.hash)
             reflection = saved
             resetStreamingReflectionBuffer()

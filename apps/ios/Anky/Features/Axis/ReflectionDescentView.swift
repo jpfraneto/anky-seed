@@ -35,13 +35,24 @@ final class AxisReflectionCoordinator: ObservableObject {
         cancelTask()
         let vm = RevealViewModel(artifact: session)
         vm.reflectionSurface = "axis"
+        // Generation fires here, at the sentinel — before the writer has chosen
+        // to send. Hold the result in memory only; it reaches the store only if
+        // the vigil sends (addendum A3 / verification Q4). An unsent session's
+        // reflection is never attached to its entry as if it had been received.
+        vm.persistsReflection = false
         viewModel = vm
         currentHash = session.hash
         task = Task { await vm.askAnkyForSealedSession() }
     }
 
+    /// The vigil completed: the offering was carried. Commit the held reflection
+    /// to the store so the sent day owns it in the strata (addendum A3 / Q4).
+    func commit() {
+        viewModel?.persistPendingReflection()
+    }
+
     /// The day settled unsent, or a new session began: drop the in-flight
-    /// result (unsent ≠ sent).
+    /// result without ever persisting it (unsent ≠ sent — Q4).
     func discard() {
         cancelTask()
         viewModel = nil

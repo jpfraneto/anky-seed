@@ -120,8 +120,12 @@ struct AxisWorldView: View {
                 writeViewModel.beginBlankSessionFromWriteTab()
                 reflection.discard()
             case .reflection:
-                // A vigil completed: the free one is spent, and the rehearsal
-                // (if this was it) is over and never explained again.
+                // A vigil completed: the offering was carried. Only now does the
+                // held reflection reach the store (addendum A3 / Q4) — an unsent
+                // session's reflection is never persisted.
+                reflection.commit()
+                // The free one is spent, and the rehearsal (if this was it) is
+                // over and never explained again.
                 firstVigilUsed = true
                 if !rehearsalDone {
                     rehearsalDone = true
@@ -154,6 +158,11 @@ struct AxisWorldView: View {
         }
         if env["AXIS_DEBUG_OPEN_FIRST"] == "1", let first = LocalAnkyArchive().list().first {
             axis.openEntry(first)
+            return
+        }
+        if env["AXIS_DEBUG_OPEN_UNSENT"] == "1",
+           let unsent = LocalAnkyArchive().list().first(where: { ReflectionStore().load(hash: $0.hash) == nil }) {
+            axis.openEntry(unsent)
             return
         }
         switch env["AXIS_DEBUG_PHASE"] {
