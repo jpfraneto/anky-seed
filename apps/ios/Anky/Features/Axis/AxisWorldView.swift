@@ -29,9 +29,25 @@ struct AxisWorldView: View {
     /// shows the hint and the Anchor's single inhale, and the first vigil is the
     /// first real offering. Set true once the writer completes it.
     @AppStorage("anky.axisRehearsalDone") private var rehearsalDone = false
+    /// Writing is free; the vigil is the paid act. The first vigil is free so
+    /// the rehearsal completes with a real reflection and the paywall is first
+    /// met on day two (product decision, ratified).
+    @AppStorage("anky.axisFirstVigilUsed") private var firstVigilUsed = false
+    @StateObject private var entitlements = EntitlementStore()
+    @State private var showsPaywall = false
+    // The seed (spec §7): identity, subscription, recovery phrase, account
+    // deletion, and the gate — the real settings, reached by scrolling to the
+    // base of the past.
+    @StateObject private var youViewModel = YouViewModel()
+    @StateObject private var gateViewModel = WriteBeforeScrollSpikeViewModel()
+    @State private var showsGateSetup = false
 
     private var showRehearsalHint: Bool {
         axis.phase == .channelClosed && !rehearsalDone
+    }
+
+    private var vigilAllowed: Bool {
+        entitlements.isEntitledForGating || !firstVigilUsed
     }
 
     var body: some View {
@@ -43,8 +59,14 @@ struct AxisWorldView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if axis.anchorIsVisible {
-                AnchorView(axis: axis, vigil: vigil, rehearsalInhale: showRehearsalHint)
-                    .zIndex(1000)
+                AnchorView(
+                    axis: axis,
+                    vigil: vigil,
+                    rehearsalInhale: showRehearsalHint,
+                    vigilAllowed: vigilAllowed,
+                    onNeedsPaywall: { showsPaywall = true }
+                )
+                .zIndex(1000)
             }
 
             // The one-time rehearsal hint, resting just above the Anchor.
@@ -69,6 +91,15 @@ struct AxisWorldView: View {
         .environmentObject(axis)
         .preferredColorScheme(axis.isElectricRegister ? .dark : nil)
         .animation(.easeInOut(duration: 0.5), value: axis.isElectricRegister)
+        // The paid act: a quiet lazure paywall rises from the bottom when an
+        // unentitled writer holds. Dismissing returns to the closed channel;
+        // the session settles unsent and is never lost.
+        .sheet(isPresented: $showsPaywall) {
+            PaywallSheet(store: entitlements, origin: "vigil")
+        }
+        .sheet(isPresented: $showsGateSetup) {
+            GateSetupView(viewModel: gateViewModel, onDone: { showsGateSetup = false })
+        }
         .onChange(of: axis.phase) { newPhase in
             switch newPhase {
             case .writing:
@@ -81,8 +112,9 @@ struct AxisWorldView: View {
                 writeViewModel.beginBlankSessionFromWriteTab()
                 reflection.discard()
             case .reflection:
-                // The first vigil completed: the rehearsal is over, and it is
-                // never explained again.
+                // A vigil completed: the free one is spent, and the rehearsal
+                // (if this was it) is over and never explained again.
+                firstVigilUsed = true
                 if !rehearsalDone {
                     rehearsalDone = true
                     writeViewModel.terminalSilenceOverrideMs = nil
@@ -180,7 +212,11 @@ struct AxisWorldView: View {
             }
         case .seed:
             InteractiveBackSwipeContainer(onBack: { axis.closeSeed() }) {
-                ScaffoldSurface(line: "the seed", detail: "settings · subscription · the recovery phrase\n\nswipe from the left edge to return")
+                AnkySettingsView(
+                    viewModel: youViewModel,
+                    onGateSetupRequested: { showsGateSetup = true }
+                )
+                .environmentObject(entitlements)
             }
         }
     }

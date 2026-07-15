@@ -21,6 +21,11 @@ struct AnchorView: View {
     /// The one-time onboarding rehearsal (spec §9): the Anchor takes a single
     /// slow inhale up the first station and back down, under the hint.
     var rehearsalInhale: Bool = false
+    /// Writing is free; the vigil is the paid act (spec paywall placement).
+    /// When the hold is not allowed, the press raises the paywall instead of
+    /// beginning the charge — never mid-charge.
+    var vigilAllowed: Bool = true
+    var onNeedsPaywall: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The medallion's center sits this far above the safe-area bottom. Keep
@@ -81,8 +86,15 @@ struct AnchorView: View {
                     guard pressStart == nil else { return }
                     pressStart = Date()
                     if axis.anchorSupportsVigil {
-                        configureVigil()
-                        vigil.press(duration: effectiveVigilDuration)
+                        if vigilAllowed {
+                            configureVigil()
+                            vigil.press(duration: effectiveVigilDuration)
+                        } else {
+                            // The paid act: the quiet lazure paywall rises
+                            // instead of the charge beginning.
+                            AnkyHaptics.light()
+                            onNeedsPaywall()
+                        }
                     }
                 }
                 .onEnded { _ in
@@ -110,8 +122,12 @@ struct AnchorView: View {
         // Direct completion for assistive users — the offering without the hold.
         .accessibilityAction(named: Text("Send to Anky")) {
             if axis.anchorSupportsVigil {
-                axis.beginVigil()
-                axis.vigilCompleted()
+                if vigilAllowed {
+                    axis.beginVigil()
+                    axis.vigilCompleted()
+                } else {
+                    onNeedsPaywall()
+                }
             } else if axis.anchorTapEntersWriting {
                 axis.anchorTapped()
             }
