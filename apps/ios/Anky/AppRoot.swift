@@ -551,7 +551,22 @@ struct AppRoot: View {
         }
     }
 
+    /// The Axis Redesign (see docs/axis-redesign/SPEC.md). While the new
+    /// vertical world is under construction it is gated off, so the shipping
+    /// `selectedTab` / `writeSurface` router below is untouched. Flip to `true`
+    /// to build and verify the axis experience; Phase 8 removes the legacy path
+    /// entirely and this flag with it.
+    private let axisWorldEnabled = false
+
     var body: some View {
+        if axisWorldEnabled {
+            AxisWorldView()
+        } else {
+            legacyBody
+        }
+    }
+
+    private var legacyBody: some View {
         ZStack {
             Group {
                 switch selectedTab {
