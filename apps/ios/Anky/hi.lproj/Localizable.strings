@@ -534,3 +534,20 @@
 "with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "सत्यापित Anky Pro में लक्ष्य पूरा होने पर सुरक्षित ऐप बाकी दिन के लिए स्वतः खुलते हैं।";
 "explore Anky Pro" = "Anky Pro देखें";
 "keep writing · it counts toward your target" = "लिखते रहें · यह आपके लक्ष्य में गिना जाएगा";
+
+// App Clip handoff 2026-07-17
+"the words you wrote before installing anky are already here." = "anky इंस्टॉल करने से पहले आपने जो शब्द लिखे थे, वे यहाँ पहले से मौजूद हैं।";
+
+// Lean gate 2026-07-17
+"skin in the game opens the gate" = "जो दांव लगाता है, उसके लिए द्वार खुलता है";
+"weekly" = "साप्ताहिक";
+"monthly" = "मासिक";
+"yearly" = "वार्षिक";
+
+// Onboarding animatic 2026-07-17
+"what should i call you?" = "मैं आपको क्या कहकर बुलाऊँ?";
+"skip" = "छोड़ें";
+
+// Axis reflection error surface 2026-07-18
+"the reflection was lost on the way" = "प्रतिबिंब रास्ते में खो गया";
+"tap to ask again" = "फिर से पूछने के लिए टैप करें";

@@ -43,6 +43,7 @@ let package = Package(
             exclude: [
                 "DraftRecoveryTests.swift",
                 "JourneyAnchorTests.swift",
+                "QuoteSanitizerTests.swift",
                 "SubscriptionRemediationTests.swift"
             ]
         )

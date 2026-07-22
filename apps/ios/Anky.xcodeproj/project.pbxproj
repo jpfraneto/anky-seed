@@ -67,6 +67,9 @@
 		8A0000070000000000000002 /* AnkyAppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001002 /* AnkyAppVersion.swift */; };
 		8A0000080000000000000001 /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000080000000000009002 /* web3swift */; };
 		8A0000090000000000000001 /* TagSessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000090000000000001001 /* TagSessionsListView.swift */; };
+		8A0000F10000000000000001 /* QuoteSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001001 /* QuoteSanitizer.swift */; };
+		8A0000F10000000000000002 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001002 /* ShareCardView.swift */; };
+		8A0000F10000000000000003 /* ShareCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001003 /* ShareCardRenderer.swift */; };
 		8A00000A0000000000000001 /* AnkyNudgeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */; };
 		8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000B0000000000001001 /* AnkyLocalization.swift */; };
 		8A00000C0000000000000001 /* ICloudBackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000C0000000000001001 /* ICloudBackupStore.swift */; };
@@ -189,6 +192,41 @@
 		8A0000E00000000000000001 /* DraftRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E00000000000001001 /* DraftRecoveryTests.swift */; };
 		8A0000E00000000000000002 /* JourneyAnchorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E00000000000001002 /* JourneyAnchorTests.swift */; };
 		8A0000E00000000000000003 /* SubscriptionRemediationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E00000000000001004 /* SubscriptionRemediationTests.swift */; };
+		8A0000F10000000000000004 /* QuoteSanitizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001004 /* QuoteSanitizerTests.swift */; };
+		8A0000E50000000000000001 /* AnkyClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001001 /* AnkyClipApp.swift */; };
+		8A0000E50000000000000002 /* ClipSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001002 /* ClipSessionController.swift */; };
+		8A0000E50000000000000003 /* ClipWriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001003 /* ClipWriteView.swift */; };
+		8A0000E50000000000000004 /* ClipSessionHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001009 /* ClipSessionHandoff.swift */; };
+		8A0000E50000000000000005 /* AnkyLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001007 /* AnkyLine.swift */; };
+		8A0000E50000000000000006 /* AnkyWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001008 /* AnkyWriter.swift */; };
+		8A0000E50000000000000007 /* AnkyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001009 /* AnkyParser.swift */; };
+		8A0000E50000000000000008 /* AnkyReconstructor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100A /* AnkyReconstructor.swift */; };
+		8A0000E50000000000000009 /* AnkyHasher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100B /* AnkyHasher.swift */; };
+		8A0000E5000000000000000A /* AnkyDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100C /* AnkyDuration.swift */; };
+		8A0000E5000000000000000B /* AnkyValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000001000000000000100D /* AnkyValidator.swift */; };
+		8A0000E5000000000000000C /* WritingSessionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001002 /* WritingSessionEngine.swift */; };
+		8A0000E5000000000000000D /* UnlockPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001003 /* UnlockPolicy.swift */; };
+		8A0000E5000000000000000E /* AnkyLazure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001001 /* AnkyLazure.swift */; };
+		8A0000E5000000000000000F /* AnkyLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000B0000000000001001 /* AnkyLocalization.swift */; };
+		8A0000E50000000000000010 /* WritingPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000A20000000000001002 /* WritingPreferencesStore.swift */; };
+		8A0000E50000000000000011 /* WatercolorVeilView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B00000000000001010 /* WatercolorVeilView.swift */; };
+		8A0000E50000000000000012 /* WritingRhythmDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E5000000000000100B /* WritingRhythmDisplay.swift */; };
+		8A0000E50000000000000013 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000FF0000000000001001 /* Fonts */; };
+		8A0000E50000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001006 /* Assets.xcassets */; };
+		8A0000E50000000000000015 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001007 /* PrivacyInfo.xcprivacy */; };
+		8A0000E50000000000000016 /* AnkyClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001008 /* AnkyClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8A0000E50000000000000017 /* WritingRhythmDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E5000000000000100B /* WritingRhythmDisplay.swift */; };
+		8A0000E50000000000000018 /* ClipSessionHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E50000000000001009 /* ClipSessionHandoff.swift */; };
+		8A0000E50000000000000019 /* ClipSessionImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E5000000000000100A /* ClipSessionImporter.swift */; };
+		8A0000E5000000000000001B /* UnlockStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001004 /* UnlockStateStore.swift */; };
+		8A0000E5000000000000001C /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
+		8A0000E5000000000000001D /* ClipShims.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E5000000000000100D /* ClipShims.swift */; };
+		8A0000E60000000000000001 /* OnboardingAnimaticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001001 /* OnboardingAnimaticView.swift */; };
+		8A0000E60000000000000002 /* AnimaticStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001002 /* AnimaticStage.swift */; };
+		8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001003 /* AnimaticTimeline.swift */; };
+		8A0000E60000000000000004 /* CarveRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001004 /* CarveRevealView.swift */; };
+		8A0000E60000000000000005 /* NameEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001005 /* NameEntryView.swift */; };
+		8A0000E60000000000000006 /* TIMELINE.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001006 /* TIMELINE.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -227,6 +265,13 @@
 			remoteGlobalIDString = 8A0000010000000000004001;
 			remoteInfo = Anky;
 		};
+		8A0000E50000000000006001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A0000010000000000006001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A0000E50000000000004001;
+			remoteInfo = AnkyClip;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -242,6 +287,17 @@
 				8A0000D00000000000000001 /* AnkyGlanceWidgets.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A0000E50000000000005003 /* Embed App Clips */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
+			dstSubfolderSpec = 16;
+			files = (
+				8A0000E50000000000000016 /* AnkyClip.app in Embed App Clips */,
+			);
+			name = "Embed App Clips";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -306,6 +362,10 @@
 		8A0000050000000000001006 /* AnkyverseDayPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyverseDayPalette.swift; sourceTree = "<group>"; };
 		8A0000070000000000001002 /* AnkyAppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyAppVersion.swift; sourceTree = "<group>"; };
 		8A0000090000000000001001 /* TagSessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSessionsListView.swift; sourceTree = "<group>"; };
+		8A0000F10000000000001001 /* QuoteSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteSanitizer.swift; sourceTree = "<group>"; };
+		8A0000F10000000000001002 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
+		8A0000F10000000000001003 /* ShareCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardRenderer.swift; sourceTree = "<group>"; };
+		8A0000F10000000000001004 /* QuoteSanitizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteSanitizerTests.swift; sourceTree = "<group>"; };
 		8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyNudgeGenerator.swift; sourceTree = "<group>"; };
 		8A00000B0000000000001001 /* AnkyLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLocalization.swift; sourceTree = "<group>"; };
 		8A00000C0000000000001001 /* ICloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudBackupStore.swift; sourceTree = "<group>"; };
@@ -427,6 +487,24 @@
 		8A0000E00000000000001002 /* JourneyAnchorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyAnchorTests.swift; sourceTree = "<group>"; };
 		8A0000E00000000000001003 /* AnkyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000E00000000000001004 /* SubscriptionRemediationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionRemediationTests.swift; sourceTree = "<group>"; };
+		8A0000E50000000000001001 /* AnkyClipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyClipApp.swift; sourceTree = "<group>"; };
+		8A0000E50000000000001002 /* ClipSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipSessionController.swift; sourceTree = "<group>"; };
+		8A0000E50000000000001003 /* ClipWriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipWriteView.swift; sourceTree = "<group>"; };
+		8A0000E50000000000001004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8A0000E50000000000001005 /* AnkyClip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyClip.entitlements; sourceTree = "<group>"; };
+		8A0000E50000000000001006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8A0000E50000000000001007 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8A0000E50000000000001008 /* AnkyClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnkyClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A0000E50000000000001009 /* ClipSessionHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipSessionHandoff.swift; sourceTree = "<group>"; };
+		8A0000E5000000000000100A /* ClipSessionImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipSessionImporter.swift; sourceTree = "<group>"; };
+		8A0000E5000000000000100B /* WritingRhythmDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingRhythmDisplay.swift; sourceTree = "<group>"; };
+		8A0000E5000000000000100D /* ClipShims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipShims.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001001 /* OnboardingAnimaticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAnimaticView.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001002 /* AnimaticStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticStage.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001003 /* AnimaticTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticTimeline.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001004 /* CarveRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarveRevealView.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001005 /* NameEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameEntryView.swift; sourceTree = "<group>"; };
+		8A0000E60000000000001006 /* TIMELINE.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = TIMELINE.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -474,6 +552,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8A0000E50000000000002001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -485,6 +570,7 @@
 				8A0000180000000000003001 /* AnkyWriteBeforeScrollShieldConfiguration */,
 				8A0000190000000000003001 /* AnkyWriteBeforeScrollMonitor */,
 				8A0000D00000000000003001 /* AnkyGlanceWidgets */,
+				8A0000E50000000000003001 /* AnkyClip */,
 				8A0000E00000000000003001 /* Anky/Tests */,
 				8A0000A40000000000001004 /* storekit */,
 				8A0000010000000000003003 /* Products */,
@@ -529,6 +615,7 @@
 				8A0000180000000000001003 /* AnkyWriteBeforeScrollShieldConfiguration.appex */,
 				8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */,
 				8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */,
+				8A0000E50000000000001008 /* AnkyClip.app */,
 				8A0000E00000000000001003 /* AnkyTests.xctest */,
 			);
 			name = Products;
@@ -556,6 +643,7 @@
 			children = (
 				8A0000010000000000001003 /* WriteView.swift */,
 				8A0000010000000000001004 /* WriteViewModel.swift */,
+				8A0000E5000000000000100B /* WritingRhythmDisplay.swift */,
 			);
 			path = Write;
 			sourceTree = "<group>";
@@ -567,6 +655,9 @@
 				8A0000FE0000000000001001 /* AnkyRecordingView.swift */,
 				8A0000010000000000001006 /* RevealViewModel.swift */,
 				8A0000090000000000001001 /* TagSessionsListView.swift */,
+				8A0000F10000000000001001 /* QuoteSanitizer.swift */,
+				8A0000F10000000000001002 /* ShareCardView.swift */,
+				8A0000F10000000000001003 /* ShareCardRenderer.swift */,
 			);
 			path = Reveal;
 			sourceTree = "<group>";
@@ -618,6 +709,8 @@
 				8A0000140000000000001001 /* RawCheckInStore.swift */,
 				8A0000A20000000000001002 /* WritingPreferencesStore.swift */,
 				8A0000A30000000000001001 /* AvatarStore.swift */,
+				8A0000E50000000000001009 /* ClipSessionHandoff.swift */,
+				8A0000E5000000000000100A /* ClipSessionImporter.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -713,6 +806,12 @@
 			children = (
 				8A00000D0000000000001001 /* OnboardingView.swift */,
 				8A0000A10000000000001003 /* GateSetupView.swift */,
+				8A0000E60000000000001001 /* OnboardingAnimaticView.swift */,
+				8A0000E60000000000001002 /* AnimaticStage.swift */,
+				8A0000E60000000000001003 /* AnimaticTimeline.swift */,
+				8A0000E60000000000001004 /* CarveRevealView.swift */,
+				8A0000E60000000000001005 /* NameEntryView.swift */,
+				8A0000E60000000000001006 /* TIMELINE.json */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -886,12 +985,28 @@
 			path = AnkyGlanceWidgets;
 			sourceTree = "<group>";
 		};
+		8A0000E50000000000003001 /* AnkyClip */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000E50000000000001001 /* AnkyClipApp.swift */,
+				8A0000E50000000000001002 /* ClipSessionController.swift */,
+				8A0000E50000000000001003 /* ClipWriteView.swift */,
+				8A0000E5000000000000100D /* ClipShims.swift */,
+				8A0000E50000000000001006 /* Assets.xcassets */,
+				8A0000E50000000000001004 /* Info.plist */,
+				8A0000E50000000000001007 /* PrivacyInfo.xcprivacy */,
+				8A0000E50000000000001005 /* AnkyClip.entitlements */,
+			);
+			path = AnkyClip;
+			sourceTree = "<group>";
+		};
 		8A0000E00000000000003001 /* Anky/Tests */ = {
 			isa = PBXGroup;
 			children = (
 				8A0000E00000000000001001 /* DraftRecoveryTests.swift */,
 				8A0000E00000000000001002 /* JourneyAnchorTests.swift */,
 				8A0000E00000000000001004 /* SubscriptionRemediationTests.swift */,
+				8A0000F10000000000001004 /* QuoteSanitizerTests.swift */,
 			);
 			path = Anky/Tests;
 			sourceTree = "<group>";
@@ -908,6 +1023,7 @@
 				8A0000010000000000002001 /* Frameworks */,
 				8A0000010000000000005002 /* Resources */,
 				8A0000170000000000005003 /* Embed App Extensions */,
+				8A0000E50000000000005003 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
@@ -916,6 +1032,7 @@
 				8A0000180000000000006002 /* PBXTargetDependency */,
 				8A0000190000000000006002 /* PBXTargetDependency */,
 				8A0000D00000000000006002 /* PBXTargetDependency */,
+				8A0000E50000000000006002 /* PBXTargetDependency */,
 			);
 			name = Anky;
 			packageProductDependencies = (
@@ -1002,6 +1119,25 @@
 			productReference = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		8A0000E50000000000004001 /* AnkyClip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A0000E50000000000007001 /* Build configuration list for PBXNativeTarget "AnkyClip" */;
+			buildPhases = (
+				8A0000E50000000000005001 /* Sources */,
+				8A0000E50000000000002001 /* Frameworks */,
+				8A0000E50000000000005002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AnkyClip;
+			packageProductDependencies = (
+			);
+			productName = AnkyClip;
+			productReference = 8A0000E50000000000001008 /* AnkyClip.app */;
+			productType = "com.apple.product-type.application.on-demand-install-capable";
+		};
 		8A0000E00000000000004001 /* AnkyTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8A0000E00000000000007001 /* Build configuration list for PBXNativeTarget "AnkyTests" */;
@@ -1058,6 +1194,14 @@
 					8A0000E00000000000004001 = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					8A0000E50000000000004001 = {
+						CreatedOnToolsVersion = 16.2;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
 				};
 			};
 			buildConfigurationList = 8A0000010000000000007001 /* Build configuration list for PBXProject "Anky" */;
@@ -1087,6 +1231,7 @@
 				8A0000180000000000004001 /* AnkyWriteBeforeScrollShieldConfiguration */,
 				8A0000190000000000004001 /* AnkyWriteBeforeScrollMonitor */,
 				8A0000D00000000000004001 /* AnkyGlanceWidgets */,
+				8A0000E50000000000004001 /* AnkyClip */,
 				8A0000E00000000000004001 /* AnkyTests */,
 			);
 		};
@@ -1102,6 +1247,7 @@
 				8A0000B0000000000000000A /* StarterPainting in Resources */,
 				8A0000B00000000000000017 /* JourneyKingdoms in Resources */,
 				8A0000100000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
+				8A0000E60000000000000006 /* TIMELINE.json in Resources */,
 				8A00000F0000000000000001 /* Localizable.strings in Resources */,
 				8A0000110000000000000001 /* PrivacyPolicy.md in Resources */,
 				8A0000120000000000000001 /* TermsAndConditions.md in Resources */,
@@ -1146,6 +1292,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A0000E50000000000005002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A0000E50000000000000013 /* Fonts in Resources */,
+				8A0000E50000000000000014 /* Assets.xcassets in Resources */,
+				8A0000E50000000000000015 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1253,6 +1409,11 @@
 				8A000002000000000000000D /* YouView.swift in Sources */,
 				8A000002000000000000000E /* YouViewModel.swift in Sources */,
 				8A00000D0000000000000001 /* OnboardingView.swift in Sources */,
+				8A0000E60000000000000001 /* OnboardingAnimaticView.swift in Sources */,
+				8A0000E60000000000000002 /* AnimaticStage.swift in Sources */,
+				8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */,
+				8A0000E60000000000000004 /* CarveRevealView.swift in Sources */,
+				8A0000E60000000000000005 /* NameEntryView.swift in Sources */,
 				8A0000130000000000000001 /* CheckInFlowView.swift in Sources */,
 				8A0000130000000000000002 /* CheckInViewModel.swift in Sources */,
 				8A0000130000000000000003 /* HomeDailyChamberView.swift in Sources */,
@@ -1310,7 +1471,13 @@
 				8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */,
 				8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */,
 				8A0000090000000000000001 /* TagSessionsListView.swift in Sources */,
+				8A0000F10000000000000001 /* QuoteSanitizer.swift in Sources */,
+				8A0000F10000000000000002 /* ShareCardView.swift in Sources */,
+				8A0000F10000000000000003 /* ShareCardRenderer.swift in Sources */,
 				8A00000A0000000000000001 /* AnkyNudgeGenerator.swift in Sources */,
+				8A0000E50000000000000017 /* WritingRhythmDisplay.swift in Sources */,
+				8A0000E50000000000000018 /* ClipSessionHandoff.swift in Sources */,
+				8A0000E50000000000000019 /* ClipSessionImporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1380,6 +1547,35 @@
 				8A0000E00000000000000001 /* DraftRecoveryTests.swift in Sources */,
 				8A0000E00000000000000002 /* JourneyAnchorTests.swift in Sources */,
 				8A0000E00000000000000003 /* SubscriptionRemediationTests.swift in Sources */,
+				8A0000F10000000000000004 /* QuoteSanitizerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A0000E50000000000005001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A0000E50000000000000001 /* AnkyClipApp.swift in Sources */,
+				8A0000E50000000000000002 /* ClipSessionController.swift in Sources */,
+				8A0000E50000000000000003 /* ClipWriteView.swift in Sources */,
+				8A0000E5000000000000001D /* ClipShims.swift in Sources */,
+				8A0000E50000000000000004 /* ClipSessionHandoff.swift in Sources */,
+				8A0000E50000000000000005 /* AnkyLine.swift in Sources */,
+				8A0000E50000000000000006 /* AnkyWriter.swift in Sources */,
+				8A0000E50000000000000007 /* AnkyParser.swift in Sources */,
+				8A0000E50000000000000008 /* AnkyReconstructor.swift in Sources */,
+				8A0000E50000000000000009 /* AnkyHasher.swift in Sources */,
+				8A0000E5000000000000000A /* AnkyDuration.swift in Sources */,
+				8A0000E5000000000000000B /* AnkyValidator.swift in Sources */,
+				8A0000E5000000000000000C /* WritingSessionEngine.swift in Sources */,
+				8A0000E5000000000000000D /* UnlockPolicy.swift in Sources */,
+				8A0000E5000000000000001B /* UnlockStateStore.swift in Sources */,
+				8A0000E5000000000000001C /* AppGroupStorage.swift in Sources */,
+				8A0000E5000000000000000E /* AnkyLazure.swift in Sources */,
+				8A0000E5000000000000000F /* AnkyLocalization.swift in Sources */,
+				8A0000E50000000000000010 /* WritingPreferencesStore.swift in Sources */,
+				8A0000E50000000000000011 /* WatercolorVeilView.swift in Sources */,
+				8A0000E50000000000000012 /* WritingRhythmDisplay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1410,6 +1606,11 @@
 			isa = PBXTargetDependency;
 			target = 8A0000010000000000004001 /* Anky */;
 			targetProxy = 8A0000E00000000000006001 /* PBXContainerItemProxy */;
+		};
+		8A0000E50000000000006002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A0000E50000000000004001 /* AnkyClip */;
+			targetProxy = 8A0000E50000000000006001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1833,6 +2034,66 @@
 			};
 			name = Release;
 		};
+		8A0000E50000000000008001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 56;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkyClip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Anky;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8A0000E50000000000008002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 56;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkyClip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Anky;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		8A0000E00000000000008001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1928,6 +2189,15 @@
 			buildConfigurations = (
 				8A0000D00000000000008001 /* Debug */,
 				8A0000D00000000000008002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8A0000E50000000000007001 /* Build configuration list for PBXNativeTarget "AnkyClip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A0000E50000000000008001 /* Debug */,
+				8A0000E50000000000008002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

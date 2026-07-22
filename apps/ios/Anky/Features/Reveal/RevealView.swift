@@ -1881,33 +1881,6 @@ enum ShareCardVoice {
     }
 }
 
-/// The output shapes. 4:5 is the default feed card; 9:16 is the story card.
-private enum ShareCardFormat: CaseIterable, Hashable {
-    case ratio4x5
-    case ratio9x16
-
-    /// Logical size in points; rendered at scale 3 → 1080×1350 and 1080×1920.
-    var logicalSize: CGSize {
-        switch self {
-        case .ratio4x5:  return CGSize(width: 360, height: 450)
-        case .ratio9x16: return CGSize(width: 360, height: 640)
-        }
-    }
-
-    /// Long quotes need the quieter ground: a 4:5 whose quote runs past ~380
-    /// characters uses the Minimal base instead. 9:16 always uses its own base.
-    static let minimalThreshold = 380
-
-    func baseAssetName(quoteLength: Int) -> String {
-        switch self {
-        case .ratio9x16:
-            return "ShareCardBase_9x16"
-        case .ratio4x5:
-            return quoteLength > Self.minimalThreshold ? "ShareCardBase_Minimal" : "ShareCardBase_4x5"
-        }
-    }
-}
-
 /// Chooses what the card quotes: the reader's live selection if there is one,
 /// otherwise the reflection's opening passage — always plain text, markdown
 /// stripped, so the composited card stays clean whatever the source markup.
@@ -1975,160 +1948,6 @@ enum ReflectionShareQuote {
     }
 }
 
-/// One share card — a lazure base with the quote composited in Fraunces (never
-/// baked into the asset, so any quote length stays crisp), "— Anky", and the
-/// "the anky method" wordmark. The quote sits in each base's calm center field,
-/// clear of the violet borders (4:5) or the bottom fifth (9:16). It auto-scales
-/// to fit that field down to a ~17pt floor, then truncates with an ellipsis.
-private struct ReflectionShareCard: View {
-    let format: ShareCardFormat
-    let quote: String
-    var voice: ShareCardVoice = .anky
-
-    private var size: CGSize { format.logicalSize }
-
-    /// Deep violet-umber ink (#3D2E4F) — never pure black, per the lazure rule.
-    private let quoteInk = Color(red: 0.239, green: 0.180, blue: 0.310)
-
-    /// Starting quote size; steps down with length before auto-scaling engages.
-    private var startFontSize: CGFloat {
-        switch quote.count {
-        case ..<90:   return 30
-        case ..<170:  return 26
-        case ..<260:  return 22
-        default:      return 19
-        }
-    }
-
-    /// The floor: below this the quote truncates rather than shrinking further.
-    /// 17pt at the logical (÷3) canvas is ~17pt "equivalent at export."
-    private let floorFontSize: CGFloat = 17
-
-    private struct Placement {
-        let quoteRect: CGRect
-        let footerCenter: CGPoint
-        let attributionInFooter: Bool
-    }
-
-    private var placement: Placement {
-        let w = size.width, h = size.height
-        switch format {
-        case .ratio9x16:
-            // Quote in the upper cream field, clear of the bottom fifth; the
-            // attribution and wordmark live down there, above the gold thread.
-            return Placement(
-                quoteRect: CGRect(x: w * 0.12, y: h * 0.15, width: w * 0.76, height: h * 0.50),
-                footerCenter: CGPoint(x: w / 2, y: h * 0.88),
-                attributionInFooter: true
-            )
-        case .ratio4x5:
-            // Centered field, clear of the violet corners and the right thread.
-            return Placement(
-                quoteRect: CGRect(x: w * 0.16, y: h * 0.14, width: w * 0.68, height: h * 0.56),
-                footerCenter: CGPoint(x: w / 2, y: h * 0.925),
-                attributionInFooter: false
-            )
-        }
-    }
-
-    var body: some View {
-        let place = placement
-        ZStack {
-            base
-
-            Group {
-                if place.attributionInFooter {
-                    quoteText(maxHeight: place.quoteRect.height)
-                } else {
-                    VStack(spacing: 14) {
-                        quoteText(maxHeight: place.quoteRect.height - 42)
-                        attribution
-                    }
-                }
-            }
-            .frame(width: place.quoteRect.width, height: place.quoteRect.height)
-            .position(x: place.quoteRect.midX, y: place.quoteRect.midY)
-
-            Group {
-                if place.attributionInFooter {
-                    VStack(spacing: 12) {
-                        attribution
-                        wordmark
-                    }
-                } else {
-                    wordmark
-                }
-            }
-            .position(x: place.footerCenter.x, y: place.footerCenter.y)
-        }
-        .frame(width: size.width, height: size.height)
-        .clipped()
-    }
-
-    private func quoteText(maxHeight: CGFloat) -> some View {
-        let lineHeight = floorFontSize * 1.34
-        let maxLines = max(1, Int(maxHeight / lineHeight))
-        return Text("\u{201C}\(quote)\u{201D}")
-            .font(.fraunces(startFontSize, weight: .regular))
-            .foregroundStyle(quoteInk)
-            .lineSpacing(startFontSize * 0.24)
-            .multilineTextAlignment(.center)
-            .lineLimit(maxLines)
-            .minimumScaleFactor(floorFontSize / startFontSize)
-            .truncationMode(.tail)
-    }
-
-    @ViewBuilder
-    private var base: some View {
-        if let image = UIImage(named: format.baseAssetName(quoteLength: quote.count)) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } else {
-            // Lazure placeholder until the base assets land.
-            LinearGradient(
-                colors: [
-                    Color.ankyViolet.opacity(0.14),
-                    Color.ankyPaper,
-                    Color.ankyGoldLight.opacity(0.34)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-    }
-
-    private var attribution: some View {
-        Text(voice.attribution)
-            .font(.fraunces(15, weight: .semibold, italic: true))
-            .tracking(1.5)
-            .foregroundStyle(Color.ankyGold)
-    }
-
-    private var wordmark: some View {
-        HStack(spacing: 8) {
-            AnkySunGlyph(size: 15, color: Color.ankyGold)
-            Text("the anky method")
-                .font(.fraunces(13, weight: .semibold))
-                .tracking(1.5)
-                .foregroundStyle(Color.ankyGold)
-        }
-    }
-}
-
-/// Rasterizes one card at export resolution, composited in-app so text is never
-/// baked into an asset. Main-actor because `ImageRenderer` is.
-private enum ReflectionShareCardRenderer {
-    @MainActor
-    static func image(for format: ShareCardFormat, quote: String, voice: ShareCardVoice) -> UIImage? {
-        let renderer = ImageRenderer(content: ReflectionShareCard(format: format, quote: quote, voice: voice))
-        renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(format.logicalSize)
-        renderer.isOpaque = true
-        return renderer.uiImage
-    }
-}
-
 private struct ShareCardImage: Identifiable {
     let id = UUID()
     let image: UIImage
@@ -2138,8 +1957,7 @@ private struct ShareCardImage: Identifiable {
 /// story card — no options; the Share button exports it straight to the system
 /// sheet.
 /// Internal (not private) so the axis opened-entry affordances can present the
-/// same reflection share card (addendum A2.5). Its renderer and helpers below
-/// stay private to this file.
+/// same reflection share card (addendum A2.5).
 struct ShareCardPreviewView: View {
     let quote: String
     var voice: ShareCardVoice = .anky
@@ -2147,15 +1965,16 @@ struct ShareCardPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var shareItem: ShareCardImage?
 
-    private let format: ShareCardFormat = .ratio9x16
+    /// Card-safe text: sanitizing at the single share entry point covers every
+    /// caller — reveal, axis chrome, landing strata.
+    private var cardQuote: String { QuoteSanitizer.prepareForCard(quote) }
 
     var body: some View {
         VStack(spacing: 22) {
             GeometryReader { geo in
-                let logical = format.logicalSize
-                let scale = min(geo.size.width / logical.width, geo.size.height / logical.height)
-                ReflectionShareCard(format: format, quote: quote, voice: voice)
-                    .frame(width: logical.width, height: logical.height)
+                let design = ShareCardView.designSize
+                let scale = min(geo.size.width / design.width, geo.size.height / design.height)
+                ShareCardView(quote: cardQuote, voice: voice)
                     .scaleEffect(scale)
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -2165,7 +1984,7 @@ struct ShareCardPreviewView: View {
             .padding(.top, 24)
 
             AnkyPrimaryButton("Share") {
-                if let image = ReflectionShareCardRenderer.image(for: format, quote: quote, voice: voice) {
+                if let image = ShareCardRenderer.render(quote: cardQuote, voice: voice) {
                     shareItem = ShareCardImage(image: image)
                 }
             }

@@ -46,6 +46,9 @@ extension Color {
     // The writing ink — warm umber, sepia on parchment (phase-2 §7 sepia pass).
     static let ankyUmber      = Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
 
+    // The share-card quote ink — deep violet-umber (#3D2E4F), never pure black.
+    static let ankyQuoteInk   = Color(.displayP3, red: 0.239, green: 0.180, blue: 0.310)
+
     // Anky's own skin — the blue-slate of the character.
     static let ankySlate      = Color(.displayP3, red: 0.353, green: 0.427, blue: 0.514)
 

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "02_hands_cradle.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

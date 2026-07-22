@@ -534,3 +534,20 @@
 "with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "mit verifiziertem Anky Pro entsperrt dein erreichtes Ziel geschützte Apps automatisch für den restlichen Tag.";
 "explore Anky Pro" = "Anky Pro entdecken";
 "keep writing · it counts toward your target" = "schreib weiter · es zählt für dein Ziel";
+
+// App Clip handoff 2026-07-17
+"the words you wrote before installing anky are already here." = "die Worte, die du vor der Installation von anky geschrieben hast, sind schon hier.";
+
+// Lean gate 2026-07-17
+"skin in the game opens the gate" = "Einsatz öffnet das Tor";
+"weekly" = "wöchentlich";
+"monthly" = "monatlich";
+"yearly" = "jährlich";
+
+// Onboarding animatic 2026-07-17
+"what should i call you?" = "wie soll ich dich nennen?";
+"skip" = "überspringen";
+
+// Axis reflection error surface 2026-07-18
+"the reflection was lost on the way" = "die Reflexion ging unterwegs verloren";
+"tap to ask again" = "tippe, um noch einmal zu fragen";

@@ -61,6 +61,10 @@ final class RevealViewModel: ObservableObject {
     /// generated reflection is held in memory only; `persistPendingReflection()`
     /// commits it to the store once — and only once — the vigil actually sends.
     var persistsReflection = true
+    /// Fires whenever a reflection reaches the store (immediately, or when a
+    /// held axis reflection is committed). The axis uses this to mark the free
+    /// vigil as spent — a vigil whose reflection never arrives must not spend it.
+    var onReflectionPersisted: (() -> Void)?
     private static let didRequestReviewAfterFirstReflectionKey = "anky.didRequestReviewAfterFirstReflection"
     private static let localHeaderFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -218,6 +222,7 @@ final class RevealViewModel: ObservableObject {
         guard let reflection else { return }
         try? reflectionStore.save(reflection)
         try? sessionIndexStore.updateReflection(hash: reflection.hash, title: reflection.title, tags: reflection.tags)
+        onReflectionPersisted?()
     }
 
     func prepareAfterFirstRender() async {
@@ -389,6 +394,7 @@ final class RevealViewModel: ObservableObject {
             if persistsReflection {
                 try reflectionStore.save(saved)
                 try? sessionIndexStore.updateReflection(hash: response.hash, title: response.title, tags: response.tags)
+                onReflectionPersisted?()
             }
             requestStore.clear(hash: response.hash)
             reflection = saved

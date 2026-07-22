@@ -24,6 +24,10 @@ import SwiftUI
 @MainActor
 final class GeshtuReflectionCoordinator: ObservableObject {
     @Published private(set) var viewModel: RevealViewModel?
+    /// Fires when a reflection for a sent vigil actually reaches the store —
+    /// the only moment the free vigil may be marked spent (a vigil whose
+    /// reflection never arrives keeps the credit).
+    var onPersisted: (() -> Void)?
 
     private var task: Task<Void, Never>?
     private var currentHash: String?
@@ -40,6 +44,7 @@ final class GeshtuReflectionCoordinator: ObservableObject {
         // the vigil sends (addendum A3 / verification Q4). An unsent session's
         // reflection is never attached to its entry as if it had been received.
         vm.persistsReflection = false
+        vm.onReflectionPersisted = { [weak self] in self?.onPersisted?() }
         viewModel = vm
         currentHash = session.hash
         task = Task { await vm.askAnkyForSealedSession() }
@@ -65,58 +70,185 @@ final class GeshtuReflectionCoordinator: ObservableObject {
     }
 }
 
-// MARK: - The descent → settle (one continuous scroll)
+// MARK: - The reflection canvas (one massive vertical surface)
 
-/// The reflection and the landing strata are one continuous scroll (spec §7).
-/// The reflection sits at the top; scrolling past it melts it away (fading and
-/// shrinking on the scroll) and reveals the strata beneath — where the day just
-/// sent is already the newest layer. When the reflection has fully left, the
-/// axis settles to the landing.
-struct ReflectionSettleView: View {
+/// The reflection surface, reshaped (product decision, 2026-07-15): one
+/// continuous canvas. The writing rests at the very top exactly where it was
+/// written — same font, its last line on the same spot it held while the
+/// keyboard was up — and Anky's response unrolls from the space where the
+/// keyboard stood, downward. Below that, the strata: scrolling the day past
+/// the top settles it among the days (spec §7's melt is kept). Where the
+/// timer was, the record and share affordances now rest.
+struct AxisReflectionCanvas: View {
     @ObservedObject var viewModel: RevealViewModel
     @ObservedObject var axis: GeshtuState
+    /// The sealed writing — the words that never move.
+    let writingText: String
+    /// The global y of the keyboard's top edge during the session: the line
+    /// the writing rests on and the response descends from.
+    let keyboardTop: CGFloat
+    /// Share a tapped paragraph of the writing as a "YOU"-signed card (the
+    /// fixed top chrome handles the surface-level share and record).
+    let onShare: (String) -> Void
+    /// Share a tapped paragraph of Anky's reply as an "ANKY"-signed card.
+    let onShareReflection: (String) -> Void
 
     @State private var entries: [SavedAnky] = []
     @State private var didSettle = false
+    @State private var preferences = WritingPreferencesStore().load()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let space = "reflSettle"
+    private static let space = "axisReflectionCanvas"
+    private static let keyboardLineID = "axis.reflection.keyboardLine"
 
     var body: some View {
         GeometryReader { outer in
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    reflectionBlock
-                        .frame(height: outer.size.height)
+            let outerFrame = outer.frame(in: .global)
+            // The keyboard line in this canvas's coordinates, clamped so a
+            // stale reading can never pin the writing off-screen.
+            let keyboardLineY = min(
+                max(160, keyboardTop - outerFrame.minY),
+                max(160, outer.size.height - 96)
+            )
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // The writing, in the writer's own writing font,
+                        // bottom-anchored to the keyboard line — the same
+                        // resting place WriteView held it at (its text bottom
+                        // inset was keyboard overlap + 24).
+                        TappableOreText(
+                            text: writingText,
+                            font: writingFont,
+                            ink: Color.ankyUmber.opacity(0.88),
+                            lineSpacing: writingLineSpacing,
+                            onShare: { onShare($0) },
+                            // The fixed top chrome's share honors this choice.
+                            onSelectionChange: { axis.selectedQuote = $0 }
+                        )
+                        .padding(.horizontal, 24)
+                        .padding(.top, 80)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: max(1, keyboardLineY - 24),
+                            alignment: .bottomLeading
+                        )
 
-                    StrataColumn(axis: axis, entries: entries)
-                        .background(settleSentinel)
+                        Color.clear.frame(height: 1).id(Self.keyboardLineID)
+
+                        // From the space where the keyboard stood, downward:
+                        // a quiet gold seam, then Anky's response.
+                        reflectionBlock
+                            .padding(.top, 23)
+                            .padding(.bottom, 64)
+                            .frame(
+                                maxWidth: .infinity,
+                                minHeight: max(1, outer.size.height - keyboardLineY),
+                                alignment: .top
+                            )
+
+                        StrataColumn(axis: axis, entries: entries)
+                            .background(settleSentinel)
+                    }
+                }
+                .coordinateSpace(name: Self.space)
+                .onAppear {
+                    // The canvas's top block IS the newest day — the strata
+                    // beneath it must begin with the previous one, or the
+                    // writer meets their own words twice.
+                    let currentHash = axis.pendingSession?.hash
+                    entries = LocalAnkyArchive().list().filter { $0.hash != currentHash }
+                    preferences = WritingPreferencesStore().load()
+                    // Land with the writing exactly where it stood: park the
+                    // keyboard-line marker at the keyboard's old top edge.
+                    // (For writing short enough to fit above the line this is
+                    // a no-op; for long writing it shows the tail, as the
+                    // session did.)
+                    let fraction = max(0.05, min(0.95, (keyboardLineY - 24) / max(1, outer.size.height)))
+                    proxy.scrollTo(Self.keyboardLineID, anchor: UnitPoint(x: 0.5, y: fraction))
                 }
             }
-            .coordinateSpace(name: Self.space)
         }
-        .onAppear { entries = LocalAnkyArchive().list() }
     }
+
+    // MARK: The writing's own clothes
+
+    private var writingFont: Font {
+        Font(preferences.fontChoice.uiFont(size: preferences.textSize.pointSize))
+    }
+
+    private var writingLineSpacing: CGFloat {
+        preferences.textSize.pointSize * 0.42
+    }
+
+    // MARK: The response
 
     @ViewBuilder
     private var reflectionBlock: some View {
-        let content = ReflectionLinesView(lines: lines, reduceMotion: reduceMotion)
-        if #available(iOS 17.0, *) {
-            content.scrollTransition(.interactive, axis: .vertical) { view, phase in
-                // Melts away as it scrolls up: fades and shrinks toward the
-                // strata (spec §7). Untouched while it rests at identity.
-                view
-                    .opacity(phase.isIdentity ? 1 : max(0, 1 + phase.value))
-                    .scaleEffect(phase.isIdentity ? 1 : 0.86)
-                    .blur(radius: phase.isIdentity ? 0 : 3)
+        // The raw markdown, honored — GlazeMarkdownText wears the accents
+        // (violet headings, gold strong, slate emphasis); nothing is stripped
+        // away anymore.
+        let source = (viewModel.reflection?.reflection ?? viewModel.streamingReflectionMarkdown)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        VStack(alignment: .leading, spacing: 0) {
+            // The seam between the two voices — same hairline as the strata.
+            Capsule()
+                .fill(Color.ankyGold.opacity(0.30))
+                .frame(width: 46, height: 1.5)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 30)
+
+            if viewModel.reflection == nil, viewModel.errorMessage != nil {
+                // The request failed: say so, in register. The spiral must
+                // never pulse forever over a dead request (feedback 2026-07-18)
+                // — an ear that lost the thread admits it and can be asked
+                // again. Retry re-enters the same streaming path.
+                Button {
+                    Task { await viewModel.askAnkyForSealedSession() }
+                } label: {
+                    VStack(spacing: 10) {
+                        Text(AnkyLocalization.ui("the reflection was lost on the way"))
+                            .font(.fraunces(16, weight: .light, italic: true))
+                            .foregroundStyle(Color.ankyInkSoft)
+                        Text(AnkyLocalization.ui("tap to ask again"))
+                            .font(.fraunces(13, weight: .light))
+                            .foregroundStyle(Color.ankyInk.opacity(0.8))
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(Text(AnkyLocalization.ui("tap to ask again")))
+            } else if source.isEmpty {
+                // Still listening: the cooled gold tracery, pulsing slowly —
+                // no spinner, no "thinking" copy.
+                SpiralTracery(reduceMotion: reduceMotion, listening: true)
+                    .frame(width: 96, height: 96)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 24)
+            } else {
+                // Anky's reply, choosable like the writing above it: tap a
+                // paragraph and the blob shares it as an ANKY-signed card.
+                TappableGlazeText(
+                    text: source,
+                    onShare: { onShareReflection($0) },
+                    onSelectionChange: {
+                        axis.selectedQuote = $0
+                        axis.selectedQuoteIsAnky = $0 != nil
+                    }
+                )
+                .padding(.horizontal, 30)
+                .animation(.easeOut(duration: 0.6), value: source)
             }
-        } else {
-            content
         }
     }
 
+    // MARK: Settling
+
     /// Fires once when the strata's top has risen past the screen top — the
-    /// reflection has fully melted; the day takes its place among the days.
+    /// day has scrolled home; it takes its place among the days.
     private var settleSentinel: some View {
         GeometryReader { geo in
             let minY = geo.frame(in: .named(Self.space)).minY
@@ -130,23 +262,6 @@ struct ReflectionSettleView: View {
         }
     }
 
-    /// The reflection as 4–6 short lines. Prefers the finished text; otherwise
-    /// shows whatever has streamed in so far.
-    private var lines: [String] {
-        Self.lines(from: viewModel)
-    }
-
-    static func lines(from viewModel: RevealViewModel) -> [String] {
-        let source = viewModel.reflection?.reflection ?? viewModel.streamingReflectionMarkdown
-        return source
-            .split(separator: "\n", omittingEmptySubsequences: true)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            // Strip any stray markdown the model might emit.
-            .map { $0.replacingOccurrences(of: "#", with: "")
-                     .replacingOccurrences(of: "*", with: "")
-                     .trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-    }
 }
 
 /// The pure descent layout — the gold spiral tracery at the crown and the

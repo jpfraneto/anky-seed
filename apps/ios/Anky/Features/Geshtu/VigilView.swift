@@ -14,6 +14,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct VigilView: View {
     /// 0…1 from the VigilController.
@@ -125,6 +126,71 @@ struct VigilView: View {
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+/// The answering movement (product decision, 2026-07-15): the offering was
+/// carried, and the words hold at the crown — the spiral glowing at the top —
+/// until Anky's response is ready. Then the exact same movement runs in
+/// reverse: the charge drains 1 → 0 down the spine, stations un-lighting,
+/// the words traveling back down to the Anchor. A pure reuse of VigilView's
+/// charge function; this view only drives the number and the soft detents.
+struct VigilDescentView: View {
+    /// The session's writing — the same words that climbed.
+    let text: String
+    /// Evaluated live each tick: is Anky's response ready (or has generation
+    /// terminally ended)? The descent begins the moment it is true.
+    let isReady: () -> Bool
+    /// The charge reached the Anchor: flip the register warm.
+    let onLanded: () -> Void
+
+    @State private var charge: Double = 1
+
+    /// A breath at the crown even when the response beat the vigil there.
+    private let minimumHold: TimeInterval = 0.9
+    /// The crown never holds forever: if readiness never fires, descend anyway
+    /// and let the warm surface keep listening.
+    private let holdTimeout: TimeInterval = 30
+    private let descentDuration: TimeInterval = 2.6
+
+    var body: some View {
+        VigilView(charge: charge, text: text)
+            .task { await run() }
+    }
+
+    private func run() async {
+        let detent = UIImpactFeedbackGenerator(style: .soft)
+        detent.prepare()
+
+        let holdStart = Date()
+        while !Task.isCancelled {
+            let held = Date().timeIntervalSince(holdStart)
+            if held >= minimumHold, isReady() || held >= holdTimeout { break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard !Task.isCancelled else { return }
+
+        var lastStation = 7
+        let descentStart = Date()
+        while !Task.isCancelled {
+            let t = Date().timeIntervalSince(descentStart) / descentDuration
+            if t >= 1 { break }
+            // Ease in-out: the current lets go, travels, then settles.
+            charge = 1 - t * t * (3 - 2 * t)
+            // The seven stations again, downward — each crossing a touch
+            // softer than the last as the words come home.
+            let station = min(7, Int(charge * 8 + 1e-9))
+            if station < lastStation {
+                lastStation = station
+                detent.impactOccurred(intensity: 0.25 + 0.4 * Double(station) / 7.0)
+                detent.prepare()
+            }
+            try? await Task.sleep(nanoseconds: 16_000_000)
+        }
+        guard !Task.isCancelled else { return }
+        charge = 0
+        AnkyHaptics.light()
+        onLanded()
     }
 }
 

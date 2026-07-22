@@ -19,6 +19,7 @@
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.jpfraneto.Anky</string>
+		<string>group.com.jpfraneto.Anky.handoff</string>
 	</array>
 </dict>
 </plist>

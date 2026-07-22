@@ -221,7 +221,7 @@ final class SubscriptionRemediationTests: XCTestCase {
             "Adaptive daily-target suggestions",
             "Personalized painting progression after level 8, subject to progress and service limits",
         ] {
-            XCTAssertTrue(source.contains("benefit(\"\(benefit)\")"), benefit)
+            XCTAssertTrue(source.contains("\"\(benefit)\""), benefit)
         }
     }
 

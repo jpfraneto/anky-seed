@@ -110,6 +110,10 @@ final class EntitlementStore: ObservableObject {
         packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.monthlyProductID }
     }
 
+    var weeklyPackage: Package? {
+        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.weeklyProductID }
+    }
+
     var activePackage: Package? {
         guard let activeProductID else {
             return nil

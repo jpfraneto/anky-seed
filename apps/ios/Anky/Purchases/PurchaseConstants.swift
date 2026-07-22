@@ -4,6 +4,7 @@ import RevenueCat
 enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
     case annual
     case monthly
+    case weekly
 
     var productID: String {
         switch self {
@@ -11,11 +12,13 @@ enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
             return AnkyPurchasesConfig.annualProductID
         case .monthly:
             return AnkyPurchasesConfig.monthlyProductID
+        case .weekly:
+            return AnkyPurchasesConfig.weeklyProductID
         }
     }
 
     /// Billing duration is presentation/configuration truth only. Feature
-    /// access never branches on this value; both plans grant the same `pro`
+    /// access never branches on this value; every plan grants the same `pro`
     /// entitlement.
     var expectedPeriod: (value: Int, unit: SubscriptionPeriod.Unit) {
         switch self {
@@ -23,6 +26,8 @@ enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
             return (1, .year)
         case .monthly:
             return (1, .month)
+        case .weekly:
+            return (1, .week)
         }
     }
 
