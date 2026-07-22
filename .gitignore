@@ -50,3 +50,7 @@ apps/prompt-tester/.env
 apps/prompt-tester/.env.*
 !apps/prompt-tester/.env.example
 apps/prompt-tester/data/*.json
+
+# Local Anky Cut render artifacts
+apps/cut/server/renders/
+apps/cut/server/uploads/
