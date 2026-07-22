@@ -21,8 +21,8 @@ bun.lockb
 
 # Xcode
 DerivedData/
-*.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
 *.xcuserstate
 
 # Gradle / Android
