@@ -136,8 +136,12 @@ final class WriteViewModel: ObservableObject {
     private let invalidInputHaptic = UINotificationFeedbackGenerator()
     private let nudgeStartHaptic = UIImpactFeedbackGenerator(style: .soft)
     private let nudgeResultHaptic = UINotificationFeedbackGenerator()
+    /// The Geshtu onboarding rehearsal shortens the sentinel so the reveal (and
+    /// the long-press vigil) is discoverable within a reviewer's patience
+    /// (spec §9). Nil everywhere else — the normal stillness applies.
+    var terminalSilenceOverrideMs: Int64?
     private var terminalSilenceMs: Int64 {
-        WritingPreferencesStore().load().effectiveTerminalSilenceMs
+        terminalSilenceOverrideMs ?? WritingPreferencesStore().load().effectiveTerminalSilenceMs
     }
 
     init(

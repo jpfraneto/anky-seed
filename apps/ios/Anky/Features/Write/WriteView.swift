@@ -21,6 +21,14 @@ struct WriteView: View {
     /// footprint stays, invisible, and a tap on that space brings it back.
     @State private var isPillDimmed = false
     let shouldFocus: Bool
+    /// The Geshtu Redesign writing surface (spec §3, amended): the eyes and the
+    /// state pill are gone, but the target countdown keeps its top-right place
+    /// and a back arrow rests top-left until the first keystroke (product
+    /// decision — the writer must see the way out and the way forward). The
+    /// in-place post-session beat stays suppressed, because when the channel
+    /// closes the axis swaps to the channel-closed surface and reveals the
+    /// Anchor instead.
+    private let axisMode: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onCloseToMap: () -> Void
     /// Post-session beat, played in place the moment a session seals: the
@@ -33,6 +41,7 @@ struct WriteView: View {
     init(
         viewModel: WriteViewModel,
         shouldFocus: Bool,
+        axisMode: Bool = false,
         onCompleted: @escaping (SavedAnky) -> Void,
         onCloseToMap: @escaping () -> Void,
         onReflect: @escaping () -> Void = {},
@@ -41,6 +50,7 @@ struct WriteView: View {
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFocus = shouldFocus
+        self.axisMode = axisMode
         self.onCompleted = onCompleted
         self.onCloseToMap = onCloseToMap
         self.onReflect = onReflect
@@ -80,6 +90,10 @@ struct WriteView: View {
                     glyphs: viewModel.displayedGlyphs,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: acceptsWritingInput,
+                    // In the axis world the blank page hands the drag to the
+                    // world scroll (the native road down to the strata); the
+                    // text view's own scrolling begins with the session.
+                    innerScrollEnabled: !axisMode || viewModel.hasStarted,
                     bottomInset: textBottomInset,
                     rightInset: textSideInset,
                     textOpacity: writingTextOpacity,
@@ -93,6 +107,26 @@ struct WriteView: View {
                 .frame(width: geometry.size.width, height: textViewHeight)
                 .clipped()
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+
+                // The reserved keyboard footprint (Geshtu v2): pushing the
+                // keyboard away with the interactive drag reveals this exact
+                // area — the base of the geshtu, and beneath it the archive
+                // begins. A quiet deepening of the parchment, not a panel:
+                // this is the page's own ground, seen from below when the
+                // world scrolls past it.
+                if axisMode && !showsPostSessionBeat {
+                    let reserveTop = keyboardTop - globalFrame.minY
+                    let reserveHeight = max(1, globalFrame.maxY - keyboardTop
+                        + geometry.safeAreaInsets.bottom)
+                    LinearGradient(
+                        colors: [Color.ankyPaperDeep.opacity(0), Color.ankyPaperDeep.opacity(0.65)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(width: geometry.size.width, height: reserveHeight)
+                    .position(x: geometry.size.width / 2, y: reserveTop + reserveHeight / 2)
+                    .allowsHitTesting(false)
+                    .zIndex(-1)
+                }
 
                 // Words that rise behind the top chrome melt into the paper —
                 // blurred and fading, still visibly there, never deleted. Below
@@ -126,34 +160,65 @@ struct WriteView: View {
                     .allowsHitTesting(false)
                     .zIndex(18)
 
-                WritingTopChrome(
-                    state: writingPillState,
-                    isPillInteractive: !viewModel.hasStarted && !pillIsStatusOnly,
-                    isPillDimmed: isPillDimmed,
-                    timeText: timerText,
-                    timeCaption: timerCaption,
-                    silenceProgress: silenceProgress,
-                    showsBackButton: !viewModel.hasStarted || viewModel.isWaitingToResumeContinuedDraft,
-                    onBack: {
-                        viewModel.persistForNavigation()
-                        onCloseToMap()
-                    },
-                    onFocus: {
-                        viewModel.focusWritingKeyboard()
-                    },
-                    onOpenSettings: {
-                        AnkyHaptics.light()
-                        showsQuickSettings = true
-                    },
-                    onTogglePillDim: {
-                        AnkyHaptics.selection()
-                        isPillDimmed.toggle()
-                    }
-                )
-                .padding(.horizontal, 14)
-                .frame(width: geometry.size.width, height: 156, alignment: .top)
-                .position(x: geometry.size.width / 2, y: 84)
-                .zIndex(20)
+                if axisMode {
+                    AxisWritingTopBar(
+                        timeText: timerText,
+                        timeCaption: timerCaption,
+                        silenceProgress: silenceProgress,
+                        showsBackButton: !viewModel.hasStarted,
+                        isSealed: showsPostSessionBeat,
+                        onBack: {
+                            viewModel.persistForNavigation()
+                            // The way down is the same road the scroll travels:
+                            // the keyboard falls over the reserved footprint
+                            // first, then the world settles onto the strata.
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil, from: nil, for: nil
+                            )
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+                                onCloseToMap()
+                            }
+                        },
+                        onOpenSettings: {
+                            AnkyHaptics.light()
+                            showsQuickSettings = true
+                        }
+                    )
+                    .padding(.horizontal, 14)
+                    .frame(width: geometry.size.width, height: 72, alignment: .top)
+                    .position(x: geometry.size.width / 2, y: 44)
+                    .zIndex(20)
+                } else {
+                    WritingTopChrome(
+                        state: writingPillState,
+                        isPillInteractive: !viewModel.hasStarted && !pillIsStatusOnly,
+                        isPillDimmed: isPillDimmed,
+                        timeText: timerText,
+                        timeCaption: timerCaption,
+                        silenceProgress: silenceProgress,
+                        showsBackButton: !viewModel.hasStarted || viewModel.isWaitingToResumeContinuedDraft,
+                        onBack: {
+                            viewModel.persistForNavigation()
+                            onCloseToMap()
+                        },
+                        onFocus: {
+                            viewModel.focusWritingKeyboard()
+                        },
+                        onOpenSettings: {
+                            AnkyHaptics.light()
+                            showsQuickSettings = true
+                        },
+                        onTogglePillDim: {
+                            AnkyHaptics.selection()
+                            isPillDimmed.toggle()
+                        }
+                    )
+                    .padding(.horizontal, 14)
+                    .frame(width: geometry.size.width, height: 156, alignment: .top)
+                    .position(x: geometry.size.width / 2, y: 84)
+                    .zIndex(20)
+                }
 
                 // The life-bar: the eight seconds of sealing silence made
                 // visible, a hair above the keyboard. It surfaces after two
@@ -172,7 +237,7 @@ struct WriteView: View {
                 // The post-session beat fills the keyboard's exact footprint —
                 // top edge at the keyboard's old top, extending to the physical
                 // bottom — so the words above stay put and are never covered.
-                if showsPostSessionBeat {
+                if showsPostSessionBeat && !axisMode {
                     let beatTop = keyboardTop - globalFrame.minY
                     let beatHeight = max(1, globalFrame.maxY - keyboardTop
                         + geometry.safeAreaInsets.bottom)
@@ -669,6 +734,77 @@ private enum WritingSessionPillState: Equatable {
     }
 }
 
+/// The axis writing surface's minimal chrome: the target countdown top-right
+/// (tap to retune the session) and, until the first keystroke lands, a back
+/// arrow top-left. No eyes, no pill — the keyboard stays the main event, and
+/// the whole bar recedes as the sealing silence gathers.
+private struct AxisWritingTopBar: View {
+    let timeText: String
+    let timeCaption: String
+    let silenceProgress: Double
+    let showsBackButton: Bool
+    /// Once the session seals, the countdown has said all it can — its spot
+    /// is ceded to the world's fixed top chrome (share / record / settings).
+    let isSealed: Bool
+    let onBack: () -> Void
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top) {
+            if showsBackButton, !isSealed {
+                // Points down, because that is where it takes you: the
+                // keyboard falls and the world settles onto the strata below.
+                Button(action: onBack) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .frame(width: 40, height: 40)
+                        .background {
+                            Circle()
+                                .fill(Color.ankyPaper.opacity(0.55))
+                                .overlay(Circle().strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5))
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(AnkyLocalization.ui("Down to your days"))
+                .transition(.opacity)
+            }
+
+            Spacer()
+
+            if !isSealed {
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(timeText)
+                        .font(.system(size: 34, design: .serif))
+                        .monospacedDigit()
+                        .foregroundStyle(Color.ankyInk.opacity(0.88))
+                        .contentTransition(.numericText())
+                    Text(AnkyLocalization.ui(timeCaption))
+                        .font(.system(size: 15, design: .serif))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
+                }
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onOpenSettings)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(AnkyLocalization.ui("Writing time %@", "\(timeText) \(timeCaption)"))
+                .accessibilityAddTraits(.isButton)
+            }
+        }
+        // Sealed, the bar returns to full presence (the silence that sealed
+        // the page had faded it); live, it recedes as the silence gathers.
+        .opacity(isSealed ? 1 : chromeOpacity)
+        .animation(.easeInOut(duration: 0.3), value: showsBackButton)
+        .animation(.easeInOut(duration: 0.4), value: isSealed)
+        .animation(.linear(duration: 0.16), value: silenceProgress)
+    }
+
+    /// The chrome recedes as the sealing silence gathers — same fade as the
+    /// legacy chrome.
+    private var chromeOpacity: Double {
+        max(0.28, 1 - min(1, max(0, silenceProgress)) * 0.72)
+    }
+}
+
 private struct WritingTopChrome: View {
     let state: WritingSessionPillState
     let isPillInteractive: Bool
@@ -844,53 +980,20 @@ private struct WritingStatePill: View {
 
 /// Writing is violet ink; as the eight seconds of sealing silence pass,
 /// each glyph warms toward madder — pigment drying into the page.
-private enum WritingRhythmColor {
-    // Umber on parchment (phase-2 §7 sepia pass) — matches Color.ankyUmber.
-    private static let ink = (red: 0.310, green: 0.243, blue: 0.180)
-    private static let madder = (red: 0.702, green: 0.325, blue: 0.302)
-
-    static func color(progress: Double, colorScheme: ColorScheme = .dark) -> Color {
-        let clamped = min(1, max(0, progress))
-        let red = ink.red + (madder.red - ink.red) * clamped
-        let green = ink.green + (madder.green - ink.green) * clamped
-        let blue = ink.blue + (madder.blue - ink.blue) * clamped
-        return Color(.displayP3, red: red, green: green, blue: blue)
-    }
-
-    static func uiColor(progress: Double, alpha: Double = 1, colorScheme: ColorScheme = .dark) -> UIColor {
-        UIColor(color(progress: progress, colorScheme: colorScheme)).withAlphaComponent(alpha)
-    }
-}
-
 enum RejectedWritingInput {
     case backspace
     case enter
     case paste
 }
 
-/// A whisper of a line above the keyboard: full when a key just landed,
-/// draining right to left through the configured terminal stillness.
-private struct SilenceLifeBar: View {
-    let remaining: Double
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.ankyInk.opacity(0.05))
-                Capsule()
-                    .fill(Color.ankyUmber.opacity(0.34))
-                    .frame(width: max(0, geometry.size.width * min(1, max(0, remaining))))
-            }
-        }
-    }
-}
-
-
 private struct ForwardOnlyTextView: UIViewRepresentable {
     let glyphs: [WritingGlyph]
     let focusID: UUID
     let shouldFocus: Bool
+    /// False on the axis world's blank page: the pan then belongs to the
+    /// world scroll, which lowers the keyboard interactively and slides
+    /// toward the strata in one motion. Flips true with the first keystroke.
+    let innerScrollEnabled: Bool
     let bottomInset: CGFloat
     let rightInset: CGFloat
     let textOpacity: Double
@@ -916,7 +1019,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.textAlignment = .left
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
-        textView.keyboardDismissMode = .none
+        // The keyboard rides the finger down and away (Geshtu v2): dragging
+        // past it reveals the reserved footprint beneath — reversible
+        // mid-gesture, the Messages feel.
+        textView.keyboardDismissMode = .interactive
         textView.autocorrectionType = preferences.autocorrectEnabled ? .yes : .no
         textView.autocapitalizationType = .sentences
         // Spell-check stays off regardless of autocorrect: the red
@@ -930,8 +1036,11 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 24, left: 24, bottom: bottomInset, right: rightInset)
         textView.contentInset = .zero
         textView.verticalScrollIndicatorInsets.bottom = bottomInset
-        textView.isScrollEnabled = true
-        textView.alwaysBounceVertical = false
+        textView.isScrollEnabled = innerScrollEnabled
+        // Interactive dismissal needs the pan to engage even while the page
+        // is shorter than the screen — the bounce is what carries the finger
+        // over the keyboard.
+        textView.alwaysBounceVertical = true
         textView.showsVerticalScrollIndicator = false
         textView.measurementLineSpacing = preferences.textSize.pointSize * 0.42
         textView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
@@ -946,6 +1055,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.isScrollEnabled != innerScrollEnabled {
+            uiView.isScrollEnabled = innerScrollEnabled
+        }
         let currentGlyphs = glyphs
         let currentPreferences = preferences
         let currentColorScheme = colorScheme
@@ -1037,12 +1149,15 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         if context.coordinator.focusID != currentFocusID {
             context.coordinator.focusID = currentFocusID
             if currentShouldFocus {
+                // An explicit summons (tap the pill, a fresh scene) always
+                // outranks a prior push-away.
+                context.coordinator.keyboardPushedAway = false
                 DispatchQueue.main.async {
                     uiView.becomeFirstResponder()
                 }
             }
         }
-        if currentShouldFocus, !uiView.isFirstResponder {
+        if currentShouldFocus, !uiView.isFirstResponder, !context.coordinator.keyboardPushedAway {
             DispatchQueue.main.async {
                 uiView.becomeFirstResponder()
             }
@@ -1170,6 +1285,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         var lastSyncedText = ""
         var acceptsInput = false
         var isApplyingProgrammaticUpdate = false
+        /// The writer pushed the keyboard away (the interactive drag past
+        /// it). While true, the update pass must not summon it back — only a
+        /// tap on the page or an explicit focus request clears it.
+        var keyboardPushedAway = false
         private var isForcingSelectionToEnd = false
         private let onText: (String) -> Void
         private let onReplaceTail: (Int, String) -> Void
@@ -1191,6 +1310,40 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
             self.onText = onText
             self.onReplaceTail = onReplaceTail
             self.onRejectedInput = onRejectedInput
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            keyboardPushedAway = false
+        }
+
+        /// The page never scrolls by hand — the drag belongs to the keyboard,
+        /// not the text. Pinning the offset while the finger is down keeps
+        /// the words perfectly still; the pan keeps travelling underneath,
+        /// and once it reaches the keyboard the system slides it away,
+        /// unveiling the reserved footprint beneath.
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            guard scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating,
+                  let textView = scrollView as? BottomRightAnchoredTextView else { return }
+            textView.pinToAnchoredOffset()
+            // A decisive downward flick doesn't wait for the finger to reach
+            // the keyboard — it snaps it away at once. A slow drag keeps the
+            // physical, finger-tracking dismissal.
+            if scrollView.isTracking,
+               textView.isFirstResponder,
+               scrollView.panGestureRecognizer.velocity(in: scrollView).y > 900 {
+                keyboardPushedAway = true
+                textView.resignFirstResponder()
+            }
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            // While input is accepted, only the writer ends editing — the
+            // interactive dismissal (or the system) took the keyboard, and it
+            // must stay down until asked back. Programmatic resigns happen
+            // only when input is no longer accepted.
+            if acceptsInput {
+                keyboardPushedAway = true
+            }
         }
 
         func textView(
@@ -1402,7 +1555,25 @@ private final class BottomRightAnchoredTextView: UITextView {
         textContainerInset = nextInsets
     }
 
+    /// Holds the content at its bottom-anchored resting offset, cancelling
+    /// any user-driven scroll or bounce without ending the pan gesture.
+    func pinToAnchoredOffset() {
+        let bottomOffset = max(
+            -adjustedContentInset.top,
+            contentSize.height - bounds.height + adjustedContentInset.bottom
+        )
+        if abs(contentOffset.y - bottomOffset) > 0.01 {
+            contentOffset = CGPoint(x: contentOffset.x, y: bottomOffset)
+        }
+    }
+
     func scrollToEndRespectingAnchor() {
+        // Never snap the offset out from under the writer's finger — the
+        // ticker runs this every tick, and fighting a live drag is what kept
+        // the interactive keyboard dismissal from ever tracking.
+        guard !isTracking, !isDragging, !isDecelerating else {
+            return
+        }
         layoutManager.ensureLayout(for: textContainer)
         layoutIfNeeded()
         updateTextContainerInsets()

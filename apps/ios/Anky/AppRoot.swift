@@ -94,6 +94,11 @@ struct AppRoot: View {
     /// The one line anky says after the emergency breath: confirmation that
     /// the day actually opened. Cleared by tap or after ten quiet seconds.
     @State private var emergencyUnlockedLine: String?
+    /// Set when a session written in the App Clip was claimed at launch: the
+    /// writer's first words preceded the install, and anky says so once. For
+    /// a first-run import the bubble stays suppressed until onboarding
+    /// finishes, so the line lands exactly when the writing surface appears.
+    @State private var clipImportedLine: String?
 
     /// The main screen IS the painting: closing any surface lands on it.
     private func showMap() {
@@ -551,7 +556,23 @@ struct AppRoot: View {
         }
     }
 
+    /// The Geshtu world (extracted from the former Axis route). While the
+    /// legacy `selectedTab` / `writeSurface` router remains canonical (D1), the
+    /// vertical Geshtu world is gated off. The extraction lives in
+    /// `Features/Geshtu/` — press/charge/recession vigil, the gathering spiral,
+    /// the eight-crossing spine, and the accessibility direct-action pattern.
+    /// Flip to `true` to build and verify the Geshtu experience.
+    private let geshtuWorldEnabled = true
+
     var body: some View {
+        if geshtuWorldEnabled {
+            GeshtuWorldView()
+        } else {
+            legacyBody
+        }
+    }
+
+    private var legacyBody: some View {
         ZStack {
             Group {
                 switch selectedTab {
@@ -985,6 +1006,17 @@ struct AppRoot: View {
             let identityStore = WriterIdentityStore()
             _ = try? identityStore.loadOrCreateRecoveryPhrase()
             _ = try? identityStore.loadOrCreate()
+            // A session written in the App Clip before the install: claim it
+            // from the handoff container into normal session storage (the
+            // same path a natively written session takes), then let anky
+            // mention it once. Identity is on disk by this point, so the
+            // session lands under the writer like any other.
+            // The App Clip handoff was claimed in the app delegate; anky
+            // acknowledges it once, here on the legacy surface.
+            if UserDefaults.standard.bool(forKey: ClipSessionImporter.pendingWelcomeDefaultsKey) {
+                UserDefaults.standard.removeObject(forKey: ClipSessionImporter.pendingWelcomeDefaultsKey)
+                clipImportedLine = AnkyLocalization.ui("the words you wrote before installing anky are already here.")
+            }
             // The one deterministic purchases bootstrap: identity is on
             // disk by now, so RevenueCat configures under the wallet
             // address — never anonymously, never lazily from a feature
@@ -1593,6 +1625,23 @@ struct AppRoot: View {
                     text: unlockedLine,
                     close: {
                         emergencyUnlockedLine = nil
+                        ankyCompanion.hideBubble()
+                    }
+                )
+            )
+            return
+        }
+
+        // The App Clip handoff, acknowledged: the session they wrote before
+        // installing is already part of their archive.
+        if let importedLine = clipImportedLine {
+            ankyCompanion.witness(
+                mood: .celebrating,
+                sequence: .celebrate,
+                bubble: AnkyBubble(
+                    text: importedLine,
+                    close: {
+                        clipImportedLine = nil
                         ankyCompanion.hideBubble()
                     }
                 )

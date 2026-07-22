@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "ShareCardPlate_GoldenGround.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

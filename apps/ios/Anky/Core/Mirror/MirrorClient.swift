@@ -17,6 +17,7 @@ struct MirrorClient {
         identity: WriterIdentity,
         appVersion: String? = nil,
         intent: Intent = .reflection,
+        surface: String? = nil,
         progress: ((MirrorProgressEvent) async -> Void)? = nil,
         reflectionChunk: ((MirrorReflectionChunkEvent) async -> Void)? = nil
     ) async throws -> MirrorResponsePayload {
@@ -24,7 +25,8 @@ struct MirrorClient {
             bytes: bytes,
             identity: identity,
             appVersion: appVersion,
-            intent: intent
+            intent: intent,
+            surface: surface
         )
         let (stream, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -120,7 +122,8 @@ struct MirrorClient {
         bytes: Data,
         identity: WriterIdentity,
         appVersion: String?,
-        intent: Intent
+        intent: Intent,
+        surface: String? = nil
     ) throws -> URLRequest {
         let signed = try AnkyPostSigner.sign(body: bytes, identity: identity)
         var request = URLRequest(url: baseURL.appendingPathComponent("anky"))
@@ -137,6 +140,9 @@ struct MirrorClient {
         request.setValue(intent.rawValue, forHTTPHeaderField: "X-Anky-Intent")
         if let appVersion {
             request.setValue(appVersion, forHTTPHeaderField: "X-Anky-App-Version")
+        }
+        if let surface {
+            request.setValue(surface, forHTTPHeaderField: "X-Anky-Surface")
         }
         return request
     }

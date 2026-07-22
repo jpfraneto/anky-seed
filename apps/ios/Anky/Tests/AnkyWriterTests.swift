@@ -7,18 +7,20 @@ final class AnkyWriterTests: XCTestCase {
 
         XCTAssertTrue(writer.accept("h", at: 1_770_000_000_000))
         XCTAssertTrue(writer.accept("i", at: 1_770_000_000_042))
+        // D3: the written sentinel is always the canonical 8000 symbol,
+        // independent of the configured inactivity threshold passed here.
         writer.closeWithTerminalSilence(after: 1000)
 
         XCTAssertEqual(writer.text, """
         1770000000000 h
         42 i
-        1000
+        8000
         """)
 
         let parsed = try AnkyParser.parse(writer.text)
         XCTAssertEqual(AnkyReconstructor.reconstructText(parsed), "hi")
         XCTAssertEqual(AnkyDuration.durationMs(parsed), 42)
-        XCTAssertEqual(parsed.terminalSilenceMs, 1000)
+        XCTAssertEqual(parsed.terminalSilenceMs, AnkyDuration.canonicalSentinelToken)
     }
 
     func testGeneratedAnkyStoresSpacesAsCanonicalSpaceToken() throws {

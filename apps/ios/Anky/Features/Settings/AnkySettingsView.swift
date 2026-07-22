@@ -25,6 +25,9 @@ struct AnkySettingsView: View {
     @State private var pendingTargetMinutes: Int?
     @State private var writerName = ""
     @State private var writingPreferences = WritingPreferencesStore().load()
+    /// D3 — the silence that closes the channel, in seconds (bounds 3…30).
+    @State private var silenceSeconds: Double =
+        Double(WritingPreferencesStore().load().effectiveTerminalSilenceMs) / 1000
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
     @State private var showsSubscriptionPaywall = false
@@ -65,6 +68,7 @@ struct AnkySettingsView: View {
 
                         subscriptionSection
                         dailyTargetSection
+                        silenceSection
                         nameSection
                         writingSection
                         typefaceSection
@@ -100,6 +104,7 @@ struct AnkySettingsView: View {
             refreshDailyTarget()
             writerName = WritingAnchorStore().writerName ?? ""
             writingPreferences = WritingPreferencesStore().load()
+            silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
             // Always open with the recovery phrase concealed.
             viewModel.hideRecoveryPhrase()
             Task {
@@ -243,7 +248,7 @@ struct AnkySettingsView: View {
             return AnkyLocalization.ui("Anky unlocked active plan format", activeSubscriptionPriceLine)
         }
         if entitlements.packages.isEmpty {
-            return "Plans are loading. You can still write for free."
+            return "The plans are settling in. You can still write for free."
         }
         return "Writing and core features stay free. Tap to compare Anky Pro plans."
     }
@@ -323,6 +328,60 @@ struct AnkySettingsView: View {
             ]
         )
         refreshDailyTarget()
+    }
+
+    // MARK: Silence (D3)
+
+    /// How long the writing must rest before the channel closes and the Geshtu
+    /// surfaces. A setting, not a fixed law — but never below three seconds, so
+    /// a thoughtful pause is never mistaken for an ending. The canonical 8000
+    /// sentinel that marks a sealed session is unaffected by this dial.
+    private var silenceSection: some View {
+        section(title: "The silence that closes the channel") {
+            VeilCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(Int(silenceSeconds))\(AnkyLocalization.ui("s of silence"))")
+                            .font(.ankyHeading)
+                            .foregroundStyle(Color.ankyInk)
+                        Spacer()
+                        Image(systemName: "hourglass")
+                            .font(.system(size: 18, weight: .light))
+                            .foregroundStyle(Color.ankyViolet)
+                    }
+
+                    Slider(
+                        value: $silenceSeconds,
+                        in: silenceSecondsRange,
+                        step: 1
+                    ) { isEditing in
+                        if !isEditing {
+                            commitSilenceDuration()
+                        }
+                    }
+                    .tint(Color.ankyGold)
+
+                    Text(AnkyLocalization.ui("When your writing rests this long, the words settle and the Geshtu rises to receive them."))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+                }
+            }
+        }
+    }
+
+    private var silenceSecondsRange: ClosedRange<Double> {
+        let lower = Double(AnkyDuration.minTerminalSilenceMs / 1000)
+        let upper = Double(AnkyDuration.maxTerminalSilenceMs / 1000)
+        return lower...upper
+    }
+
+    private func commitSilenceDuration() {
+        AnkyHaptics.selection()
+        let ms = Int64((silenceSeconds * 1000).rounded())
+        WritingPreferencesStore().update { $0.terminalSilenceMs = ms }
+        writingPreferences = WritingPreferencesStore().load()
+        silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
     }
 
     // MARK: Name
