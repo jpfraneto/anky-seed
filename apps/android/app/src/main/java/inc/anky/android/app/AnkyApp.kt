@@ -71,6 +71,7 @@ import inc.anky.android.feature.you.YouScreen
 import inc.anky.android.feature.you.YouViewModel
 import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.core.storage.SingleAnkyImporter
+import inc.anky.android.feature.geshtu.GeshtuWorldScreen
 import inc.anky.android.ui.components.AnkyPresenceOverlay
 import inc.anky.android.ui.components.AnkyConversationPrompt
 import inc.anky.android.ui.components.AnkySequenceName
@@ -79,6 +80,8 @@ import inc.anky.android.ui.theme.AnkyTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+
+private const val GeshtuWorldEnabled = true
 
 @Composable
 fun AnkyApp(
@@ -198,6 +201,88 @@ fun AnkyApp(
                     runCatching { container.entitlementStore.reconcileOnForeground() }
                 }
             }
+        }
+
+        if (GeshtuWorldEnabled) {
+            LaunchedEffect(
+                settings.deviceLockPromptCompleted,
+                settings.appLockEnabled,
+                settings.onboardingCompleted,
+            ) {
+                if (
+                    !settings.deviceLockPromptCompleted &&
+                    !settings.appLockEnabled &&
+                    settings.onboardingCompleted &&
+                    canUseDeviceLock(context) &&
+                    container.sessionIndexStore.load().any { it.isComplete }
+                ) {
+                    showsDeviceLockActivationPrompt.value = true
+                }
+            }
+
+            GeshtuWorldScreen(
+                container = container,
+                settings = settings,
+                biometricGate = biometricGate,
+                deepLinkUri = deepLinkUri,
+                onDeepLinkHandled = onDeepLinkHandled,
+                onAppLockChange = { enabled ->
+                    rootScope.launch {
+                        if (enabled) {
+                            val confirmed = biometricGate.authenticate(protectDeviceLockReason)
+                            container.settingsStore.setDeviceLockPromptCompleted(true)
+                            if (confirmed) {
+                                skipNextAppLockAuthentication.value = true
+                                container.settingsStore.setAppLockEnabled(true)
+                            }
+                        } else {
+                            container.settingsStore.setAppLockEnabled(false)
+                        }
+                    }
+                },
+            )
+            if (showsDeviceLockActivationPrompt.value) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showsDeviceLockActivationPrompt.value = false
+                        rootScope.launch {
+                            container.settingsStore.setDeviceLockPromptCompleted(true)
+                        }
+                    },
+                    title = { Text(stringResource(R.string.activate_device_lock)) },
+                    text = { Text(stringResource(R.string.device_lock_prompt)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showsDeviceLockActivationPrompt.value = false
+                                rootScope.launch {
+                                    val confirmed = biometricGate.authenticate(protectDeviceLockReason)
+                                    container.settingsStore.setDeviceLockPromptCompleted(true)
+                                    if (confirmed) {
+                                        skipNextAppLockAuthentication.value = true
+                                        container.settingsStore.setAppLockEnabled(true)
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.activate_device_lock))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showsDeviceLockActivationPrompt.value = false
+                                rootScope.launch {
+                                    container.settingsStore.setDeviceLockPromptCompleted(true)
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.not_now))
+                        }
+                    },
+                )
+            }
+            return@AnkyTheme
         }
 
         val currentMirrorBaseUrl = rememberUpdatedState(settings.mirrorBaseUrl)
@@ -608,6 +693,7 @@ fun AnkyApp(
             if (
                 shouldShowOnboarding
             ) {
+                @Suppress("DEPRECATION") // Legacy-shell rollback path; Geshtu uses its live name threshold.
                 AnkyOnboardingScreen(
                     startWriting = {
                         showsOnboarding.value = false

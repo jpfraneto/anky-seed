@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AnkyArtifactPage from "./components/AnkyArtifactPage";
 import AnkyCoinPage from "./components/AnkyCoinPage";
 import AnkyMode from "./components/AnkyMode";
 import ComingSoonPage from "./components/ComingSoonPage";
@@ -7,7 +8,10 @@ import GalleryPage from "./components/GalleryPage";
 import LandingPage from "./components/LandingPage";
 import LegalPage from "./components/LegalPage";
 import MemesPage from "./components/MemesPage";
+import NotFoundPage from "./components/NotFoundPage";
 import TikTokLandingPage from "./components/TikTokLandingPage";
+import WritingRitual from "./components/WritingRitual";
+import { getAnkyArtifact } from "./content/ankyArtifacts";
 import { resolveLegalRoute } from "./legalRoutes";
 
 function isInteractiveTarget(target: EventTarget | null) {
@@ -178,18 +182,28 @@ function App() {
     );
   }
 
-  const landingClassName = ankyModeOpen
-    ? "pointer-events-none opacity-0 transition-opacity duration-500"
-    : "opacity-100 transition-opacity duration-500";
+  const artifactMatch = path.match(/^\/anky\/([^/]+)\/?$/);
+  if (artifactMatch) {
+    const artifact = getAnkyArtifact(decodeURIComponent(artifactMatch[1]));
 
-  return (
-    <>
-      <div className={landingClassName}>
-        <LandingPage onNavigate={navigate} />
-      </div>
-      {ankyModeLayer}
-    </>
-  );
+    if (artifact) {
+      return (
+        <AnkyArtifactPage
+          artifact={artifact}
+          currentPath={path}
+          onNavigate={navigate}
+        />
+      );
+    }
+
+    return <NotFoundPage currentPath={path} onNavigate={navigate} />;
+  }
+
+  if (path === "/anky" || path === "/anky/") {
+    return <NotFoundPage currentPath={path} onNavigate={navigate} />;
+  }
+
+  return <WritingRitual onNavigate={navigate} />;
 }
 
 export default App;

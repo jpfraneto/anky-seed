@@ -125,3 +125,95 @@ D1 mandates the legacy route stay canonical during extraction; that holds — th
 router is untouched and the Geshtu world compiles as verified-but-dormant code.
 Turning it on (and the corresponding legacy-route deletion) is the subsequent,
 separately-verified step, so no commit lands a route swap that hasn't been run.
+
+---
+
+## The outwards pivot — polish pass entries (2026-07-22)
+
+### D1 documentation corrected — `geshtuWorldEnabled` is `true`
+
+The D1 entries above say the flag "stays `false`" and the legacy router is
+canonical. That was true when written; it is not true now. `AppRoot.swift`
+hardwires `geshtuWorldEnabled = true`, so **GeshtuWorldView is the shipping
+root** and the three-tab flow is the dormant fallback branch. `README.md` in
+this directory was rewritten today to stop claiming the opposite. The flag
+itself survives as a compile-time escape hatch, not as a staging gate.
+
+### The outwards pivot shipped
+
+The inward-only covenant ("writing never leaves unless you ask for a
+reflection") grew a second, equally explicit door. What landed:
+
+- **Editing descent** (`Features/Edit/`): new `.editing`/`.shipping` phases in
+  the Geshtu world; "polish & ship" on a closed channel is the explicit
+  outward gesture that uploads the session for marks. Marks resolve one by
+  one; open flags block shipping.
+- **Shipping** (`Features/Ship/`): visibility tiers (public / subscribers /
+  just-for-you), optional raw-session opt-in (off ⇒ the raw session never
+  leaves the phone), `POST /posts` only at "ship it".
+- **Profiles overlay** (`Features/Profile/`): username claim (terms + recovery
+  -phrase warning), profile/post overlays, block/report, QR web-login
+  approval.
+- **Reader passes**: `anky.pass`, $4.99 non-renewing, 30 days of ONE writer's
+  subscriber pieces. Outside the subscription group, outside the `pro`
+  entitlement; the server mints a per-writer edge from the verified
+  transaction (`PurchaseConstants.AnkyReaderPass`).
+
+### Privacy reorder — upload only at the explicit gesture
+
+`EditCoordinator` mirrors the reflection grammar: nothing leaves the device
+until the tap on "polish & ship", and a session that already has its marks
+re-opens from disk without any network. The privacy policy §6 (all six
+localizations) was updated today to disclose the real catalog; §1's
+local-first framing still holds because both outward doors (reflection, ship)
+remain explicit gestures.
+
+### Signing v2
+
+The new social routes authenticate with the v2 request signing
+(`AnkyPostSigner`) rather than the original `AnkyMirrorRequest`-only shape.
+The `"axis"` reflection-surface wire literal (D2 holdout) is still untouched.
+
+### Sentinel canonicalized at seal; rehash removed
+
+`AnkyWriter.closeWithTerminalSilence` now always appends the canonical `8000`
+sentinel token regardless of the configured silence threshold (the parameter
+is retained for call-site compatibility but ignored). Downstream, the sealed
+hash is final: the reflection and edit paths never re-hash or mutate the
+sealed bytes (`WriteViewModel`, `RevealViewModel` document this). This
+supersedes any earlier reading of D3 in which the *configured* threshold was
+written as the terminal marker.
+
+### Annual-only App Store catalog
+
+The approved iOS purchase catalog is now intentionally annual-only. The
+offering check requires `anky.annual` and ignores extra or historical products.
+Monthly and weekly identifiers remain recognizable for legacy entitlement
+status, but no purchase surface offers them.
+
+### Catalog truth pass — what was fixed vs. deferred
+
+`Info.plist`, the local StoreKit fixture, both purchase surfaces, bundled legal
+copy, and subscription regression tests mirror that annual-only decision.
+RevenueCat entitlement checks remain product-agnostic: any historical purchase
+that still carries active `pro` remains entitled even though it is no longer
+offered for sale.
+
+### Older-entry contradictions noticed
+
+- The "BIGGEST DEVIATION" entry describes the Geshtu world as
+  "verified-but-dormant code … one flag away". It is live now (see above).
+- D5's "deferred 60-second mission" note still describes `DailyTargetStore`
+  as minutes-granular; that remains true and remains deferred — no
+  contradiction, just confirming it was not silently done by the pivot.
+
+## The outwards pivot shelved (2026-08-04)
+
+The outwards delivery described above (editing descent, shipping, profiles,
+passes, USDC payouts) was never merged: it lives complete on the
+`outwards-pivot` branch. This tree carries only what that delivery fixed or
+the crossroads kept: the privacy upload reorder (upload only at the explicit
+reflection request) and the canonical `8000` seal sentinel. The later
+annual-only catalog decision above supersedes the branch's weekly-plan notes.
+Entries above that describe outwards surfaces as shipped refer to that branch,
+not to this tree.

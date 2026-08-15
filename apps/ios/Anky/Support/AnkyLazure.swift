@@ -114,9 +114,16 @@ struct LazureWall: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: reduceMotion)) { context in
             let p = reduceMotion ? 0.5 : AnkyBreath.phase(at: context.date)
-            wash(phase: p)
-                .background(Color.ankyPaper)      // pigment sits ON paper
-                .overlay(PaperGrain())            // the tooth of the sheet
+            ZStack {
+                // This must be a real, opaque layer inside the wall. Using a
+                // background modifier here let the translucent iOS 18 mesh
+                // composite against the system's black window in dark mode on
+                // device, turning the archive into dark violet on black.
+                Color.ankyPaper
+                wash(phase: p)                    // pigment sits ON paper
+                PaperGrain()                      // the tooth of the sheet
+            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
         }
         .allowsHitTesting(false)

@@ -12,6 +12,13 @@ Android follows the same product law as iOS:
 - the protocol fixtures in `protocol/fixtures` are shared test vectors
 - identity is a local Base EOA: `anky.base.eoa.v1`
 
+## Current Experience
+
+Android now boots the Geshtu WORLD/DEVICE experience used by the current iOS
+app rather than the former tab shell. The migration shape, continuity reducer,
+implemented surfaces, and honest remaining gaps are documented in
+[GESHTU_MIGRATION.md](GESHTU_MIGRATION.md).
+
 Do not share UI code with iOS. Share only product law, protocol law, fixtures, and the mirror API contract.
 
 ## Package IDs

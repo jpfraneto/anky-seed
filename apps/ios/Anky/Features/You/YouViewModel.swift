@@ -340,6 +340,7 @@ final class YouViewModel: ObservableObject {
             notifications.cancelDailyReminder()
             appOpenStore.clear()
             try? iCloudBackupStore.deleteRemoteBackupAndDisable()
+            try? WriterProfileStore().clear()
             try identityStore.resetForDevelopment(includeICloudBackup: true)
             clearDevelopmentDefaults()
             accountId = ""

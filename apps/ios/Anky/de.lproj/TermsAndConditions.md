@@ -45,15 +45,14 @@ Nur diese Bereiche erfordern aktives `pro` in Kleinbuchstaben:
 5. Adaptive Tageszielvorschläge.
 6. Fortschritt nach Level 8 mit personalisierten Gemälden und späteren Zeremonien, abhängig von Fortschritt, Schreiben sowie Sicherheits-, Kapazitäts- und Generierungslimits.
 
-Monat und Jahr schalten exakt dasselbe frei. Zugriff folgt der Berechtigung, nicht der Laufzeit. Nach Ablauf bleiben vorhandene lokale Inhalte; nur neue Pro-Aktionen werden eingeschränkt.
+Das Jahresabo schaltet die oben genannten Pro-Funktionen frei. Der Zugriff hängt von der verifizierten `pro`-Berechtigung ab. Nach Ablauf bleiben vorhandene lokale Inhalte; nur neue Pro-Aktionen werden eingeschränkt.
 
 Generierte Dienste haben angemessene Dienst-, Sicherheits-, Kapazitäts- und Missbrauchsschutzlimits. Zahl, Modell, Stil, Ergebnis oder Dauer werden nicht garantiert.
 
 ## 5. Automatisch verlängerbare Abos
 
-Anky bietet im App Store:
+Anky bietet im App Store ein optionales, automatisch verlängerbares Jahresabo an:
 
-- **Monatlich:** ein Monat, derzeit ohne Einführungstest.
 - **Jährlich:** ein Jahr. Apple kann nur berechtigten Personen einen dreitägigen Test anzeigen.
 
 Maßgeblich sind lokalisierter Preis, Berechtigung, Belastungsdatum und Bedingungen, die Apple vor Bestätigung zeigt. Die Apple-ID wird belastet. Das Abo verlängert sich automatisch, sofern es nicht vor Verlängerung in Apples Einstellungen gekündigt wird. Apple bearbeitet Abrechnung, Kündigung, Verlauf und Erstattung. App-Löschung kündigt nicht.

@@ -91,9 +91,9 @@ Anky n’intègre ni publicité ni suivi entre apps. Il ne vend pas les données
 
 ## 6. Apple, RevenueCat et abonnements
 
-Anky propose des abonnements mensuels et annuels facultatifs et auto-renouvelables via l’App Store. Les deux ouvrent exactement les mêmes fonctions Pro. Le prix localisé et les conditions affichés par Apple au moment de l’achat font foi.
+Anky propose un seul abonnement annuel facultatif et auto-renouvelable via l’App Store. Il ouvre les fonctions Anky Pro. Le prix localisé et les conditions affichés par Apple au moment de l’achat font foi.
 
-La formule annuelle peut comporter un essai de trois jours uniquement pour une personne éligible et seulement si Apple l’affiche. La formule mensuelle n’a actuellement aucun essai de bienvenue. L’abonnement se renouvelle automatiquement sauf annulation dans les réglages d’abonnement Apple.
+L’abonnement annuel peut comporter un essai de trois jours uniquement pour une personne éligible et seulement si Apple l’affiche. Il se renouvelle automatiquement sauf annulation dans les réglages d’abonnement Apple.
 
 Apple gère paiement, renouvellement, annulation, facturation, historique et remboursements. Anky ne reçoit ni ne stocke les données complètes de carte bancaire.
 

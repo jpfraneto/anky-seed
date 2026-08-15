@@ -551,3 +551,28 @@
 // Axis reflection error surface 2026-07-18
 "the reflection was lost on the way" = "回响在途中失落了";
 "tap to ask again" = "轻点，再次请求";
+
+/* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
+"keep writing" = "继续书写";
+"get anky's reflection" = "获得 anky 的反思";
+"Reopen this session and keep going." = "重新打开这次书写，继续写下去。";
+"Send this writing to Anky and receive a reflection." = "把这段书写发给 Anky，收到一份反思。";
+"tap to open the gate" = "轻点以打开大门";
+"just leave" = "就这样离开";
+"Let this day settle. Your writing is saved on this device." = "让这一天沉淀下来。你的书写已保存在这台设备上。";
+"don't want to pay? long-press the copy button and take your writing to your favorite llm" = "不想付费？长按复制按钮，把你的书写带去你喜欢的 LLM";
+"untitled" = "无题";
+
+/* The plain landing list (2026-08-04) */
+"nothing here yet" = "这里还什么都没有";
+"search" = "搜索";
+"Clear search" = "清除搜索";
+
+/* Geshtu 书写机控件 (2026-08-14) */
+"Writing settings" = "书写设置";
+"Put down writing machine" = "放下书写机";
+"Writing machine menu" = "书写机菜单";
+"Writing settings or put down the machine" = "书写设置或放下书写机";
+"Opens writing settings" = "打开书写设置";
+"remaining" = "剩余";
+"written" = "已写";

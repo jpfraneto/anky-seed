@@ -415,7 +415,6 @@ It configures:
 - Entitlement: `pro`
 - Offering: `default`
 - Annual product: `anky.annual`
-- Monthly product: `anky.monthly`
 
 RevenueCat is the StoreKit transaction owner. The app uses `Purchases.configure(withAPIKey:appUserID:)`, `Purchases.shared.offerings()`, `Purchases.shared.purchase(package:)`, and `Purchases.shared.restorePurchases()`.
 
@@ -424,14 +423,13 @@ RevenueCat is the StoreKit transaction owner. The app uses `Purchases.configure(
 Local testing uses `Anky/Anky.storekit`.
 
 - `anky.annual` is a 1-year subscription.
-- `anky.monthly` is a 1-month subscription.
 
 The deleted/burned **iOS** product ID `anky.yearly` must not be used by iOS
 runtime code. Android may use that identifier in its own store configuration.
 
 ### Current Model
 
-`EntitlementStore` watches RevenueCat customer info and derives paid gating only from a current verified lowercase `pro` entitlement. The paywall fetches offering `default`, presents annual and monthly RevenueCat packages, shows annual trial language only after positive eligibility confirmation, purchases selected packages through RevenueCat, and restores through RevenueCat. Cached entitlement is display-only and cannot create paid local grants.
+`EntitlementStore` watches RevenueCat customer info and derives paid gating only from a current verified lowercase `pro` entitlement. The paywall fetches offering `default`, presents only the annual RevenueCat package, shows annual trial language only after positive eligibility confirmation, purchases through RevenueCat, and restores through RevenueCat. Cached entitlement is display-only and cannot create paid local grants.
 
 RevenueCat is configured under the local Anky writer identity address as `appUserID`, not anonymously by default. App Store Server Notifications should point to RevenueCat, and RevenueCat webhooks should point to Railway; the iOS app should not implement raw Apple server-notification handling.
 
@@ -714,7 +712,7 @@ Files likely touched:
 
 Risks:
 
-- RevenueCat dashboard/App Store Connect setup must stay aligned with `pro`, `default`, `anky.monthly`, and `anky.annual`.
+- RevenueCat dashboard/App Store Connect setup must stay aligned with `pro`, `default`, and `anky.annual`.
 - Widgets require a stable App Group data contract.
 - Share cards must not leak private writing.
 

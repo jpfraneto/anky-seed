@@ -91,9 +91,9 @@ Anky no integra publicidad ni seguimiento entre apps. No vende datos personales 
 
 ## 6. Apple, RevenueCat y suscripciones
 
-Anky ofrece suscripciones opcionales mensuales y anuales con renovación automática mediante el App Store de Apple. Ambas desbloquean las mismas funciones Pro. Mandan el precio localizado y las condiciones que Apple muestra al comprar.
+Anky ofrece una única suscripción anual opcional con renovación automática mediante el App Store de Apple. Esta desbloquea las funciones de Anky Pro. Mandan el precio localizado y las condiciones que Apple muestra al comprar.
 
-El plan anual puede incluir una prueba de tres días solo si la persona es elegible y Apple la muestra. El plan mensual no tiene prueba introductoria en la configuración actual. La suscripción se renueva automáticamente salvo cancelación en los ajustes de suscripciones de Apple.
+La suscripción anual puede incluir una prueba de tres días solo si la persona es elegible y Apple la muestra. Se renueva automáticamente salvo cancelación en los ajustes de suscripciones de Apple.
 
 Apple gestiona pago, renovación, cancelación, facturación, historial y reembolsos. Anky no recibe ni almacena los datos completos de la tarjeta.
 

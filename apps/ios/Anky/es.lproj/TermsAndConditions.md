@@ -45,15 +45,14 @@ Solo requieren un derecho activo `pro` en minúsculas:
 5. Sugerencias adaptativas de meta diaria.
 6. Progresión tras el nivel 8, con pinturas personalizadas y ceremonias posteriores, sujeta al progreso, escritura y límites de seguridad, capacidad y generación.
 
-Mensual y anual desbloquean exactamente las mismas funciones. El acceso depende del derecho, no de la duración. Al caducar Pro, el contenido local existente permanece; solo se restringen nuevas acciones Pro.
+La suscripción anual desbloquea las funciones Pro indicadas. El acceso depende del derecho `pro` verificado. Al caducar Pro, el contenido local existente permanece; solo se restringen nuevas acciones Pro.
 
 Los servicios generados tienen límites razonables de servicio, seguridad, capacidad y prevención de abuso. No se garantiza un número, modelo, estilo, resultado o plazo concreto.
 
 ## 5. Suscripciones con renovación automática
 
-Anky ofrece suscripciones opcionales mediante el App Store:
+Anky ofrece una única suscripción anual opcional con renovación automática mediante el App Store:
 
-- **Mensual:** un mes, sin prueba introductoria en la configuración actual.
 - **Anual:** un año. Apple puede mostrar una prueba de tres días únicamente a personas elegibles.
 
 Mandan el precio localizado, elegibilidad, fecha de cobro y términos que Apple muestra antes de confirmar. El pago se carga al Apple ID y la suscripción se renueva automáticamente salvo cancelación en los ajustes de Apple antes de renovar. Apple gestiona facturación, cancelación, historial y reembolsos. Borrar Anky no cancela la suscripción.

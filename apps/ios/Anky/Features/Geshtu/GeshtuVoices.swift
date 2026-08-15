@@ -22,6 +22,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension View {
     /// Ore — the user's writing at rest (addendum A4).
@@ -49,209 +50,151 @@ private struct GlazeVoice: ViewModifier {
     }
 }
 
-/// The writing at rest, made choosable: tap a paragraph and a soft gold blob
-/// blooms behind it with a share affordance riding its corner — the path from
-/// one's own words to the "YOU"-signed share card. The lazure sibling of
-/// RevealView's TappableReflectionText, in the ore voice. Long-press still
-/// gives native free selection for copy.
-struct TappableOreText: View {
+/// The writing at rest with native iOS range selection. Selection is reported
+/// to the fixed chrome so its share button carries exactly the highlighted
+/// text; the standard edit menu remains available for copy and system sharing.
+struct SelectableOreText: View {
     let text: String
-    /// Optional override of the ore voice — the reflection canvas renders the
-    /// writing in the writer's own writing font so the words never change
-    /// clothes, only the surface beneath them.
-    var font: Font?
+    var font: UIFont?
     var ink: Color?
     var lineSpacing: CGFloat?
-    let onShare: (String) -> Void
-    /// Fired when the chosen paragraph changes (nil = nothing chosen), so a
-    /// surface-level share affordance can honor the selection.
     var onSelectionChange: ((String?) -> Void)?
 
-    @State private var selected: Int?
-    private let accent = Color.ankyGold
-
-    private var paragraphs: [String] {
-        text.replacingOccurrences(of: "\r\n", with: "\n")
-            .components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
-                paragraphRow(index: index, paragraph: paragraph)
-            }
-        }
+        NativeSelectableText(
+            attributedText: Self.attributedText(
+                text,
+                font: font ?? AnkyFraunces.uiFont(18),
+                color: UIColor(ink ?? Color.ankyOre),
+                lineSpacing: lineSpacing ?? 5,
+                paragraphSpacing: 14
+            ),
+            onSelectionChange: onSelectionChange
+        )
     }
 
-    private func paragraphRow(index: Int, paragraph: String) -> some View {
-        let isSelected = selected == index
-        return styledText(paragraph)
-            .fixedSize(horizontal: false, vertical: true)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, isSelected ? 18 : 0)
-            .padding(.vertical, isSelected ? 14 : 0)
-            .background(selectionBlob(isSelected))
-            .overlay(alignment: .bottomTrailing) {
-                if isSelected { shareButton(paragraph) }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                AnkyHaptics.light()
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.74)) {
-                    selected = isSelected ? nil : index
-                }
-                onSelectionChange?(isSelected ? nil : paragraph)
-            }
-    }
-
-    @ViewBuilder
-    private func styledText(_ paragraph: String) -> some View {
-        if let font {
-            Text(paragraph)
-                .font(font)
-                .foregroundStyle(ink ?? Color.ankyOre)
-                .lineSpacing(lineSpacing ?? 5)
-        } else {
-            Text(paragraph)
-                .oreVoice()
-        }
-    }
-
-    private func selectionBlob(_ active: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 26, style: .continuous)
-            .fill(accent.opacity(active ? 0.18 : 0))
-            .blur(radius: active ? 10 : 0)
-            .scaleEffect(active ? 1.05 : 0.94)
-            .animation(.spring(response: 0.34, dampingFraction: 0.74), value: active)
-    }
-
-    private func shareButton(_ paragraph: String) -> some View {
-        Button {
-            AnkyHaptics.light()
-            onShare(paragraph)
-        } label: {
-            Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(accent, in: Circle())
-                .overlay(Circle().stroke(Color.ankyPaper.opacity(0.92), lineWidth: 2))
-                .shadow(color: accent.opacity(0.45), radius: 9, y: 3)
-        }
-        .buttonStyle(.plain)
-        .offset(x: 12, y: 16)
-        .transition(.scale.combined(with: .opacity))
+    private static func attributedText(
+        _ text: String,
+        font: UIFont,
+        color: UIColor,
+        lineSpacing: CGFloat,
+        paragraphSpacing: CGFloat
+    ) -> NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = lineSpacing
+        paragraph.paragraphSpacing = paragraphSpacing
+        return NSAttributedString(
+            string: text.replacingOccurrences(of: "\r\n", with: "\n"),
+            attributes: [
+                .font: font,
+                .foregroundColor: color,
+                .paragraphStyle: paragraph
+            ]
+        )
     }
 }
 
-/// Anky's reflection at rest, made choosable — the glaze sibling of
-/// TappableOreText. Each paragraph honors its markdown in the reflection's
-/// accent pigments (see GlazeMarkdownText), so the response is unmistakably
-/// Anky's voice. Tap a paragraph to choose it; the corner blob shares it as
-/// an "ANKY"-signed card, markdown stripped.
-struct TappableGlazeText: View {
+/// Anky's reflection at rest, using the same native selection behavior while
+/// retaining the glaze voice and its lightweight markdown accents.
+struct SelectableGlazeText: View {
     let text: String
-    let onShare: (String) -> Void
-    /// Fired when the chosen paragraph changes (nil = nothing chosen), so a
-    /// surface-level share affordance can honor the selection.
     var onSelectionChange: ((String?) -> Void)?
 
-    @State private var selected: Int?
-    private let accent = Color.ankyGold
-
-    private var paragraphs: [String] {
-        text.replacingOccurrences(of: "\r\n", with: "\n")
-            .components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
-                paragraphRow(index: index, paragraph: paragraph)
-            }
-        }
-    }
-
-    private func paragraphRow(index: Int, paragraph: String) -> some View {
-        let isSelected = selected == index
-        let plain = GlazeMarkdownText.plain(paragraph)
-        return GlazeMarkdownText(paragraph: paragraph)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, isSelected ? 18 : 0)
-            .padding(.vertical, isSelected ? 14 : 0)
-            .background(selectionBlob(isSelected))
-            .overlay(alignment: .bottomTrailing) {
-                if isSelected { shareButton(plain) }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                AnkyHaptics.light()
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.74)) {
-                    selected = isSelected ? nil : index
-                }
-                onSelectionChange?(isSelected ? nil : plain)
-            }
-    }
-
-    private func selectionBlob(_ active: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 26, style: .continuous)
-            .fill(accent.opacity(active ? 0.18 : 0))
-            .blur(radius: active ? 10 : 0)
-            .scaleEffect(active ? 1.05 : 0.94)
-            .animation(.spring(response: 0.34, dampingFraction: 0.74), value: active)
-    }
-
-    private func shareButton(_ paragraph: String) -> some View {
-        Button {
-            AnkyHaptics.light()
-            onShare(paragraph)
-        } label: {
-            Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(accent, in: Circle())
-                .overlay(Circle().stroke(Color.ankyPaper.opacity(0.92), lineWidth: 2))
-                .shadow(color: accent.opacity(0.45), radius: 9, y: 3)
-        }
-        .buttonStyle(.plain)
-        .offset(x: 12, y: 16)
-        .transition(.scale.combined(with: .opacity))
+        NativeSelectableText(
+            attributedText: GlazeAttributedRenderer(text: text).attributed(),
+            onSelectionChange: onSelectionChange
+        )
     }
 }
 
-/// One paragraph of Anky's reply with its markdown honored in the glaze
-/// voice, in the reflection's accent pigments: headings settle into violet,
-/// **what is strongly said** warms to gold, *what is emphasized* cools to
-/// slate blue. Three pigments the writing never wears — the second voice is
-/// unmistakable without ever being labelled.
-struct GlazeMarkdownText: View {
-    let paragraph: String
+/// A non-editable UITextView gives reading surfaces the platform's familiar
+/// long-press, drag handles, edit menu, selection highlight, and VoiceOver
+/// behavior. It also exposes the exact selected string to SwiftUI.
+private struct NativeSelectableText: UIViewRepresentable {
+    let attributedText: NSAttributedString
+    var onSelectionChange: ((String?) -> Void)?
 
-    var body: some View {
-        let block = Self.parse(paragraph)
-        Text(block.attributed)
-            .font(.fraunces(block.isHeading ? 22 : 20,
-                            weight: block.isHeading ? .semibold : .regular,
-                            italic: !block.isHeading))
-            .foregroundStyle(block.isHeading ? Color.ankyViolet : Color.ankyGlaze)
-            .lineSpacing(11)
-            .textSelection(.enabled)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onSelectionChange: onSelectionChange)
     }
 
-    struct Block {
-        var attributed: AttributedString
-        var isHeading: Bool
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.backgroundColor = .clear
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = false
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.widthTracksTextView = true
+        textView.tintColor = UIColor(Color.ankyGold)
+        textView.adjustsFontForContentSizeCategory = true
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return textView
     }
 
-    static func parse(_ raw: String) -> Block {
-        var line = raw
+    func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.onSelectionChange = onSelectionChange
+        guard !textView.attributedText.isEqual(to: attributedText) else { return }
+        context.coordinator.isUpdating = true
+        textView.attributedText = attributedText
+        context.coordinator.isUpdating = false
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? UIScreen.main.bounds.width - 48
+        uiView.bounds.size.width = width
+        uiView.textContainer.size = CGSize(width: width, height: .greatestFiniteMagnitude)
+        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: size.height)
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var onSelectionChange: ((String?) -> Void)?
+        var isUpdating = false
+
+        init(onSelectionChange: ((String?) -> Void)?) {
+            self.onSelectionChange = onSelectionChange
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !isUpdating,
+                  textView.selectedRange.length > 0,
+                  let range = textView.selectedTextRange,
+                  let selected = textView.text(in: range),
+                  !selected.isEmpty else {
+                if !isUpdating { onSelectionChange?(nil) }
+                return
+            }
+            onSelectionChange?(selected)
+        }
+    }
+}
+
+private struct GlazeAttributedRenderer {
+    let text: String
+
+    func attributed() -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let lines = text.replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+        for (index, line) in lines.enumerated() {
+            result.append(attributedLine(line))
+            if index < lines.count - 1 { result.append(NSAttributedString(string: "\n")) }
+        }
+        return result
+    }
+
+    private func attributedLine(_ raw: String) -> NSAttributedString {
+        var line = raw.trimmingCharacters(in: .whitespaces)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 11
+        paragraph.paragraphSpacing = 18
+
         var isHeading = false
         while line.hasPrefix("#") {
             isHeading = true
@@ -261,24 +204,71 @@ struct GlazeMarkdownText: View {
         if line.hasPrefix("- ") || line.hasPrefix("* ") {
             line = "•  " + line.dropFirst(2)
         }
-        var attributed = (try? AttributedString(
-            markdown: line,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        )) ?? AttributedString(line)
-        for run in attributed.runs {
-            guard let intent = run.inlinePresentationIntent else { continue }
-            if intent.contains(.stronglyEmphasized) {
-                attributed[run.range].foregroundColor = Color.ankyGold
-            } else if intent.contains(.emphasized) {
-                attributed[run.range].foregroundColor = Color.ankySlate
-            }
+
+        if isHeading {
+            return NSAttributedString(string: line, attributes: [
+                .font: AnkyFraunces.uiFont(22, weight: .semibold),
+                .foregroundColor: UIColor(Color.ankyViolet),
+                .paragraphStyle: paragraph
+            ])
         }
-        return Block(attributed: attributed, isHeading: isHeading)
+        return inline(line, paragraph: paragraph)
     }
 
-    /// The paragraph with its markdown stripped — what leaves on a share card
-    /// and what the surface-level share carries.
-    static func plain(_ raw: String) -> String {
-        String(parse(raw).attributed.characters)
+    private func inline(_ text: String, paragraph: NSMutableParagraphStyle) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        var index = text.startIndex
+        while index < text.endIndex {
+            if text[index...].hasPrefix("**"),
+               let end = text[text.index(index, offsetBy: 2)...].range(of: "**") {
+                let start = text.index(index, offsetBy: 2)
+                append(String(text[start..<end.lowerBound]), to: result, style: .strong, paragraph: paragraph)
+                index = end.upperBound
+            } else if text[index] == "*",
+                      let end = text[text.index(after: index)...].firstIndex(of: "*") {
+                append(String(text[text.index(after: index)..<end]), to: result, style: .emphasis, paragraph: paragraph)
+                index = text.index(after: end)
+            } else {
+                let strong = text[index...].range(of: "**")?.lowerBound
+                let emphasis = text[index...].firstIndex(of: "*")
+                let next = [strong, emphasis].compactMap { $0 }.min() ?? text.endIndex
+                if next == index {
+                    append(String(text[index]), to: result, style: .normal, paragraph: paragraph)
+                    index = text.index(after: index)
+                } else {
+                    append(String(text[index..<next]), to: result, style: .normal, paragraph: paragraph)
+                    index = next
+                }
+            }
+        }
+        return result
     }
+
+    private func append(
+        _ string: String,
+        to result: NSMutableAttributedString,
+        style: InlineStyle,
+        paragraph: NSMutableParagraphStyle
+    ) {
+        let font: UIFont
+        let color: UIColor
+        switch style {
+        case .normal:
+            font = AnkyFraunces.uiFont(20, italic: true)
+            color = UIColor(Color.ankyGlaze)
+        case .strong:
+            font = AnkyFraunces.uiFont(20, weight: .semibold, italic: true)
+            color = UIColor(Color.ankyGold)
+        case .emphasis:
+            font = AnkyFraunces.uiFont(20, italic: true)
+            color = UIColor(Color.ankySlate)
+        }
+        result.append(NSAttributedString(string: string, attributes: [
+            .font: font,
+            .foregroundColor: color,
+            .paragraphStyle: paragraph
+        ]))
+    }
+
+    private enum InlineStyle { case normal, strong, emphasis }
 }

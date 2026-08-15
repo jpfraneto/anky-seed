@@ -1,0 +1,66 @@
+import XCTest
+@testable import Anky
+
+/// The privacy reorder (outwards pivot §4.1): nothing leaves the device at
+/// the sentinel. `prepare(for:)` stands the reflection view model up in
+/// memory; the upload fires only in `beginUpload()`, which the Anchor calls
+/// at the first explicit outward gesture (the vigil press).
+@MainActor
+final class GeshtuPrivacySeamTests: XCTestCase {
+    private func sealedFixtureSession() throws -> SavedAnky {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("privacy-seam-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let archive = LocalAnkyArchive(directoryURL: directory)
+        var writer = AnkyWriter()
+        var cursor: Int64 = 1_784_000_000_000
+        for character in "the words stay home until the hold" {
+            _ = writer.accept(character, at: cursor)
+            cursor += 120
+        }
+        writer.closeWithTerminalSilence()
+        return try archive.save(writer.text)
+    }
+
+    func testPrepareStartsNoRequest() throws {
+        let session = try sealedFixtureSession()
+        let coordinator = GeshtuReflectionCoordinator()
+
+        coordinator.prepare(for: session)
+
+        let vm = try XCTUnwrap(coordinator.viewModel)
+        // No network work may have started: the view model is idle, nothing
+        // is in flight, and no progress stage has been entered.
+        XCTAssertFalse(vm.isAskingAnky, "prepare(for:) must not begin the upload")
+        XCTAssertNil(vm.reflection)
+        XCTAssertEqual(vm.streamingReflectionMarkdown, "")
+    }
+
+    func testPrepareIsIdempotentPerHash() throws {
+        let session = try sealedFixtureSession()
+        let coordinator = GeshtuReflectionCoordinator()
+
+        coordinator.prepare(for: session)
+        let first = coordinator.viewModel
+        coordinator.prepare(for: session)
+
+        XCTAssertTrue(first === coordinator.viewModel, "same hash must keep the same view model")
+    }
+
+    func testDiscardDropsThePreparedModel() throws {
+        let session = try sealedFixtureSession()
+        let coordinator = GeshtuReflectionCoordinator()
+
+        coordinator.prepare(for: session)
+        coordinator.discard()
+
+        XCTAssertNil(coordinator.viewModel)
+    }
+
+    func testBeginUploadWithoutPreparationIsANoOp() {
+        let coordinator = GeshtuReflectionCoordinator()
+        // Must not crash and must not create a view model from nothing.
+        coordinator.beginUpload()
+        XCTAssertNil(coordinator.viewModel)
+    }
+}

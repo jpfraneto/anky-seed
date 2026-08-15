@@ -531,11 +531,18 @@ class WriteViewModel(
         _state.value = deriveState()
     }
 
-    /** The sealing screen's "or stay": continue the sealed page in place. */
-    fun stayAfterSealing(): Boolean {
+    /** The legacy sealing screen's "or stay": continue a fragment in place. */
+    fun stayAfterSealing(): Boolean = resumeSealedSession(allowCompleted = false)
+
+    /**
+     * Geshtu's crossroads can reopen a completed or fragmentary sealed day.
+     * Android archives the pre-terminal bytes, so the same protocol session
+     * can safely resume and replace its prior content-addressed artifact.
+     */
+    fun resumeSealedSession(allowCompleted: Boolean): Boolean {
         val sealed = sealedSession ?: return false
         clearSealingState()
-        val continued = continueSession(sealed.artifact)
+        val continued = continueSession(sealed.artifact, allowCompleted = allowCompleted)
         if (!continued) {
             keyboardFocusRequestId += 1
             _state.value = deriveState()
@@ -604,8 +611,8 @@ class WriteViewModel(
         _state.value = deriveState()
     }
 
-    fun continueSession(artifact: SavedAnky): Boolean {
-        if (artifact.isComplete) {
+    fun continueSession(artifact: SavedAnky, allowCompleted: Boolean = false): Boolean {
+        if (artifact.isComplete && !allowCompleted) {
             clearCompletedSession()
             return false
         }

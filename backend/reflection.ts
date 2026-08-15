@@ -244,12 +244,42 @@ export function buildReflectPrompt(
   tier: SessionTier,
   fullVariant: FullPromptVariant = "control",
   surface?: string,
+  ageYears?: number,
 ): string {
-  return `${promptForTier(tier, fullVariant, surface).trim()}
+  const ageContext = ageAttunementPrompt(ageYears);
+  return `${promptForTier(tier, fullVariant, surface).trim()}${
+    ageContext ? `\n\n${ageContext}` : ""
+  }
 
 ---
 
 ${reconstructedText}`;
+}
+
+export function ageAttunementPrompt(ageYears?: number): string {
+  if (
+    typeof ageYears !== "number" ||
+    !Number.isSafeInteger(ageYears) ||
+    ageYears < 0 ||
+    ageYears > 120
+  ) {
+    return "";
+  }
+
+  const developmentalRegister =
+    ageYears < 13
+      ? "Use brief, concrete, warm language. Never invite secrecy, dependency, romance, or adult intimacy. If safety or serious distress appears, gently point toward a trusted adult."
+      : ageYears < 18
+        ? "Be respectful and concrete without sounding childish. Never present yourself as their only confidant; for safety or serious distress, support reaching a trusted adult."
+        : ageYears < 25
+          ? "Use an exploratory, companionable register rather than an authoritative one. Leave room for identity and direction to remain unfinished."
+          : ageYears < 65
+            ? "Use a peer-like, nuanced register. Respect complexity and avoid prescribing a life from a single piece of writing."
+            : "Use an unhurried, dignified register. Never infantilize or make assumptions about health, memory, family, or technological comfort.";
+
+  return `Private age context: the writer is ${ageYears} years old.
+Let this tune your vocabulary, pacing, boundaries, and degree of directness. Age is context, not identity: do not stereotype, and do not state, mention, or guess the writer's age in the response.
+${developmentalRegister}`;
 }
 
 export function buildReflectPromptFromText(reconstructedText: string): string {
@@ -306,6 +336,7 @@ export async function* streamOpenRouterChatCompletion(input: {
   timeoutMs: number;
   prompt: string;
   fetchImpl?: OpenRouterFetch;
+  onMetadata?: (metadata: OpenRouterInferenceMetadata) => void;
 }): AsyncGenerator<string> {
   if (!input.apiKey || !input.model) throw new Error("OPENROUTER_NOT_CONFIGURED");
 
@@ -349,6 +380,7 @@ export async function* streamOpenRouterChatCompletion(input: {
     buffer = blocks.pop() ?? "";
 
     for (const block of blocks) {
+      reportOpenRouterMetadata(block, input.onMetadata);
       for (const chunk of chunksFromSseBlock(block)) {
         yield chunk;
       }
@@ -356,8 +388,51 @@ export async function* streamOpenRouterChatCompletion(input: {
   }
 
   buffer += decoder.decode();
+  reportOpenRouterMetadata(buffer, input.onMetadata);
   for (const chunk of chunksFromSseBlock(buffer)) {
     yield chunk;
+  }
+}
+
+export type OpenRouterInferenceMetadata = {
+  model?: string;
+  costUsd?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+};
+
+function reportOpenRouterMetadata(
+  block: string,
+  sink?: (metadata: OpenRouterInferenceMetadata) => void,
+): void {
+  if (!sink) return;
+  for (const line of block.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice("data:".length).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const json = JSON.parse(payload) as {
+        model?: unknown;
+        usage?: {
+          cost?: unknown;
+          prompt_tokens?: unknown;
+          completion_tokens?: unknown;
+        };
+      };
+      const metadata: OpenRouterInferenceMetadata = {
+        ...(typeof json.model === "string" ? { model: json.model } : {}),
+        ...(typeof json.usage?.cost === "number" ? { costUsd: json.usage.cost } : {}),
+        ...(typeof json.usage?.prompt_tokens === "number"
+          ? { promptTokens: json.usage.prompt_tokens }
+          : {}),
+        ...(typeof json.usage?.completion_tokens === "number"
+          ? { completionTokens: json.usage.completion_tokens }
+          : {}),
+      };
+      if (Object.keys(metadata).length > 0) sink(metadata);
+    } catch {
+      continue;
+    }
   }
 }
 

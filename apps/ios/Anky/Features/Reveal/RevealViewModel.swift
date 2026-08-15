@@ -20,6 +20,10 @@ final class RevealViewModel: ObservableObject {
     @Published private(set) var progressStage: String?
     @Published private(set) var ctaAccentColor: Color
     @Published var errorMessage: String?
+    /// True when the current `errorMessage` is the server's entitlement
+    /// denial (402): the retry path is the gate, not another ask — asking
+    /// again without a subscription can never succeed.
+    @Published private(set) var errorIsEntitlementDenied = false
 
     let reconstructedText: String
     let duration: String
@@ -300,6 +304,7 @@ final class RevealViewModel: ObservableObject {
         isAskingAnky = true
         reflectionRequestInFlight = true
         errorMessage = nil
+        errorIsEntitlementDenied = false
         resetStreamingReflectionBuffer()
         streamingReflectionMarkdown = ""
         reflectionStreamTick = 0
@@ -331,6 +336,7 @@ final class RevealViewModel: ObservableObject {
                 identity: identity,
                 appVersion: AnkyAppVersion.headerValue,
                 surface: reflectionSurface,
+                ageYears: WriterProfileStore().ageYears(),
                 progress: { [weak self] event in
                     await MainActor.run {
                         self?.progressStage = event.stage
@@ -387,7 +393,8 @@ final class RevealViewModel: ObservableObject {
                 title: response.title,
                 reflection: response.reflection,
                 tags: response.tags,
-                createdAt: Date()
+                createdAt: Date(),
+                inference: response.inference
             )
             // Hold-in-memory for the axis until the vigil sends (Q4). Everywhere
             // else this stays true and persists immediately, as before.
@@ -448,6 +455,7 @@ final class RevealViewModel: ObservableObject {
             }
             requestStore.clear(hash: requestHash)
             errorMessage = Self.reflectionErrorMessage(message: message, serverPayload: serverPayload)
+            errorIsEntitlementDenied = serverPayload?.isEntitlementDenied == true
             resetStreamingReflectionBuffer()
             streamingReflectionMarkdown = ""
             reflectionStatusMessage = ""
@@ -461,32 +469,16 @@ final class RevealViewModel: ObservableObject {
     }
 
     private func terminalizedArtifactForReflection() throws -> SavedAnky {
-        var lines = artifact.text.components(separatedBy: .newlines)
-        while lines.last?.isEmpty == true {
-            lines.removeLast()
-        }
-
-        if let lastLine = lines.last,
-           AnkyDuration.terminalMarkerMs(from: lastLine) != nil {
-            activeReflectionHash = artifact.hash
-            return artifact
-        }
-
-        lines.append("\(WritingPreferencesStore().load().effectiveTerminalSilenceMs)")
-        let terminalizedText = lines.joined(separator: "\n")
-        let saved = try archive.save(terminalizedText, inputStats: artifact.inputStats)
-        activeReflectionHash = saved.hash
-        if saved.hash != artifact.hash {
-            try? archive.delete(artifact)
-            try? sessionIndexStore.delete(hash: artifact.hash)
-            try? sessionIndexStore.upsert(
-                SessionSummary.make(
-                    artifact: saved,
-                    reflection: reflectionStore.load(hash: saved.hash)
-                )
-            )
-        }
-        return saved
+        // The seal now serializes the canonical sentinel itself (outwards
+        // pivot §4.5.2), so the artifact that reaches this point already
+        // carries its terminal marker and its hash is final. Artifacts sealed
+        // before that change may lack the sentinel; the validator and the
+        // backend parser both permit a missing terminal marker, so they
+        // travel exactly as they are. Nothing is mutated, re-hashed, or
+        // re-indexed here anymore — `pendingSession.hash` stays truthful and
+        // the reflection canvas's history exclusion always matches.
+        activeReflectionHash = artifact.hash
+        return artifact
     }
 
     private func appendStreamingReflectionChunk(_ event: MirrorReflectionChunkEvent) {

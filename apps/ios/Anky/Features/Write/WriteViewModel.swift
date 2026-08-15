@@ -427,8 +427,10 @@ final class WriteViewModel: ObservableObject {
     }
 
     @discardableResult
-    func continueSession(from artifact: SavedAnky) -> Bool {
-        guard !artifact.isComplete else {
+    func continueSession(from artifact: SavedAnky, allowCompleted: Bool = false) -> Bool {
+        // The Geshtu crossroads' "keep writing" reopens even a complete
+        // session (2026-07-24) — the legacy paths keep the stricter rule.
+        guard allowCompleted || !artifact.isComplete else {
             clearCompletedSession()
             return false
         }
@@ -621,7 +623,8 @@ final class WriteViewModel: ObservableObject {
                 bytes: bytes,
                 identity: identity,
                 appVersion: AnkyAppVersion.headerValue,
-                intent: .nudge
+                intent: .nudge,
+                ageYears: WriterProfileStore().ageYears()
             )
 
             guard response.hash == AnkyHasher.sha256Hex(bytes) else {
@@ -684,12 +687,21 @@ final class WriteViewModel: ObservableObject {
         silenceTask?.cancel()
         tickerTask?.cancel()
         let silenceLimitMs = terminalSilenceMs
+        // Serialize the canonical terminal sentinel at the seal (outwards
+        // pivot §4.5.2), exactly as the App Clip already does: the writer
+        // appends the fixed `8000` token — never the configured 3–30 s
+        // threshold, which the backend parser would reject above 8000 — so
+        // the sealed hash is final and the reflection path never re-hashes.
+        // Drafts keep the pre-sentinel text: a recovered draft must be able
+        // to keep writing, and events after a terminal marker are invalid.
+        let openProtocolText = sessionEngine.protocolText
+        sessionEngine.closeWithTerminalSilence(after: silenceLimitMs)
         protocolText = sessionEngine.protocolText
 
         let validation = AnkyValidator.validate(protocolText)
         guard validation.isValid else {
             showPersistentError(AnkyLocalization.ui("Could not save this .anky."))
-            draftStore.save(protocolText)
+            draftStore.save(openProtocolText)
             isClosing = false
             return
         }
@@ -740,7 +752,7 @@ final class WriteViewModel: ObservableObject {
             completion?(persisted)
         } catch {
             showPersistentError(AnkyLocalization.ui("Could not save this .anky."))
-            draftStore.save(protocolText)
+            draftStore.save(openProtocolText)
             isClosing = false
         }
     }

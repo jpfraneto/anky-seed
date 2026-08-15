@@ -1,5 +1,56 @@
 import Foundation
 
+struct AnkyInferenceReceipt: Codable, Hashable {
+    enum Access: String, Codable {
+        case free
+        case supported
+    }
+
+    let access: Access
+    let provider: String
+    let model: String?
+    let costUsd: Double?
+
+    var disclosureLine: String {
+        let intelligence = access == .free ? "free intelligence" : "supported intelligence"
+        let modelName = model?.isEmpty == false ? model! : provider
+        let cost: String
+        if let costUsd {
+            cost = costUsd == 0 ? "$0" : String(format: "$%.6f", costUsd)
+        } else {
+            cost = "cost not reported"
+        }
+        return "\(intelligence) · \(modelName) · \(cost)"
+    }
+}
+
+struct AnkyConversationMessage: Codable, Hashable, Identifiable {
+    enum Role: String, Codable {
+        case user
+        case assistant
+    }
+
+    let id: UUID
+    let role: Role
+    let content: String
+    let createdAt: Date
+    let inference: AnkyInferenceReceipt?
+
+    init(
+        id: UUID = UUID(),
+        role: Role,
+        content: String,
+        createdAt: Date = Date(),
+        inference: AnkyInferenceReceipt? = nil
+    ) {
+        self.id = id
+        self.role = role
+        self.content = content
+        self.createdAt = createdAt
+        self.inference = inference
+    }
+}
+
 struct LocalReflection: Codable, Hashable, Identifiable {
     var id: String { hash }
 
@@ -8,19 +59,25 @@ struct LocalReflection: Codable, Hashable, Identifiable {
     let reflection: String
     let tags: [String]
     let createdAt: Date
+    let inference: AnkyInferenceReceipt?
+    var conversation: [AnkyConversationMessage]
 
     init(
         hash: String,
         title: String,
         reflection: String,
         tags: [String] = [],
-        createdAt: Date
+        createdAt: Date,
+        inference: AnkyInferenceReceipt? = nil,
+        conversation: [AnkyConversationMessage] = []
     ) {
         self.hash = hash
         self.title = title
         self.reflection = reflection
         self.tags = tags
         self.createdAt = createdAt
+        self.inference = inference
+        self.conversation = conversation
     }
 
     enum CodingKeys: String, CodingKey {
@@ -29,6 +86,8 @@ struct LocalReflection: Codable, Hashable, Identifiable {
         case reflection
         case tags
         case createdAt
+        case inference
+        case conversation
     }
 
     init(from decoder: Decoder) throws {
@@ -38,6 +97,8 @@ struct LocalReflection: Codable, Hashable, Identifiable {
         reflection = try container.decode(String.self, forKey: .reflection)
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
+        inference = try container.decodeIfPresent(AnkyInferenceReceipt.self, forKey: .inference)
+        conversation = try container.decodeIfPresent([AnkyConversationMessage].self, forKey: .conversation) ?? []
     }
 }
 
@@ -59,6 +120,12 @@ struct ReflectionStore {
     func save(_ reflection: LocalReflection) throws {
         let data = try JSONEncoder.reflectionEncoder.encode(reflection)
         try data.write(to: url(for: reflection.hash), options: [.atomic])
+    }
+
+    func saveConversation(_ messages: [AnkyConversationMessage], hash: String) throws {
+        guard var reflection = load(hash: hash) else { return }
+        reflection.conversation = messages
+        try save(reflection)
     }
 
     func load(hash: String) -> LocalReflection? {

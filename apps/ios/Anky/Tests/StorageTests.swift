@@ -48,6 +48,26 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(store.list(), [reflection])
     }
 
+    func testReflectionStorePersistsConversationInsideItsWriting() throws {
+        let directory = temporaryDirectory().appendingPathComponent("reflections", isDirectory: true)
+        let store = ReflectionStore(directoryURL: directory)
+        try store.save(LocalReflection(
+            hash: "conversation-thread",
+            title: "Small Thread",
+            reflection: "Here is what I saw.",
+            createdAt: Date(timeIntervalSince1970: 1_770_000_000)
+        ))
+        let messageDate = Date(timeIntervalSince1970: 1_770_000_100)
+        let messages = [
+            AnkyConversationMessage(role: .user, content: "what does that open?", createdAt: messageDate),
+            AnkyConversationMessage(role: .assistant, content: "a little more room.", createdAt: messageDate)
+        ]
+
+        try store.saveConversation(messages, hash: "conversation-thread")
+
+        XCTAssertEqual(store.load(hash: "conversation-thread")?.conversation, messages)
+    }
+
     func testLocalArchivePersistsEachAnkyByHash() throws {
         let directory = temporaryDirectory().appendingPathComponent("ankys", isDirectory: true)
         let archive = LocalAnkyArchive(directoryURL: directory)

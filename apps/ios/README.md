@@ -2,13 +2,21 @@
 
 Native SwiftUI only. No React Native, no Expo.
 
-This is the current iOS v0 loop:
+This is the current iOS loop:
 
 ```txt
-Write -> local .anky -> Reveal -> optional signed Ask Anky -> local reflection -> Map
+Write -> local .anky -> seal crossroads (keep writing / reflection / leave) -> strata
 ```
 
-## Current Features
+## Root surface
+
+The live root is the Geshtu world (`Anky/Features/Geshtu/GeshtuWorldView.swift`).
+`geshtuWorldEnabled` is hardwired `true` in `Anky/AppRoot.swift`; the legacy
+three-tab flow described below is the fallback branch of the router, not the
+canonical surface. Writing stays on the device: the only upload is the
+explicit reflection request at the crossroads, gated by the subscription.
+
+## Legacy features (fallback route)
 
 - Three native tabs: `Write`, `Map`, `You`.
 - Write opens first as a full-screen ritual surface with no tab bar or navigation chrome, focuses the keyboard, and captures forward-only typing.
@@ -44,22 +52,22 @@ Command-line build:
 xcodebuild -project apps/ios/Anky.xcodeproj -scheme Anky -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/anky-ios-derived build
 ```
 
-## Local Mirror
+## Local Backend
 
-From the repository root:
+The backend lives at `backend/` in the repository root (package
+`@anky/backend`, one Bun/Hono server rooted in `backend/server.ts`). The old
+`services/mirror` path no longer exists.
 
 ```sh
-cd services/mirror
+cd backend
+bun install
 ANKY_DEV_BYPASS_SUBSCRIPTION=true ANKY_DEV_MOCK_MIRROR=true bun run dev
 ```
 
-Or with the Makefile:
-
-```sh
-ANKY_DEV_BYPASS_SUBSCRIPTION=true ANKY_DEV_MOCK_MIRROR=true make mirror-dev
-```
-
-The mirror listens on port `3000` by default and exposes `POST /anky`.
+The server listens on port `3000` by default. `POST /anky` is the reflection
+route; the outwards pivot adds profiles/posts/moderation/blocks, web-login
+(QR), `/subscriptions` (reader passes), and the SSR web reader routes — see
+`backend/ROUTE_AUTH_TABLE.md`.
 
 Health check:
 
@@ -69,7 +77,7 @@ curl http://127.0.0.1:3000/health
 
 ## Railway Mirror
 
-Deployment notes live in `services/mirror/README.md` and `infra/railway/mirror.md`.
+Deployment notes live in `backend/README.md` and the root `railway.toml`.
 
 Production variables:
 
@@ -91,18 +99,18 @@ Subscription product setup:
 
 Use the production App Store bundle ID `com.jpfraneto.Anky`.
 
-App Store Connect has two auto-renewable subscriptions in the same group:
+App Store Connect has one approved auto-renewable subscription, plus one
+non-renewing purchase outside the group:
 
 | Product ID | Plan | RevenueCat package |
 | --- | --- | --- |
-| `anky.monthly` | Monthly subscription | Monthly package |
 | `anky.annual` | Annual subscription | Annual package |
+| `anky.pass` | Reader pass — $4.99, non-renewing, 30 days of one writer's subscriber pieces | Offering product (no `pro` entitlement; server mints the per-writer edge) |
 
 RevenueCat dashboard setup:
 
 - Entitlement: `pro`
 - Offering: `default`
-- Monthly package product: `anky.monthly`
 - Annual package product: `anky.annual`
 - Public Apple SDK key in iOS source must be an `appl_...` key.
 - App Store Server Notifications should point to RevenueCat.
@@ -149,8 +157,8 @@ On a real iPhone with the RevenueCat dashboard and App Store Connect products co
 1. Fresh install and confirm the app has a local Anky Base account.
 2. Confirm RevenueCat configures under that writer identity, not an anonymous app user ID.
 3. Open the subscription paywall and confirm RevenueCat returns offering `default`.
-4. Confirm the paywall shows annual product `anky.annual` and monthly product `anky.monthly`.
-5. Purchase either duration and confirm entitlement `pro` becomes active. For annual, confirm trial copy appears only on an Apple account that RevenueCat positively reports as eligible.
+4. Confirm every purchase surface shows only annual product `anky.annual`.
+5. Purchase the annual plan and confirm entitlement `pro` becomes active and the localized annual renewal disclosure is shown.
 6. Confirm Restore Purchases restores `pro` on the same Apple ID.
 7. Confirm the backend recognizes the subscription through RevenueCat webhooks; do not add raw Apple server-notification handling to the iOS app.
 
@@ -203,7 +211,7 @@ The tests should cover parser/reconstruction/duration/hash, generated writer out
 
 ## Known Limitations
 
-- RevenueCat purchases require App Store Connect products `anky.monthly` and `anky.annual`, entitlement `pro`, offering `default`, and Railway webhook handling to remain aligned with `Anky/Purchases/AnkyPurchasesConfig.swift`.
+- RevenueCat purchases require App Store Connect product `anky.annual`, entitlement `pro`, offering `default`, and Railway webhook handling to remain aligned with `Anky/Purchases/AnkyPurchasesConfig.swift` and `Anky/Purchases/PurchaseConstants.swift`.
 - Subscription trials and introductory offers require real App Store Connect or StoreKit configuration. RevenueCat owns StoreKit purchases and restores in the app.
 - No production OpenRouter tuning in iOS; local mirror dev mode is supported.
 - iOS Base EOA signing is implemented with `web3swift`/`Web3Core` and fixture-tested against the shared Base EIP-712 protocol vectors.

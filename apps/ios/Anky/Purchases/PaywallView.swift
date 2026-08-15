@@ -16,16 +16,9 @@ struct PaywallView: View {
         }
     }
 
-    private enum Plan {
-        case annual
-        case monthly
-    }
-
     @ObservedObject var store: EntitlementStore
     let context: Context
     let onCompleted: () -> Void
-
-    @State private var plan: Plan = .annual
 
     /// Onboarding renders inside a fixed, non-scrolling budget, so the ask is
     /// tightened to a single screen: no voice paragraph, a smaller image, a
@@ -54,7 +47,7 @@ struct PaywallView: View {
             proBenefits
 
             if !store.isEntitledForGating {
-                planSelector
+                annualPlanSummary
             }
 
             Text(AnkyLocalization.ui(paymentLine))
@@ -112,7 +105,7 @@ struct PaywallView: View {
         }
         switch context {
         case .onboarding:
-            return "Choose Anky Pro"
+            return "Anky Pro"
         case .lapsed:
             return "Renew Anky Pro"
         case .veil:
@@ -125,7 +118,7 @@ struct PaywallView: View {
             if store.isPromotionalEntitlement {
                 return "Your Pro access was granted. Nothing is charged and nothing renews."
             }
-            return "Both subscription durations unlock the same Anky Pro features."
+            return "Your subscription is active on this Apple ID. Manage it in App Store subscriptions."
         }
         switch context {
         case .onboarding:
@@ -198,23 +191,16 @@ struct PaywallView: View {
                 ? "The price is settling in…"
                 : "This plan is unavailable right now. Retry, restore purchases, or continue with free writing."
         }
-        switch plan {
-        case .annual where annualTrialIsConfirmed:
+        if annualTrialIsConfirmed {
             return AnkyLocalization.ui(
                 "Annual trial renewal disclosure format",
                 price
             )
-        case .annual:
-            return AnkyLocalization.ui(
-                "Annual renewal disclosure format",
-                price
-            )
-        case .monthly:
-            return AnkyLocalization.ui(
-                "Monthly renewal disclosure format",
-                price
-            )
         }
+        return AnkyLocalization.ui(
+            "Annual renewal disclosure format",
+            price
+        )
     }
 
     private var activeSubscriptionLine: String {
@@ -266,22 +252,44 @@ struct PaywallView: View {
 
     // MARK: Plans
 
-    private var planSelector: some View {
-        VStack(spacing: isCompact ? 8 : 10) {
-            planOption(
-                .annual,
-                title: store.annualPackage?.storeProduct.localizedTitle
-                    ?? AnkyLocalization.ui("Anky Pro Annual"),
-                detail: annualDetail
-            )
-            planOption(
-                .monthly,
-                title: store.monthlyPackage?.storeProduct.localizedTitle
-                    ?? AnkyLocalization.ui("Anky Pro Monthly"),
-                detail: monthlyDetail
-            )
+    private var annualPlanSummary: some View {
+        let title = store.annualPackage?.storeProduct.localizedTitle
+            ?? AnkyLocalization.ui("Anky Pro Annual")
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold, design: .serif))
+                    .foregroundStyle(Color.ankyInk)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(AnkyLocalization.ui(annualDetail))
+                    .font(.system(size: 14, weight: .regular, design: .serif))
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 4)
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(Color.ankyGold)
+                .accessibilityHidden(true)
         }
-        .accessibilityIdentifier("paywall.planSelector")
+        .padding(.horizontal, 18)
+        .padding(.vertical, isCompact ? 15 : 12)
+        .frame(maxWidth: .infinity, minHeight: 78)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.ankyPaper.opacity(0.72))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(Color.ankyGold.opacity(0.85), lineWidth: 1)
+                )
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(AnkyLocalization.ui(annualDetail))")
+        .accessibilityIdentifier("paywall.annualPlan")
     }
 
     private var annualDetail: String {
@@ -296,71 +304,13 @@ struct PaywallView: View {
         return AnkyLocalization.ui("Annual plan detail format", price)
     }
 
-    private var monthlyDetail: String {
-        guard let price = SubscriptionPriceFormatter.price(store.monthlyPackage?.storeProduct) else {
-            return store.isLoadingPackages
-                ? "1 month · price settling in"
-                : "1 month · price unavailable · no introductory trial"
-        }
-        return AnkyLocalization.ui("Monthly plan detail format", price)
-    }
-
     private var annualTrialIsConfirmed: Bool {
         store.annualTrialEligibility.displaysTrial
             && SubscriptionCatalogPolicy.hasExpectedAnnualFreeTrial(store.annualPackage?.storeProduct)
     }
 
-    private func planOption(_ option: Plan, title: String, detail: String) -> some View {
-        let isSelected = plan == option
-        return Button {
-            guard plan != option else { return }
-            AnkyHaptics.selection()
-            plan = option
-        } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .semibold, design: .serif))
-                        .foregroundStyle(isSelected ? Color.ankyInk : Color.ankyInk.opacity(0.72))
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(AnkyLocalization.ui(detail))
-                        .font(.system(size: 14, weight: .regular, design: .serif))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 4)
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 19, weight: .medium))
-                    .foregroundStyle(isSelected ? Color.ankyGold : Color.ankySlate.opacity(0.55))
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, isCompact ? 15 : 12)
-            .frame(maxWidth: .infinity, minHeight: 78)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.ankyPaper.opacity(0.72))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(
-                                isSelected ? Color.ankyGold.opacity(0.85) : Color.ankySlate.opacity(0.35),
-                                lineWidth: isSelected ? 1 : 0.5
-                            )
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(AnkyLocalization.ui(detail))")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(option == .annual ? "paywall.annualPlan" : "paywall.monthlyPlan")
-    }
-
     private var selectedPackage: Package? {
-        plan == .annual ? store.annualPackage : store.monthlyPackage
+        store.annualPackage
     }
 
     private var selectedPrice: String? {
@@ -408,14 +358,10 @@ struct PaywallView: View {
         guard let price = selectedPrice else {
             return store.isLoadingPackages ? "Settling…" : "Plan unavailable"
         }
-        switch plan {
-        case .annual where annualTrialIsConfirmed:
+        if annualTrialIsConfirmed {
             return "Start 3-day free trial"
-        case .annual:
-            return AnkyLocalization.ui("Subscribe annually CTA format", price)
-        case .monthly:
-            return AnkyLocalization.ui("Subscribe monthly CTA format", price)
         }
+        return AnkyLocalization.ui("Subscribe annually CTA format", price)
     }
 
     /// Onboarding's escape hatch, demoted from a prominent capsule to a quiet

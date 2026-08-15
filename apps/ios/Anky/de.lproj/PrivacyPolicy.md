@@ -91,9 +91,9 @@ Anky enthält keine Werbung und kein appübergreifendes Tracking. Daten werden n
 
 ## 6. Apple, RevenueCat und Abos
 
-Anky bietet optionale automatisch verlängerbare Monats- und Jahresabos über den App Store. Beide schalten dieselben Pro-Funktionen frei. Maßgeblich sind der lokalisierte Preis und die Bedingungen, die Apple beim Kauf anzeigt.
+Anky bietet über den App Store ein optionales, automatisch verlängerbares Jahresabo an. Es schaltet die Anky Pro-Funktionen frei. Maßgeblich sind der lokalisierte Preis und die Bedingungen, die Apple beim Kauf anzeigt.
 
-Das Jahresabo kann nur für berechtigte Personen und nur bei Anzeige durch Apple einen dreitägigen Test enthalten. Das Monatsabo hat derzeit keinen Einführungstest. Abos verlängern sich automatisch, sofern sie nicht in Apples Abo-Einstellungen gekündigt werden.
+Das Jahresabo kann nur für berechtigte Personen und nur bei Anzeige durch Apple einen dreitägigen Test enthalten. Es verlängert sich automatisch, sofern es nicht in Apples Abo-Einstellungen gekündigt wird.
 
 Apple bearbeitet Zahlung, Verlängerung, Kündigung, Abrechnung, Verlauf und Erstattung. Anky erhält oder speichert keine vollständigen Kartendaten.
 

@@ -434,15 +434,24 @@ describe("entitlement gate on POST /anky", () => {
     reflection: "# Mirror\n\nA subscribed writer is always met.",
   });
 
-  test("a free account meets ENTITLEMENT_REQUIRED before any provider call", async () => {
+  test("a free account reflects through the zero-cost inference lane", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let providerCalls = 0;
     // No accountEntitlement injection: the default resolver reads the (empty)
     // subscription table; the REST fallback is unconfigured and answers null.
     const { app } = appWith(openLevelDb(":memory:"), {}, {
-      routeReflection: async () => {
+      routeReflection: async ({ env }) => {
         providerCalls += 1;
-        throw new Error("free reflections must never reach a provider");
+        expect(env.openrouterModel).toBe("openrouter/free");
+        expect(env.providerOrder).toEqual(["openrouter"]);
+        return {
+          provider: "openrouter",
+          model: "free/example-model",
+          costUsd: 0,
+          chargeable: false,
+          title: "Free mirror",
+          reflection: "# Free mirror\n\nA zero-cost answer.",
+        };
       },
     });
     const res = await app.request("/anky", {
@@ -453,10 +462,10 @@ describe("entitlement gate on POST /anky", () => {
       },
       body,
     });
-    expect(res.status).toBe(402);
-    const payload = (await res.json()) as { error: { code: string } };
-    expect(payload.error.code).toBe("ENTITLEMENT_REQUIRED");
-    expect(providerCalls).toBe(0);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Anky-Inference-Access")).toBe("free");
+    expect(res.headers.get("X-Anky-Inference-Cost-USD")).toBe("0.00000000");
+    expect(providerCalls).toBe(1);
   });
 
   test("an entitled account reflects", async () => {

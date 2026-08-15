@@ -106,14 +106,6 @@ final class EntitlementStore: ObservableObject {
         packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.annualProductID }
     }
 
-    var monthlyPackage: Package? {
-        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.monthlyProductID }
-    }
-
-    var weeklyPackage: Package? {
-        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.weeklyProductID }
-    }
-
     var activePackage: Package? {
         guard let activeProductID else {
             return nil
@@ -146,10 +138,11 @@ final class EntitlementStore: ObservableObject {
         guard !isLoadingPackages else {
             return
         }
-        let discovered = SubscriptionCatalogPolicy.discoveredPlans(
+        // Loading is done once the approved annual plan is here. Historical
+        // or future products in the offering are not purchase options.
+        if SubscriptionCatalogPolicy.containsRequiredPlans(
             productIDs: Set(packages.map { $0.storeProduct.productIdentifier })
-        )
-        if discovered == Set(AnkySubscriptionPlan.allCases), offeringsErrorLine == nil {
+        ), offeringsErrorLine == nil {
             return
         }
         isLoadingPackages = true
@@ -164,6 +157,9 @@ final class EntitlementStore: ObservableObject {
             // `default` is a release invariant. Never substitute another
             // "current" offering whose products App Review did not inspect.
             let offering = offerings.offering(identifier: AnkyPurchasesConfig.offeringID)
+            // `packages` keeps only approved purchase plans. Legacy products
+            // can remain attached to `pro` in RevenueCat for restoration,
+            // while never appearing as a new purchase option here.
             packages = (offering?.availablePackages ?? []).filter { package in
                 guard let plan = AnkySubscriptionPlan.allCases.first(where: {
                     $0.productID == package.storeProduct.productIdentifier
@@ -172,12 +168,13 @@ final class EntitlementStore: ObservableObject {
                 }
                 return SubscriptionCatalogPolicy.packageMatchesExpectedPeriod(package, plan: plan)
             }
-            let plans = SubscriptionCatalogPolicy.discoveredPlans(
+            // Only a missing annual plan is an error. Extras were filtered out
+            // and never fail the load.
+            offeringsErrorLine = SubscriptionCatalogPolicy.containsRequiredPlans(
                 productIDs: Set(packages.map { $0.storeProduct.productIdentifier })
             )
-            offeringsErrorLine = plans == Set(AnkySubscriptionPlan.allCases)
                 ? nil
-                : "The required App Store plans aren't available right now. Try again in a moment."
+                : "This plan is unavailable right now. Retry, restore purchases, or continue with free writing."
         } catch {
             packages = []
             offeringsErrorLine = Self.storeUnreachableLine
@@ -315,7 +312,7 @@ final class EntitlementStore: ObservableObject {
     /// The paywall's guard for the rare offering that loads without the
     /// selected plan — never a silent tap.
     func noteSelectedPackageUnavailable() {
-        purchaseErrorLine = "That plan isn't available right now. Try the other one, or come back in a moment."
+        purchaseErrorLine = "This plan is unavailable right now. Retry, restore purchases, or continue with free writing."
     }
 
     /// For surfaces (redeem) that need the SDK but found it unreachable.

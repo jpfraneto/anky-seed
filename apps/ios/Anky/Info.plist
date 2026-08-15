@@ -18,8 +18,6 @@
 		<string>pro</string>
 		<key>Offering</key>
 		<string>default</string>
-		<key>MonthlyProduct</key>
-		<string>anky.monthly</string>
 		<key>AnnualProduct</key>
 		<string>anky.annual</string>
 	</dict>

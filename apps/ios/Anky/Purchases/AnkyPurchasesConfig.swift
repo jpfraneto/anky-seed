@@ -21,13 +21,11 @@ enum AnkyPurchasesConfig {
 
     static let subscriptionGroupName = "Anky"
     static let annualProductID = "anky.annual"
+    /// Historical identifiers remain recognizable so an older purchase can
+    /// still be described and restored. They are not offered for sale.
     static let monthlyProductID = "anky.monthly"
-    /// The lean gate's third door (user decision, 2026-07-17: "skin in the
-    /// game opens the gate" — weekly, monthly or yearly). Must be created in
-    /// App Store Connect and added to the RevenueCat `default` offering
-    /// before release; until then the weekly line renders unpriced.
     static let weeklyProductID = "anky.weekly"
-    static let allProductIDs: Set<String> = [annualProductID, monthlyProductID, weeklyProductID]
+    static let purchasableProductIDs: Set<String> = [annualProductID]
 
     /// The honest reminder fires this long BEFORE the trial converts —
     /// "your trial ends tomorrow", while there is still real time to

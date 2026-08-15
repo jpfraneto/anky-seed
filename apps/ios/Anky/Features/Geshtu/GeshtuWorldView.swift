@@ -19,29 +19,20 @@ import SwiftUI
 struct GeshtuWorldView: View {
     @StateObject private var axis = GeshtuState()
     /// The axis world owns one writing engine — the real WriteViewModel, with
-    /// its 62.5Hz ticker, per-keystroke atomic writes, and the 8s sentinel. The
-    /// axis only listens for the seal; it never reimplements the mechanics.
+    /// its 62.5Hz ticker, per-keystroke atomic writes, and the stillness
+    /// sentinel. The axis only listens for the seal; it never reimplements
+    /// the mechanics.
     @StateObject private var writeViewModel = WriteViewModel()
-    /// The send vigil's charge/haptics, driven by the continuous Anchor press.
-    @StateObject private var vigil = VigilController()
-    /// Fires the reflection request at the sentinel so the vigil hides latency.
+    /// Owns the reflection request for the pending session.
     @StateObject private var reflection = GeshtuReflectionCoordinator()
-    /// The one-time onboarding rehearsal (spec §9): the first channel-close
-    /// shows the hint and the Anchor's single inhale, and the first vigil is the
-    /// first real offering. Set true once the writer completes it.
+    /// The one-time onboarding rehearsal (spec §9): the first session gets a
+    /// shortened sentinel so the crossroads is discovered quickly. Set true
+    /// once the first reflection lands.
     @AppStorage("anky.axisRehearsalDone") private var rehearsalDone = false
-    /// Writing is free; the vigil is the paid act. The first vigil is free so
-    /// the rehearsal completes with a real reflection and the paywall is first
-    /// met on day two (product decision, ratified).
-    ///
-    /// TODO(server-reconcile): this is device-side (@AppStorage → UserDefaults),
-    /// so a reinstall grants a second free vigil (verification Q1). Before ship
-    /// it must key to account identity — the RevenueCat appUserID or the writer's
-    /// wallet address — reconciled server-side, so the free vigil is spent once
-    /// per person, not once per install.
-    @AppStorage("anky.axisFirstVigilUsed") private var firstVigilUsed = false
     @StateObject private var entitlements = EntitlementStore()
     @State private var showsPaywall = false
+    @State private var showsAgeSetup = false
+    @State private var hasBirthDate = WriterProfileStore().birthDate() != nil
     // The seed (spec §7): identity, subscription, recovery phrase, account
     // deletion, and the gate — the real settings, reached by scrolling to the
     // base of the past.
@@ -73,29 +64,64 @@ struct GeshtuWorldView: View {
     /// name; the world waits fully covered beneath it.
     @State private var showsNameOnboarding = OnboardingAnimaticLedger.needsOnboarding()
 
-    private var showRehearsalHint: Bool {
-        axis.phase == .channelClosed && !rehearsalDone
-    }
-
-    private var vigilAllowed: Bool {
-        entitlements.isEntitledForGating || !firstVigilUsed
-    }
-
     var body: some View {
         ZStack {
             register
                 .ignoresSafeArea()
 
-            surface
+            // The world — always mounted beneath, holding its scroll position
+            // and an opened day while the device is up (device split,
+            // 2026-07-22).
+            worldSurface
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if axis.anchorIsVisible {
+            // The device — the writing machine, a sovereign frontmost screen
+            // outside the world. It appears over the whole display when the
+            // Anchor is tapped; the world keeps its exact place underneath.
+            if axis.isDeviceSpace {
+                deviceSurface
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // The device carries its own ground so it is opaque while
+                    // rising and receding — the world never bleeds through.
+                    .background(register.ignoresSafeArea())
+                    // Putting a blank device down remains a vertical flick.
+                    // Finished sessions own vertical scrolling now, so their
+                    // drag can never leak through and reveal the archive.
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 40)
+                            .onEnded { value in
+                                guard putDownAllowed,
+                                      abs(value.translation.height) > 70,
+                                      abs(value.translation.height) > abs(value.translation.width) else {
+                                    return
+                                }
+                                AnkyHaptics.light()
+                                axis.settleToLanding()
+                            },
+                        including: putDownAllowed ? .all : .subviews
+                    )
+                    // The writing machine is a new frontmost screen, not a
+                    // sheet rising out of the Geshtu. A restrained fade keeps
+                    // the world in place while making the page feel mounted
+                    // over the whole display.
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+
+            // The Anchor lives in the world only (crossroads redesign,
+            // 2026-07-24): the door into writing from the strata or an opened
+            // day. Inside the device it is hidden — except while the camera
+            // is up, where it wears the record face.
+            if axis.anchorIsVisible || cameraActive {
                 AnchorView(
                     axis: axis,
-                    vigil: vigil,
-                    rehearsalInhale: showRehearsalHint,
-                    vigilAllowed: vigilAllowed,
-                    onNeedsPaywall: { presentGate() },
+                    sendAllowed: hasBirthDate,
+                    onNeedsPaywall: {
+                        showsAgeSetup = true
+                    },
+                    // The explicit outward gesture: only here do the exact
+                    // writing bytes leave the device (outwards pivot §4.1).
+                    onSendBegan: { reflection.beginUpload() },
                     recordArmed: cameraActive,
                     isRecordingTake: screenRecorder.isRecording,
                     onRecordToggle: { toggleRecording() }
@@ -148,20 +174,6 @@ struct GeshtuWorldView: View {
                 .zIndex(1600)
             }
 
-            // The one-time rehearsal hint, resting just above the Anchor.
-            if showRehearsalHint {
-                VStack(spacing: 0) {
-                    Spacer()
-                    Text("hold, and don't let go")
-                        .font(.fraunces(17, weight: .light, italic: true))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .padding(.bottom, 170)
-                }
-                .transition(.opacity)
-                .allowsHitTesting(false)
-                .zIndex(1001)
-            }
-
             // The fixed top-right chrome of the warm surfaces (product
             // decision, 2026-07-15): share / record / settings hold the exact
             // spot the timer holds during writing. Always there — never
@@ -186,6 +198,7 @@ struct GeshtuWorldView: View {
             if showsTopChrome {
                 GeshtuTopChrome(
                     shareText: chromeShareText,
+                    shareIsSelection: axis.selectedQuote?.isEmpty == false,
                     copyText: chromeShareText,
                     promptSource: chromeWritingText,
                     showsRecord: chromeShowsRecord,
@@ -201,8 +214,10 @@ struct GeshtuWorldView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: showsTopChrome)
         .environmentObject(axis)
-        .preferredColorScheme(axis.isElectricRegister ? .dark : nil)
-        .animation(.easeInOut(duration: 0.5), value: axis.isElectricRegister)
+        // Every warm Geshtu surface owns a parchment register and dark ink.
+        // Pinning its appearance keeps system materials, text fields, status
+        // chrome, and translucent meshes from inheriting device dark mode.
+        .preferredColorScheme(.light)
         #if DEBUG
         // Deterministic launch-driven seeding + navigation, so the addendum
         // surfaces can be screenshot-verified without a tap tool. Env keys:
@@ -218,6 +233,15 @@ struct GeshtuWorldView: View {
         // settles unsent and is never lost.
         .sheet(isPresented: $showsPaywall) {
             GeshtuGateSheet(store: entitlements)
+        }
+        .sheet(isPresented: $showsAgeSetup) {
+            AgeAttunementSheet {
+                hasBirthDate = true
+                showsAgeSetup = false
+                beginReflectionRequest()
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         // The seed rises from the bottom (user decision, 2026-07-16): a sheet,
         // so leaving it is the intuition it deserves — swipe down. The world
@@ -266,18 +290,16 @@ struct GeshtuWorldView: View {
         // where the fast sentinel matters most) would miss its writing-phase
         // setup. Prime it once on first appearance.
         .onAppear {
-            // The free vigil is spent by a delivered reflection, not by the
-            // send alone (feedback 2026-07-18): a vigil whose reflection is
-            // lost keeps the credit, so its re-offer never meets the gate.
-            reflection.onPersisted = { firstVigilUsed = true }
+            hasBirthDate = WriterProfileStore().birthDate() != nil
             enterWritingPhase()
         }
         // A late offering armed (the grey geshtu of an unreflected day was
-        // taken): fire the reflection now, exactly as the sentinel does at a
-        // fresh channel close, so the vigil hides the latency (spec §12).
+        // taken): stand the view model up now — memory only. The upload
+        // itself fires at the send tap, the writer's explicit outward
+        // gesture (outwards pivot §4.1).
         .onChange(of: axis.reOffering) { armed in
             if armed, let session = axis.pendingSession {
-                reflection.begin(for: session)
+                reflection.prepare(for: session)
             }
         }
         .onChange(of: axis.phase) { newPhase in
@@ -285,25 +307,23 @@ struct GeshtuWorldView: View {
             case .writing:
                 enterWritingPhase()
             case .reflection:
-                // A vigil completed: the offering was carried. Only now does the
-                // held reflection reach the store (addendum A3 / Q4) — an unsent
-                // session's reflection is never persisted.
+                // The offering was sent. Only now does the held reflection
+                // reach the store (addendum A3 / Q4) — an unsent session's
+                // reflection is never persisted.
                 reflection.commit()
-                // The free vigil is spent only when a reflection actually
-                // persists (the coordinator's onPersisted, wired in onAppear) —
-                // a send whose reflection never arrives keeps the credit
-                // (feedback 2026-07-18). The rehearsal (if this was it) is
-                // over and never explained again.
+                // The rehearsal (if this was it) is over and never
+                // explained again.
                 if !rehearsalDone {
                     rehearsalDone = true
                     writeViewModel.terminalSilenceOverrideMs = nil
                 }
             case .channelClosed:
-                // Fire the reflection at the sentinel — the vigil will hide the
-                // latency (spec §12). Safe even if the writer never sends; it is
-                // discarded below if they walk away.
+                // Prepare only — NO network call (outwards pivot §4.1). The
+                // writing leaves the device at the explicit outward gesture:
+                // the crossroads' reflection tap. Walking away from a closed
+                // channel means the words never traveled at all.
                 if let session = axis.pendingSession {
-                    reflection.begin(for: session)
+                    reflection.prepare(for: session)
                 }
             case .landing:
                 // Walked away, or the reflection settled: drop any unsent
@@ -328,15 +348,58 @@ struct GeshtuWorldView: View {
         showsPaywall = true
     }
 
-    /// The front door opens: prime the writing engine for a fresh session. The
-    /// rehearsal shortens the sentinel so the reveal — and the long-press vigil
-    /// — is discoverable quickly (spec §9); set it before the reset so the first
-    /// session picks it up. A previous day is already sealed, so the engine can
-    /// reset, and any unsent in-flight reflection is dropped.
+    /// The "keep writing" option: reopen the sealed session as a
+    /// continuation — same words, same day. The reseal replaces the artifact.
+    private func resumeSameSession() {
+        AnkyHaptics.light()
+        axis.resumeWriting()
+    }
+
+    /// The "get anky's reflection" option: the writer's explicit outward
+    /// gesture. Only here do the exact writing bytes leave the device
+    /// (outwards pivot §4.1). Free writers receive zero-cost inference;
+    /// subscribers receive supported inference. Asking ends the session.
+    private func requestReflection() {
+        guard axis.pendingSession != nil else { return }
+        guard hasBirthDate else {
+            showsAgeSetup = true
+            return
+        }
+        beginReflectionRequest()
+    }
+
+    /// The archive is a separate list, but opening one of its sessions lands
+    /// on the same finished-session document. An unreflected archived session
+    /// can begin its thread directly from that document; no floating Anchor is
+    /// placed over the conversation composer.
+    private func requestReflection(for archivedSession: SavedAnky) {
+        axis.armReOffering(archivedSession)
+        reflection.prepare(for: archivedSession)
+        requestReflection()
+    }
+
+    private func beginReflectionRequest() {
+        guard axis.pendingSession != nil else { return }
+        AnkyHaptics.light()
+        reflection.beginUpload()
+        axis.sendOffering()
+    }
+
+    /// The front door opens: prime the writing engine. A "keep writing" from
+    /// the crossroads carries its sealed session across the phase change and
+    /// reopens it as a continuation; otherwise the page is fresh. The
+    /// rehearsal shortens the sentinel so the reveal is discoverable quickly
+    /// (spec §9); set it before the reset so the first session picks it up.
     private func enterWritingPhase() {
         guard axis.phase == .writing else { return }
         writeViewModel.terminalSilenceOverrideMs = rehearsalDone ? nil : 4000
-        writeViewModel.beginBlankSessionFromWriteTab()
+        if let session = axis.consumeSessionToResume(),
+           writeViewModel.continueSession(from: session, allowCompleted: true) {
+            // The same words are back on the page; the next keystroke
+            // resumes the clock and the sentinel.
+        } else {
+            writeViewModel.beginBlankSessionFromWriteTab()
+        }
         reflection.discard()
     }
 
@@ -379,7 +442,6 @@ struct GeshtuWorldView: View {
             // the awaiting anchor (glow, sparks, filament) is verifiable.
             axis.debugSetPendingSession(LocalAnkyArchive().list().first)
             axis.debugSetPhase(.channelClosed)
-        case "vigil":      axis.debugSetPhase(.vigil)
         case "seed":       axis.debugSetPhase(.seed)
         default:           break
         }
@@ -388,13 +450,14 @@ struct GeshtuWorldView: View {
 
     // MARK: - Register (the ground the world is painted on)
 
-    @ViewBuilder
     private var register: some View {
-        if axis.isElectricRegister {
-            ElectricRegister()
-        } else {
-            LazureWall(mood: .dawn)
-        }
+        LazureWall(mood: .dawn)
+    }
+
+    /// Only a blank writing page can be put down with a drag. A finished
+    /// session is a document with its own scroll and explicit ways out.
+    private var putDownAllowed: Bool {
+        axis.phase == .writing && !writeViewModel.hasStarted
     }
 
     // MARK: - The fixed top chrome (share / record / settings)
@@ -405,7 +468,7 @@ struct GeshtuWorldView: View {
         switch axis.phase {
         case .channelClosed, .reflection, .landing, .entryOpen:
             return true
-        case .writing, .vigil, .descent, .seed:
+        case .writing, .seed:
             return false
         }
     }
@@ -518,12 +581,9 @@ struct GeshtuWorldView: View {
         axis.phase == .landing || axis.phase == .entryOpen
     }
 
-    // The writing surface, persistent across every warm phase — it is the
-    // literal top of the world scroll (unified-scroll refactor, 2026-07-17),
-    // so entering and leaving it is actual scrolling with native physics,
-    // never a surface swap. The old scroll-away gestures are gone: the world
-    // scroll settles the day, the sentinels in LandingStrataView lock and
-    // release the page, and a session in progress locks the scroll shut.
+    // The writing page of the device (device split, 2026-07-22): no longer
+    // the top of any scroll. It mounts only while the channel is open; sealing
+    // swaps it for the canonical finished-session document.
     private var writingSurface: some View {
         WriteView(
             viewModel: writeViewModel,
@@ -531,9 +591,15 @@ struct GeshtuWorldView: View {
             // is scenery above the strata and must never summon a keyboard —
             // and never while the onboarding animatic still owns the screen
             // (the system keyboard would rise ABOVE the overlay).
-            shouldFocus: (axis.phase == .writing || axis.phase == .channelClosed) && !showsNameOnboarding,
+            shouldFocus: axis.phase == .writing && !showsNameOnboarding,
             axisMode: true,
-            onCompleted: { saved in axis.channelDidClose(session: saved) },
+            onCompleted: { saved in
+                // Prepare the canonical finished-session surface before the
+                // phase flips, so the writing never flashes through a second
+                // recap or the archive underneath it.
+                reflection.prepare(for: saved)
+                axis.channelDidClose(session: saved)
+            },
             // The pre-keystroke back arrow: leave the blank page and
             // settle onto the strata. Once writing has started the arrow
             // is gone and only the sentinel closes the channel.
@@ -541,71 +607,44 @@ struct GeshtuWorldView: View {
         )
     }
 
-    // The electric vigil surface — a pure function of the controller's charge.
-    @ViewBuilder
-    private var vigilSurface: some View {
-        #if DEBUG
-        let sample = "tonight i sat with the kind of quiet that has weight not empty but full in a way i cannot always explain i stayed i kept choosing life love is quieter than fear"
-        VigilView(charge: vigil.charge, text: axis.pendingSession?.reconstructedText ?? sample)
-            .onAppear { if vigil.stage == .idle { vigil.debugDemo() } }
-        #else
-        VigilView(charge: vigil.charge, text: axis.pendingSession?.reconstructedText ?? "")
-        #endif
+    // MARK: - The two spaces (device split, 2026-07-22)
+
+    /// The world: the strata, an opened day, the seed. Always mounted — it
+    /// holds its scroll position and any opened entry beneath the device, so
+    /// putting the device down returns exactly where the writer left off.
+    private var worldSurface: some View {
+        LandingStrataView(
+            axis: axis,
+            onRequestReflection: requestReflection(for:)
+        )
     }
 
-    // MARK: - Per-phase surface (scaffolds until later phases)
-
+    /// The device: the live editor or the canonical finished-session document.
+    /// Which face it wears is the phase.
     @ViewBuilder
-    private var surface: some View {
+    private var deviceSurface: some View {
         switch axis.phase {
-        case .writing, .channelClosed, .landing, .entryOpen, .seed:
-            // The warm world is ONE mounted surface (unified-scroll refactor,
-            // 2026-07-17): the real writing page is the top of the strata's
-            // own scroll, so the front door, the closed channel, the landing,
-            // an opened day, and the seed are all positions in a single
-            // scroll space. The seal still never re-renders the page — the
-            // page never unmounts across these phases at all. Only the
-            // electric ritual (vigil, descent) and the reflection replace
-            // the world.
-            LandingStrataView(
-                axis: axis,
-                writingPage: { writingSurface },
-                writingLocked: axis.phase == .writing && writeViewModel.hasStarted,
-                onWritingSettled: {
-                    // The page scrolled out of the world: blank it for the
-                    // next arrival. (Sealed words are already in the archive;
-                    // a blank page has nothing to lose.)
-                    writeViewModel.beginBlankSessionFromWriteTab()
-                }
-            )
-            .transition(.asymmetric(
-                // Rising into the vigil, the whole world slides up and away;
-                // returning from the reflection it settles back quietly.
-                insertion: .opacity,
-                removal: .move(edge: .top).combined(with: .opacity)
-            ))
-        case .vigil:
-            vigilSurface
-        case .descent:
-            // The offering was carried; the words hold at the glowing crown
-            // until the response is ready, then travel back down the spine.
-            VigilDescentView(
-                text: axis.pendingSession?.reconstructedText ?? "",
-                isReady: { [weak reflection] in
-                    guard let vm = reflection?.viewModel else { return true }
-                    return vm.reflection != nil || !vm.isAskingAnky
-                },
-                onLanded: { axis.descentLanded() }
-            )
-        case .reflection:
-            if let vm = reflection.viewModel {
-                AxisReflectionCanvas(
+        case .writing:
+            writingSurface
+        case .landing, .entryOpen, .seed:
+            // World phases never mount the device (guarded by isDeviceSpace).
+            EmptyView()
+        case .channelClosed, .reflection:
+            if let vm = reflection.viewModel,
+               let artifact = axis.pendingSession {
+                FinishedSessionView(
                     viewModel: vm,
                     axis: axis,
-                    writingText: axis.pendingSession?.reconstructedText ?? "",
+                    artifact: artifact,
                     keyboardTop: sealedKeyboardTop,
-                    onShare: { shareRequest = GeshtuShareRequest(quote: $0, voice: .you) },
-                    onShareReflection: { shareRequest = GeshtuShareRequest(quote: $0, voice: .anky) }
+                    stage: axis.phase == .channelClosed ? .awaitingChoice : .conversation,
+                    onKeepWriting: resumeSameSession,
+                    onRequestReflection: requestReflection,
+                    onClose: {
+                        AnkyHaptics.light()
+                        axis.settleToLanding()
+                    },
+                    onNeedsGate: { presentGate() }
                 )
             } else {
                 #if DEBUG
@@ -626,6 +665,73 @@ struct GeshtuWorldView: View {
     }
 }
 
+private struct AgeAttunementSheet: View {
+    let onSaved: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var birthDate = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+    @State private var errorMessage: String?
+
+    var body: some View {
+        ZStack {
+            LazureWall(mood: .dawn).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 22) {
+                Text(AnkyLocalization.ui("before anky answers"))
+                    .font(.ankyTitle)
+                    .foregroundStyle(Color.ankyInk)
+
+                Text(AnkyLocalization.ui("When were you born? Anky uses your age to meet you with the right language, pace, and boundaries."))
+                    .font(.ankyProse)
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .lineSpacing(4)
+
+                DatePicker(
+                    AnkyLocalization.ui("Birth date"),
+                    selection: $birthDate,
+                    in: oldestBirthDate...Date(),
+                    displayedComponents: .date
+                )
+                .font(.ankyLabel)
+                .tint(Color.ankyViolet)
+
+                Text(AnkyLocalization.ui("The exact date stays in this device's keychain. Only your age in whole years travels with an Anky request."))
+                    .font(.ankyCaption)
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .lineSpacing(3)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyUmber)
+                }
+
+                Button {
+                    do {
+                        try WriterProfileStore().saveBirthDate(birthDate)
+                        AnkyHaptics.success()
+                        onSaved()
+                        dismiss()
+                    } catch {
+                        errorMessage = (error as? LocalizedError)?.errorDescription
+                    }
+                } label: {
+                    Text(AnkyLocalization.ui("continue to anky"))
+                        .font(.fraunces(16, weight: .regular))
+                        .foregroundStyle(Color.ankyPaper)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.ankyViolet, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(26)
+        }
+    }
+
+    private var oldestBirthDate: Date {
+        Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast
+    }
+}
+
 /// The fixed top-right chrome of the warm surfaces: share, record, settings —
 /// on the same spot the timer holds during writing (product decision,
 /// 2026-07-15). Share and record exist only while a piece of writing — the
@@ -635,6 +741,9 @@ struct GeshtuWorldView: View {
 /// the camera.
 private struct GeshtuTopChrome: View {
     let shareText: String?
+    /// Native text selection promotes Share from a whole-writing action to
+    /// an action on the exact selected range.
+    let shareIsSelection: Bool
     /// Copy rides with share: whatever writing is on the viewport. Tap
     /// copies it; long-press copies `promptSource` wrapped in the reflection
     /// prompt for the writer's own AI tool — the old reveal bar's affordance,
@@ -657,10 +766,13 @@ private struct GeshtuTopChrome: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.85)))
             }
             if let shareText {
-                chromeButton(label: "Share") {
+                chromeButton(
+                    label: shareIsSelection ? "Share selected text" : "Share writing",
+                    selected: shareIsSelection
+                ) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
+                        .foregroundStyle(shareIsSelection ? Color.ankyGold : Color.ankyInkSoft)
                 } action: { onShare(shareText) }
                 .transition(.opacity.combined(with: .scale(scale: 0.85)))
             }
@@ -701,6 +813,7 @@ private struct GeshtuTopChrome: View {
     private func chromeButton(
         label: String,
         pressed: Bool = false,
+        selected: Bool = false,
         @ViewBuilder icon: () -> some View,
         action: @escaping () -> Void
     ) -> some View {
@@ -712,20 +825,21 @@ private struct GeshtuTopChrome: View {
                 .frame(width: 40, height: 40)
                 .background {
                     Circle()
-                        .fill(pressed ? Color.ankyPaperDeep.opacity(0.95) : Color.ankyPaper.opacity(0.55))
+                        .fill(pressed || selected ? Color.ankyPaperDeep.opacity(0.95) : Color.ankyPaper.opacity(0.55))
                         .overlay(Circle().strokeBorder(
-                            pressed ? Color.ankyInk.opacity(0.22) : Color.ankyInk.opacity(0.08),
-                            lineWidth: pressed ? 1 : 0.5
+                            selected ? Color.ankyGold.opacity(0.72) : (pressed ? Color.ankyInk.opacity(0.22) : Color.ankyInk.opacity(0.08)),
+                            lineWidth: pressed || selected ? 1 : 0.5
                         ))
                         .shadow(
-                            color: pressed ? .clear : Color.ankyViolet.opacity(0.10),
+                            color: pressed || selected ? .clear : Color.ankyViolet.opacity(0.10),
                             radius: 5, y: 2
                         )
                 }
-                .scaleEffect(pressed ? 0.94 : 1.0)
+                .scaleEffect(pressed || selected ? 0.94 : 1.0)
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.3), value: pressed)
+        .animation(.easeInOut(duration: 0.2), value: selected)
         .accessibilityLabel(AnkyLocalization.ui(label))
     }
 
@@ -763,15 +877,14 @@ private struct GeshtuTopChrome: View {
     }
 }
 
-/// The gate, extremely lean (user decision, 2026-07-17): no trial, no
-/// benefits list, no store furniture. One line from anky and three options
-/// that are barely more than lines — weekly, monthly, yearly. The reflection
-/// prompt is already on the clipboard by the time this rises.
+/// The gate, extremely lean: no trial, no benefits list, no store furniture.
+/// One line from anky and the approved yearly plan. The reflection prompt is
+/// already on the clipboard by the time this rises.
 private struct GeshtuGateSheet: View {
     @ObservedObject var store: EntitlementStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var purchasingPlan: AnkySubscriptionPlan?
+    @State private var isPurchasingAnnual = false
 
     var body: some View {
         ZStack {
@@ -792,9 +905,7 @@ private struct GeshtuGateSheet: View {
                 // register sat directly beneath the ink and swallowed it
                 // (feedback 2026-07-18). Paper under ink, always.
                 VStack(spacing: 0) {
-                    gateLine(.weekly, label: "weekly")
-                    gateLine(.monthly, label: "monthly")
-                    gateLine(.annual, label: "yearly")
+                    yearlyGateLine
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 6)
@@ -804,8 +915,8 @@ private struct GeshtuGateSheet: View {
                 )
                 .padding(.horizontal, 30)
 
-                if let line = store.purchaseErrorLine {
-                    Text(line)
+                if let line = store.purchaseErrorLine ?? store.offeringsErrorLine {
+                    Text(AnkyLocalization.ui(line))
                         .font(.fraunces(12, weight: .light))
                         .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
                         .multilineTextAlignment(.center)
@@ -814,10 +925,21 @@ private struct GeshtuGateSheet: View {
                         .transition(.opacity)
                 }
 
-                Spacer(minLength: 40)
+                // The unpaid path, named plainly (user decision, 2026-07-24):
+                // the writing is portable — the copy button's long-press wraps
+                // it in the reflection prompt for any LLM. (It is already on
+                // the clipboard by the time this sheet rises.)
+                Text(AnkyLocalization.ui("don't want to pay? long-press the copy button and take your writing to your favorite llm"))
+                    .font(.fraunces(13, weight: .light, italic: true))
+                    .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
+                    .padding(.top, 18)
+
+                Spacer(minLength: 30)
             }
         }
-        .presentationDetents([.height(330)])
+        .presentationDetents([.height(380)])
         .presentationDragIndicator(.hidden)
         .task { await store.loadPackages() }
         .onChange(of: store.isEntitledForGating) { entitled in
@@ -825,73 +947,48 @@ private struct GeshtuGateSheet: View {
         }
     }
 
-    private func package(for plan: AnkySubscriptionPlan) -> Package? {
-        switch plan {
-        case .weekly: return store.weeklyPackage
-        case .monthly: return store.monthlyPackage
-        case .annual: return store.annualPackage
-        }
-    }
-
-    /// One option: a hairline, a word, a price. Nothing else.
-    private func gateLine(_ plan: AnkySubscriptionPlan, label: String) -> some View {
-        let package = package(for: plan)
+    /// One option: a word and the StoreKit-localized yearly price.
+    private var yearlyGateLine: some View {
+        let package = store.annualPackage
+        let availability = package?.localizedPriceString
+            ?? AnkyLocalization.ui(store.isLoadingPackages ? "Loading" : "Plan unavailable")
         return Button {
             guard let package else {
                 Task { await store.loadPackages() }
                 return
             }
-            purchasingPlan = plan
+            isPurchasingAnnual = true
             Task {
                 let entitled = await store.purchase(package)
-                purchasingPlan = nil
+                isPurchasingAnnual = false
                 if entitled { dismiss() }
             }
         } label: {
-            VStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.ankyInk.opacity(0.12))
-                    .frame(height: 0.5)
-                HStack {
-                    Text(AnkyLocalization.ui(label))
-                        .font(.fraunces(16, weight: .light))
-                        .foregroundStyle(Color.ankyInk.opacity(0.85))
-                    Spacer()
-                    if purchasingPlan == plan {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(Color.ankyInkSoft)
-                    } else {
-                        Text(package?.localizedPriceString ?? "")
-                            .font(.fraunces(14, weight: .light))
-                            .foregroundStyle(Color.ankyInkSoft)
-                    }
+            HStack {
+                Text(AnkyLocalization.ui("yearly"))
+                    .font(.fraunces(16, weight: .light))
+                    .foregroundStyle(Color.ankyInk.opacity(0.85))
+                Spacer()
+                if isPurchasingAnnual || (store.isLoadingPackages && package == nil) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(Color.ankyInkSoft)
+                } else {
+                    Text(availability)
+                        .font(.fraunces(14, weight: .light))
+                        .foregroundStyle(Color.ankyInkSoft)
                 }
-                .padding(.vertical, 15)
             }
+            .padding(.vertical, 15)
+            .frame(minHeight: 50)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(purchasingPlan != nil)
-        .opacity(package == nil ? 0.4 : 1)
-        .accessibilityLabel(Text(AnkyLocalization.ui(label)))
-        .accessibilityValue(Text(package?.localizedPriceString ?? ""))
-    }
-}
-
-/// The electric register: the Geshtu interior as X-ray — deep indigo-black,
-/// faint blue wood-grain density (spec §1, §10). Rendered fully in Phase 4;
-/// this is the ground it sits on.
-struct ElectricRegister: View {
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color(.displayP3, red: 0.03, green: 0.04, blue: 0.10),
-                Color(.displayP3, red: 0.05, green: 0.07, blue: 0.16),
-                Color(.displayP3, red: 0.02, green: 0.03, blue: 0.08)
-            ],
-            startPoint: .top, endPoint: .bottom
-        )
+        .disabled(isPurchasingAnnual || store.isPurchasing || (package == nil && store.isLoadingPackages))
+        .opacity(package == nil && !store.isLoadingPackages ? 0.62 : 1)
+        .accessibilityLabel(Text(AnkyLocalization.ui("yearly")))
+        .accessibilityValue(Text(availability))
+        .accessibilityHint(Text(package == nil ? AnkyLocalization.ui("Try again") : ""))
     }
 }
 

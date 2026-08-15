@@ -239,6 +239,24 @@ class WriteSealingAndLadderTest {
     }
 
     @Test
+    fun geshtuCrossroadsCanContinueACompletedSealedSession() = runTest {
+        val stores = stores()
+        var now = 1_770_000_000_000
+        val viewModel = makeViewModel(stores, nowMs = { now })
+
+        viewModel.acceptGlyph("h")
+        now += 480_000
+        viewModel.acceptGlyph("i")
+        now += 8_000
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.state.value.sealedSession?.artifact?.isComplete)
+        assertEquals(true, viewModel.resumeSealedSession(allowCompleted = true))
+        assertEquals("hi", viewModel.state.value.displayedText)
+        assertEquals(true, viewModel.state.value.isFrozenForContinuation)
+    }
+
+    @Test
     fun entitledSealStreamsTheReflectionDedupesTheOpeningAndPersistsIt() = runTest {
         val stores = stores()
         var now = 1_770_000_000_000

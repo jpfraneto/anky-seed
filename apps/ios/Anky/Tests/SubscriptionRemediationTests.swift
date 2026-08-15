@@ -11,14 +11,16 @@ final class SubscriptionRemediationTests: XCTestCase {
     }
 
     func testCanonicalIOSPurchaseConfiguration() {
-        XCTAssertEqual(AnkyPurchasesConfig.monthlyProductID, "anky.monthly")
         XCTAssertEqual(AnkyPurchasesConfig.annualProductID, "anky.annual")
+        XCTAssertEqual(AnkyPurchasesConfig.purchasableProductIDs, ["anky.annual"])
+        // Historical identifiers stay recognizable for receipts/status, but
+        // are deliberately absent from the purchasable catalog.
+        XCTAssertEqual(AnkyPurchasesConfig.monthlyProductID, "anky.monthly")
+        XCTAssertEqual(AnkyPurchasesConfig.weeklyProductID, "anky.weekly")
         XCTAssertEqual(AnkyPurchasesConfig.entitlementID, "pro")
         XCTAssertEqual(AnkyPurchasesConfig.offeringID, "default")
-        XCTAssertEqual(AnkySubscriptionPlan.monthly.entitlementID, "pro")
+        XCTAssertEqual(AnkySubscriptionPlan.allCases, [.annual])
         XCTAssertEqual(AnkySubscriptionPlan.annual.entitlementID, "pro")
-        XCTAssertEqual(AnkySubscriptionPlan.monthly.expectedPeriod.value, 1)
-        XCTAssertEqual(AnkySubscriptionPlan.monthly.expectedPeriod.unit, .month)
         XCTAssertEqual(AnkySubscriptionPlan.annual.expectedPeriod.value, 1)
         XCTAssertEqual(AnkySubscriptionPlan.annual.expectedPeriod.unit, .year)
     }
@@ -31,27 +33,36 @@ final class SubscriptionRemediationTests: XCTestCase {
                 as? [String: Any]
         )
         let config = try XCTUnwrap(plist["AnkyRevenueCatConfiguration"] as? [String: String])
-        XCTAssertEqual(config["MonthlyProduct"], AnkyPurchasesConfig.monthlyProductID)
+        XCTAssertEqual(Set(config.keys), ["AnnualProduct", "Entitlement", "Offering"])
         XCTAssertEqual(config["AnnualProduct"], AnkyPurchasesConfig.annualProductID)
         XCTAssertEqual(config["Entitlement"], AnkyPurchasesConfig.entitlementID)
         XCTAssertEqual(config["Offering"], AnkyPurchasesConfig.offeringID)
     }
 
-    func testMonthlyAndAnnualProductDiscoveryRejectsStaleIOSYearlyID() {
+    func testAnnualOnlyCatalogIgnoresLegacyAndUnknownProducts() {
         XCTAssertEqual(
             SubscriptionCatalogPolicy.discoveredPlans(
-                productIDs: ["anky.monthly", "anky.annual"]
+                productIDs: ["anky.weekly", "anky.monthly", "anky.annual"]
             ),
-            [.monthly, .annual]
+            [.annual]
         )
         XCTAssertEqual(
             SubscriptionCatalogPolicy.discoveredPlans(productIDs: ["anky.yearly"]),
             []
         )
+        XCTAssertTrue(SubscriptionCatalogPolicy.containsRequiredPlans(productIDs: ["anky.annual"]))
+        XCTAssertTrue(SubscriptionCatalogPolicy.containsRequiredPlans(
+            productIDs: ["anky.weekly", "anky.monthly", "anky.annual"]
+        ))
+        XCTAssertFalse(SubscriptionCatalogPolicy.containsRequiredPlans(
+            productIDs: ["anky.weekly", "anky.monthly"]
+        ))
     }
 
-    func testTrialCopyRequiresPositiveAnnualEligibility() {
-        XCTAssertTrue(AnnualTrialEligibilityState.eligible.displaysTrial)
+    func testTrialCopyIsNeverDisplayed() {
+        // The free trial is disabled (user decision, 2026-07-24): no state
+        // may advertise trial copy, not even a store-confirmed eligible one.
+        XCTAssertFalse(AnnualTrialEligibilityState.eligible.displaysTrial)
         XCTAssertFalse(AnnualTrialEligibilityState.ineligible.displaysTrial)
         XCTAssertFalse(AnnualTrialEligibilityState.unknown.displaysTrial)
         XCTAssertFalse(AnnualTrialEligibilityState.failed.displaysTrial)
@@ -242,7 +253,7 @@ final class SubscriptionRemediationTests: XCTestCase {
         }
     }
 
-    func testStoreKitDebugConfigurationHasCanonicalDurationsAndMonthlyNoTrial() throws {
+    func testStoreKitDebugConfigurationHasCanonicalDurationsAndNoTrials() throws {
         let data = try Data(contentsOf: iosRoot.appendingPathComponent("Anky/Anky.storekit"))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let groups = try XCTUnwrap(root["subscriptionGroups"] as? [[String: Any]])
@@ -251,11 +262,9 @@ final class SubscriptionRemediationTests: XCTestCase {
             guard let id = product["productID"] as? String else { return nil }
             return (id, product)
         })
-        XCTAssertEqual(byID["anky.monthly"]?["recurringSubscriptionPeriod"] as? String, "P1M")
-        XCTAssertTrue(byID["anky.monthly"]?["introductoryOffer"] is NSNull)
+        XCTAssertEqual(Set(byID.keys), ["anky.annual"])
         XCTAssertEqual(byID["anky.annual"]?["recurringSubscriptionPeriod"] as? String, "P1Y")
-        let annualOffer = try XCTUnwrap(byID["anky.annual"]?["introductoryOffer"] as? [String: Any])
-        XCTAssertEqual(annualOffer["paymentMode"] as? String, "free")
-        XCTAssertEqual(annualOffer["subscriptionPeriod"] as? String, "P3D")
+        // The 3-day annual intro offer is gone (trial disabled, 2026-07-24).
+        XCTAssertTrue(byID["anky.annual"]?["introductoryOffer"] is NSNull)
     }
 }

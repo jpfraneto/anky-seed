@@ -551,3 +551,28 @@
 // Axis reflection error surface 2026-07-18
 "the reflection was lost on the way" = "la réflexion s'est perdue en chemin";
 "tap to ask again" = "touche pour redemander";
+
+/* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
+"keep writing" = "continuer à écrire";
+"get anky's reflection" = "recevoir la réflexion d'anky";
+"Reopen this session and keep going." = "Rouvre cette session et continue à écrire.";
+"Send this writing to Anky and receive a reflection." = "Envoie ce texte à Anky et reçois une réflexion.";
+"tap to open the gate" = "touche pour ouvrir la porte";
+"just leave" = "juste partir";
+"Let this day settle. Your writing is saved on this device." = "Laisse cette journée se déposer. Ton écriture reste enregistrée sur cet appareil.";
+"don't want to pay? long-press the copy button and take your writing to your favorite llm" = "tu ne veux pas payer ? appuie longuement sur le bouton copier et emporte ton écriture vers ton llm préféré";
+"untitled" = "sans titre";
+
+/* The plain landing list (2026-08-04) */
+"nothing here yet" = "rien ici pour l’instant";
+"search" = "rechercher";
+"Clear search" = "Effacer la recherche";
+
+/* Commandes de la machine à écrire Geshtu (2026-08-14) */
+"Writing settings" = "Réglages d’écriture";
+"Put down writing machine" = "Poser la machine à écrire";
+"Writing machine menu" = "Menu de la machine à écrire";
+"Writing settings or put down the machine" = "Réglages d’écriture ou poser la machine";
+"Opens writing settings" = "Ouvre les réglages d’écriture";
+"remaining" = "restant";
+"written" = "écrit";

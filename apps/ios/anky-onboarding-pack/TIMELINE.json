@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "name": "anky onboarding animatic",
+    "version": 1,
+    "total_ms": 27000,
+    "story_ms": 20600,
+    "notes": "All timings validated against reference/animatic_v1.html. Story runs 0-20600ms, then lazure dissolve and handoff into the live name-entry screen. No audio; must work fully muted."
+  },
+  "beats": [
+    { "n": 1, "asset": "01_blank_geshtu",  "start_ms": 0,     "end_ms": 2400,  "fade_in_ms": 900, "kenburns": { "scale_from": 1.05, "scale_to": 1.10, "anchor": [0.50, 0.55] }, "label": "the blank wood" },
+    { "n": 2, "asset": "02_hands_cradle",  "start_ms": 2400,  "end_ms": 4400,  "fade_in_ms": 600, "kenburns": { "scale_from": 1.00, "scale_to": 1.06, "anchor": [0.50, 0.60] }, "label": "hands arrive" },
+    { "n": 3, "asset": "03a_carve_pre + 03b_carve_post", "start_ms": 4400, "end_ms": 8600, "fade_in_ms": 600, "kenburns": { "scale_from": 1.02, "scale_to": 1.22, "anchor": [0.48, 0.45] }, "label": "carving anky", "special": "carve_reveal" },
+    { "n": 4, "asset": "04_ancient_writing","start_ms": 8600, "end_ms": 10600, "fade_in_ms": 0,   "kenburns": { "scale_from": 1.00, "scale_to": 1.05, "anchor": [0.50, 0.40] }, "label": "TIME CUT - millennia later", "note": "HARD CUT. fade_in_ms=0 is intentional and non-negotiable. This cut carries the product thesis." },
+    { "n": 5, "asset": "05_recognition",   "start_ms": 10600, "end_ms": 12800, "fade_in_ms": 500, "kenburns": { "scale_from": 1.05, "scale_to": 1.10, "anchor": [0.50, 0.32] }, "label": "recognition", "note": "Crossfade from beat 4 - frames are near-identical so the fade reads as the eyes lifting to the viewer." },
+    { "n": 6, "asset": "06_gift_carving",  "start_ms": 12800, "end_ms": 16200, "fade_in_ms": 600, "kenburns": { "scale_from": 1.00, "scale_to": 1.14, "anchor": [0.52, 0.55] }, "label": "carving yours - patience", "note": "Longest hold in the piece, by design. Do not shorten." },
+    { "n": 7, "asset": "07_offering",      "start_ms": 16200, "end_ms": 17800, "fade_in_ms": 600, "kenburns": { "scale_from": 1.00, "scale_to": 1.05, "anchor": [0.50, 0.55] }, "label": "the offering" },
+    { "n": 8, "asset": "08_pushin",        "start_ms": 17800, "end_ms": 19200, "fade_in_ms": 600, "kenburns": { "scale_from": 1.00, "scale_to": 1.42, "anchor": [0.50, 0.34] }, "label": "into the wood" },
+    { "n": 9, "asset": "01_blank_geshtu",  "start_ms": 19200, "end_ms": 20600, "fade_in_ms": 800, "kenburns": { "scale_from": 1.08, "scale_to": 1.03, "anchor": [0.50, 0.55] }, "label": "the loop closes", "note": "Same asset as beat 1. Reverse zoom (settling). At 0:00 the blank wood was about to receive anky's name; here it is about to receive the user's." }
+  ],
+  "carve_reveal": {
+    "description": "Beat 3 renders 03a_carve_pre (word cloned out) with 03b_carve_post masked on top. The mask reveals left-to-right in halting strokes so the letters appear as if carved. Values are the revealed fraction of image width. Steps are grouped per letter (a: 3 strokes, n: 2, k: 3, y: 2) with pauses between letters - this is the anky protocol rhythm applied to a knife.",
+    "word_bbox_px_at_1024w": { "x0": 300, "y0": 605, "x1": 720, "y1": 795 },
+    "steps": [
+      { "t_ms": 4900, "reveal_to": 0.34 },
+      { "t_ms": 5250, "reveal_to": 0.39 },
+      { "t_ms": 5450, "reveal_to": 0.43 },
+      { "t_ms": 5950, "reveal_to": 0.48 },
+      { "t_ms": 6200, "reveal_to": 0.52 },
+      { "t_ms": 6750, "reveal_to": 0.57 },
+      { "t_ms": 6950, "reveal_to": 0.61 },
+      { "t_ms": 7150, "reveal_to": 0.64 },
+      { "t_ms": 7700, "reveal_to": 0.68 },
+      { "t_ms": 8000, "reveal_to": 0.70 }
+    ],
+    "stroke_ease_ms": 140
+  },
+  "handoff": {
+    "lazure_dissolve_start_ms": 20200,
+    "lazure_dissolve_duration_ms": 2100,
+    "typing_start_ms": 22600,
+    "question": "what should i call you?",
+    "question_font": "Fraunces, lowercase, same size/weight/position as the shipped name-entry screen. NOT a lookalike - the literal same view.",
+    "per_char_delays_ms": [0, 180, 120, 260, 90, 540, 150, 130, 300, 110, 80, 620, 140, 120, 90, 420, 160, 100, 140, 520, 180, 110, 380],
+    "cursor": "blinking, 1060ms period, appears 500ms before first character",
+    "keyboard_rise_delay_after_typing_ms": 500,
+    "keyboard": "the real iOS keyboard via focusing the real name TextField - not a mock"
+  }
+}

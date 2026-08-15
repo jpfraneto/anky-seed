@@ -17,15 +17,16 @@ import SwiftUI
 
 struct AnchorView: View {
     @ObservedObject var axis: GeshtuState
-    @ObservedObject var vigil: VigilController
-    /// The one-time onboarding rehearsal (spec §9): the Anchor takes a single
-    /// slow inhale up the first station and back down, under the hint.
-    var rehearsalInhale: Bool = false
-    /// Writing is free; the vigil is the paid act (spec paywall placement).
-    /// When the hold is not allowed, the press raises the paywall instead of
-    /// beginning the charge — never mid-charge.
-    var vigilAllowed: Bool = true
+    /// Writing is free; the reflection is the paid act (spec paywall
+    /// placement). When sending is not allowed, the tap raises the paywall
+    /// instead of the offering traveling.
+    var sendAllowed: Bool = true
     var onNeedsPaywall: () -> Void = {}
+    /// The privacy seam (outwards pivot §4.1): fired the instant an allowed
+    /// send begins — the writer's explicit outward gesture. The axis wires
+    /// this to start the reflection upload; nothing has left the device
+    /// before this closure runs.
+    var onSendBegan: () -> Void = {}
     /// The selfie camera is up (user decision, 2026-07-16): the Anchor IS the
     /// record button — it wears the classic red-circle face, a tap starts the
     /// take, the face becomes the stop square, a tap ends it. Navigation and
@@ -45,8 +46,6 @@ struct AnchorView: View {
     /// A soft one-shot pulse when the Anchor is touched with nothing to carry
     /// (spec §2): it swells faintly and drains. No charge begins.
     @State private var emptyPulse: CGFloat = 0
-    @State private var pressStart: Date?
-    @State private var inhaleOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,16 +71,12 @@ struct AnchorView: View {
                             AnchorMedallion(
                                 breath: breath,
                                 atRest: axis.phase == .reflection,
-                                electric: axis.isElectricRegister,
-                                charge: vigil.charge,
-                                awaitingVigil: axis.anchorSupportsVigil,
-                                time: context.date.timeIntervalSinceReferenceDate
+                                awaitingSend: axis.offeringStands
                             )
                         }
                     }
                     .frame(width: Self.diameter, height: Self.diameter)
                     .scaleEffect(1.0 + 0.02 * breath + 0.06 * emptyPulse)
-                    .offset(y: inhaleOffset)
                 }
                 .animation(.easeInOut(duration: 0.3), value: recordArmed)
                 // The hit target: a 108pt circle centered on the medallion —
@@ -94,80 +89,65 @@ struct AnchorView: View {
             }
             .padding(.bottom, Self.bottomInset)
         }
-        .onChange(of: rehearsalInhale) { on in
-            guard on, !reduceMotion else { return }
-            // A single slow breath up the first station and back — shown once.
-            withAnimation(.easeInOut(duration: 1.5)) { inhaleOffset = -34 }
-            withAnimation(.easeInOut(duration: 1.5).delay(1.6)) { inhaleOffset = 0 }
-        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         // The Anchor's absolute screen position never changes, ever — including
         // when a keyboard is up (spec §2, §3; verification Q3). Ignore the
         // keyboard safe-area inset so a rising keyboard never lifts the Anchor
         // from its eternal place at the base.
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .allowsHitTesting(recordArmed || axis.phase == .landing || axis.phase == .channelClosed || axis.phase == .vigil || axis.phase == .entryOpen)
+        .allowsHitTesting(recordArmed || axis.phase == .landing || axis.phase == .entryOpen)
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(accessibilityHint)
         .accessibilityAddTraits(.isButton)
-        // Direct completion for assistive users — the offering without the hold.
+        // Direct completion for assistive users — the same tap, named.
         .accessibilityAction(named: Text("Send to Anky")) {
-            if axis.anchorSupportsVigil {
-                if vigilAllowed {
-                    axis.beginVigil()
-                    axis.vigilCompleted()
-                } else {
-                    onNeedsPaywall()
-                }
+            if axis.offeringStands {
+                sendOffering()
             } else if axis.anchorTapIsNavigational {
                 axis.anchorTapped()
             }
         }
     }
 
-    /// One continuous press drives everything (spec §2, §5): a quick tap
-    /// enters writing from the landing surface or soft-pulses at a closed
-    /// channel; a sustained hold at a closed channel is the send vigil,
-    /// arming, charging, and completing — or draining on early release.
+    /// One tap drives everything (crossroads redesign, 2026-07-24 — the
+    /// sustained-hold vigil is gone): on the strata or an opened day the tap
+    /// summons the writing device; with a late offering armed it sends the
+    /// day; with the camera up it starts and stops the take.
     private var pressGesture: some Gesture {
         DragGesture(minimumDistance: 0)
-            .onChanged { _ in
-                guard pressStart == nil else { return }
-                pressStart = Date()
-                guard !recordArmed else { return }
-                if axis.anchorSupportsVigil {
-                    if vigilAllowed {
-                        configureVigil()
-                        vigil.press(duration: effectiveVigilDuration)
-                    } else {
-                        // The paid act: the quiet lazure paywall rises
-                        // instead of the charge beginning.
-                        AnkyHaptics.light()
-                        onNeedsPaywall()
-                    }
-                }
-            }
             .onEnded { _ in
-                pressStart = nil
                 if recordArmed {
                     // The camera is up: the Anchor starts and stops the take.
                     AnkyHaptics.light()
                     onRecordToggle()
-                } else if axis.phase == .vigil || vigil.stage != .idle {
-                    vigil.lift()
+                } else if axis.offeringStands {
+                    // A late offering stands (an unreflected day armed at its
+                    // base): the tap sends it. No hold — no friction.
+                    sendOffering()
                 } else if axis.anchorTapIsNavigational {
-                    // Landing or opened entry: resolve tap by scroll position
-                    // — enter writing, surface to now, or close-then-surface
-                    // (addendum A1). Held or quick, the release navigates.
+                    // Landing or opened entry: the tap puts the writing page
+                    // in front of the whole display.
                     AnkyHaptics.selection()
                     axis.anchorTapped()
                 } else {
-                    // channelClosed with nothing to carry, or a stray press:
-                    // a faint pulse. The Geshtu does not carry empty offerings.
+                    // Nothing to carry, or a stray press: a faint pulse. The
+                    // Geshtu does not carry empty offerings.
                     pulseOnce()
                 }
             }
+    }
+
+    /// The offering travels — or the gate rises. The outward gesture (the
+    /// upload) begins only on an allowed send (outwards pivot §4.1).
+    private func sendOffering() {
+        AnkyHaptics.light()
+        if sendAllowed {
+            onSendBegan()
+            axis.sendOffering()
+        } else {
+            onNeedsPaywall()
+        }
     }
 
     private func pulseOnce() {
@@ -176,45 +156,24 @@ struct AnchorView: View {
         withAnimation(.easeIn(duration: 0.5).delay(0.18)) { emptyPulse = 0 }
     }
 
-    /// The ritual is attention, not endurance (spec §5): when assistive
-    /// settings are active, the required hold is shortened. VoiceOver/Switch
-    /// Control users also get a direct completion action (below).
-    private var effectiveVigilDuration: TimeInterval {
-        let base = axis.vigilDuration
-        if reduceMotion || UIAccessibility.isSwitchControlRunning || UIAccessibility.isVoiceOverRunning {
-            return max(GeshtuState.vigilFloorSeconds, min(base, 3))
-        }
-        return base
-    }
-
-    private func configureVigil() {
-        vigil.onActivate = { axis.beginVigil() }
-        vigil.onComplete = { axis.vigilCompleted() }
-        vigil.onDrain = { axis.vigilDrained() }
-        vigil.onTap = { AnkyHaptics.light() }
-    }
-
     private var accessibilityLabel: Text {
         if recordArmed {
             return Text("Anchor. Start or stop recording.")
         }
         switch axis.phase {
         case .landing:
-            return axis.landingAtTop
-                ? Text("Anchor. Begin writing.")
-                : Text("Anchor. Return to the present.")
+            return Text("Anchor. Begin writing.")
         case .entryOpen:
-            return axis.anchorSupportsVigil
-                ? Text("Anchor. Hold to send this day to Anky.")
+            return axis.offeringStands
+                ? Text("Anchor. Send this day to Anky.")
                 : Text("Anchor. Close this day and return to the present.")
-        case .channelClosed: return Text("Anchor. Hold to send your writing to Anky.")
         default:             return Text("Anchor.")
         }
     }
 
     private var accessibilityHint: Text {
-        axis.anchorSupportsVigil
-            ? Text("Press and hold to send.")
+        axis.offeringStands
+            ? Text("Tap to send.")
             : Text("")
     }
 }
@@ -249,154 +208,42 @@ private struct RecordMedallion: View {
 // MARK: - The medallion
 
 /// The Anchor's face: the carved wooden medallion — the ear of the Geshtu in
-/// miniature, spiral engraved in beech (product asset, 2026-07-15). In the
-/// electric register it becomes the X-ray of itself, drawn in cyan. It glows
+/// miniature, spiral engraved in beech (product asset, 2026-07-15). It glows
 /// softly at the base and, at reflection, sits fully at rest (spec §2, §6).
+/// The electric X-ray face and its spark anticipation went with the vigil
+/// (simplicity pass, 2026-07-24); an armed offering breathes a warmer gold.
 private struct AnchorMedallion: View {
     var breath: Double
     var atRest: Bool
-    var electric: Bool = false
-    var charge: Double = 0
-    /// A closed channel with an offering to carry (spec §4): the medallion
-    /// anticipates the vigil — faint X-ray sparks of the electric register
-    /// flicker off its rim, the same cyan current that fills the screen once
-    /// the hold begins.
-    var awaitingVigil: Bool = false
-    /// Wall-clock seconds driving the spark flicker; frozen (a steady faint
-    /// spark) when the owning TimelineView pauses for reduce-motion.
-    var time: TimeInterval = 0
-
-    private let spiralSize: CGFloat = 26
-    private var cyan: Color { Color(.displayP3, red: 0.55, green: 0.80, blue: 1.0) }
+    /// An offering stands (an armed late offering over an open day): the
+    /// glow warms and widens — a quiet invitation to tap.
+    var awaitingSend: Bool = false
 
     var body: some View {
-        // The face defines the layout size; the glow and sparks sit behind and
-        // over it without expanding the footprint, so the Anchor's touch
-        // target stays small.
-        face
+        // The face defines the layout size; the glow sits behind it without
+        // expanding the footprint, so the Anchor's touch target stays small.
+        Image("GeshtuAnchor")
+            .resizable()
+            .scaledToFit()
             .shadow(color: Color.ankyViolet.opacity(0.20), radius: 5, y: 2)
-            // The glow it rests in — warm air, breathing; in the electric
-            // register it cools to cyan and brightens as the offering climbs.
             .background {
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [electric
-                                            ? cyan.opacity(0.35 + 0.5 * charge)
-                                            : Color.ankyGoldLight.opacity(atRest ? 0.28 : 0.38 + 0.16 * breath),
-                                         .clear],
-                                center: .center, startRadius: 4, endRadius: 58
-                            )
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.ankyGoldLight.opacity(
+                                    atRest ? 0.28
+                                    : (awaitingSend ? 0.52 : 0.38) + 0.16 * breath
+                                ),
+                                .clear
+                            ],
+                            center: .center, startRadius: 4,
+                            endRadius: awaitingSend ? 72 : 58
                         )
-                        .frame(width: 132, height: 132)
-                        .blur(radius: 7)
-                    if awaitingVigil && !electric {
-                        // The invitation (user decision, 2026-07-17, made
-                        // LOUDER after it read as absent on device): the
-                        // electric register gathers visibly under the wood —
-                        // a breathing cyan corona wider than the warm glow,
-                        // unmistakably asking for the hold.
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [cyan.opacity(0.45 + 0.30 * breath), .clear],
-                                    center: .center, startRadius: 8, endRadius: 76
-                                )
-                            )
-                            .frame(width: 168, height: 168)
-                            .blur(radius: 8)
-                    }
-                }
+                    )
+                    .frame(width: awaitingSend ? 160 : 132, height: awaitingSend ? 160 : 132)
+                    .blur(radius: 7)
             }
-            .overlay {
-                if awaitingVigil && !electric {
-                    AnchorSparks(time: time, tint: cyan)
-                        .frame(width: 120, height: 120)
-                        .transition(.opacity)
-                }
-            }
-    }
-
-    @ViewBuilder
-    private var face: some View {
-        if electric {
-            // The X-ray of the medallion: cool cyan disc, engraved spiral as
-            // current.
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [cyan.opacity(0.9), cyan.opacity(0.5),
-                                 Color(.displayP3, red: 0.08, green: 0.12, blue: 0.24)],
-                        center: UnitPoint(x: 0.44, y: 0.40),
-                        startRadius: 1, endRadius: 30)
-                )
-                .overlay(Circle().strokeBorder(Color.black.opacity(0.30), lineWidth: 1))
-                .overlay(
-                    Circle()
-                        .strokeBorder(cyan.opacity(0.7), lineWidth: 0.5)
-                        .padding(1.5)
-                )
-                .overlay {
-                    ZStack {
-                        AnchorSpiral()
-                            .stroke(Color.black.opacity(0.55),
-                                    style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
-                            .frame(width: spiralSize, height: spiralSize)
-                        AnchorSpiral()
-                            .stroke(cyan.opacity(0.9),
-                                    style: StrokeStyle(lineWidth: 1.0, lineCap: .round))
-                            .frame(width: spiralSize, height: spiralSize)
-                            .offset(y: -0.5)
-                    }
-                }
-        } else {
-            // The wooden medallion itself.
-            Image("GeshtuAnchor")
-                .resizable()
-                .scaledToFit()
-        }
-    }
-}
-
-/// The anticipation of the vigil: short cyan filaments sparking off the
-/// medallion's rim while an offering waits to be carried. Each spark has a
-/// fixed, seeded place and its own slow flicker cycle — an intermittent
-/// crackle of the current to come, never a particle firework (spec §10).
-private struct AnchorSparks: View {
-    var time: TimeInterval
-    var tint: Color
-
-    var body: some View {
-        Canvas { context, size in
-            context.addFilter(.shadow(color: tint.opacity(0.85), radius: 4))
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            var rng = LazureSeededRandom(seed: 616)
-            for _ in 0..<13 {
-                let angle = rng.next() * 2 * .pi
-                let speed = 0.9 + rng.next() * 1.4
-                let phase = rng.next() * 2 * .pi
-                let root = 30.0 + rng.next() * 6
-                let reach = 9.0 + rng.next() * 10
-                // Bright only near the crest of its own cycle, dark otherwise
-                // — so at any moment four or five sparks live, not all
-                // thirteen.
-                let flicker = max(0, sin(time * speed + phase) - 0.45) / 0.55
-                guard flicker > 0.02 else { continue }
-                let dir = CGPoint(x: cos(angle), y: sin(angle))
-                var path = Path()
-                path.move(to: CGPoint(x: center.x + dir.x * root,
-                                      y: center.y + dir.y * root))
-                path.addLine(to: CGPoint(x: center.x + dir.x * (root + reach * flicker),
-                                         y: center.y + dir.y * (root + reach * flicker)))
-                context.stroke(
-                    path,
-                    with: .color(tint.opacity(min(1, 0.25 + 0.75 * flicker))),
-                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round)
-                )
-            }
-        }
-        .allowsHitTesting(false)
     }
 }
 

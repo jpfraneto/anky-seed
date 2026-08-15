@@ -91,9 +91,9 @@ Anky has no third-party advertising or cross-app tracking SDK. Anky does not sel
 
 ## 6. Apple, RevenueCat, and subscriptions
 
-Anky offers optional auto-renewable monthly and annual subscriptions through Apple's App Store. Both durations unlock the same Anky Pro feature set. The localized price and renewal terms Apple shows at purchase time control.
+Anky offers one optional auto-renewable annual subscription through Apple's App Store. It unlocks the Anky Pro feature set. The localized price and renewal terms Apple shows at purchase time control.
 
-The annual plan may include a three-day trial only for an eligible user and only when Apple displays that offer. The monthly plan has no introductory trial under the current configuration. Subscriptions renew automatically unless cancelled in Apple's subscription settings.
+The annual subscription may include a three-day trial only for an eligible user and only when Apple displays that offer. It renews automatically unless cancelled in Apple's subscription settings.
 
 Apple handles payment, renewal, cancellation, billing, purchase history, and refund requests. Anky does not receive or store complete payment-card information.
 

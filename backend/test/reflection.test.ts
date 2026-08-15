@@ -3,6 +3,7 @@ import {
   FULL_PROMPT_EXPERIMENT_ID,
   buildReflectPrompt,
   buildReflectPromptFromText,
+  ageAttunementPrompt,
   fullPromptVariantForAnkyHash,
   parseDotAnky,
   PROMPT_DIP,
@@ -161,5 +162,21 @@ describe("dotAnky reflection helpers", () => {
     expect(buildReflectPrompt("one dip", "dip", "attentive")).toBe(
       `${PROMPT_DIP}\n\n---\n\none dip`,
     );
+  });
+});
+
+describe("age attunement", () => {
+  test("adds child-safe developmental boundaries without changing prompts when age is absent", () => {
+    expect(ageAttunementPrompt()).toBe("");
+    const prompt = buildReflectPrompt("a small thread", "full", "control", "axis", 11);
+    expect(prompt).toContain("writer is 11 years old");
+    expect(prompt).toContain("trusted adult");
+    expect(prompt).toContain("do not state, mention, or guess the writer's age");
+  });
+
+  test("does not infantilize older writers", () => {
+    const prompt = ageAttunementPrompt(72);
+    expect(prompt).toContain("unhurried, dignified");
+    expect(prompt).toContain("Never infantilize");
   });
 });

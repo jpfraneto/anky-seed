@@ -551,3 +551,28 @@
 // Axis reflection error surface 2026-07-18
 "the reflection was lost on the way" = "the reflection was lost on the way";
 "tap to ask again" = "tap to ask again";
+
+/* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
+"keep writing" = "keep writing";
+"get anky's reflection" = "get anky's reflection";
+"Reopen this session and keep going." = "Reopen this session and keep going.";
+"Send this writing to Anky and receive a reflection." = "Send this writing to Anky and receive a reflection.";
+"tap to open the gate" = "tap to open the gate";
+"just leave" = "just leave";
+"Let this day settle. Your writing is saved on this device." = "Let this day settle. Your writing is saved on this device.";
+"don't want to pay? long-press the copy button and take your writing to your favorite llm" = "don't want to pay? long-press the copy button and take your writing to your favorite llm";
+"untitled" = "untitled";
+
+/* The plain landing list (2026-08-04) */
+"nothing here yet" = "nothing here yet";
+"search" = "search";
+"Clear search" = "Clear search";
+
+/* Geshtu writing machine controls (2026-08-14) */
+"Writing settings" = "Writing settings";
+"Put down writing machine" = "Put down writing machine";
+"Writing machine menu" = "Writing machine menu";
+"Writing settings or put down the machine" = "Writing settings or put down the machine";
+"Opens writing settings" = "Opens writing settings";
+"remaining" = "remaining";
+"written" = "written";

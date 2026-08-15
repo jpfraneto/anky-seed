@@ -45,15 +45,14 @@ Only these feature families require a currently active lowercase `pro` entitleme
 5. Adaptive daily-target suggestions.
 6. Progression beyond level 8, including personalized painting generation and later painting ceremonies, subject to progress, writing, safety, capacity, and generation limits.
 
-Both monthly and annual subscriptions unlock the same Pro features. Feature access depends on entitlement state, not billing duration. Existing local content is not removed when Pro lapses; only new Pro actions and access narrow.
+The annual subscription unlocks the Pro features above. Feature access depends on the verified `pro` entitlement. Existing local content is not removed when Pro lapses; only new Pro actions and access narrow.
 
 Generated services are subject to reasonable service, safety, capacity, and abuse-prevention limits. A subscription does not guarantee any particular number, model, style, output, ceremony, or generation time.
 
 ## 5. Auto-renewable subscriptions
 
-Anky offers optional monthly and annual auto-renewable subscriptions through Apple's App Store.
+Anky offers one optional auto-renewable annual subscription through Apple's App Store.
 
-- **Monthly:** one month. No introductory trial under the current configuration.
 - **Annual:** one year. Apple may offer a three-day free trial only to eligible users and only when Apple displays it.
 
 The localized price, offer eligibility, charge date, and renewal terms shown by Apple before confirmation control. Never rely on an amount shown outside Apple's purchase confirmation as a guaranteed price.

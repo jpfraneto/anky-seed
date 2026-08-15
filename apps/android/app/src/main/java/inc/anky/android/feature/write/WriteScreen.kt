@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -79,16 +80,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import inc.anky.android.R
 import inc.anky.android.core.gate.UnlockGrant
 import inc.anky.android.core.protocol.AnkyDuration
 import inc.anky.android.core.storage.SavedAnky
 import inc.anky.android.ui.lazure.AnkyWritingFont
 import inc.anky.android.ui.lazure.AnkyWritingTextSize
+import inc.anky.android.ui.lazure.LazurePigments
 import inc.anky.android.ui.lazure.writingTextStyle
 import inc.anky.android.ui.theme.AnkyColors
 import inc.anky.android.ui.theme.AnkyType
@@ -120,6 +122,9 @@ fun WriteScreen(
     onOpenPaywall: (String) -> Unit = {},
     /** The emergency breath entry from the free-target moment block. */
     onEmergency: () -> Unit = {},
+    /** Geshtu's parchment DEVICE face and continuity-world sealing handoff. */
+    axisMode: Boolean = false,
+    onAxisSealed: (SealedWritingSession) -> Unit = {},
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -151,7 +156,7 @@ fun WriteScreen(
     // Sealing replaces the writing chamber entirely: three beats, then Done /
     // stay / gate (iOS AppRoot `case .sealing` -> PostSessionSealingView).
     val sealedSession = state.sealedSession
-    if (sealedSession != null) {
+    if (sealedSession != null && !axisMode) {
         PostSessionSealingScreen(
             sealed = sealedSession,
             reflectionMarkdown = state.sealedReflectionMarkdown,
@@ -173,6 +178,12 @@ fun WriteScreen(
             freeTargetMoment = freeTargetMoment,
         )
         return
+    }
+
+    LaunchedEffect(axisMode, sealedSession?.artifact?.hash) {
+        if (axisMode && sealedSession != null) {
+            onAxisSealed(sealedSession)
+        }
     }
 
     fun importAndOfferReflection(importBlock: () -> SavedAnky) {
@@ -268,7 +279,15 @@ fun WriteScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(
+                if (axisMode) {
+                    Brush.verticalGradient(
+                        listOf(LazurePigments.ankyPaper, LazurePigments.ankyPaperDeep),
+                    )
+                } else {
+                    Brush.verticalGradient(listOf(Color.Black, Color.Black))
+                },
+            )
             .pointerInput(inputEnabled) {
                 detectTapGestures {
                     if (inputEnabled) viewModel.openWritingPortal()
@@ -332,14 +351,18 @@ fun WriteScreen(
                     contentAlignment = Alignment.BottomEnd,
                 ) {
                     Text(
-                        text = writingGlyphText(state.displayedGlyphs, state.silenceElapsedMs),
+                        text = writingGlyphText(
+                            glyphs = state.displayedGlyphs,
+                            silenceElapsedMs = state.silenceElapsedMs,
+                            ink = if (axisMode) LazurePigments.ankyUmber else AnkyColors.Paper,
+                        ),
                         // Preferences-driven hand and step (iOS ForwardOnlyTextView
                         // honors fontChoice/textSize from WritingPreferencesStore).
                         style = writingTextStyle(
                             choice = AnkyWritingFont.fromStoredValue(state.writingPreferences.fontChoice.rawValue),
                             size = AnkyWritingTextSize.fromStoredValue(state.writingPreferences.textSize.rawValue),
                         ),
-                        textAlign = TextAlign.End,
+                        textAlign = if (axisMode) TextAlign.Start else TextAlign.End,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("write-visible-text")
@@ -347,23 +370,6 @@ fun WriteScreen(
                     )
                 }
             }
-
-            WriteTopBar(
-                hasActiveDotAnky = state.acceptedGlyphCount > 0 || state.isClosing,
-                showContinuationBack = state.isFrozenForContinuation,
-                onCloseToMap = {
-                    viewModel.abandonIfEmpty()
-                    onCloseToMap()
-                },
-                onBackFromContinuation = {
-                    viewModel.abandonIfEmpty()
-                    onBackFromContinuation()
-                },
-                backLabel = backLabel,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp, start = 10.dp, end = 10.dp),
-            )
 
             // iOS WriteView timer: counts down to the writer's daily target,
             // then counts what they have written past it.
@@ -374,29 +380,62 @@ fun WriteScreen(
                 if (remainingToTarget > 0) R.string.write_timer_caption_remaining else R.string.write_timer_caption_written,
             )
             val writingTimeLabel = stringResource(R.string.writing_time_format, "$clockText $timeCaption")
-            Text(
-                "$clockText · $timeCaption",
-                color = Color.Black.copy(alpha = 0.56f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = FontFamily.Default,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 13.dp)
-                    .background(Color.White.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
-                    .border(1.dp, Color.Black.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
-                    .semantics {
-                        contentDescription = writingTimeLabel
-                    }
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-            )
+            if (axisMode) {
+                AxisWritingTopBar(
+                    clockText = clockText,
+                    timeCaption = timeCaption,
+                    showsBack = state.acceptedGlyphCount == 0 && !state.isClosing,
+                    writingTimeLabel = writingTimeLabel,
+                    onBack = {
+                        viewModel.abandonIfEmpty()
+                        onCloseToMap()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp, start = 14.dp, end = 14.dp),
+                )
+            } else {
+                WriteTopBar(
+                    hasActiveDotAnky = state.acceptedGlyphCount > 0 || state.isClosing,
+                    showContinuationBack = state.isFrozenForContinuation,
+                    onCloseToMap = {
+                        viewModel.abandonIfEmpty()
+                        onCloseToMap()
+                    },
+                    onBackFromContinuation = {
+                        viewModel.abandonIfEmpty()
+                        onBackFromContinuation()
+                    },
+                    backLabel = backLabel,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp, start = 10.dp, end = 10.dp),
+                )
 
-            WritingStatePill(
-                state = writingPillState(state),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 52.dp, start = 24.dp, end = 24.dp),
-            )
+                Text(
+                    "$clockText · $timeCaption",
+                    color = Color.Black.copy(alpha = 0.56f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = FontFamily.Default,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 13.dp)
+                        .background(Color.White.copy(alpha = 0.64f), RoundedCornerShape(percent = 50))
+                        .border(1.dp, Color.Black.copy(alpha = 0.10f), RoundedCornerShape(percent = 50))
+                        .semantics {
+                            contentDescription = writingTimeLabel
+                        }
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                )
+
+                WritingStatePill(
+                    state = writingPillState(state),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 52.dp, start = 24.dp, end = 24.dp),
+                )
+            }
 
             // §5.4: the passive Quick Pass line — quiet, contextual, no
             // button. Appears only for gate-originated sessions.
@@ -450,21 +489,70 @@ fun WriteScreen(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = reservedKeyboardBottom),
-                contentAlignment = Alignment.Center,
-            ) {
-                RitualRings(
-                    elapsedMs = state.elapsedMs,
-                    silenceElapsedMs = state.silenceElapsedMs,
-                    latestGlyph = state.latestGlyph,
-                    rejectedInputPulseId = state.rejectedInputPulseId,
-                    isRitualComplete = state.hasReachedRitualMark,
-                    modifier = Modifier.testTag("ritual-glyph"),
+            if (!axisMode) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = reservedKeyboardBottom),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    RitualRings(
+                        elapsedMs = state.elapsedMs,
+                        silenceElapsedMs = state.silenceElapsedMs,
+                        latestGlyph = state.latestGlyph,
+                        rejectedInputPulseId = state.rejectedInputPulseId,
+                        isRitualComplete = state.hasReachedRitualMark,
+                        modifier = Modifier.testTag("ritual-glyph"),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AxisWritingTopBar(
+    clockText: String,
+    timeCaption: String,
+    showsBack: Boolean,
+    writingTimeLabel: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        if (showsBack) {
+            WriteChromeButton(onClick = onBack, enabled = true) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = stringResource(R.string.write_back),
+                    tint = LazurePigments.ankyInkSoft,
+                    modifier = Modifier.size(17.dp),
                 )
             }
+        } else {
+            Box(Modifier.size(42.dp))
+        }
+        Box(Modifier.weight(1f))
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier.semantics { contentDescription = writingTimeLabel },
+        ) {
+            Text(
+                clockText,
+                color = LazurePigments.ankyInk.copy(alpha = 0.88f),
+                fontSize = 34.sp,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Normal,
+            )
+            Text(
+                timeCaption,
+                color = LazurePigments.ankyInkSoft.copy(alpha = 0.85f),
+                fontSize = 15.sp,
+                fontFamily = FontFamily.Serif,
+            )
         }
     }
 }
@@ -771,13 +859,17 @@ private fun RitualRings(
     }
 }
 
-private fun writingGlyphText(glyphs: List<WritingGlyph>, silenceElapsedMs: Long) = buildAnnotatedString {
+private fun writingGlyphText(
+    glyphs: List<WritingGlyph>,
+    silenceElapsedMs: Long,
+    ink: Color = AnkyColors.Paper,
+) = buildAnnotatedString {
     val latestIndex = glyphs.lastIndex
     val pageOpacity = 0.22f + (((silenceElapsedMs - 3000).toFloat() / 5000f).coerceIn(0f, 1f) * 0.78f)
     glyphs.forEachIndexed { index, glyph ->
         val isLatest = index == latestIndex
         val alpha = if (isLatest) 0.98f else maxOf(0.56f, pageOpacity * 0.72f)
-        withStyle(SpanStyle(color = AnkyColors.Paper.copy(alpha = alpha))) {
+        withStyle(SpanStyle(color = ink.copy(alpha = alpha))) {
             append(glyph.glyph)
         }
     }

@@ -7,10 +7,10 @@
 //  machine of that world — it replaces AppRoot's selectedTab / writeSurface
 //  router. Every surface the app can show is one Phase below.
 //
-//  Cosmological grammar (spec §1):
-//    words rise from the Anchor to be heard  (writing → channelClosed → vigil)
-//    days settle around it to be kept        (reflection → landing)
-//  Cold ascent, warm descent.
+//  Grammar (crossroads redesign, 2026-07-24):
+//    write → stillness closes the channel → the crossroads
+//    (keep writing / get anky's reflection / just leave)
+//    days settle around the Anchor to be kept (reflection → landing)
 //
 
 import SwiftUI
@@ -24,21 +24,17 @@ final class GeshtuState: ObservableObject {
         /// The front door. Keyboard up the whole time; the Anchor is covered
         /// by the keyboard and is not a navigation primitive here (spec §3).
         case writing
-        /// The sentinel fired (8s of silence). The keyboard fell and the
-        /// Anchor is revealed in its eternal position, a filament rising from
-        /// it. Hold to send, or walk away to settle unsent (spec §4).
+        /// The sentinel fired (the writer's configured stillness elapsed). The
+        /// keyboard fell and the crossroads stands: keep writing, get anky's
+        /// reflection, or just leave (crossroads redesign, 2026-07-24).
         case channelClosed
-        /// The send vigil: the electric register, the seven-stop spine, the
-        /// writing climbing to the spiral ear. Held from the Anchor (spec §5).
-        case vigil
-        /// The offering was carried: the words hold at the crown — the glow at
-        /// the top — until Anky's response is ready, then the same movement
-        /// runs back down the spine, the words traveling down to the Anchor
-        /// (product decision, 2026-07-15).
-        case descent
-        /// The descent landed: the register warms and Anky's reflection unrolls
-        /// beneath the writing, from the space where the keyboard stood,
-        /// downward (spec §6, reshaped 2026-07-15). Finite, received, no reply.
+        /// Anky's reflection unrolls beneath the writing, from the space where
+        /// the keyboard stood, downward (spec §6, reshaped 2026-07-15; the
+        /// electric ascent/descent interlude was removed 2026-07-24 — asking
+        /// goes straight here, the spiral listening until the words arrive).
+        /// The initial reflection and its threaded conversation live here.
+        /// Asking ends the writing session — there is no way back to editing
+        /// from this state.
         case reflection
         /// The landing surface / history strata: days settled around the
         /// Anchor, fading with age (spec §7).
@@ -53,10 +49,15 @@ final class GeshtuState: ObservableObject {
 
     @Published private(set) var phase: Phase = .writing
 
-    /// The just-sealed session awaiting its fate at `channelClosed`: held into
-    /// a vigil, or settled unsent into the strata. Nil once resolved. Unsent is
-    /// still saved locally — unsent ≠ lost (spec §4).
+    /// The just-sealed session awaiting its fate at `channelClosed`: sent for
+    /// a reflection, kept writing, or settled unsent into the strata. Nil once
+    /// resolved. Unsent is still saved locally — unsent ≠ lost (spec §4).
     @Published private(set) var pendingSession: SavedAnky?
+
+    /// The sealed session the writer chose to keep writing (channel-close
+    /// crossroads, 2026-07-24): carried across the phase change so the world
+    /// can hand it back to the write engine as a continuation.
+    @Published private(set) var sessionToResume: SavedAnky?
 
     /// A past session opened from the strata (`entryOpen`).
     @Published private(set) var openedEntry: SavedAnky?
@@ -69,8 +70,8 @@ final class GeshtuState: ObservableObject {
     /// closes or the world moves on.
     @Published private(set) var reOffering = false
 
-    /// The paragraph the writer has chosen on a warm surface (the reflection
-    /// canvas or an opened entry). The fixed top chrome's share honors it;
+    /// The native text range the writer has selected on a warm surface (the
+    /// reflection canvas or an opened entry). The fixed top chrome honors it;
     /// with nothing chosen, share carries the whole writing. Cleared on every
     /// phase transition — a choice never outlives its surface.
     @Published var selectedQuote: String? {
@@ -82,98 +83,62 @@ final class GeshtuState: ObservableObject {
     /// whichever tappable surface made the choice; resets with it.
     @Published var selectedQuoteIsAnky = false
 
-    // MARK: - Landing surface scroll position (addendum A1)
+    // MARK: - The two spaces (device split, 2026-07-22)
 
-    /// The living edge: true when the strata rests at — or within ~half a screen
-    /// of — the newest entry at the top of the column. Updated by the landing
-    /// surface's scroll sentinel. Tap resolution reads it: a writing session is
-    /// only ever launched from a person who has arrived at now, never from deep
-    /// in memory. "At rest at the top" has tolerance; no pixel-hunting.
-    @Published var landingAtTop: Bool = true
+    // The unified-scroll approach machinery (approach/surface ticks,
+    // landingAtTop) is gone with the device split: the writing page is no
+    // longer the top of the world scroll, so summoning it is a phase change —
+    // never a scroll journey through the strata.
 
-    /// A monotonic signal the landing surface observes to surface-to-now: come
-    /// up for air, fast, with a slight overshoot that settles at the newest
-    /// entry. Incremented by `requestSurface()`; never chained to writing.
-    @Published private(set) var surfaceTick: Int = 0
-
-    func requestSurface() {
-        surfaceTick &+= 1
-    }
-
-    /// A monotonic signal the landing surface observes to carry the strata up
-    /// into the writing approach: the smooth scroll that brings the reserved
-    /// keyboard footprint into view, locks it at the base of the screen, and
-    /// opens the keyboard. The geshtu tap and the writer's own scroll travel
-    /// the identical road.
-    @Published private(set) var approachTick: Int = 0
-
-    func requestApproach() {
-        approachTick &+= 1
-    }
-
-    // MARK: - Vigil duration (spec §5)
-
-    private let vigilDurationKey = "anky.vigilDurationSeconds"
-
-    /// The hold required to send. User-configurable at the seed, but never
-    /// below the hard floor of 3 seconds. Defaults to 8 — deliberately
-    /// mirroring the sentinel: the channel closes through 8s of absence; the
-    /// writing sends through 8s of presence.
-    static let vigilFloorSeconds: TimeInterval = 3
-    static let vigilDefaultSeconds: TimeInterval = 8
-
-    var vigilDuration: TimeInterval {
-        let stored = UserDefaults.standard.double(forKey: vigilDurationKey)
-        guard stored > 0 else { return Self.vigilDefaultSeconds }
-        return max(Self.vigilFloorSeconds, stored)
-    }
-
-    func setVigilDuration(_ seconds: TimeInterval) {
-        UserDefaults.standard.set(max(Self.vigilFloorSeconds, seconds), forKey: vigilDurationKey)
-        objectWillChange.send()
+    /// Every phase lives in one of two spaces. The DEVICE is the writing
+    /// machine — a sovereign, full-screen surface holding the entire ritual:
+    /// writing, the closed channel, and the reflection. The WORLD is
+    /// everything outside it: the strata, an opened day, and the seed. The
+    /// device appears as a frontmost screen over the world; the world
+    /// underneath never contains the page.
+    var isDeviceSpace: Bool {
+        switch phase {
+        case .writing, .channelClosed, .reflection:
+            return true
+        case .landing, .entryOpen, .seed:
+            return false
+        }
     }
 
     // MARK: - The Anchor's grammar (spec §2)
 
-    /// The Anchor only mounts once the channel has closed — while writing, the
-    /// keyboard covers its position and the state machine keeps it inert, so
-    /// you cannot send while the channel is open (spec §3). It is also present
-    /// on every warm surface below.
+    /// The Anchor belongs to the archive list, where it opens a new writing
+    /// session. An opened archive entry is the canonical finished-session
+    /// document, so no floating control is allowed to cover its conversation.
     var anchorIsVisible: Bool {
-        phase != .writing
+        phase == .landing
     }
 
-    /// A quick Anchor tap is navigational on the warm surfaces where the strata
-    /// lives — the landing column and an opened entry (addendum A1). Elsewhere a
-    /// tap is suspended or, at `channelClosed`, at most a soft pulse (spec §2).
+    /// A quick Anchor tap is navigational only on the archive list.
     var anchorTapIsNavigational: Bool {
-        phase == .landing || phase == .entryOpen
+        phase == .landing
     }
 
-    /// A quick tap would begin a writing session only when at rest at the living
-    /// edge (spec §2, refined by addendum A1). Scrolled deep in the strata, the
-    /// same tap surfaces to now instead — writing never launches from momentum.
+    /// A quick tap summons the writing device from anywhere in the world
+    /// (device split, 2026-07-22): the device is not the top of a scroll, so
+    /// there is no living-edge condition — the tap is the summons itself.
     var anchorTapEntersWriting: Bool {
-        phase == .landing && landingAtTop
+        phase == .landing
     }
 
-    /// The long-press vigil is available only when a channel has closed with an
-    /// unsent session resting above it. The Geshtu does not carry empty
-    /// offerings (spec §2).
-    var anchorSupportsVigil: Bool {
+    /// An offering is standing and may travel: a channel closed with an unsent
+    /// session resting above it, or a late offering armed over an open day.
+    /// The Geshtu does not carry empty offerings (spec §2). Sending is a tap
+    /// (crossroads redesign, 2026-07-24 — the hold and its electric register
+    /// are gone).
+    var offeringStands: Bool {
         (phase == .channelClosed || (phase == .entryOpen && reOffering)) && pendingSession != nil
     }
 
-    /// The electric register is shown during the send vigil and the descent
-    /// that answers it (spec §1, §5).
-    var isElectricRegister: Bool {
-        phase == .vigil || phase == .descent
-    }
-
-    /// A faint vertical filament rises from the Anchor once revealed, the hint
-    /// of the base of the spine (spec §4).
+    /// A faint vertical filament rises from the Anchor over an armed late
+    /// offering — the hint that this day can still travel.
     var showsFilament: Bool {
-        phase == .channelClosed || (phase == .entryOpen && reOffering)
+        phase == .entryOpen && reOffering
     }
 
     // MARK: - Transitions
@@ -184,6 +149,7 @@ final class GeshtuState: ObservableObject {
         openedEntry = nil
         selectedQuote = nil
         reOffering = false
+        sessionToResume = nil
         withAnimation(.easeInOut(duration: 0.45)) { phase = .writing }
     }
 
@@ -196,37 +162,32 @@ final class GeshtuState: ObservableObject {
         withAnimation(.easeInOut(duration: 0.65)) { phase = .channelClosed }
     }
 
-    /// Begin the send vigil from a held Anchor (spec §5). Guarded by the
-    /// grammar — no empty offerings.
-    func beginVigil() {
-        guard anchorSupportsVigil else { return }
-        withAnimation(.easeInOut(duration: 0.4)) { phase = .vigil }
+    /// The "keep writing" option at the crossroads (2026-07-24): reopen the
+    /// same sealed session — same words, same day. The world hands the
+    /// carried session back to the write engine as a continuation; the
+    /// reseal replaces the artifact.
+    func resumeWriting() {
+        guard phase == .channelClosed, let session = pendingSession else { return }
+        sessionToResume = session
+        pendingSession = nil
+        selectedQuote = nil
+        withAnimation(.easeInOut(duration: 0.45)) { phase = .writing }
     }
 
-    /// The thumb lifted before completion: the energy drained fully back down
-    /// the spine. Return to where the offering stood — the closed channel, or
-    /// the opened day of a late offering; the next attempt starts from zero
-    /// (spec §5).
-    func vigilDrained() {
-        guard phase == .vigil else { return }
-        withAnimation(.easeInOut(duration: 0.4)) {
-            phase = reOffering ? .entryOpen : .channelClosed
-        }
+    /// One-shot read of the session `resumeWriting` carried across the phase
+    /// change, taken by the world when the writing phase mounts.
+    func consumeSessionToResume() -> SavedAnky? {
+        defer { sessionToResume = nil }
+        return sessionToResume
     }
 
-    /// The hold completed: the offering was carried to the crown. The words
-    /// hold there — the glow at the top — until the response is ready, then
-    /// travel back down the spine (the descent surface drives that motion).
-    func vigilCompleted() {
-        guard phase == .vigil else { return }
-        withAnimation(.easeInOut(duration: 0.4)) { phase = .descent }
-    }
-
-    /// The descent reached the Anchor: the register warms back to lazure and
-    /// the reflection unrolls beneath the writing.
-    func descentLanded() {
-        guard phase == .descent else { return }
-        withAnimation(.easeInOut(duration: 0.7)) { phase = .reflection }
+    /// The offering travels — one tap, straight to the reflection surface
+    /// (crossroads redesign + simplicity pass, 2026-07-24: no vigil, no
+    /// electric interlude). Guarded by the grammar: no empty offerings.
+    /// Asking ends the session; the spiral listens until the words arrive.
+    func sendOffering() {
+        guard offeringStands else { return }
+        withAnimation(.easeInOut(duration: 0.55)) { phase = .reflection }
     }
 
     /// Scroll past the reflection's last line, or walk away from the closed
@@ -248,37 +209,17 @@ final class GeshtuState: ObservableObject {
         withAnimation(.easeInOut(duration: 0.45)) { reOffering = true }
     }
 
-    /// The Anchor was tapped on a warm surface. One tap carries you home to
-    /// the blank page, wherever you are in memory (user decision, 2026-07-16,
-    /// superseding addendum A1's never-chain rule): the strata surfaces to
-    /// now, and then the writing surface scrolls into view above it — the top
-    /// of the whole vertical thing IS the writing interface.
+    /// The Anchor was tapped on a warm surface: show the device as a new
+    /// frontmost screen. The world holds its place beneath for the return.
     func anchorTapped() {
         switch phase {
         case .landing:
-            if landingAtTop {
-                requestApproach()
-            } else {
-                requestSurface()
-                openWritingAfterSurfacing()
-            }
+            openWriting()
         case .entryOpen:
             closeEntry()
-            requestSurface()
-            openWritingAfterSurfacing()
+            openWriting()
         default:
             break
-        }
-    }
-
-    /// The second half of the tap's journey: give the surfacing spring its
-    /// beat, then open the front door — unless the writer moved somewhere
-    /// else in the meantime.
-    private func openWritingAfterSurfacing() {
-        Task {
-            try? await Task.sleep(nanoseconds: 450_000_000)
-            guard phase == .landing else { return }
-            requestApproach()
         }
     }
 
@@ -332,7 +273,7 @@ final class GeshtuState: ObservableObject {
 
     /// Dev-only: stand a session at the closed channel so the awaiting-vigil
     /// anchor (glow, sparks, filament) is screenshot-verifiable without
-    /// typing a real session. The grammar (`anchorSupportsVigil`) needs a
+    /// typing a real session. The grammar (`offeringStands`) needs a
     /// pending session; `debugSetPhase(.channelClosed)` alone shows none.
     func debugSetPendingSession(_ session: SavedAnky?) {
         pendingSession = session

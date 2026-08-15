@@ -7,6 +7,7 @@ type PageShellProps = {
   compact?: boolean;
   currentPath: string;
   onNavigate: (href: string) => void;
+  showFooter?: boolean;
   wide?: boolean;
 };
 
@@ -15,6 +16,7 @@ function PageShell({
   compact = false,
   currentPath,
   onNavigate,
+  showFooter = true,
   wide = false,
 }: PageShellProps) {
   return (
@@ -38,9 +40,11 @@ function PageShell({
         </div>
       </main>
 
-      <div className="relative z-10">
-        <Footer onNavigate={onNavigate} />
-      </div>
+      {showFooter ? (
+        <div className="relative z-10">
+          <Footer onNavigate={onNavigate} />
+        </div>
+      ) : null}
     </div>
   );
 }

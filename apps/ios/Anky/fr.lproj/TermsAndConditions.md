@@ -45,15 +45,14 @@ Seuls exigent un droit actif `pro` en minuscules :
 5. Les suggestions adaptatives d’objectif.
 6. La progression après le niveau 8, avec peintures personnalisées et cérémonies ultérieures, selon la progression, l’écriture et les limites de sécurité, capacité et génération.
 
-Mensuel et annuel ouvrent exactement les mêmes fonctions. L’accès dépend du droit, pas de la durée. À l’expiration de Pro, le contenu local existant reste ; seules les nouvelles actions Pro sont restreintes.
+L’abonnement annuel ouvre les fonctions Pro indiquées. L’accès dépend du droit `pro` vérifié. À l’expiration de Pro, le contenu local existant reste ; seules les nouvelles actions Pro sont restreintes.
 
 Les services générés ont des limites raisonnables de service, sécurité, capacité et prévention des abus. Aucun nombre, modèle, style, résultat ou délai n’est garanti.
 
 ## 5. Abonnements auto-renouvelables
 
-Anky propose via l’App Store :
+Anky propose un seul abonnement annuel facultatif et auto-renouvelable via l’App Store :
 
-- **Mensuel :** un mois, sans essai de bienvenue actuellement.
 - **Annuel :** un an. Apple peut afficher un essai de trois jours uniquement aux personnes éligibles.
 
 Le prix localisé, l’éligibilité, la date de débit et les conditions montrés par Apple avant confirmation font foi. Le paiement est débité de l’Apple ID. L’abonnement se renouvelle automatiquement sauf annulation dans les réglages Apple avant renouvellement. Apple gère facturation, annulation, historique et remboursements. Supprimer Anky n’annule pas l’abonnement.

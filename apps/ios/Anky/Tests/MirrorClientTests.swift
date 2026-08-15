@@ -21,6 +21,7 @@ final class MirrorClientTests: XCTestCase {
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Client"), "ios")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Intent"), "reflection")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-App-Version"), "1.0(1)")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Age-Years"), "16")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Identity-Version"), "anky.base.eoa.v1")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Account"), identity.accountId)
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Anky-Signature-Type"), "eip712")
@@ -43,7 +44,13 @@ final class MirrorClientTests: XCTestCase {
             payload.append(sseReflection(
                 markdown: "# Small Thread\n\nHere is what I saw.",
                 hash: expectedHash,
-                tags: ["steady thread"]
+                tags: ["steady thread"],
+                inferenceHeaders: [
+                    "X-Anky-Inference-Access": "free",
+                    "X-Anky-Inference-Provider": "openrouter",
+                    "X-Anky-Inference-Model": "free/example-model",
+                    "X-Anky-Inference-Cost-USD": "0.00000000"
+                ]
             ))
             return (response, payload)
         }
@@ -58,6 +65,7 @@ final class MirrorClientTests: XCTestCase {
             bytes: body,
             identity: identity,
             appVersion: "1.0(1)",
+            ageYears: 16,
             reflectionChunk: { event in
                 streamedChunks.append(event)
             }
@@ -67,10 +75,66 @@ final class MirrorClientTests: XCTestCase {
         XCTAssertEqual(response.title, "Small Thread")
         XCTAssertEqual(response.reflection, "# Small Thread\n\nHere is what I saw.")
         XCTAssertEqual(response.tags, ["steady thread"])
+        XCTAssertEqual(response.inference?.access, .free)
+        XCTAssertEqual(response.inference?.provider, "openrouter")
+        XCTAssertEqual(response.inference?.model, "free/example-model")
+        XCTAssertEqual(response.inference?.costUsd, 0)
         XCTAssertEqual(streamedChunks, [
             MirrorReflectionChunkEvent(chunk: "# Small ", generatedCharacters: 8),
             MirrorReflectionChunkEvent(chunk: "Thread", generatedCharacters: 14)
         ])
+    }
+
+    func testConversationClientSignsJSONAndSendsOnlyDerivedAge() async throws {
+        let identity = WriterIdentity.generate()
+        MockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/conversation")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Anky-Signature"))
+            let body = try XCTUnwrap(request.ankyTestBodyData())
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(json["ageYears"] as? Int, 16)
+            XCTAssertNil(json["birthDate"])
+            XCTAssertEqual((json["messages"] as? [[String: Any]])?.first?["content"] as? String, "what do you see?")
+
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 200, httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data("""
+                {"message":"A quieter choice is appearing.","inference":{"access":"free","provider":"openrouter","model":"free/example-model","costUsd":0}}
+                """.utf8))
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let client = AnkyConversationClient(
+            baseURL: URL(string: "http://127.0.0.1:3000")!,
+            session: URLSession(configuration: configuration)
+        )
+        let reply = try await client.reply(
+            writing: "I keep circling.",
+            reflection: "The circle has patience.",
+            messages: [AnkyConversationMessage(role: .user, content: "what do you see?")],
+            identity: identity,
+            ageYears: 16
+        )
+        XCTAssertEqual(reply.message, "A quieter choice is appearing.")
+        XCTAssertEqual(reply.inference?.disclosureLine, "free intelligence · free/example-model · $0")
+    }
+
+    func testMirrorConfigurationNormalizesAndPersistsHTTPSBaseURL() throws {
+        let suite = "MirrorClientTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let url = try MirrorConfiguration.save("  https://example.com/anky/  ", defaults: defaults)
+
+        XCTAssertEqual(url.absoluteString, "https://example.com/anky")
+        XCTAssertEqual(MirrorConfiguration.currentBaseURL(defaults: defaults), "https://example.com/anky")
+        MirrorConfiguration.reset(defaults: defaults)
+        XCTAssertEqual(MirrorConfiguration.currentBaseURL(defaults: defaults), MirrorConfiguration.defaultBaseURL)
     }
 
     func testMirrorClientCanRequestNudgeIntent() async throws {
@@ -183,14 +247,15 @@ final class MirrorClientTests: XCTestCase {
 private func sseReflection(
     markdown: String,
     hash: String,
-    tags: [String] = []
+    tags: [String] = [],
+    inferenceHeaders: [String: String] = [:]
 ) -> Data {
+    var headers = inferenceHeaders
+    headers["X-Anky-Hash"] = hash
     let object: [String: Any] = [
         "markdown": markdown,
         "tags": tags,
-        "headers": [
-            "X-Anky-Hash": hash
-        ]
+        "headers": headers
     ]
     let json = String(data: try! JSONSerialization.data(withJSONObject: object), encoding: .utf8)!
     return Data("event: reflection\ndata: \(json)\n\n".utf8)

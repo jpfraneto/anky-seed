@@ -14,7 +14,9 @@ import {
   createApp,
   createSafeLogger,
   ankyWorld,
+  buildConversationPrompt,
   normalizeMetadataValue,
+  parseConversationRequest,
 } from "../server";
 import {
   FULL_PROMPT_EXPERIMENT_ID,
@@ -58,6 +60,58 @@ describe("GET /health", () => {
 
     expect(response.status).toBe(200);
     expect(json).toEqual({ ok: true });
+  });
+});
+
+describe("POST /conversation", () => {
+  test("continues a signed, entitled writing thread with age-aware context", async () => {
+    const body = Buffer.from(JSON.stringify({
+      writing: "I keep circling the choice.",
+      reflection: "The circle may be asking for patience.",
+      messages: [{ role: "user", content: "What do you notice in that?" }],
+      ageYears: 16,
+    }));
+    const headers = await signedHeaders(body, { "Content-Type": "application/json" });
+    let capturedPrompt = "";
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: entitledAccount,
+        conversationReply: async ({ prompt }) => {
+          capturedPrompt = prompt;
+          return "The circling sounds less like avoidance than care.";
+        },
+      },
+    });
+
+    const response = await app.request("/conversation", { method: "POST", headers, body });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      message: "The circling sounds less like avoidance than care.",
+      inference: {
+        access: "supported",
+        provider: "test",
+        model: "anthropic/claude-sonnet-4.6",
+      },
+    });
+    expect(capturedPrompt).toContain("writer is 16 years old");
+    expect(capturedPrompt).toContain("trusted adult");
+    expect(capturedPrompt).toContain("What do you notice in that?");
+  });
+
+  test("rejects a transcript that does not end with the writer", () => {
+    const body = Buffer.from(JSON.stringify({
+      writing: "one thread",
+      reflection: "one reflection",
+      messages: [{ role: "assistant", content: "an answer" }],
+    }));
+    expect(parseConversationRequest(body)).toBeNull();
+    expect(buildConversationPrompt({
+      writing: "one thread",
+      reflection: "one reflection",
+      messages: [{ role: "user", content: "one question" }],
+    })).toContain("WRITER: one question");
   });
 });
 
@@ -628,7 +682,7 @@ describe("POST /anky", () => {
     expect(JSON.parse(lines[0] ?? "{}").reflectionPromptVariant).toBeUndefined();
   });
 
-  test("a free account meets ENTITLEMENT_REQUIRED before any provider call", async () => {
+  test("a free account receives a zero-cost reflection with a receipt", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let providerCalls = 0;
     const app = createApp({
@@ -636,9 +690,18 @@ describe("POST /anky", () => {
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         accountEntitlement: () => ({ entitled: false }),
-        routeReflection: async () => {
+        routeReflection: async ({ env }) => {
           providerCalls += 1;
-          throw new Error("free reflections must never reach a provider");
+          expect(env.openrouterModel).toBe("openrouter/free");
+          expect(env.providerOrder).toEqual(["openrouter"]);
+          return {
+            provider: "openrouter",
+            model: "free/example-model",
+            costUsd: 0,
+            chargeable: false,
+            title: "Free mirror",
+            reflection: "# Free mirror\n\nA zero-cost answer.",
+          };
         },
       },
     });
@@ -648,22 +711,30 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body),
       body,
     });
-    const json = await response.json();
-
-    expect(response.status).toBe(402);
-    expect(json.error.code).toBe("ENTITLEMENT_REQUIRED");
-    expect(providerCalls).toBe(0);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Anky-Inference-Access")).toBe("free");
+    expect(response.headers.get("X-Anky-Inference-Model")).toBe("free/example-model");
+    expect(response.headers.get("X-Anky-Inference-Cost-USD")).toBe("0.00000000");
+    expect(providerCalls).toBe(1);
   });
 
-  test("nudge intent requires an entitled subscription", async () => {
+  test("a free nudge uses zero-cost inference", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         accountEntitlement: () => ({ entitled: false }),
-        routeReflection: async () => {
-          throw new Error("free nudges must never reach a provider");
+        routeReflection: async ({ env }) => {
+          expect(env.openrouterModel).toBe("openrouter/free");
+          return {
+            provider: "openrouter",
+            model: "free/nudge-model",
+            costUsd: 0,
+            chargeable: false,
+            title: "nudge",
+            reflection: "follow the live sentence.",
+          };
         },
       },
     });
@@ -674,9 +745,8 @@ describe("POST /anky", () => {
       body,
     });
 
-    expect(response.status).toBe(402);
-    const payload = (await response.json()) as { error: { code: string } };
-    expect(payload.error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Anky-Inference-Access")).toBe("free");
   });
 
   test("nudge intent accepts an unfinished .anky for an entitled account", async () => {
@@ -1006,7 +1076,7 @@ describe("POST /anky", () => {
     const log = JSON.parse(lines[0] ?? "{}");
 
     expect(log.reflectionTier).toBe("full");
-    expect(log.entitlementResult).toBe("subscription_entitled");
+    expect(log.entitlementResult).toBe("supported_reflection");
     expect(log.reflectionPromptExperiment).toBe(FULL_PROMPT_EXPERIMENT_ID);
     expect(log.reflectionPromptVariant).toBe("control");
     expect(logs).not.toContain("You are Anky");

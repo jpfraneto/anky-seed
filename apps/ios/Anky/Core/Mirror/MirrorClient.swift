@@ -18,6 +18,7 @@ struct MirrorClient {
         appVersion: String? = nil,
         intent: Intent = .reflection,
         surface: String? = nil,
+        ageYears: Int? = nil,
         progress: ((MirrorProgressEvent) async -> Void)? = nil,
         reflectionChunk: ((MirrorReflectionChunkEvent) async -> Void)? = nil
     ) async throws -> MirrorResponsePayload {
@@ -26,7 +27,8 @@ struct MirrorClient {
             identity: identity,
             appVersion: appVersion,
             intent: intent,
-            surface: surface
+            surface: surface,
+            ageYears: ageYears
         )
         let (stream, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -78,11 +80,13 @@ struct MirrorClient {
                     .value(forHTTPHeaderField: "X-Anky-Tags")
                     .flatMap(Self.tags)
                     ?? []
+                let inference = Self.inferenceReceipt(from: event.headers)
                 return MirrorResponsePayload(
                     hash: hash,
                     title: Self.title(fromMarkdown: reflection),
                     reflection: reflection,
-                    tags: tags
+                    tags: tags,
+                    inference: inference
                 )
             case "error":
                 throw MirrorClientError.server(Self.errorPayload(fromSSEPayload: payload))
@@ -123,7 +127,8 @@ struct MirrorClient {
         identity: WriterIdentity,
         appVersion: String?,
         intent: Intent,
-        surface: String? = nil
+        surface: String? = nil,
+        ageYears: Int? = nil
     ) throws -> URLRequest {
         let signed = try AnkyPostSigner.sign(body: bytes, identity: identity)
         var request = URLRequest(url: baseURL.appendingPathComponent("anky"))
@@ -143,6 +148,9 @@ struct MirrorClient {
         }
         if let surface {
             request.setValue(surface, forHTTPHeaderField: "X-Anky-Surface")
+        }
+        if let ageYears, (0...120).contains(ageYears) {
+            request.setValue(String(ageYears), forHTTPHeaderField: "X-Anky-Age-Years")
         }
         return request
     }
@@ -188,6 +196,21 @@ struct MirrorClient {
         let title = heading?.isEmpty == false ? heading : fallback
         return title?.isEmpty == false ? title! : "reflection"
     }
+
+    private static func inferenceReceipt(from headers: [String: String]) -> AnkyInferenceReceipt? {
+        guard let accessValue = headers.value(forHTTPHeaderField: "X-Anky-Inference-Access"),
+              let access = AnkyInferenceReceipt.Access(rawValue: accessValue),
+              let provider = headers.value(forHTTPHeaderField: "X-Anky-Inference-Provider") else {
+            return nil
+        }
+        let cost = headers.value(forHTTPHeaderField: "X-Anky-Inference-Cost-USD").flatMap(Double.init)
+        return AnkyInferenceReceipt(
+            access: access,
+            provider: provider,
+            model: headers.value(forHTTPHeaderField: "X-Anky-Inference-Model"),
+            costUsd: cost
+        )
+    }
 }
 
 struct MirrorProgressEvent: Codable, Equatable {
@@ -205,6 +228,21 @@ struct MirrorResponsePayload: Codable, Equatable {
     let title: String
     let reflection: String
     let tags: [String]
+    let inference: AnkyInferenceReceipt?
+
+    init(
+        hash: String,
+        title: String,
+        reflection: String,
+        tags: [String],
+        inference: AnkyInferenceReceipt? = nil
+    ) {
+        self.hash = hash
+        self.title = title
+        self.reflection = reflection
+        self.tags = tags
+        self.inference = inference
+    }
 }
 
 struct MirrorServerErrorPayload: Equatable {
@@ -248,6 +286,83 @@ enum MirrorClientError: Error, LocalizedError, Equatable {
         guard case .server(let payload) = self else { return nil }
         return payload
     }
+}
+
+struct AnkyConversationClient {
+    let baseURL: URL
+    var session: URLSession = .shared
+
+    func reply(
+        writing: String,
+        reflection: String,
+        messages: [AnkyConversationMessage],
+        identity: WriterIdentity,
+        ageYears: Int?
+    ) async throws -> ConversationReply {
+        let payload = ConversationRequestPayload(
+            writing: writing,
+            reflection: reflection,
+            messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
+            ageYears: ageYears
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let body = try encoder.encode(payload)
+        let signed = try AnkyPostSigner.sign(body: body, identity: identity)
+
+        var request = URLRequest(url: baseURL.appendingPathComponent("conversation"))
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = 45
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(signed.identityVersion, forHTTPHeaderField: "X-Anky-Identity-Version")
+        request.setValue(signed.accountId, forHTTPHeaderField: "X-Anky-Account")
+        request.setValue(signed.signatureType, forHTTPHeaderField: "X-Anky-Signature-Type")
+        request.setValue(signed.signature, forHTTPHeaderField: "X-Anky-Signature")
+        request.setValue(signed.requestTime, forHTTPHeaderField: "X-Anky-Request-Time")
+        request.setValue(signed.client, forHTTPHeaderField: "X-Anky-Client")
+        request.setValue(AnkyAppVersion.headerValue, forHTTPHeaderField: "X-Anky-App-Version")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw MirrorClientError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            if let envelope = try? JSONDecoder().decode(MirrorErrorEnvelope.self, from: data) {
+                throw MirrorClientError.server(envelope.error.payload)
+            }
+            throw MirrorClientError.server(.fallback)
+        }
+        guard let result = try? JSONDecoder().decode(ConversationResponsePayload.self, from: data) else {
+            throw MirrorClientError.invalidResponse
+        }
+        let answer = result.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !answer.isEmpty else { throw MirrorClientError.invalidResponse }
+        return ConversationReply(message: answer, inference: result.inference)
+    }
+}
+
+struct ConversationReply {
+    let message: String
+    let inference: AnkyInferenceReceipt?
+}
+
+private struct ConversationRequestPayload: Encodable {
+    struct Message: Encodable {
+        let role: String
+        let content: String
+    }
+
+    let writing: String
+    let reflection: String
+    let messages: [Message]
+    let ageYears: Int?
+}
+
+private struct ConversationResponsePayload: Decodable {
+    let message: String
+    let inference: AnkyInferenceReceipt?
 }
 
 private struct MirrorErrorEnvelope: Decodable {

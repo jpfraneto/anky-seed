@@ -24,6 +24,12 @@ struct AnkySettingsView: View {
     @State private var effectiveTargetMinutes = DailyTargetStore.defaultMinutes
     @State private var pendingTargetMinutes: Int?
     @State private var writerName = ""
+    @State private var birthDate = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+    @State private var hasSavedBirthDate = false
+    @State private var profileStatus: String?
+    @State private var serverAddress = MirrorConfiguration.currentBaseURL()
+    @State private var serverStatus: String?
+    @State private var isConnectingServer = false
     @State private var writingPreferences = WritingPreferencesStore().load()
     /// D3 — the silence that closes the channel, in seconds (bounds 3…30).
     @State private var silenceSeconds: Double =
@@ -67,11 +73,14 @@ struct AnkySettingsView: View {
                         .padding(.horizontal, 4)
 
                         subscriptionSection
+                        inferenceSection
                         dailyTargetSection
                         silenceSection
                         nameSection
+                        profileSection
                         writingSection
                         typefaceSection
+                        serverSection
                         protectionSection
                         identitySection
                         accountDeletionSection
@@ -103,6 +112,11 @@ struct AnkySettingsView: View {
         .onAppear {
             refreshDailyTarget()
             writerName = WritingAnchorStore().writerName ?? ""
+            if let savedBirthDate = WriterProfileStore().birthDate() {
+                birthDate = savedBirthDate
+                hasSavedBirthDate = true
+            }
+            serverAddress = MirrorConfiguration.currentBaseURL()
             writingPreferences = WritingPreferencesStore().load()
             silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
             // Always open with the recovery phrase concealed.
@@ -248,9 +262,40 @@ struct AnkySettingsView: View {
             return AnkyLocalization.ui("Anky unlocked active plan format", activeSubscriptionPriceLine)
         }
         if entitlements.packages.isEmpty {
-            return "The plans are settling in. You can still write for free."
+            return "Free Anky uses zero-cost inference. A plan supports stronger, more reliable intelligence."
         }
-        return "Writing and core features stay free. Tap to compare Anky Pro plans."
+        return "Anky answers for free with zero-cost inference. Pro supports stronger, more reliable intelligence."
+    }
+
+    private var inferenceSection: some View {
+        section(title: "Intelligence & cost") {
+            VeilCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: "leaf")
+                            .font(.system(size: 19, weight: .regular))
+                            .foregroundStyle(Color.ankyViolet)
+                            .frame(width: 26)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(AnkyLocalization.ui("Free means free inference"))
+                                .font(.ankyLabel)
+                                .foregroundStyle(Color.ankyInk)
+                            Text(AnkyLocalization.ui("Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky."))
+                                .font(.ankyCaption)
+                                .foregroundStyle(Color.ankyInkSoft)
+                                .lineSpacing(3)
+                        }
+                    }
+
+                    LazureDivider()
+
+                    Text(AnkyLocalization.ui("Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available."))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+                }
+            }
+        }
     }
 
     private var activeSubscriptionPriceLine: String {
@@ -405,6 +450,160 @@ struct AnkySettingsView: View {
     private func saveWriterName() {
         let store = WritingAnchorStore()
         store.save(writerName: writerName, anchorSentence: store.anchorSentence)
+    }
+
+    // MARK: Age-aware presence
+
+    private var profileSection: some View {
+        section(title: "How should Anky meet you?") {
+            VeilCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "birthday.cake")
+                            .font(.system(size: 18, weight: .regular))
+                            .foregroundStyle(Color.ankyViolet)
+
+                        DatePicker(
+                            AnkyLocalization.ui("Birth date"),
+                            selection: $birthDate,
+                            in: oldestBirthDate...Date(),
+                            displayedComponents: .date
+                        )
+                        .font(.ankyLabel)
+                        .onChange(of: birthDate) { _ in saveBirthDate() }
+                    }
+
+                    Text(AnkyLocalization.ui("Anky uses your age to adjust its language, pace, and boundaries. Your exact birth date stays in this device's keychain; only your age in whole years is sent when you ask Anky."))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+
+                    HStack {
+                        if let profileStatus {
+                            Text(AnkyLocalization.ui(profileStatus))
+                                .font(.ankyCaption)
+                                .foregroundStyle(hasSavedBirthDate ? Color.ankySlate : Color.ankyUmber)
+                        } else if !hasSavedBirthDate {
+                            Text(AnkyLocalization.ui("Choose your birth date to attune Anky."))
+                                .font(.ankyCaption)
+                                .foregroundStyle(Color.ankyUmber)
+                        }
+
+                        Spacer()
+
+                        if !hasSavedBirthDate {
+                            Button(AnkyLocalization.ui("Save"), action: saveBirthDate)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.ankyViolet)
+                                .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var oldestBirthDate: Date {
+        Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast
+    }
+
+    private func saveBirthDate() {
+        do {
+            try WriterProfileStore().saveBirthDate(birthDate)
+            hasSavedBirthDate = true
+            profileStatus = "Saved on this device."
+        } catch {
+            hasSavedBirthDate = false
+            profileStatus = (error as? LocalizedError)?.errorDescription ?? "Could not save that birth date."
+        }
+    }
+
+    // MARK: Server
+
+    private var serverSection: some View {
+        section(title: "Anky server") {
+            VeilCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "server.rack")
+                            .font(.system(size: 18, weight: .regular))
+                            .foregroundStyle(Color.ankyViolet)
+                        TextField("https://anky.example.com", text: $serverAddress)
+                            .font(.system(size: 14, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Color.ankyInk)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.URL)
+                            .autocorrectionDisabled()
+                    }
+
+                    Text(AnkyLocalization.ui("Advanced: connect this app to any compatible Anky server. Writing and conversation go to that server only when you explicitly ask Anky."))
+                        .font(.ankyCaption)
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .lineSpacing(3)
+
+                    if let serverStatus {
+                        Text(AnkyLocalization.ui(serverStatus))
+                            .font(.ankyCaption)
+                            .foregroundStyle(serverStatus == "Connected." ? Color.ankySlate : Color.ankyUmber)
+                    }
+
+                    HStack(spacing: 18) {
+                        Button {
+                            connectServer()
+                        } label: {
+                            HStack(spacing: 7) {
+                                if isConnectingServer {
+                                    ProgressView().controlSize(.small)
+                                }
+                                Text(AnkyLocalization.ui(isConnectingServer ? "Checking…" : "Connect"))
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.ankyViolet)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isConnectingServer)
+
+                        Button {
+                            MirrorConfiguration.reset()
+                            serverAddress = MirrorConfiguration.defaultBaseURL
+                            serverStatus = "Using Anky's default server."
+                            AnkyHaptics.light()
+                        } label: {
+                            Text(AnkyLocalization.ui("Use default"))
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundStyle(Color.ankyInkSoft)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isConnectingServer)
+                    }
+                }
+            }
+        }
+    }
+
+    private func connectServer() {
+        guard !isConnectingServer else { return }
+        isConnectingServer = true
+        serverStatus = nil
+        Task {
+            do {
+                let url = try MirrorConfiguration.normalizedBaseURL(from: serverAddress)
+                try await MirrorConfiguration.checkConnection(to: url)
+                _ = try MirrorConfiguration.save(url.absoluteString)
+                await MainActor.run {
+                    serverAddress = url.absoluteString
+                    serverStatus = "Connected."
+                    isConnectingServer = false
+                    AnkyHaptics.success()
+                }
+            } catch {
+                await MainActor.run {
+                    serverStatus = (error as? LocalizedError)?.errorDescription ?? "Could not connect to that server."
+                    isConnectingServer = false
+                    AnkyHaptics.warning()
+                }
+            }
+        }
     }
 
     // MARK: Writing chamber

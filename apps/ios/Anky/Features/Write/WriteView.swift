@@ -90,9 +90,10 @@ struct WriteView: View {
                     glyphs: viewModel.displayedGlyphs,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: acceptsWritingInput,
-                    // In the axis world the blank page hands the drag to the
-                    // world scroll (the native road down to the strata); the
-                    // text view's own scrolling begins with the session.
+                    // On the device's blank page the drag belongs to the
+                    // put-down flick (GeshtuWorldView's device gesture, device
+                    // split 2026-07-22); the text view's own scrolling begins
+                    // with the session.
                     innerScrollEnabled: !axisMode || viewModel.hasStarted,
                     bottomInset: textBottomInset,
                     rightInset: textSideInset,
@@ -164,14 +165,16 @@ struct WriteView: View {
                     AxisWritingTopBar(
                         timeText: timerText,
                         timeCaption: timerCaption,
+                        timerProgress: timerProgress,
                         silenceProgress: silenceProgress,
-                        showsBackButton: !viewModel.hasStarted,
+                        canPutDown: !viewModel.hasStarted,
                         isSealed: showsPostSessionBeat,
                         onBack: {
+                            AnkyHaptics.light()
                             viewModel.persistForNavigation()
-                            // The way down is the same road the scroll travels:
-                            // the keyboard falls over the reserved footprint
-                            // first, then the world settles onto the strata.
+                            // Putting the device down deliberately: the
+                            // keyboard falls first, then the device recedes
+                            // into the Anchor and the world stands revealed.
                             UIApplication.shared.sendAction(
                                 #selector(UIResponder.resignFirstResponder),
                                 to: nil, from: nil, for: nil
@@ -185,9 +188,9 @@ struct WriteView: View {
                             showsQuickSettings = true
                         }
                     )
-                    .padding(.horizontal, 14)
-                    .frame(width: geometry.size.width, height: 72, alignment: .top)
-                    .position(x: geometry.size.width / 2, y: 44)
+                    .padding(.horizontal, 16)
+                    .frame(width: geometry.size.width, height: 92, alignment: .top)
+                    .position(x: geometry.size.width / 2, y: 52)
                     .zIndex(20)
                 } else {
                     WritingTopChrome(
@@ -253,26 +256,12 @@ struct WriteView: View {
                 }
             }
         }
-        // Phase-2 §7 sepia pass: the writing surface is parchment — utterly
-        // plain, no wash motion, a faint spiral resting in the top corner.
+        // The recessed display stays inside Anky's warm pink/cream atmosphere.
+        // Its light settles only once per minute, keeping the surface quiet and
+        // avoiding continuous full-screen rendering while the writer types.
         .background {
-            ZStack(alignment: .topTrailing) {
-                LinearGradient(
-                    colors: [Color.ankyPaper, Color.ankyPaperDeep],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+            GeshtuWritingSurface(progress: writingSurfaceLightProgress)
                 .ignoresSafeArea()
-
-                Image("anky-flow-writing-eyes")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 150, height: 100)
-                    .opacity(0.055)
-                    .padding(.top, 8)
-                    .padding(.trailing, -10)
-                    .ignoresSafeArea()
-            }
         }
         .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showsQuickSettings, onDismiss: {
@@ -355,6 +344,15 @@ struct WriteView: View {
         1
     }
 
+    /// Eight restrained steps let the display settle from rose toward cream
+    /// without becoming another animated element competing with the words.
+    private var writingSurfaceLightProgress: Double {
+        guard AnkyDuration.completeRitualMs > 0 else { return 1 }
+        let completedMinutes = viewModel.elapsedMs / 60_000
+        let ritualMinutes = max(1, AnkyDuration.completeRitualMs / 60_000)
+        return min(1, max(0, Double(completedMinutes) / Double(ritualMinutes)))
+    }
+
     /// Counts down to the writer's daily target, then counts what they
     /// have written past it.
     private var timerText: String {
@@ -367,6 +365,11 @@ struct WriteView: View {
 
     private var timerCaption: String {
         dailyTargetMs - viewModel.elapsedMs > 0 ? "remaining" : "written"
+    }
+
+    private var timerProgress: Double {
+        guard dailyTargetMs > 0 else { return 1 }
+        return min(1, max(0, Double(viewModel.elapsedMs) / Double(dailyTargetMs)))
     }
 
     private var showsMapButton: Bool {
@@ -734,15 +737,16 @@ private enum WritingSessionPillState: Equatable {
     }
 }
 
-/// The axis writing surface's minimal chrome: the target countdown top-right
-/// (tap to retune the session) and, until the first keystroke lands, a back
-/// arrow top-left. No eyes, no pill — the keyboard stays the main event, and
-/// the whole bar recedes as the sealing silence gathers.
+/// The axis writing surface's two mounted controls: the target dial and the
+/// machine menu. Putting the machine down remains available only before the
+/// first keystroke; after that, the menu still reaches non-destructive writing
+/// settings without creating a new escape from the forward-only ritual.
 private struct AxisWritingTopBar: View {
     let timeText: String
     let timeCaption: String
+    let timerProgress: Double
     let silenceProgress: Double
-    let showsBackButton: Bool
+    let canPutDown: Bool
     /// Once the session seals, the countdown has said all it can — its spot
     /// is ceded to the world's fixed top chrome (share / record / settings).
     let isSealed: Bool
@@ -751,49 +755,30 @@ private struct AxisWritingTopBar: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            if showsBackButton, !isSealed {
-                // Points down, because that is where it takes you: the
-                // keyboard falls and the world settles onto the strata below.
-                Button(action: onBack) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .frame(width: 40, height: 40)
-                        .background {
-                            Circle()
-                                .fill(Color.ankyPaper.opacity(0.55))
-                                .overlay(Circle().strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5))
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(AnkyLocalization.ui("Down to your days"))
+            if !isSealed {
+                GeshtuMenuButton(
+                    canPutDown: canPutDown,
+                    onPutDown: onBack,
+                    onOpenSettings: onOpenSettings
+                )
                 .transition(.opacity)
             }
 
             Spacer()
 
             if !isSealed {
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text(timeText)
-                        .font(.system(size: 34, design: .serif))
-                        .monospacedDigit()
-                        .foregroundStyle(Color.ankyInk.opacity(0.88))
-                        .contentTransition(.numericText())
-                    Text(AnkyLocalization.ui(timeCaption))
-                        .font(.system(size: 15, design: .serif))
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
-                }
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onOpenSettings)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(AnkyLocalization.ui("Writing time %@", "\(timeText) \(timeCaption)"))
-                .accessibilityAddTraits(.isButton)
+                GeshtuTimerDial(
+                    timeText: timeText,
+                    caption: timeCaption,
+                    progress: timerProgress,
+                    action: onOpenSettings
+                )
             }
         }
         // Sealed, the bar returns to full presence (the silence that sealed
         // the page had faded it); live, it recedes as the silence gathers.
         .opacity(isSealed ? 1 : chromeOpacity)
-        .animation(.easeInOut(duration: 0.3), value: showsBackButton)
+        .animation(.easeInOut(duration: 0.3), value: canPutDown)
         .animation(.easeInOut(duration: 0.4), value: isSealed)
         .animation(.linear(duration: 0.16), value: silenceProgress)
     }
@@ -990,9 +975,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     let glyphs: [WritingGlyph]
     let focusID: UUID
     let shouldFocus: Bool
-    /// False on the axis world's blank page: the pan then belongs to the
-    /// world scroll, which lowers the keyboard interactively and slides
-    /// toward the strata in one motion. Flips true with the first keystroke.
+    /// False on the device's blank page: the pan then belongs to the put-down
+    /// flick that recedes the device into the Anchor (device split,
+    /// 2026-07-22). Flips true with the first keystroke.
     let innerScrollEnabled: Bool
     let bottomInset: CGFloat
     let rightInset: CGFloat
@@ -1019,10 +1004,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.textAlignment = .left
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
-        // The keyboard rides the finger down and away (Geshtu v2): dragging
-        // past it reveals the reserved footprint beneath — reversible
-        // mid-gesture, the Messages feel.
-        textView.keyboardDismissMode = .interactive
+        // Keep the keyboard dock physically attached while the keyboard rides
+        // the finger down and away during an interactive dismissal.
+        textView.keyboardDismissMode = .interactiveWithAccessory
         textView.autocorrectionType = preferences.autocorrectEnabled ? .yes : .no
         textView.autocapitalizationType = .sentences
         // Spell-check stays off regardless of autocorrect: the red
@@ -1044,6 +1028,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.showsVerticalScrollIndicator = false
         textView.measurementLineSpacing = preferences.textSize.pointSize * 0.42
         textView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
+        textView.inputAccessoryView = GeshtuKeyboardAccessoryView()
 
         if shouldFocus {
             DispatchQueue.main.async {

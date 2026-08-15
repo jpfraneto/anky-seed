@@ -4,11 +4,10 @@ Revised July 11, 2026. Runtime code and tests control when this note differs.
 
 ## Product configuration
 
-- iOS monthly product: `anky.monthly` (`P1M`, no introductory offer)
 - iOS annual product: `anky.annual` (`P1Y`; Apple may show a three-day trial to an eligible new subscriber)
 - RevenueCat entitlement: `pro`
 - RevenueCat offering: `default`
-- Both durations unlock the same feature set. Billing duration never selects features.
+- The annual subscription unlocks the complete Pro feature set. Access follows the verified entitlement, not a product identifier.
 - Android has its own platform product configuration. Do not infer iOS identifiers from Android identifiers.
 
 `AnkyPurchasesConfig`, `SubscriptionCatalogPolicy`, and `EntitlementStore` are the client configuration source. `backend/subscription/routes.ts` and the RevenueCat webhook state in `backend/level/db.ts` are the server source.
@@ -58,7 +57,7 @@ The annual trial is presented only when all of these are true:
 - its real StoreKit discount is a three-day free trial; and
 - RevenueCat returns positive introductory-offer eligibility.
 
-Loading, missing, unknown, failed, ineligible, or future unsupported eligibility states show normal annual renewal terms. Monthly never displays trial copy under the current configuration.
+Loading, missing, unknown, failed, ineligible, or future unsupported eligibility states show normal annual renewal terms.
 
 ## Paywall reachability
 

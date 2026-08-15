@@ -1,6 +1,6 @@
 # Testing purchases (RevenueCat + local StoreKit configuration)
 
-The production identifiers are `anky.annual` and `anky.monthly`. Repository
+The production subscription identifier is `anky.annual`. Repository
 tests use the local `Anky.storekit` fixture, which is attached only to the
 scheme's Debug Run action (Edit Scheme… → Run → Options → StoreKit
 Configuration). The repository cannot establish whether the current products
@@ -27,14 +27,14 @@ logs a receipt-validation error and entitlement never activates).
 
 ## What works locally
 
-- Fetching the `default` offering and its annual/monthly packages
-  (packages must be configured in the RevenueCat dashboard first).
-- Purchasing either plan; `EntitlementStore.isEntitledForGating` flips
+- Fetching the `default` offering and its annual package
+  (the package must be configured in the RevenueCat dashboard first).
+- Purchasing the annual plan; `EntitlementStore.isEntitledForGating` flips
   once RevenueCat validates and the `pro` entitlement activates.
 - Annual three-day trial eligibility cases. Runtime trial copy appears only
   when the product contains that offer and RevenueCat positively confirms the
   current Apple account is eligible; unknown/failed/ineligible states show
-  normal annual renewal terms. Monthly has no introductory offer.
+  normal annual renewal terms.
 - Restore Purchases.
 - Resetting: Xcode menu **Debug → StoreKit → Manage Transactions…** →
   delete transactions. Also delete the app (or use a fresh simulator) to
@@ -60,6 +60,6 @@ logs a receipt-validation error and entitlement never activates).
    Configuration → None**. Keep the checked-in fixture for local Debug runs.
 2. Confirm the Archive action is Release and has no StoreKit configuration;
    inspect the archive to ensure `Anky.storekit` is absent.
-3. Verify products `anky.monthly` and `anky.annual`, entitlement `pro`, and
-   offering `default` in the live dashboards. Do not use an Android annual
+3. Verify product `anky.annual`, entitlement `pro`, and offering `default` in
+   the live dashboards. Do not use an Android annual
    identifier for iOS.

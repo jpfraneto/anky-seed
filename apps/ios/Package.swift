@@ -42,6 +42,7 @@ let package = Package(
             // protocol/core surface only.
             exclude: [
                 "DraftRecoveryTests.swift",
+                "GeshtuPrivacySeamTests.swift",
                 "JourneyAnchorTests.swift",
                 "QuoteSanitizerTests.swift",
                 "SubscriptionRemediationTests.swift"

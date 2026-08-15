@@ -3,32 +3,16 @@ import RevenueCat
 
 enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
     case annual
-    case monthly
-    case weekly
 
     var productID: String {
-        switch self {
-        case .annual:
-            return AnkyPurchasesConfig.annualProductID
-        case .monthly:
-            return AnkyPurchasesConfig.monthlyProductID
-        case .weekly:
-            return AnkyPurchasesConfig.weeklyProductID
-        }
+        AnkyPurchasesConfig.annualProductID
     }
 
     /// Billing duration is presentation/configuration truth only. Feature
     /// access never branches on this value; every plan grants the same `pro`
     /// entitlement.
     var expectedPeriod: (value: Int, unit: SubscriptionPeriod.Unit) {
-        switch self {
-        case .annual:
-            return (1, .year)
-        case .monthly:
-            return (1, .month)
-        case .weekly:
-            return (1, .week)
-        }
+        (1, .year)
     }
 
     var entitlementID: String {
@@ -39,6 +23,13 @@ enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
 enum SubscriptionCatalogPolicy {
     static func discoveredPlans(productIDs: Set<String>) -> Set<AnkySubscriptionPlan> {
         Set(AnkySubscriptionPlan.allCases.filter { productIDs.contains($0.productID) })
+    }
+
+    /// The paywall's catalog invariant: the approved annual plan must be
+    /// present. Extra or historical products never become purchasable merely
+    /// because RevenueCat returns them.
+    static func containsRequiredPlans(productIDs: Set<String>) -> Bool {
+        AnkySubscriptionPlan.allCases.allSatisfy { productIDs.contains($0.productID) }
     }
 
     static func packageMatchesExpectedPeriod(_ package: Package, plan: AnkySubscriptionPlan) -> Bool {
@@ -71,8 +62,12 @@ enum AnnualTrialEligibilityState: Equatable {
     case noOffer
     case unsupported
 
+    /// The free trial is disabled (user decision, 2026-07-24: "forget about
+    /// the free trial. disable it"). No state advertises trial copy anymore,
+    /// regardless of what the store reports — remove the intro offer from
+    /// App Store Connect to disable it store-side too.
     var displaysTrial: Bool {
-        self == .eligible
+        false
     }
 
     static func fromRevenueCat(_ status: IntroEligibilityStatus?) -> Self {

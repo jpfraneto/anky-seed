@@ -78,3 +78,17 @@ That Worker lists the Cloudflare R2 bucket named `anky-gallery`. Upload images
 into that bucket from the Cloudflare dashboard and refresh `/gallery`.
 When both original and `.webp` variants exist for the same basename, the Worker
 serves the `.webp` entry to the frontend.
+
+## Connect
+
+`/connect` shows a QR code for the "connect your anky" web-login flow. The
+page requests a challenge from the backend, renders its link as a QR code
+(`src/lib/qr.ts`, no dependencies), and polls until the phone approves.
+
+To point the frontend at another backend, set:
+
+```sh
+VITE_ANKY_API_BASE=https://mirror-production-a23c.up.railway.app
+```
+
+If unset, the page falls back to the Railway production URL above.

@@ -32,14 +32,17 @@ import inc.anky.android.core.storage.ReflectionStore
 import inc.anky.android.core.storage.ReflectionRequestStore
 import inc.anky.android.core.storage.SessionIndexStore
 import inc.anky.android.core.storage.AvatarStore
+import inc.anky.android.core.storage.WritingPreferencesStore
 import inc.anky.android.core.subscription.EntitlementStore
 import inc.anky.android.core.subscription.RevenueCatSubscriptionGateway
 import inc.anky.android.core.subscription.SubscriptionBackend
 import inc.anky.android.feature.painting.PaintingHomeDependencies
 import inc.anky.android.feature.painting.PaintingHomeSession
+import inc.anky.android.feature.write.GateSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AppContainer(
     context: Context,
@@ -55,8 +58,10 @@ class AppContainer(
     val sessionIndexStore = SessionIndexStore(appContext)
     val appOpenStore = AppOpenStore(appContext)
     val settingsStore = UserSettingsStore(appContext)
+    val writingPreferencesStore = WritingPreferencesStore(appContext)
     val reminderScheduler = DailyReminderScheduler(appContext)
     val gateRuntime = GateRuntime(appContext)
+    val gateSession = GateSession(gateRuntime.preferences)
     val avatarStore = AvatarStore(appContext)
     val writingAnchorStore = WritingAnchorStore(gateRuntime.preferences)
     val levelProgressStore = LevelProgressStore(appContext)
@@ -158,6 +163,27 @@ class AppContainer(
 
     fun mirrorClient(baseUrl: String): MirrorClient =
         MirrorClient(MirrorConfiguration(baseUrl = baseUrl))
+
+    fun creditSealedSession(
+        hash: String,
+        durationMs: Long,
+        replacedDurationMs: Long?,
+        sealedAtMs: Long,
+    ) {
+        levelProgressStore.creditSealedSession(
+            hash = hash,
+            durationMs = durationMs,
+            replacedDurationMs = replacedDurationMs,
+            sealedAtMs = sealedAtMs,
+        )
+        appScope.launch {
+            LevelSyncClient.flushUnreported(
+                store = levelProgressStore,
+                identity = runCatching { identityStore.loadOrCreate() }.getOrNull(),
+                client = levelSyncClient,
+            )
+        }
+    }
 
     private fun levelSessionStats(): List<LevelSessionStat> =
         sessionIndexStore.load()
