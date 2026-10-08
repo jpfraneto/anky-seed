@@ -18,9 +18,9 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Just write for\neight minutes.",
-        "simplicity": "Nothing else.",
-        "reflection": "See what's\nunderneath.",
+        "ritual": "Write 8 minutes.",
+        "simplicity": "The simplest\nwriting app.",
+        "reflection": "Get a reflection\non your writing.",
         "archive": "Your archive,\norganized.",
         "recording": "Record yourself\nreading."
       },
@@ -105,9 +105,9 @@
         "es_MX@sw=QWERTY-Spanish;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Escribe ocho\nminutos.",
-        "simplicity": "Nada más.",
-        "reflection": "Mira lo que\nhay debajo.",
+        "ritual": "Escribe 8 minutos.",
+        "simplicity": "La app de escritura\nmás simple.",
+        "reflection": "Recibe una reflexión\nsobre lo que escribiste.",
         "archive": "Tu archivo,\nen orden.",
         "recording": "Grábate\nleyendo."
       },
@@ -192,11 +192,11 @@
         "fr_FR@sw=AZERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Écris pendant\nhuit minutes.",
-        "simplicity": "Rien d'autre.",
-        "reflection": "Vois ce qui est\ndessous.",
-        "archive": "Tes écrits,\nrangés.",
-        "recording": "Enregistre-toi\nen lisant."
+        "ritual": "Écris 8 minutes.",
+        "simplicity": "L'app d'écriture\nla plus simple.",
+        "reflection": "Reçois une réflexion\nsur ce que tu as écrit.",
+        "archive": "Tes archives,\nbien rangées.",
+        "recording": "Enregistre-toi\nen train de lire."
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -279,9 +279,9 @@
         "de_DE@sw=QWERTZ-German;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Schreib einfach\nacht Minuten.",
-        "simplicity": "Sonst nichts.",
-        "reflection": "Sieh, was\ndarunter liegt.",
+        "ritual": "Schreib 8 Minuten.",
+        "simplicity": "Die einfachste\nSchreib-App.",
+        "reflection": "Erhalte eine Reflexion\nzu deinem Text.",
         "archive": "Dein Archiv,\ngeordnet.",
         "recording": "Nimm dich beim\nLesen auf."
       },
@@ -367,9 +367,9 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "बस आठ मिनट\nलिखिए।",
-        "simplicity": "और कुछ नहीं।",
-        "reflection": "देखिए भीतर\nक्या है।",
+        "ritual": "8 मिनट लिखिए।",
+        "simplicity": "सबसे सरल\nलेखन ऐप।",
+        "reflection": "अपने लेखन पर\nएक चिंतन पाइए।",
         "archive": "आपका संग्रह,\nसहेजा हुआ।",
         "recording": "खुद को पढ़ते\nहुए रिकॉर्ड करें।"
       },
@@ -455,9 +455,9 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "只写八分钟。",
-        "simplicity": "别的都没有。",
-        "reflection": "看见底下\n那一层。",
+        "ritual": "写 8 分钟。",
+        "simplicity": "最简单的\n写作应用。",
+        "reflection": "为你写下的文字\n获得一份回响。",
         "archive": "你的记录，\n都在这里。",
         "recording": "录下自己\n朗读的声音。"
       },

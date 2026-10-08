@@ -7,12 +7,11 @@
 //  headline, ImageIO writes the PNG. Everything it needs ships with macOS, so
 //  the pipeline has nothing to install, pin, or keep up to date.
 //
-//  The layout is measured from Anky's five existing screenshots (1242x2688)
-//  and scaled to the 6.9-inch canvas — see `Layout` below for the numbers and
-//  where each came from.
+//  Each frame is the app's own paper and ink: a headline in the brand serif,
+//  centered over the capture held in a drawn phone — see `Layout` below.
 //
 //  Usage:
-//    swift screenshot-compose.swift <root> [--font "Noteworthy Bold"]
+//    swift screenshot-compose.swift <root> [--font "Fraunces72pt-Regular"]
 //
 //  <root> is AppStoreScreenshots/. Reads raw/<locale>/NN-scene.png plus
 //  locales.json and fixtures/, writes final/<locale>/NN-scene.png,
@@ -25,47 +24,56 @@ import ImageIO
 import UniformTypeIdentifiers
 import AppKit
 
-// MARK: - Layout, measured from the reference set
+// MARK: - Layout
 
+/// The frame is the app's own surface: paper, ink, the brand serif, and the
+/// capture held in a drawn phone. Nothing else competes with the screen.
 enum Layout {
     /// 6.9-inch portrait, the native size an iPhone 16 Pro Max simulator emits.
     static let canvas = CGSize(width: 1320, height: 2868)
-    /// The reference screenshots were 1242x2688; every measurement below is
-    /// the reference value times this.
-    static let referenceScale: CGFloat = canvas.width / 1242.0
 
-    /// Sampled from the reference background, which is flat across all five.
-    static let background = CGColor(red: 243/255, green: 208/255, blue: 102/255, alpha: 1)
-    static let ink = CGColor(red: 0, green: 0, blue: 0, alpha: 1)
+    /// AnkyLazure.swift: ankyPaper and ankyInk.
+    static let background = CGColor(red: 0.965, green: 0.937, blue: 0.894, alpha: 1)
+    static let ink = CGColor(red: 0.239, green: 0.216, blue: 0.310, alpha: 1)
 
-    static let sideMargin: CGFloat = 178.0 * referenceScale        // 189
-    static let headlineTop: CGFloat = 176.0 * referenceScale       // 187
-    static let captureTop: CGFloat = 545.0 * referenceScale        // 579
-    static let captureWidth: CGFloat = 886.0 * referenceScale      // 942
-    /// The reference cards are plain rectangles; measured corner radius was
-    /// under 5px, i.e. none. Kept square deliberately.
-    static let captureCornerRadius: CGFloat = 0.0
+    // The phone. Proportions follow an iPhone 16 Pro Max: a 440pt-wide display
+    // with ~62pt corners, a thin black border, a titanium band around it.
+    static let screenWidth: CGFloat = 968
+    static let screenTop: CGFloat = 610
+    static let screenCornerRadius: CGFloat = screenWidth * 62.0 / 440.0
+    static let bezel: CGFloat = 21
+    static let band: CGFloat = 7
 
-    static let headlineSize: CGFloat = 118.0 * referenceScale
-    static let headlineLineHeight: CGFloat = 1.30
-    /// Never let a long localized line run into the margin: the compositor
-    /// shrinks the face a little rather than clipping or rewrapping badly.
-    static let minimumHeadlineSize: CGFloat = 76.0 * referenceScale
-    /// The headline must never reach the capture.
-    static let headlineBottomGuard: CGFloat = 24.0 * referenceScale
+    // The headline, centered in the space above the phone.
+    static let headlineSize: CGFloat = 112
+    static let minimumHeadlineSize: CGFloat = 70
+    static let headlineLineHeight: CGFloat = 1.16
+    static let headlineSideMargin: CGFloat = 96
+    static let headlineZoneTop: CGFloat = 150
+    static let headlineZoneBottomGap: CGFloat = 96
 }
 
 // MARK: - Fonts
 
-/// Latin gets the marketing face; Devanagari and Han need their own, because
-/// a handwriting face has no glyphs for them and CoreText would silently
-/// substitute something arbitrary.
+/// Latin gets Fraunces, the face the app itself is set in. Devanagari and Han
+/// need their own, because Fraunces has no glyphs for them and CoreText would
+/// silently substitute something arbitrary.
 enum FontPicker {
-    static var latinCandidates = ["Noteworthy Bold", "Noteworthy-Bold"]
-    static let devanagariCandidates = ["Kohinoor Devanagari Semibold", "KohinoorDevanagari-Semibold",
-                                       "Devanagari Sangam MN Bold", "DevanagariSangamMN-Bold"]
-    static let hanCandidates = ["PingFang SC Semibold", "PingFangSC-Semibold",
-                                "Heiti SC Medium", "STHeitiSC-Medium"]
+    static var latinCandidates = ["Fraunces72pt-Regular", "NewYork-Regular", "Georgia"]
+    static let devanagariCandidates = ["KohinoorDevanagari-Medium", "Kohinoor Devanagari Medium",
+                                       "DevanagariSangamMN", "Devanagari Sangam MN"]
+    static let hanCandidates = ["STSongti-SC-Bold", "Songti SC Bold",
+                                "PingFangSC-Medium", "PingFang SC Medium"]
+
+    /// Fraunces ships inside the app, not with macOS; make it available to
+    /// this process from the repo.
+    static func registerBundledFonts(iosRoot: URL) {
+        let fonts = iosRoot.appendingPathComponent("Anky/Fonts")
+        let files = (try? FileManager.default.contentsOfDirectory(at: fonts, includingPropertiesForKeys: nil)) ?? []
+        for file in files where file.pathExtension.lowercased() == "ttf" {
+            CTFontManagerRegisterFontsForURL(file as CFURL, .process, nil)
+        }
+    }
 
     static func font(for locale: String, size: CGFloat) throws -> CTFont {
         let candidates: [String]
@@ -95,14 +103,15 @@ struct Composer {
     let locale: String
     let headline: String
 
-    /// Lays the headline out at the largest size that fits the content width,
-    /// honoring the fixture's explicit line breaks.
+    /// Lays the headline out at a given size, honoring the fixture's explicit
+    /// line breaks.
     private func lines(at size: CGFloat) throws -> [(CTLine, CGFloat)] {
         let font = try FontPicker.font(for: locale, size: size)
         return headline.components(separatedBy: "\n").map { text in
             let attributed = NSAttributedString(string: text, attributes: [
                 .font: font,
-                .foregroundColor: NSColor.black
+                .foregroundColor: NSColor(cgColor: Layout.ink) ?? .black,
+                .kern: -size * 0.012
             ])
             let line = CTLineCreateWithAttributedString(attributed)
             let width = CTLineGetTypographicBounds(line, nil, nil, nil)
@@ -110,6 +119,7 @@ struct Composer {
         }
     }
 
+    /// The largest size at which the widest line still fits.
     private func fittedSize(maxWidth: CGFloat) throws -> CGFloat {
         var size = Layout.headlineSize
         while size > Layout.minimumHeadlineSize {
@@ -120,66 +130,134 @@ struct Composer {
         return Layout.minimumHeadlineSize
     }
 
+    private func rounded(_ rect: CGRect, _ radius: CGFloat) -> CGPath {
+        CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+    }
+
     func compose(capture: CGImage) throws -> CGImage {
-        let width = Int(Layout.canvas.width)
-        let height = Int(Layout.canvas.height)
+        let canvas = Layout.canvas
         // noneSkipLast: the App Store rejects screenshots with an alpha
         // channel, and this is what keeps one from ever existing.
         guard let context = CGContext(
-            data: nil, width: width, height: height,
+            data: nil, width: Int(canvas.width), height: Int(canvas.height),
             bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
             bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
         ) else { throw Failure("Could not create the drawing context.") }
 
         context.setFillColor(Layout.background)
-        context.fill(CGRect(origin: .zero, size: Layout.canvas))
+        context.fill(CGRect(origin: .zero, size: canvas))
 
-        let contentWidth = Layout.canvas.width - Layout.sideMargin * 2
-        let size = try fittedSize(maxWidth: contentWidth)
+        // CoreGraphics origin is bottom-left; the layout is specified from
+        // the top, so every rect is flipped once, here.
+        func fromTop(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) -> CGRect {
+            CGRect(x: x, y: canvas.height - y - height, width: width, height: height)
+        }
+
+        // MARK: The phone
+
+        let screenHeight = Layout.screenWidth * CGFloat(capture.height) / CGFloat(capture.width)
+        let screen = fromTop(
+            x: (canvas.width - Layout.screenWidth) / 2,
+            y: Layout.screenTop,
+            width: Layout.screenWidth,
+            height: screenHeight
+        )
+        let body = screen.insetBy(dx: -Layout.bezel, dy: -Layout.bezel)
+        let shell = body.insetBy(dx: -Layout.band, dy: -Layout.band)
+        guard shell.minY >= 40 else {
+            throw Failure("The capture is taller than the canvas allows — is the raw screenshot the right device?")
+        }
+        let bodyRadius = Layout.screenCornerRadius + Layout.bezel
+        let shellRadius = bodyRadius + Layout.band
+        let titanium = [
+            CGColor(red: 0.80, green: 0.78, blue: 0.75, alpha: 1),
+            CGColor(red: 0.56, green: 0.54, blue: 0.52, alpha: 1),
+            CGColor(red: 0.74, green: 0.72, blue: 0.69, alpha: 1)
+        ]
+
+        // Side buttons first, so the band overlaps their inner halves.
+        // (edge: -1 leading / +1 trailing; start and length as shares of height.)
+        let buttons: [(edge: CGFloat, start: CGFloat, length: CGFloat)] = [
+            (-1, 0.150, 0.034),   // action
+            (-1, 0.215, 0.066),   // volume up
+            (-1, 0.300, 0.066),   // volume down
+            (1, 0.255, 0.105)     // side button
+        ]
+        context.setFillColor(titanium[1])
+        for button in buttons {
+            let height = shell.height * button.length
+            let top = shell.maxY - shell.height * button.start - height
+            let x = button.edge < 0 ? shell.minX - 5 : shell.maxX - 7
+            context.addPath(rounded(CGRect(x: x, y: top, width: 12, height: height), 4))
+            context.fillPath()
+        }
+
+        // The shell casts the only shadow in the frame.
+        context.saveGState()
+        context.setShadow(
+            offset: CGSize(width: 0, height: -34),
+            blur: 90,
+            color: CGColor(red: 0.239, green: 0.216, blue: 0.310, alpha: 0.26)
+        )
+        context.setFillColor(titanium[1])
+        context.addPath(rounded(shell, shellRadius))
+        context.fillPath()
+        context.restoreGState()
+
+        // Titanium band: light catching the top and bottom edges.
+        context.saveGState()
+        context.addPath(rounded(shell, shellRadius))
+        context.clip()
+        if let gradient = CGGradient(
+            colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+            colors: titanium as CFArray,
+            locations: [0, 0.5, 1]
+        ) {
+            context.drawLinearGradient(
+                gradient,
+                start: CGPoint(x: shell.minX, y: shell.maxY),
+                end: CGPoint(x: shell.maxX, y: shell.minY),
+                options: []
+            )
+        }
+        context.restoreGState()
+
+        context.setFillColor(CGColor(red: 0.035, green: 0.035, blue: 0.045, alpha: 1))
+        context.addPath(rounded(body, bodyRadius))
+        context.fillPath()
+
+        context.saveGState()
+        context.addPath(rounded(screen, Layout.screenCornerRadius))
+        context.clip()
+        context.interpolationQuality = .high
+        context.draw(capture, in: screen)
+        context.restoreGState()
+
+        // MARK: The headline
+
+        let maxWidth = canvas.width - Layout.headlineSideMargin * 2
+        let size = try fittedSize(maxWidth: maxWidth)
         let laid = try lines(at: size)
-        let lineHeight = size * Layout.headlineLineHeight
-
-        // CoreGraphics origin is bottom-left; the layout is specified from the
-        // top, so every y is flipped once, here. The first baseline uses the
-        // font's real ascent — using the point size instead sits the block low.
         let font = try FontPicker.font(for: locale, size: size)
         let ascent = CTFontGetAscent(font)
         let descent = CTFontGetDescent(font)
-        var baseline = Layout.canvas.height - Layout.headlineTop - ascent
-        for (line, _) in laid {
-            context.textPosition = CGPoint(x: Layout.sideMargin, y: baseline)
+        let lineHeight = size * Layout.headlineLineHeight
+        let blockHeight = ascent + descent + CGFloat(laid.count - 1) * lineHeight
+
+        let zoneTop = Layout.headlineZoneTop
+        let zoneBottom = Layout.screenTop - Layout.bezel - Layout.band - Layout.headlineZoneBottomGap
+        guard blockHeight <= zoneBottom - zoneTop else {
+            throw Failure("Headline does not fit above the phone (\(Int(blockHeight)) vs \(Int(zoneBottom - zoneTop))). Shorten the line or drop a break.")
+        }
+        // Centered in its zone, so one line and two lines both sit balanced.
+        let blockTop = zoneTop + (zoneBottom - zoneTop - blockHeight) / 2
+        var baseline = canvas.height - blockTop - ascent
+        for (line, width) in laid {
+            context.textPosition = CGPoint(x: (canvas.width - width) / 2, y: baseline)
             CTLineDraw(line, context)
             baseline -= lineHeight
         }
-
-        let headlineBottom = Layout.headlineTop + ascent + descent
-            + CGFloat(laid.count - 1) * lineHeight
-        guard headlineBottom + Layout.headlineBottomGuard <= Layout.captureTop else {
-            throw Failure("Headline overruns the capture (bottom \(Int(headlineBottom)) vs top \(Int(Layout.captureTop))). Shorten the line or add a break.")
-        }
-
-        let captureHeight = Layout.captureWidth * CGFloat(capture.height) / CGFloat(capture.width)
-        let captureRect = CGRect(
-            x: (Layout.canvas.width - Layout.captureWidth) / 2,
-            y: Layout.canvas.height - Layout.captureTop - captureHeight,
-            width: Layout.captureWidth,
-            height: captureHeight
-        )
-        guard captureRect.minY >= 0 else {
-            throw Failure("The capture is taller than the canvas allows — is the raw screenshot the right device?")
-        }
-        context.saveGState()
-        if Layout.captureCornerRadius > 0 {
-            let path = CGPath(roundedRect: captureRect,
-                              cornerWidth: Layout.captureCornerRadius,
-                              cornerHeight: Layout.captureCornerRadius, transform: nil)
-            context.addPath(path)
-            context.clip()
-        }
-        context.interpolationQuality = .high
-        context.draw(capture, in: captureRect)
-        context.restoreGState()
 
         guard let image = context.makeImage() else { throw Failure("Could not render the frame.") }
         return image
@@ -251,6 +329,8 @@ guard arguments.count >= 2 else {
     exit(2)
 }
 let root = URL(fileURLWithPath: arguments[1])
+// <root> is apps/ios/AppStoreScreenshots; the app's fonts live beside it.
+FontPicker.registerBundledFonts(iosRoot: root.deletingLastPathComponent())
 if let fontIndex = arguments.firstIndex(of: "--font"), fontIndex + 1 < arguments.count {
     FontPicker.latinCandidates = [arguments[fontIndex + 1]] + FontPicker.latinCandidates
 }

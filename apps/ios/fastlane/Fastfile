@@ -1,0 +1,42 @@
+# App Store Connect, driven from the terminal.
+#
+#   fastlane ios listing     # push copy + screenshots to the version in the project
+#
+# The API key itself lives outside the repo, in ~/.appstoreconnect/private_keys.
+
+default_platform(:ios)
+
+APP_IDENTIFIER = "com.jpfraneto.Anky"
+KEY_ID = "LYWLRJP2ZF"
+ISSUER_ID = "5fa74ebb-e1b8-470f-8176-26d980d79ae8"
+
+platform :ios do
+  private_lane :connect do
+    app_store_connect_api_key(
+      key_id: KEY_ID,
+      issuer_id: ISSUER_ID,
+      key_filepath: File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{KEY_ID}.p8"),
+      in_house: false
+    )
+  end
+
+  desc "Push the listing copy and screenshots. Never submits for review."
+  lane :listing do |options|
+    connect
+    deliver(
+      app_identifier: APP_IDENTIFIER,
+      app_version: options[:version] || get_version_number(xcodeproj: "Anky.xcodeproj", target: "Anky"),
+      metadata_path: "./AppStoreMetadata",
+      screenshots_path: "./AppStoreScreenshots/final",
+      skip_binary_upload: true,
+      skip_screenshots: options[:skip_screenshots] == true,
+      # Adds the 6.9-inch set beside what is there; the iPad screenshot the
+      # listing still needs must not be wiped.
+      overwrite_screenshots: false,
+      submit_for_review: false,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+  end
+end

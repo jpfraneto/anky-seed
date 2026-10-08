@@ -1,0 +1,87 @@
+{
+  "appLocale": "en",
+  "appStoreLocale": "en-US",
+  "languageName": "English",
+  "simulatorLanguage": "en",
+  "simulatorLocale": "en_US",
+  "keyboards": [
+    "en_US@sw=QWERTY;hw=Automatic"
+  ],
+  "headlines": {
+    "ritual": "Write 8 minutes.",
+    "simplicity": "The simplest\nwriting app.",
+    "reflection": "Get a reflection\non your writing.",
+    "archive": "Your archive,\norganized.",
+    "recording": "Record yourself\nreading."
+  },
+  "ritual": {
+    "elapsedMs": 38000,
+    "text": "I keep thinking I need a better idea before I am allowed to start. But the page never asks for that. It only asks me to keep moving, and the moving is what makes the idea arrive."
+  },
+  "simplicity": {
+    "elapsedMs": 19000,
+    "text": "Nothing here to arrange. Only this line, and then the next one."
+  },
+  "feature": {
+    "date": "2026-08-18T12:00:00Z",
+    "text": "This morning the light came in sideways and I sat down before I could talk myself out of it. The whole apartment had that held-breath quality it gets before anyone needs anything from me. I have been telling myself I will start the real work once things settle down, and I am beginning to understand that things do not settle down, that this is what settled looks like: a small window, a loud street, and me deciding anyway. I want to make something honest. Not impressive. Honest. I keep confusing those two and losing whole weeks to the difference. So begin here, with the light doing that thing on the floor, with the coffee going cold because I would rather be writing than drinking it.",
+    "reflection": "## What you kept circling\n\nYou sat down to write about work and spent the entire session describing a room. The light, the quiet, the cold coffee. That is not avoidance. That is you telling yourself where the work actually lives.\n\n## The difference you named\n\nHonest, not impressive. You said you keep confusing them and losing weeks to the gap. Notice that you already know which one you want. The confusion was never about the definitions. It is about who you imagine is watching.\n\nYou did not wait for the room to get quieter. You began while it was exactly this loud."
+  },
+  "archive": [
+    {
+      "date": "2026-08-17T12:00:00Z",
+      "text": "I walked to the end of the street and back for no reason at all. Nothing was solved, but something loosened.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-16T12:00:00Z",
+      "text": "Today I noticed I have been holding my shoulders somewhere near my ears since Tuesday. Putting them down took one breath.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-14T12:00:00Z",
+      "text": "The thing I am most afraid to make is the thing I keep describing to strangers. That has to mean something.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-13T12:00:00Z",
+      "text": "My mother called and we talked about nothing for forty minutes. It was the best part of the week.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-11T12:00:00Z",
+      "text": "Nothing to say today, and I said it anyway. Some days the practice is only showing up near the blank page.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-09T12:00:00Z",
+      "text": "I finished the small thing instead of planning the large one. The small thing is real and the large one is still weather.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-07T12:00:00Z",
+      "text": "Rain all afternoon and I let myself do nothing about it. Rest is not the reward for finishing.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-05T12:00:00Z",
+      "text": "I said the true thing out loud in the meeting and the room did not end. I keep having to relearn this.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-03T12:00:00Z",
+      "text": "Counted the things that did not go wrong. It is a longer list than fear lets me believe on the bad mornings.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-01T12:00:00Z",
+      "text": "He fell asleep against my arm on the bus and I did not move for eleven stops. Some things are worth a dead arm.",
+      "reflected": false
+    },
+    {
+      "date": "2026-07-29T12:00:00Z",
+      "text": "Begin again. I am always beginning again. Maybe that is the whole thing, the beginning, over and over, until it is a life.",
+      "reflected": true
+    }
+  ]
+}

@@ -261,7 +261,7 @@ private struct SessionDrawerRow: View {
                 .foregroundStyle(Color.ankyInk)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Text(Self.dateFormatter.string(from: date).lowercased())
+            Text(Self.dateFormatter.string(from: date))
                 .font(.fraunces(12, weight: .light))
                 .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
         }
@@ -358,7 +358,7 @@ struct WritingStatsView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text(AnkyLocalization.ui(label))
+            Text(Self.sentenceCased(AnkyLocalization.ui(label)))
                 .font(.fraunces(13, weight: .light))
                 .foregroundStyle(Color.ankyInkSoft)
                 .lineLimit(1)
@@ -385,6 +385,13 @@ struct WritingStatsView: View {
         Rectangle()
             .fill(Color.ankyInk.opacity(0.08))
             .frame(height: 0.5)
+    }
+
+    /// The stat names double as words inside sentences elsewhere ("199
+    /// words"), so the catalog keeps them lowercase; standing alone as a
+    /// label they take a capital.
+    fileprivate static func sentenceCased(_ text: String) -> String {
+        text.prefix(1).uppercased() + text.dropFirst()
     }
 }
 
@@ -492,7 +499,7 @@ private struct WritingCalendar: View {
             Circle()
                 .fill(color)
                 .frame(width: 10, height: 10)
-            Text(AnkyLocalization.ui(label))
+            Text(WritingStatsView.sentenceCased(AnkyLocalization.ui(label)))
                 .font(.fraunces(12, weight: .light))
                 .foregroundStyle(Color.ankyInkSoft)
         }

@@ -56,7 +56,11 @@ struct AnkySettingsView: View {
                 typefaceGroup
                 protectionGroup
                 keysGroup
+                // Pointing the app at another server is a development tool,
+                // not a setting a writer should meet.
+                #if DEBUG
                 serverGroup
+                #endif
                 supportGroup
                 legalGroup
                 deleteGroup

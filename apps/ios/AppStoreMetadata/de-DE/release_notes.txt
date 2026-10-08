@@ -1,5 +1,11 @@
-Vor allem Kleinigkeiten.
+Ein ruhigeres Anky.
 
-In dieser Version geht es darum, aus dem Weg zu gehen: schneller zum ersten Tastendruck, ruhigeres Scrollen durch das Archiv, und ein paar Korrekturen daran, wie Sitzungen gespeichert, wieder geöffnet und nachgelesen werden.
+Eine Seite, eine Schublade. Das Schreiben liegt immer vor dir, und alles, was du geschrieben hast, gleitet von der Seite herein.
 
-Keine neuen Knöpfe. Nur weniger Gründe aufzuhören.
+Statistik. Deine Serie und ein Kalender der Tage, an denen du geschrieben hast.
+
+Einstellungen, neu gemacht. Eine Zeile pro Einstellung.
+
+Schreib, bevor du scrollst. Ein Schalter sperrt die Apps, die dich ablenken, bis du geschrieben hast.
+
+Anky Pro gibt es jetzt monatlich oder jährlich.

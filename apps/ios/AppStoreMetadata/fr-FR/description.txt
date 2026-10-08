@@ -18,6 +18,8 @@ De là, tu peux demander une réflexion à Anky : il lit ce que tu as écrit et 
 
 Ou tu peux t'enregistrer en lisant tes propres mots à voix haute, et garder la vidéo.
 
+Ta série, et un calendrier des jours où tu as écrit, sont à un geste.
+
 ÉCRIS AVANT DE SCROLLER
 
 Anky peut se placer entre toi et les applications que tu ouvres sans l'avoir décidé. Écris tes minutes d'abord, et le reste de la journée s'ouvre.
@@ -26,7 +28,7 @@ CE QUE ÇA COÛTE
 
 Écrire est gratuit. Ça le restera. La page blanche, le minuteur, l'archive, l'enregistrement : rien de tout cela n'est derrière un mur.
 
-Les réflexions sont la partie qui coûte à faire tourner, donc c'est la partie qui se paie. Achète-les par lots, ou abonne-toi à Anky Pro pour les recevoir du modèle le plus capable disponible. Et si tu préfères ne rien payer, appuie longuement sur le bouton copier et emporte ton texte vers l'outil d'IA que tu utilises déjà. Anky t'aide à le faire.
+Les réflexions sont gratuites aussi, avec un modèle de base. Anky Pro te donne des réflexions du modèle le plus capable disponible. Et si tu préfères ne rien payer, utilise Copier Prompt + Anky dans le menu et emporte ton texte vers l'outil d'IA que tu utilises déjà.
 
 ANKY PRO
 

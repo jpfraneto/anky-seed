@@ -1,5 +1,11 @@
-Small things, mostly.
+A calmer Anky.
 
-This one is about getting out of the way: quicker to the first keystroke, steadier scrolling through the archive, and fixes to how sessions are saved, reopened and read back.
+One page, one drawer. The writing is always in front of you, and everything you have written slides in from the side.
 
-No new buttons. Just fewer reasons to stop writing.
+Stats. Your streak, and a calendar of the days you wrote.
+
+Settings, redone. One line per setting.
+
+Write before you scroll. One switch blocks the apps that pull you away until you have written.
+
+Anky Pro can now be monthly or yearly.

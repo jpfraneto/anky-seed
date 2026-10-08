@@ -25,7 +25,7 @@ SCHEME="Anky"
 PROJECT="Anky.xcodeproj"
 BUNDLE_ID="com.jpfraneto.Anky"
 DEVICE_NAME="${ANKY_SCREENSHOT_DEVICE_NAME:-iPhone 16 Pro Max}"
-HEADLINE_FONT="${ANKY_HEADLINE_FONT:-Noteworthy Bold}"
+HEADLINE_FONT="${ANKY_HEADLINE_FONT:-Fraunces72pt-Regular}"
 SCENES=(ritual simplicity reflection archive recording)
 SIGNAL="anky-screenshot-signal.json"
 READY_TIMEOUT=45
@@ -263,6 +263,11 @@ APPLESCRIPT
     IFS=',' read -r -a KB <<< "$KEYBOARDS"
     xcrun simctl spawn "$UDID" defaults write -g AppleKeyboards -array "${KB[@]}" >/dev/null 2>&1 || true
     xcrun simctl spawn "$UDID" defaults write com.apple.Accessibility ReduceMotionEnabled -bool true >/dev/null 2>&1 || true
+    # A fresh simulator covers the keyboard with its "slide to type" lesson
+    # the first time it rises. Tell it the lesson was already given.
+    for KEY in DidShowContinuousPathIntroduction DidShowGestureKeyboardIntroduction; do
+      xcrun simctl spawn "$UDID" defaults write com.apple.keyboard.preferences "$KEY" -bool true >/dev/null 2>&1 || true
+    done
     # Quit, write the preference, reopen onto this device: the language change
     # needs the reboot and the keyboard needs Simulator.app to honour the pref.
     quit_simulator_app

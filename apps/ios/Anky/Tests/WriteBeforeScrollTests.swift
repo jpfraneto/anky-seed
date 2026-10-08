@@ -733,7 +733,7 @@ final class WriteBeforeScrollTests: XCTestCase {
             quickPassesRemaining: 2,
             attemptedAppName: "Instagram"
         )
-        XCTAssertTrue(withPasses.subtitle.contains("quick pass — one sentence · 2 left today"))
+        XCTAssertTrue(withPasses.subtitle.contains("Quick pass — one sentence · 2 left today"))
         XCTAssertTrue(withPasses.subtitle.contains("Instagram is waiting behind the door."))
 
         let exhausted = store.copy(

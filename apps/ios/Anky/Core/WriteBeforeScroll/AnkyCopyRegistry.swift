@@ -40,20 +40,20 @@ enum AnkyCopyRegistry {
     }
 
     static func gatePassLine(passesRemaining: Int) -> String {
-        "quick pass — one sentence · \(passesRemaining) left today"
+        "Quick pass — one sentence · \(passesRemaining) left today"
     }
 
     // MARK: Quick Pass
 
     /// Gate-originated sessions only; organic sessions show nothing.
     static func quickPassUnlockLine(appName: String?) -> String {
-        "you can now go back to \((appName ?? "your app").lowercased()) for 15 minutes."
+        "You can now go back to \(appName ?? "your app") for 15 minutes."
     }
 
     // MARK: The talking top bar
 
-    static let backspaceMessage = "backspace is disabled. keep going."
-    static let enterMessage = "formatting doesn't matter. just write."
+    static let backspaceMessage = "Backspace is disabled. Keep going."
+    static let enterMessage = "Formatting doesn't matter. Just write."
 
     // MARK: Ceremony
 
@@ -81,7 +81,7 @@ enum AnkyCopyRegistry {
     static let ritualButton = "Send your writing to anky"
 
     static func ritualInFlight(level: Int) -> String {
-        "anky is painting your level \(level)…"
+        "Anky is painting your level \(level)…"
     }
 
     static let ritualDisclosure =
@@ -90,7 +90,7 @@ enum AnkyCopyRegistry {
     // MARK: Journey
 
     static func journeyDayLabel(day: Int, total: Int) -> String {
-        "day \(day) of \(total)"
+        "Day \(day) of \(total)"
     }
 
     // MARK: Adaptive target (phase-2 §1)
@@ -100,18 +100,18 @@ enum AnkyCopyRegistry {
     }
 
     static func adaptiveOfferLower(suggestedMinutes: Int) -> String {
-        "walk with \(suggestedMinutes)"
+        "Walk with \(suggestedMinutes)"
     }
 
     static func adaptiveOfferKeep(targetMinutes: Int) -> String {
-        "keep \(targetMinutes)"
+        "Keep \(targetMinutes)"
     }
 
     // MARK: Emergency unlock (phase-2 §2)
 
     static let emergencyLink = "emergency? open without writing"
-    static let emergencyNotificationTitle = "the emergency door"
-    static let emergencyNotificationBody = "tap to take one slow breath. everything opens after."
+    static let emergencyNotificationTitle = "Emergency unlock"
+    static let emergencyNotificationBody = "Tap to take one slow breath. Everything opens after."
 
     // MARK: Gate off-switch (2026-07-06)
     // One honest exit, one honest confirmation — no dark patterns in
@@ -143,15 +143,15 @@ enum AnkyCopyRegistry {
 
     // MARK: Home Screen quick action (phase-2 §3)
 
-    static let quickActionUnfinished = "your painting is waiting for you"
-    static let quickActionNewPainting = "a new painting is waiting"
+    static let quickActionUnfinished = "Your painting is waiting for you"
+    static let quickActionNewPainting = "A new painting is waiting"
 
     static func quickActionProgressLine(percent: Int, level: Int) -> String {
         "\(percent)% — level \(level)"
     }
 
     static func quickActionNewLevelLine(level: Int) -> String {
-        "level \(level) — 0%"
+        "Level \(level) — 0%"
     }
 
     // MARK: Trial surface (phase-2 §5)
@@ -173,12 +173,12 @@ enum AnkyCopyRegistry {
 
     // MARK: Boundary-truthful ambient surfaces (phase-3 §5)
 
-    static let boundaryWidgetLine = "a new painting waits"
+    static let boundaryWidgetLine = "A new painting waits"
     static let boundaryQuickAction = "level 8 complete — your next painting waits"
 
     // MARK: Paywall sheet (phase-3 §4)
 
-    static let paywallSheetTitle = "the deepening"
+    static let paywallSheetTitle = "The deepening"
     static let paywallSheetVoiceLine =
         "Better reflections from Anky's strongest available model."
 }

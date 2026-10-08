@@ -14,7 +14,7 @@
 "stepKeepThreadAlive" = "Mantén vivo el hilo";
 "stepLetSilenceCloseIt" = "Deja que el silencio lo cierre";
 "writeEightMinutes" = "Escribir 8 minutos";
-"start again" = "empezar de nuevo";
+"start again" = "Empezar de nuevo";
 "open reflection" = "Abrir reflexión";
 "I remember you." = "Te recuerdo.";
 "An encrypted Anky backup is waiting in iCloud." = "Hay una copia cifrada de Anky esperando en iCloud.";
@@ -37,11 +37,11 @@
 "Delete" = "Eliminar";
 "Cancel" = "Cancelar";
 "This permanently deletes this writing session. This cannot be undone." = "Esto elimina permanentemente esta sesión de escritura. No se puede deshacer.";
-"the mirror did not open" = "el espejo no se abrió";
+"the mirror did not open" = "El espejo no se abrió";
 "Your private space to be witnessed." = "Tu espacio privado para ser presenciado.";
 "Go to current day" = "Ir al día actual";
 "UTC day progress" = "Progreso del día UTC";
-"showed up" = "apareció";
+"showed up" = "Apareció";
 "Open all ankys" = "Abrir todos los ankys";
 "You don't need another place to perform." = "No necesitas otro lugar para actuar.";
 "Anky gives you 8 minutes to let out what you're carrying." = "Anky te da 8 minutos para soltar lo que cargas.";
@@ -85,40 +85,40 @@
 "reflection" = "reflexión";
 "reflections" = "reflexiones";
 "Encrypted iCloud backup is on. Last updated %@." = "La copia cifrada de iCloud está activada. Última actualización %@.";
-"anky is finding the live thread." = "anky está encontrando el hilo vivo.";
-"the mirror is not ready to nudge unfinished ankys yet." = "el espejo aún no está listo para empujar ankys sin terminar.";
-"anky could not return a nudge right now." = "anky no pudo devolver un empujón ahora.";
-"what detail here still wants one more sentence?" = "¿qué detalle de esto todavía quiere otra frase?";
+"anky is finding the live thread." = "Anky está encontrando el hilo vivo.";
+"the mirror is not ready to nudge unfinished ankys yet." = "El espejo aún no está listo para empujar ankys sin terminar.";
+"anky could not return a nudge right now." = "Anky no pudo devolver un empujón ahora.";
+"what detail here still wants one more sentence?" = "¿Qué detalle de esto todavía quiere otra frase?";
 "This writing session could not be deleted." = "No se pudo eliminar esta sesión de escritura.";
-"i am opening a quiet channel." = "estoy abriendo un canal silencioso.";
-"i am preparing your reflection." = "estoy preparando tu reflexión.";
-"i am carrying the thread to the mirror." = "estoy llevando el hilo al espejo.";
-"something answered. i am threading it back." = "algo respondió. estoy trayéndolo de vuelta.";
-"the mirror is already holding this thread." = "el espejo ya sostiene este hilo.";
-"i am still waiting with the mirror." = "sigo esperando con el espejo.";
-"writing the reflection... %d characters" = "escribiendo la reflexión... %d caracteres";
-"opening the mirror..." = "abriendo el espejo...";
-"received your writing..." = "recibí tu escritura...";
-"reading your .anky..." = "leyendo tu .anky...";
-"preparing your writing..." = "preparando tu escritura...";
-"opening the way..." = "abriendo el camino...";
-"validating the ritual..." = "validando el ritual...";
-"checking reflection access..." = "revisando acceso a reflexión...";
-"preparing the reflection..." = "preparando la reflexión...";
-"anky is writing..." = "anky está escribiendo...";
-"bringing it back..." = "trayéndolo de vuelta...";
-"settling..." = "asentando...";
-"checking payment options..." = "revisando opciones de pago...";
-"payment verified..." = "pago verificado...";
-"opening the scroll..." = "abriendo el pergamino...";
+"i am opening a quiet channel." = "Estoy abriendo un canal silencioso.";
+"i am preparing your reflection." = "Estoy preparando tu reflexión.";
+"i am carrying the thread to the mirror." = "Estoy llevando el hilo al espejo.";
+"something answered. i am threading it back." = "Algo respondió. Estoy trayéndolo de vuelta.";
+"the mirror is already holding this thread." = "El espejo ya sostiene este hilo.";
+"i am still waiting with the mirror." = "Sigo esperando con el espejo.";
+"writing the reflection... %d characters" = "Escribiendo la reflexión... %d caracteres";
+"opening the mirror..." = "Abriendo el espejo...";
+"received your writing..." = "Recibí tu escritura...";
+"reading your .anky..." = "Leyendo tu .anky...";
+"preparing your writing..." = "Preparando tu escritura...";
+"opening the way..." = "Abriendo el camino...";
+"validating the ritual..." = "Validando el ritual...";
+"checking reflection access..." = "Revisando acceso a reflexión...";
+"preparing the reflection..." = "Preparando la reflexión...";
+"anky is writing..." = "Anky está escribiendo...";
+"bringing it back..." = "Trayéndolo de vuelta...";
+"settling..." = "Asentando...";
+"checking payment options..." = "Revisando opciones de pago...";
+"payment verified..." = "Pago verificado...";
+"opening the scroll..." = "Abriendo el pergamino...";
 "Could not load reflections." = "No se pudieron cargar las reflexiones.";
 "Anky could not return a reflection right now." = "Anky no pudo devolver una reflexión ahora.";
-"anky is working..." = "anky está trabajando...";
-"i am waiting with the mirror." = "estoy esperando con el espejo.";
+"anky is working..." = "Anky está trabajando...";
+"i am waiting with the mirror." = "Estoy esperando con el espejo.";
 "Backspace and enter stay outside this chamber. Just keep writing." = "Retroceso y enter se quedan fuera de esta cámara. Solo sigue escribiendo.";
-"stay with the next true sentence." = "quédate con la próxima frase verdadera.";
-"que detalle de esto todavia quiere otra frase?" = "¿qué detalle de esto todavía quiere otra frase?";
-"no saved sessions with this tag." = "no hay sesiones guardadas con esta etiqueta.";
+"stay with the next true sentence." = "Quédate con la próxima frase verdadera.";
+"que detalle de esto todavia quiere otra frase?" = "¿Qué detalle de esto todavía quiere otra frase?";
+"no saved sessions with this tag." = "No hay sesiones guardadas con esta etiqueta.";
 "word" = "palabra";
 "words" = "palabras";
 "Writing time %@" = "Tiempo de escritura %@";
@@ -173,10 +173,10 @@
 "Danger zone" = "Zona de peligro";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "Esto elimina de este dispositivo los archivos .anky locales, las reflexiones locales y el índice del mapa local. Exporta una copia primero si quieres conservarlos.";
 "Delete local data" = "Eliminar datos locales";
-"writing is always free" = "escribir siempre es gratis";
-"support / feedback" = "soporte / comentarios";
-"email support@anky.app. include only what you choose to write." = "escribe a support@anky.app. incluye solo lo que elijas escribir.";
-"copy your .anky or copy your writing." = "copia tu .anky o copia tu escritura.";
+"writing is always free" = "Escribir siempre es gratis";
+"support / feedback" = "Soporte / comentarios";
+"email support@anky.app. include only what you choose to write." = "Escribe a support@anky.app. Incluye solo lo que elijas escribir.";
+"copy your .anky or copy your writing." = "Copia tu .anky o copia tu escritura.";
 "%d words, %@, %d backspaces, %d enters" = "%d palabras, %@, %d retrocesos, %d enters";
 "%d writings · %d reflections" = "%d escrituras · %d reflexiones";
 "Anky experience time %@" = "Tiempo de experiencia Anky %@";
@@ -199,24 +199,24 @@
 "WRITE %d MINUTES" = "ESCRIBE %d MINUTOS";
 "Writing stays local unless you export or ask for a reflection." = "La escritura permanece local salvo que la exportes o pidas una reflexión.";
 "Your archive is yours. Export readable writings or keep an encrypted iCloud backup." = "Tu archivo es tuyo. Exporta escrituras legibles o conserva una copia cifrada en iCloud.";
-"device lock app protection" = "protección con bloqueo del dispositivo";
-"stay close.\ni’m listening for the shape underneath." = "quédate cerca.\nestoy escuchando la forma debajo.";
+"device lock app protection" = "Protección con bloqueo del dispositivo";
+"stay close.\ni’m listening for the shape underneath." = "Quédate cerca.\nEstoy escuchando la forma debajo.";
 "unknown" = "desconocido";
 "%@. %@" = "%@.%@";
 "Anky companion" = "Compañero Anky";
-"copy your .anky" = "copiar tu .anky";
-"copy your writing" = "copiar tu escritura";
+"copy your .anky" = "Copiar tu .anky";
+"copy your writing" = "Copiar tu escritura";
 "copied .anky" = ".anky copiado";
-"copy opening .anky" = "copiar .anky inicial";
-"copied text" = "texto copiado";
-"copy opening text" = "copiar texto inicial";
-"copy closing .anky" = "copiar .anky final";
-"copy closing text" = "copiar texto final";
-"the experience is open" = "la experiencia está abierta";
-"the experience is complete" = "la experiencia está completa";
-"recover access" = "recuperar acceso";
-"cancel" = "cancelar";
-"recover" = "recuperar";
+"copy opening .anky" = "Copiar .anky inicial";
+"copied text" = "Texto copiado";
+"copy opening text" = "Copiar texto inicial";
+"copy closing .anky" = "Copiar .anky final";
+"copy closing text" = "Copiar texto final";
+"the experience is open" = "La experiencia está abierta";
+"the experience is complete" = "La experiencia está completa";
+"recover access" = "Recuperar acceso";
+"cancel" = "Cancelar";
+"recover" = "Recuperar";
 "Ankys" = "Ankys";
 "Minutes" = "Minutos";
 "Streak" = "Racha";
@@ -242,19 +242,19 @@
 "Legal document unavailable. Please contact support@anky.app." = "El documento legal no está disponible. Contacta a support@anky.app.";
 
 /* Free-tier target moment + emergency door (2026-07-06) */
-"your target, reached." = "tu meta, alcanzada.";
-"you wrote what you set out to write today. that is the whole practice." = "escribiste lo que te propusiste escribir hoy. esa es toda la práctica.";
-"not now" = "ahora no";
+"your target, reached." = "Tu meta, alcanzada.";
+"you wrote what you set out to write today. that is the whole practice." = "Escribiste lo que te propusiste escribir hoy. Esa es toda la práctica.";
+"not now" = "Ahora no";
 "emergency? open without writing" = "¿Emergencia? Desbloquea tus apps sin escribir";
 "Emergency: open your apps without writing" = "Emergencia: desbloquea tus apps sin escribir";
 
 /* Gate off-switch (2026-07-06) */
 "Disable app blocking" = "Desactivar el bloqueo de apps";
-"take the door down?" = "¿bajar la puerta?";
-"your apps open freely again. the gate waits here whenever you want it back." = "tus apps vuelven a abrirse libremente. la puerta espera aquí cuando quieras recuperarla.";
-"turn it off" = "apagarla";
-"keep the gate" = "mantener la puerta";
-"the gate is off. your apps are open." = "la puerta está apagada. tus apps están abiertas.";
+"take the door down?" = "¿Dejar de bloquear apps?";
+"your apps open freely again. the gate waits here whenever you want it back." = "Tus apps se abrirán sin escribir antes. Puedes volver a activarlo cuando quieras.";
+"turn it off" = "Desactivar";
+"keep the gate" = "Seguir bloqueando";
+"the gate is off. your apps are open." = "La puerta está apagada. Tus apps están abiertas.";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
 "skip" = "Saltar";
@@ -263,7 +263,7 @@
 "The unveiling" = "La revelación";
 "Every level of your practice is a painting. Each second you write reveals the current one, stroke by stroke — and past level 8, Anky paints each canvas from the essence of your writing, never the words themselves." = "Cada nivel de tu práctica es una pintura. Cada segundo que escribes revela la actual, pincelada a pincelada — y después del nivel 8, Anky pinta cada lienzo desde la esencia de tu escritura, nunca desde las palabras mismas.";
 "You just completed a painting. It hangs in your gallery now, finished and yours. What blooms and recedes here is a glimpse of the next canvas — you earn it back stroke by stroke." = "Acabas de completar una pintura. Ya cuelga en tu galería, terminada y tuya. Lo que florece y se desvanece aquí es un vistazo del próximo lienzo — lo recuperas pincelada a pincelada.";
-"anky is reading…" = "anky está leyendo…";
+"anky is reading…" = "Anky está leyendo…";
 "Anky is painting…" = "Anky está pintando…";
 "Your writing stats" = "Tus estadísticas de escritura";
 "Your practice" = "Tu práctica";
@@ -281,19 +281,19 @@
 "Skip the breath — open my apps now" = "Saltar la respiración — abrir mis apps ahora";
 "Your apps are unlocked." = "Tus apps están desbloqueadas.";
 "Back" = "Atrás";
-"write one true thing" = "escribe una cosa verdadera";
-"finish a sentence · opens a 15-min pass" = "termina una frase · abre un pase de 15 min";
-"write to your target · opens the day" = "escribe hasta tu meta · abre el día";
-"keep going for your daily target" = "sigue hasta tu meta diaria";
-"your apps are unlocked for the day" = "tus apps están desbloqueadas por hoy";
-"your apps are open · this writing is for you" = "tus apps están abiertas · esta escritura es para ti";
-"target met · your apps are unlocked for the day" = "meta cumplida · tus apps están desbloqueadas por hoy";
-"daily target met" = "meta diaria cumplida";
+"write one true thing" = "Escribe una cosa verdadera";
+"finish a sentence · opens a 15-min pass" = "Termina una frase · abre un pase de 15 min";
+"write to your target · opens the day" = "Escribe hasta tu meta · abre el día";
+"keep going for your daily target" = "Sigue hasta tu meta diaria";
+"your apps are unlocked for the day" = "Tus apps están desbloqueadas por hoy";
+"your apps are open · this writing is for you" = "Tus apps están abiertas · esta escritura es para ti";
+"target met · your apps are unlocked for the day" = "Meta cumplida · tus apps están desbloqueadas por hoy";
+"daily target met" = "Meta diaria cumplida";
 
 /* Feedback pass 2026-07-08: unlock-at-threshold pill, sealing stay line, founder link, reflection retry */
 "or stay" = "o quédate";
 "to complete your daily target" = "para completar tu meta diaria";
-"take a screenshot of this and send it to the founder" = "toma una captura de esto y envíasela al fundador";
+"take a screenshot of this and send it to the founder" = "Toma una captura de esto y envíasela al fundador";
 "here" = "aquí";
 "ask for the reflection again" = "Pedir la reflexión otra vez";
 "This writing never received its reflection. Your words are safe on this device." = "Esta escritura nunca recibió su reflexión. Tus palabras están a salvo en este dispositivo.";
@@ -325,7 +325,7 @@
 "Talk what is alive." = "Di lo que está vivo.";
 "No need to explain it well." = "No hace falta explicarlo bien.";
 "No need to explain." = "No hace falta explicar.";
-"what you shared" = "lo que compartiste";
+"what you shared" = "Lo que compartiste";
 "Speech recognition permission is needed to talk with Anky." = "Anky necesita permiso de reconocimiento de voz para escucharte.";
 "Microphone permission is needed to keep recording." = "Anky necesita permiso del micrófono para seguir grabando.";
 "Nothing you've written contains that yet." = "Nada de lo que has escrito contiene eso todavía.";
@@ -340,12 +340,12 @@
 "revealed by seconds format" = "revelado por %@ segundos de tu escritura";
 "ceremony revealed title format" = "“%@” — revelado por %@ segundos de tu escritura.";
 "WELCOME TO LEVEL %d" = "BIENVENIDO AL NIVEL %d";
-"anky is preparing your canvas…" = "anky está preparando tu lienzo…";
+"anky is preparing your canvas…" = "Anky está preparando tu lienzo…";
 "Quick pass count format" = "Pase rápido · quedan %d hoy";
 "Made with love by Anky, Inc" = "Hecho con 💚 por Anky, Inc";
 "mins" = "min";
 "Writing journey accessibility format" = "Viaje de escritura, día %d de %d, %d días con escritura";
-"day count format" = "día %d de %d";
+"day count format" = "Día %d de %d";
 "mins written format" = "%d min escritos";
 "writings count format" = "%d escritos";
 "That's %d years" = "Son %d años";
@@ -355,10 +355,10 @@
 "This writing session cannot be continued." = "Esta sesión de escritura no se puede continuar.";
 "Could not continue this writing session." = "No se pudo continuar esta sesión de escritura.";
 "Finish this rhythm before opening another artifact." = "Termina este ritmo antes de abrir otro artefacto.";
-"i couldn't find a readable .anky in that." = "no pude encontrar un .anky legible ahí.";
-"i couldn't open that .anky yet." = "todavía no pude abrir ese .anky.";
+"i couldn't find a readable .anky in that." = "No pude encontrar un .anky legible ahí.";
+"i couldn't open that .anky yet." = "Todavía no pude abrir ese .anky.";
 "Could not save this .anky." = "No se pudo guardar este .anky.";
-"nudges open with anky's subscription. the writing is still yours." = "los empujoncitos se abren con la suscripción de anky. la escritura sigue siendo tuya.";
+"nudges open with anky's subscription. the writing is still yours." = "Los empujoncitos se abren con la suscripción de Anky. La escritura sigue siendo tuya.";
 "Search" = "Buscar";
 "Back to today" = "Volver a hoy";
 "Ask Anky for reflection" = "Pedirle el reflejo a Anky";
@@ -413,11 +413,11 @@
 "Your first painting is still arriving, stroke by stroke." = "Tu primera pintura sigue llegando, trazo a trazo.";
 "Your name" = "Tu nombre";
 "daily target minutes a day format" = "%d minutos al día";
-"later" = "más tarde";
-"not yet" = "todavía no";
+"later" = "Más tarde";
+"not yet" = "Todavía no";
 "of your waking life." = "de tu vida despierta.";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "recuperar reemplaza el acceso privado usado para Pedirle a Anky y tu suscripción. los archivos .anky locales se quedan en este dispositivo.";
-"your name" = "tu nombre";
+"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "Recuperar reemplaza el acceso privado usado para Pedirle a Anky y tu suscripción. Los archivos .anky locales se quedan en este dispositivo.";
+"your name" = "Tu nombre";
 "“The Door” · your first canvas" = "“La puerta” · tu primer lienzo";
 
 /* Localization completion pass 2026-07-09: dynamic setting and gate keys */
@@ -439,8 +439,8 @@
 "Plans are loading. You can still write for free." = "Los planes se están cargando. Igual puedes escribir gratis.";
 "Encrypted backup is on." = "La copia cifrada está activa.";
 "Keep an encrypted copy of your archive." = "Mantén una copia cifrada de tu archivo.";
-"unlock apps · 15 min" = "desbloquear apps · 15 min";
-"unlock apps · rest of day" = "desbloquear apps · resto del día";
+"unlock apps · 15 min" = "Desbloquear apps · 15 min";
+"unlock apps · rest of day" = "Desbloquear apps · resto del día";
 
 /* Reflection reveal localization pass 2026-07-09 */
 "This writing could not be prepared for reflection." = "No se pudo preparar esta escritura para la reflexión.";
@@ -527,45 +527,45 @@
 "New AI reflections are an Anky Pro feature, subject to service limits." = "Las nuevas reflexiones con IA son una función de Anky Pro, sujeta a límites del servicio.";
 "Personalized painting progression after level 8 is part of Anky Pro." = "La progresión de pinturas personalizadas después del nivel 8 forma parte de Anky Pro.";
 "The 96-day journey is part of Anky Pro." = "El recorrido de 96 días forma parte de Anky Pro.";
-"level 8 complete — explore Anky Pro" = "nivel 8 completado — descubre Anky Pro";
+"level 8 complete — explore Anky Pro" = "Nivel 8 completado — descubre Anky Pro";
 "AI reflections and nudges, the 96-day journey, automatic target unlocks, and personalized art after level 8." = "Reflexiones y ayudas de escritura con IA, recorrido de 96 días, apertura automática al cumplir la meta y arte personalizado después del nivel 8.";
 "Your Anky Pro trial ends tomorrow" = "Tu prueba de Anky Pro termina mañana";
 "Manage or cancel in Apple subscription settings. Pro includes automatic rest-of-day unlocking after you reach your target." = "Administra o cancela en las suscripciones de Apple. Pro incluye la apertura automática por el resto del día al cumplir tu meta.";
-"with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "con Anky Pro verificado, cumplir tu meta abre automáticamente las apps protegidas por el resto del día.";
-"explore Anky Pro" = "explorar Anky Pro";
-"keep writing · it counts toward your target" = "sigue escribiendo · cuenta para tu meta";
+"with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "Con Anky Pro verificado, cumplir tu meta abre automáticamente las apps protegidas por el resto del día.";
+"explore Anky Pro" = "Explorar Anky Pro";
+"keep writing · it counts toward your target" = "Sigue escribiendo · cuenta para tu meta";
 
 // App Clip handoff 2026-07-17
-"the words you wrote before installing anky are already here." = "las palabras que escribiste antes de instalar anky ya están aquí.";
+"the words you wrote before installing anky are already here." = "Las palabras que escribiste antes de instalar Anky ya están aquí.";
 
 // Lean gate 2026-07-17
-"skin in the game opens the gate" = "poner de tu parte abre la puerta";
-"weekly" = "semanal";
+"skin in the game opens the gate" = "Poner de tu parte abre la puerta";
+"weekly" = "Semanal";
 "monthly" = "Mensual";
 "yearly" = "Anual";
 
 // Onboarding animatic 2026-07-17
-"what should i call you?" = "¿cómo debería llamarte?";
+"what should i call you?" = "¿Cómo debería llamarte?";
 "skip" = "Saltar";
 
 // Axis reflection error surface 2026-07-18
-"the reflection was lost on the way" = "la reflexión se perdió en el camino";
-"tap to ask again" = "toca para pedirla de nuevo";
+"the reflection was lost on the way" = "La reflexión se perdió en el camino";
+"tap to ask again" = "Toca para pedirla de nuevo";
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
 "keep writing" = "Seguir escribiendo";
-"get anky's reflection" = "recibir la reflexión de anky";
+"get anky's reflection" = "Recibir la reflexión de Anky";
 "Reopen this session and keep going." = "Reabre esta sesión y sigue escribiendo.";
 "Send this writing to Anky and receive a reflection." = "Envía este texto a Anky y recibe una reflexión.";
-"tap to open the gate" = "toca para abrir la puerta";
-"just leave" = "solo salir";
+"tap to open the gate" = "Toca para abrir la puerta";
+"just leave" = "Solo salir";
 "Let this day settle. Your writing is saved on this device." = "Deja que este día se asiente. Tu escritura queda guardada en este dispositivo.";
-"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "¿no quieres pagar? copia prompt + anky desde el menú y lleva tu escritura a tu llm favorito";
-"untitled" = "sin título";
+"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "¿No quieres pagar? Copia prompt + Anky desde el menú y lleva tu escritura a tu llm favorito";
+"untitled" = "Sin título";
 
 /* The plain landing list (2026-08-04) */
-"nothing here yet" = "aún no hay nada";
-"search" = "buscar";
+"nothing here yet" = "Aún no hay nada";
+"search" = "Buscar";
 "Clear search" = "Borrar búsqueda";
 
 /* Controles de la máquina de escritura Geshtu (2026-08-14) */
@@ -595,8 +595,8 @@
 "you daily target pending format" = "%d min hoy · %d min desde mañana · desbloqueo automático";
 "you daily target format" = "%d minutos · desbloqueo automático por el resto del día";
 "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model." = "Administra o cancela en los ajustes de suscripciones de Apple. Pro te da mejores reflexiones con el modelo más potente disponible de Anky.";
-"reaching your target automatically unlocks protected apps for the rest of the day." = "al alcanzar tu objetivo, las apps protegidas se desbloquean automáticamente por el resto del día.";
-"level 8 complete — your next painting waits" = "nivel 8 completo — tu próxima pintura espera";
+"reaching your target automatically unlocks protected apps for the rest of the day." = "Al alcanzar tu objetivo, las apps protegidas se desbloquean automáticamente por el resto del día.";
+"level 8 complete — your next painting waits" = "Nivel 8 completo — tu próxima pintura espera";
 
 /* Localización completa de Ajustes y controles de escritura (2026-08-26) */
 "Subscription" = "Suscripción";
@@ -729,7 +729,7 @@
 "New writing" = "Nueva escritura";
 "Stats" = "Estadísticas";
 "Close search" = "Cerrar búsqueda";
-"nothing found" = "nada encontrado";
+"nothing found" = "Nada encontrado";
 "full ankys" = "ankys completos";
 "longest streak" = "racha más larga";
 "words per minute" = "palabras por minuto";

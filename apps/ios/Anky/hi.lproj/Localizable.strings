@@ -37,7 +37,7 @@
 "Delete" = "हटाएं";
 "Cancel" = "रद्द करें";
 "This permanently deletes this writing session. This cannot be undone." = "यह writing session हमेशा के लिए हटाता है। इसे वापस नहीं किया जा सकता।";
-"the mirror did not open" = "mirror नहीं खुला";
+"the mirror did not open" = "Mirror नहीं खुला";
 "Your private space to be witnessed." = "देखे जाने के लिए आपका निजी स्थान।";
 "Go to current day" = "आज पर जाएं";
 "UTC day progress" = "UTC दिन की प्रगति";
@@ -85,35 +85,35 @@
 "reflection" = "प्रतिबिंब";
 "reflections" = "कुछ विचार";
 "Encrypted iCloud backup is on. Last updated %@." = "Encrypted iCloud backup on है। Last updated %@.";
-"anky is finding the live thread." = "anky live thread ढूंढ रहा है।";
-"the mirror is not ready to nudge unfinished ankys yet." = "mirror अभी unfinished ankys को nudge करने के लिए ready नहीं है।";
-"anky could not return a nudge right now." = "anky अभी nudge वापस नहीं दे सका।";
+"anky is finding the live thread." = "Anky live thread ढूंढ रहा है।";
+"the mirror is not ready to nudge unfinished ankys yet." = "Mirror अभी unfinished ankys को nudge करने के लिए ready नहीं है।";
+"anky could not return a nudge right now." = "Anky अभी nudge वापस नहीं दे सका।";
 "what detail here still wants one more sentence?" = "यहां कौन सा detail अभी एक और sentence चाहता है?";
 "This writing session could not be deleted." = "यह writing session delete नहीं हो सका।";
 "i am opening a quiet channel." = "मैं एक शांत channel खोल रहा हूं।";
 "i am preparing your reflection." = "मैं आपकी reflection तैयार कर रहा हूं।";
 "i am carrying the thread to the mirror." = "मैं thread को mirror तक ले जा रहा हूं।";
 "something answered. i am threading it back." = "कुछ जवाब आया। मैं उसे वापस ला रहा हूं।";
-"the mirror is already holding this thread." = "mirror पहले से इस thread को पकड़े हुए है।";
+"the mirror is already holding this thread." = "Mirror पहले से इस thread को पकड़े हुए है।";
 "i am still waiting with the mirror." = "मैं अभी भी mirror के साथ इंतज़ार कर रहा हूं।";
-"writing the reflection... %d characters" = "reflection लिखी जा रही है... %d characters";
-"opening the mirror..." = "mirror खुल रहा है...";
+"writing the reflection... %d characters" = "Reflection लिखी जा रही है... %d characters";
+"opening the mirror..." = "Mirror खुल रहा है...";
 "received your writing..." = "आपकी writing मिल गई...";
 "reading your .anky..." = "आपका .anky पढ़ रहा हूं...";
 "preparing your writing..." = "आपकी writing तैयार हो रही है...";
 "opening the way..." = "रास्ता खुल रहा है...";
-"validating the ritual..." = "ritual validate हो रहा है...";
-"checking reflection access..." = "reflection access check हो रहा है...";
-"preparing the reflection..." = "reflection तैयार हो रही है...";
-"anky is writing..." = "anky लिख रहा है...";
+"validating the ritual..." = "Ritual validate हो रहा है...";
+"checking reflection access..." = "Reflection access check हो रहा है...";
+"preparing the reflection..." = "Reflection तैयार हो रही है...";
+"anky is writing..." = "Anky लिख रहा है...";
 "bringing it back..." = "वापस ला रहा हूं...";
-"settling..." = "settle हो रहा है...";
-"checking payment options..." = "payment options check हो रहे हैं...";
+"settling..." = "Settle हो रहा है...";
+"checking payment options..." = "Payment options check हो रहे हैं...";
 "payment verified..." = "भुगतान सत्यापित...";
-"opening the scroll..." = "scroll खुल रहा है...";
+"opening the scroll..." = "Scroll खुल रहा है...";
 "Could not load reflections." = "reflections load नहीं हो सकीं।";
 "Anky could not return a reflection right now." = "Anky अभी reflection वापस नहीं दे सका।";
-"anky is working..." = "anky काम कर रहा है...";
+"anky is working..." = "Anky काम कर रहा है...";
 "i am waiting with the mirror." = "मैं mirror के साथ इंतज़ार कर रहा हूं।";
 "Backspace and enter stay outside this chamber. Just keep writing." = "Backspace और enter इस chamber के बाहर रहते हैं। बस लिखते रहें।";
 "stay with the next true sentence." = "अगले सच्चे sentence के साथ रहें।";
@@ -173,9 +173,9 @@
 "Danger zone" = "खतरा क्षेत्र";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "यह इस device से local .anky files, local reflections और local map index हटाता है। उन्हें रखना हो तो पहले backup export करें।";
 "Delete local data" = "local data हटाएं";
-"writing is always free" = "writing हमेशा free है";
+"writing is always free" = "Writing हमेशा free है";
 "support / feedback" = "समर्थन/प्रतिक्रिया";
-"email support@anky.app. include only what you choose to write." = "support@anky.app पर email करें। केवल वही शामिल करें जो आप लिखना चाहें।";
+"email support@anky.app. include only what you choose to write." = "Support@anky.app पर email करें। केवल वही शामिल करें जो आप लिखना चाहें।";
 "copy your .anky or copy your writing." = "अपना .anky copy करें या अपनी writing copy करें।";
 "%d words, %@, %d backspaces, %d enters" = "%dशब्द,%@,%dबैकस्पेस,%dप्रवेश करता है";
 "%d writings · %d reflections" = "%dलेखन ·%dप्रतिबिंब";
@@ -207,14 +207,14 @@
 "copy your .anky" = "अपना .anky copy करें";
 "copy your writing" = "अपनी writing copy करें";
 "copied .anky" = ".anky copied";
-"copy opening .anky" = "opening .anky copy करें";
-"copied text" = "text copied";
-"copy opening text" = "opening text copy करें";
-"copy closing .anky" = "closing .anky copy करें";
-"copy closing text" = "closing text copy करें";
-"the experience is open" = "experience खुला है";
-"the experience is complete" = "experience पूरा है";
-"recover access" = "access recover करें";
+"copy opening .anky" = "Opening .anky copy करें";
+"copied text" = "Text copied";
+"copy opening text" = "Opening text copy करें";
+"copy closing .anky" = "Closing .anky copy करें";
+"copy closing text" = "Closing text copy करें";
+"the experience is open" = "Experience खुला है";
+"the experience is complete" = "Experience पूरा है";
+"recover access" = "Access recover करें";
 "cancel" = "रद्द करें";
 "recover" = "वापस पाना";
 "Ankys" = "Ankys";
@@ -250,10 +250,10 @@
 
 /* Gate off-switch (2026-07-06) */
 "Disable app blocking" = "ऐप ब्लॉकिंग बंद करें";
-"take the door down?" = "क्या द्वार हटा दें?";
-"your apps open freely again. the gate waits here whenever you want it back." = "तुम्हारे ऐप फिर से खुलकर चलेंगे। जब भी चाहो, द्वार यहीं तुम्हारा इंतज़ार करेगा।";
-"turn it off" = "बंद करो";
-"keep the gate" = "द्वार बनाए रखो";
+"take the door down?" = "ऐप्स ब्लॉक करना बंद करें?";
+"your apps open freely again. the gate waits here whenever you want it back." = "आपके ऐप्स बिना लिखे खुलेंगे। आप इसे कभी भी फिर चालू कर सकते हैं।";
+"turn it off" = "बंद करें";
+"keep the gate" = "ब्लॉक जारी रखें";
 "the gate is off. your apps are open." = "द्वार बंद है। तुम्हारे ऐप खुले हैं।";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
@@ -263,7 +263,7 @@
 "The unveiling" = "अनावरण";
 "Every level of your practice is a painting. Each second you write reveals the current one, stroke by stroke — and past level 8, Anky paints each canvas from the essence of your writing, never the words themselves." = "तुम्हारे अभ्यास का हर स्तर एक चित्र है। लिखा गया हर सेकंड मौजूदा चित्र को स्ट्रोक-दर-स्ट्रोक उजागर करता है — और स्तर 8 के बाद, Anky हर कैनवास तुम्हारे लेखन के सार से बनाता है, कभी शब्दों से नहीं।";
 "You just completed a painting. It hangs in your gallery now, finished and yours. What blooms and recedes here is a glimpse of the next canvas — you earn it back stroke by stroke." = "आपने अभी एक चित्र पूरा किया है। यह अब आपकी गैलरी में है, पूर्ण और आपका। यहाँ जो खिलता और ओझल होता है वह अगले कैनवास की एक झलक है — इसे आप स्ट्रोक-दर-स्ट्रोक वापस पाते हैं।";
-"anky is reading…" = "anky पढ़ रहा है…";
+"anky is reading…" = "Anky पढ़ रहा है…";
 "Anky is painting…" = "Anky चित्र बना रहा है…";
 "Your writing stats" = "आपके लेखन के आँकड़े";
 "Your practice" = "आपका अभ्यास";
@@ -340,7 +340,7 @@
 "revealed by seconds format" = "तुम्हारे लेखन के %@ सेकंड से प्रकट";
 "ceremony revealed title format" = "“%@” — तुम्हारे लेखन के %@ सेकंड से प्रकट।";
 "WELCOME TO LEVEL %d" = "स्तर %d में स्वागत है";
-"anky is preparing your canvas…" = "anky तुम्हारा कैनवास तैयार कर रहा है…";
+"anky is preparing your canvas…" = "Anky तुम्हारा कैनवास तैयार कर रहा है…";
 "Quick pass count format" = "Quick pass · आज %d बाकी";
 "Made with love by Anky, Inc" = "Anky, Inc ने 💚 से बनाया";
 "mins" = "मिनट";
@@ -358,7 +358,7 @@
 "i couldn't find a readable .anky in that." = "मुझे इसमें readable .anky नहीं मिला।";
 "i couldn't open that .anky yet." = "मैं वह .anky अभी नहीं खोल सका।";
 "Could not save this .anky." = "यह .anky सेव नहीं हो सका।";
-"nudges open with anky's subscription. the writing is still yours." = "nudges anky के subscription से खुलते हैं। लेखन अभी भी तुम्हारा है।";
+"nudges open with anky's subscription. the writing is still yours." = "Nudges Anky के subscription से खुलते हैं। लेखन अभी भी तुम्हारा है।";
 "Search" = "खोजें";
 "Back to today" = "आज पर लौटें";
 "Ask Anky for reflection" = "Anky से प्रतिबिंब माँगो";
@@ -416,7 +416,7 @@
 "later" = "बाद में";
 "not yet" = "अभी नहीं";
 "of your waking life." = "तुम्हारे जागते जीवन का।";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "recover करने से Ask Anky और subscription वाला private access बदल जाता है। local .anky files इस device पर रहती हैं।";
+"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "Recover करने से Ask Anky और subscription वाला private access बदल जाता है। local .anky files इस device पर रहती हैं।";
 "your name" = "तुम्हारा नाम";
 "“The Door” · your first canvas" = "“दरवाज़ा” · तुम्हारा पहला कैनवास";
 
@@ -536,7 +536,7 @@
 "keep writing · it counts toward your target" = "लिखते रहें · यह आपके लक्ष्य में गिना जाएगा";
 
 // App Clip handoff 2026-07-17
-"the words you wrote before installing anky are already here." = "anky इंस्टॉल करने से पहले आपने जो शब्द लिखे थे, वे यहाँ पहले से मौजूद हैं।";
+"the words you wrote before installing anky are already here." = "Anky इंस्टॉल करने से पहले आपने जो शब्द लिखे थे, वे यहाँ पहले से मौजूद हैं।";
 
 // Lean gate 2026-07-17
 "skin in the game opens the gate" = "जो दांव लगाता है, उसके लिए द्वार खुलता है";
@@ -554,7 +554,7 @@
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
 "keep writing" = "लिखते रहें";
-"get anky's reflection" = "anky की reflection पाएँ";
+"get anky's reflection" = "Anky की reflection पाएँ";
 "Reopen this session and keep going." = "यह सत्र फिर खोलें और लिखते रहें।";
 "Send this writing to Anky and receive a reflection." = "यह लेखन Anky को भेजें और reflection प्राप्त करें।";
 "tap to open the gate" = "द्वार खोलने के लिए टैप करें";

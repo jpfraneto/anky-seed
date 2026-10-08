@@ -1,0 +1,87 @@
+{
+  "appLocale": "es",
+  "appStoreLocale": "es-MX",
+  "languageName": "Español",
+  "simulatorLanguage": "es",
+  "simulatorLocale": "es_MX",
+  "keyboards": [
+    "es_MX@sw=QWERTY-Spanish;hw=Automatic"
+  ],
+  "headlines": {
+    "ritual": "Escribe 8 minutos.",
+    "simplicity": "La app de escritura\nmás simple.",
+    "reflection": "Recibe una reflexión\nsobre lo que escribiste.",
+    "archive": "Tu archivo,\nen orden.",
+    "recording": "Grábate\nleyendo."
+  },
+  "ritual": {
+    "elapsedMs": 38000,
+    "text": "Siempre creo que necesito una idea mejor antes de tener permiso de empezar. Pero la página nunca pide eso. Solo pide que siga moviéndome, y el movimiento es lo que hace llegar la idea."
+  },
+  "simplicity": {
+    "elapsedMs": 19000,
+    "text": "Aquí no hay nada que acomodar. Solo esta línea, y después la siguiente."
+  },
+  "feature": {
+    "date": "2026-08-18T12:00:00Z",
+    "text": "Esta mañana la luz entró de lado y me senté antes de poder convencerme de lo contrario. La casa todavía tenía ese aire de respiración contenida que tiene antes de que alguien necesite algo de mí. Llevo meses diciéndome que voy a empezar el trabajo de verdad cuando las cosas se calmen, y estoy empezando a entender que las cosas no se calman, que esto es lo que significa calma: una ventana chica, una calle ruidosa, y yo decidiendo igual. Quiero hacer algo honesto. No impresionante. Honesto. Confundo esas dos palabras todo el tiempo y pierdo semanas enteras en la diferencia. Así que empiezo acá, con la luz haciendo eso en el piso, con el café enfriándose porque prefiero escribir a tomármelo.",
+    "reflection": "## Alrededor de qué estuviste dando vueltas\n\nTe sentaste a escribir sobre tu trabajo y pasaste la sesión entera describiendo una pieza. La luz, el silencio, el café frío. Eso no es evasión. Es tu manera de decirte dónde vive el trabajo de verdad.\n\n## La diferencia que nombraste\n\nHonesto, no impresionante. Dijiste que confundes las dos cosas y que pierdes semanas en esa distancia. Fíjate en que ya sabes cuál quieres. La confusión nunca fue de definiciones. Es sobre quién imaginas que te está mirando.\n\nNo esperaste a que la casa quedara más callada. Empezaste justo con este ruido."
+  },
+  "archive": [
+    {
+      "date": "2026-08-17T12:00:00Z",
+      "text": "Caminé hasta el final de la cuadra y volví sin ningún motivo. No resolví nada, pero algo se soltó.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-16T12:00:00Z",
+      "text": "Hoy me di cuenta de que traigo los hombros a la altura de las orejas desde el martes. Bajarlos costó una respiración.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-14T12:00:00Z",
+      "text": "Lo que más miedo me da hacer es exactamente lo que le describo a cualquier desconocido. Algo tiene que querer decir eso.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-13T12:00:00Z",
+      "text": "Mi mamá llamó y hablamos de nada durante cuarenta minutos. Fue lo mejor de la semana.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-11T12:00:00Z",
+      "text": "Hoy no tenía nada que decir y lo dije igual. Hay días en que la práctica es solo sentarse cerca de la página en blanco.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-09T12:00:00Z",
+      "text": "Terminé la cosa chica en vez de planear la grande. La chica existe y la grande todavía es clima.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-07T12:00:00Z",
+      "text": "Llovió toda la tarde y me permití no hacer nada al respecto. El descanso no es el premio por terminar.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-05T12:00:00Z",
+      "text": "Dije la cosa verdadera en voz alta en la reunión y la sala no se acabó. Tengo que volver a aprender esto seguido.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-03T12:00:00Z",
+      "text": "Conté las cosas que no salieron mal. Es una lista más larga de lo que el miedo me deja creer en las mañanas difíciles.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-01T12:00:00Z",
+      "text": "Se quedó dormido apoyado en mi brazo en la micro y no me moví por once paraderos. Hay cosas que valen un brazo dormido.",
+      "reflected": false
+    },
+    {
+      "date": "2026-07-29T12:00:00Z",
+      "text": "Empezar de nuevo. Siempre estoy empezando de nuevo. Quizás eso es todo, el comienzo, una y otra vez, hasta que es una vida.",
+      "reflected": true
+    }
+  ]
+}

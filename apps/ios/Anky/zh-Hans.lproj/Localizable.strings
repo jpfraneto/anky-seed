@@ -85,9 +85,9 @@
 "reflection" = "反思";
 "reflections" = "反思";
 "Encrypted iCloud backup is on. Last updated %@." = "加密 iCloud 备份已开启。上次更新：%@。";
-"anky is finding the live thread." = "anky 正在寻找活着的线索。";
+"anky is finding the live thread." = "Anky 正在寻找活着的线索。";
 "the mirror is not ready to nudge unfinished ankys yet." = "镜子还不能提示未完成的 ankys。";
-"anky could not return a nudge right now." = "anky 现在无法返回提示。";
+"anky could not return a nudge right now." = "Anky 现在无法返回提示。";
 "what detail here still wants one more sentence?" = "这里哪个细节还想要多一句？";
 "This writing session could not be deleted." = "无法删除此书写会话。";
 "i am opening a quiet channel." = "我正在打开一个安静的通道。";
@@ -105,7 +105,7 @@
 "validating the ritual..." = "正在验证仪式...";
 "checking reflection access..." = "正在检查反思权限...";
 "preparing the reflection..." = "正在准备反思...";
-"anky is writing..." = "anky 正在书写...";
+"anky is writing..." = "Anky 正在书写...";
 "bringing it back..." = "正在带它回来...";
 "settling..." = "正在安定...";
 "checking payment options..." = "正在检查付款选项...";
@@ -113,7 +113,7 @@
 "opening the scroll..." = "正在打开卷轴...";
 "Could not load reflections." = "无法加载反思。";
 "Anky could not return a reflection right now." = "Anky 现在无法返回反思。";
-"anky is working..." = "anky 正在工作...";
+"anky is working..." = "Anky 正在工作...";
 "i am waiting with the mirror." = "我正在和镜子一起等待。";
 "Backspace and enter stay outside this chamber. Just keep writing." = "退格和回车留在这个房间之外。继续书写就好。";
 "stay with the next true sentence." = "留在下一句真实的话里。";
@@ -250,10 +250,10 @@
 
 /* Gate off-switch (2026-07-06) */
 "Disable app blocking" = "关闭应用屏蔽";
-"take the door down?" = "要撤下这道门吗？";
-"your apps open freely again. the gate waits here whenever you want it back." = "你的应用将重新自由打开。想要回这道门时，它一直在这里等你。";
+"take the door down?" = "停止锁定应用？";
+"your apps open freely again. the gate waits here whenever you want it back." = "应用将无需先书写即可打开。你可以随时重新开启。";
 "turn it off" = "关闭";
-"keep the gate" = "保留这道门";
+"keep the gate" = "继续锁定";
 "the gate is off. your apps are open." = "门已关闭。你的应用是开放的。";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
@@ -263,7 +263,7 @@
 "The unveiling" = "揭幕";
 "Every level of your practice is a painting. Each second you write reveals the current one, stroke by stroke — and past level 8, Anky paints each canvas from the essence of your writing, never the words themselves." = "你练习的每一级都是一幅画。你书写的每一秒都会一笔一笔揭开当前的画作——而在第 8 级之后，Anky 会从你书写的本质中绘制每一幅画布，绝不使用文字本身。";
 "You just completed a painting. It hangs in your gallery now, finished and yours. What blooms and recedes here is a glimpse of the next canvas — you earn it back stroke by stroke." = "你刚刚完成了一幅画。它已挂在你的画廊里，完整而属于你。此刻绽放又隐去的，是下一张画布的一瞥——你将一笔一笔地把它赢回来。";
-"anky is reading…" = "anky 正在阅读…";
+"anky is reading…" = "Anky 正在阅读…";
 "Anky is painting…" = "Anky 正在作画…";
 "Your writing stats" = "你的书写统计";
 "Your practice" = "你的练习";
@@ -340,7 +340,7 @@
 "revealed by seconds format" = "由你 %@ 秒的书写揭开";
 "ceremony revealed title format" = "“%@” — 由你 %@ 秒的书写揭开。";
 "WELCOME TO LEVEL %d" = "欢迎来到等级 %d";
-"anky is preparing your canvas…" = "anky 正在准备你的画布…";
+"anky is preparing your canvas…" = "Anky 正在准备你的画布…";
 "Quick pass count format" = "快速通行 · 今天还剩 %d 次";
 "Made with love by Anky, Inc" = "由 Anky, Inc 用 💚 制作";
 "mins" = "分钟";
@@ -358,7 +358,7 @@
 "i couldn't find a readable .anky in that." = "我在里面没有找到可读取的 .anky。";
 "i couldn't open that .anky yet." = "我还打不开那个 .anky。";
 "Could not save this .anky." = "无法保存这个 .anky。";
-"nudges open with anky's subscription. the writing is still yours." = "轻推会随 anky 的订阅开放。书写仍然属于你。";
+"nudges open with anky's subscription. the writing is still yours." = "轻推会随 Anky 的订阅开放。书写仍然属于你。";
 "Search" = "搜索";
 "Back to today" = "回到今天";
 "Ask Anky for reflection" = "请 Anky 映照";
@@ -536,7 +536,7 @@
 "keep writing · it counts toward your target" = "继续书写 · 会计入你的目标";
 
 // App Clip handoff 2026-07-17
-"the words you wrote before installing anky are already here." = "你在安装 anky 之前写下的文字已经在这里了。";
+"the words you wrote before installing anky are already here." = "你在安装 Anky 之前写下的文字已经在这里了。";
 
 // Lean gate 2026-07-17
 "skin in the game opens the gate" = "投入其中，门才会开";
@@ -554,7 +554,7 @@
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
 "keep writing" = "继续书写";
-"get anky's reflection" = "获得 anky 的反思";
+"get anky's reflection" = "获得 Anky 的反思";
 "Reopen this session and keep going." = "重新打开这次书写，继续写下去。";
 "Send this writing to Anky and receive a reflection." = "把这段书写发给 Anky，收到一份反思。";
 "tap to open the gate" = "轻点以打开大门";

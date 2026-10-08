@@ -18,6 +18,8 @@ Von dort kannst du Anky um eine Reflexion bitten: Anky liest, was du geschrieben
 
 Oder du nimmst dich auf, während du deine eigenen Worte laut liest, und behältst das Video.
 
+Deine Serie und ein Kalender der Tage, an denen du geschrieben hast, sind einen Fingertipp entfernt.
+
 SCHREIBEN VOR DEM SCROLLEN
 
 Anky kann sich zwischen dich und die Apps stellen, die du öffnest, ohne es entschieden zu haben. Schreib erst deine Minuten, dann öffnet sich der Rest des Tages.
@@ -26,7 +28,7 @@ WAS ES KOSTET
 
 Schreiben ist kostenlos. Das bleibt so. Die leere Seite, der Timer, das Archiv, die Aufnahme: nichts davon liegt hinter einer Schranke.
 
-Die Reflexionen sind der Teil, dessen Betrieb Geld kostet, also ist das der Teil, den du bezahlst. Kauf sie als Paket, oder abonniere Anky Pro und bekomme sie vom stärksten verfügbaren Modell. Und wenn du gar nichts zahlen willst: Halte die Kopiertaste gedrückt und nimm deinen Text mit zu dem KI-Werkzeug, das du ohnehin benutzt. Anky hilft dir dabei.
+Reflexionen sind ebenfalls kostenlos, mit einem einfachen Modell. Anky Pro gibt dir Reflexionen vom stärksten verfügbaren Modell. Und wenn du gar nichts zahlen willst: Nutze „Prompt + Anky kopieren“ im Menü und nimm deinen Text mit zu dem KI-Werkzeug, das du ohnehin benutzt.
 
 ANKY PRO
 

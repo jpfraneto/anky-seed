@@ -1,0 +1,66 @@
+{
+  "locales": [
+    {
+      "appLocale": "en",
+      "appStoreLocale": "en-US",
+      "languageName": "English",
+      "simulatorLanguage": "en",
+      "simulatorLocale": "en_US",
+      "keyboards": [
+        "en_US@sw=QWERTY;hw=Automatic"
+      ]
+    },
+    {
+      "appLocale": "es",
+      "appStoreLocale": "es-MX",
+      "languageName": "Español",
+      "simulatorLanguage": "es",
+      "simulatorLocale": "es_MX",
+      "keyboards": [
+        "es_MX@sw=QWERTY-Spanish;hw=Automatic"
+      ]
+    },
+    {
+      "appLocale": "fr",
+      "appStoreLocale": "fr-FR",
+      "languageName": "Français",
+      "simulatorLanguage": "fr",
+      "simulatorLocale": "fr_FR",
+      "keyboards": [
+        "fr_FR@sw=AZERTY;hw=Automatic"
+      ]
+    },
+    {
+      "appLocale": "de",
+      "appStoreLocale": "de-DE",
+      "languageName": "Deutsch",
+      "simulatorLanguage": "de",
+      "simulatorLocale": "de_DE",
+      "keyboards": [
+        "de_DE@sw=QWERTZ-German;hw=Automatic"
+      ]
+    },
+    {
+      "appLocale": "hi",
+      "appStoreLocale": "hi",
+      "languageName": "हिन्दी",
+      "simulatorLanguage": "hi",
+      "simulatorLocale": "hi_IN",
+      "keyboards": [
+        "hi@sw=Devanagari;hw=Automatic",
+        "en_US@sw=QWERTY;hw=Automatic"
+      ]
+    },
+    {
+      "appLocale": "zh-Hans",
+      "appStoreLocale": "zh-Hans",
+      "languageName": "简体中文",
+      "simulatorLanguage": "zh-Hans",
+      "simulatorLocale": "zh_CN",
+      "keyboards": [
+        "zh_CN@sw=Pinyin;hw=Automatic",
+        "en_US@sw=QWERTY;hw=Automatic"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "appLocale": "fr",
+  "appStoreLocale": "fr-FR",
+  "languageName": "Français",
+  "simulatorLanguage": "fr",
+  "simulatorLocale": "fr_FR",
+  "keyboards": [
+    "fr_FR@sw=AZERTY;hw=Automatic"
+  ],
+  "headlines": {
+    "ritual": "Écris 8 minutes.",
+    "simplicity": "L'app d'écriture\nla plus simple.",
+    "reflection": "Reçois une réflexion\nsur ce que tu as écrit.",
+    "archive": "Tes archives,\nbien rangées.",
+    "recording": "Enregistre-toi\nen train de lire."
+  },
+  "ritual": {
+    "elapsedMs": 38000,
+    "text": "Je crois toujours qu'il me faut une meilleure idée avant d'avoir le droit de commencer. Mais la page ne demande jamais ça. Elle demande seulement que je continue, et c'est le mouvement qui fait venir l'idée."
+  },
+  "simplicity": {
+    "elapsedMs": 19000,
+    "text": "Rien à ranger ici. Seulement cette ligne, puis la suivante."
+  },
+  "feature": {
+    "date": "2026-08-18T12:00:00Z",
+    "text": "Ce matin la lumière est entrée de biais et je me suis assis avant d'avoir le temps de m'en dissuader. L'appartement avait encore cet air de souffle retenu qu'il a avant que quelqu'un ait besoin de moi. Je me répète depuis des mois que je commencerai le vrai travail quand les choses se seront calmées, et je commence à comprendre que les choses ne se calment pas, que c'est exactement à ça que ressemble le calme : une petite fenêtre, une rue bruyante, et moi qui décide quand même. Je veux faire quelque chose d'honnête. Pas d'impressionnant. D'honnête. Je confonds ces deux mots sans arrêt et je perds des semaines entières dans l'écart. Alors je commence ici, avec la lumière qui fait ça sur le plancher, avec le café qui refroidit parce que je préfère écrire que le boire.",
+    "reflection": "## Ce autour de quoi tu tournais\n\nTu t'es assis pour écrire sur ton travail et tu as passé toute la séance à décrire une pièce. La lumière, le silence, le café froid. Ce n'est pas de l'évitement. C'est ta façon de te dire où le travail habite vraiment.\n\n## La différence que tu as nommée\n\nHonnête, pas impressionnant. Tu dis que tu confonds les deux et que tu perds des semaines dans cet écart. Remarque que tu sais déjà lequel tu veux. La confusion n'a jamais porté sur les définitions. Elle porte sur qui tu imagines en train de regarder.\n\nTu n'as pas attendu que la pièce devienne plus silencieuse. Tu as commencé avec exactement ce bruit."
+  },
+  "archive": [
+    {
+      "date": "2026-08-17T12:00:00Z",
+      "text": "J'ai marché jusqu'au bout de la rue et je suis revenu sans raison. Rien n'a été réglé, mais quelque chose s'est desserré.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-16T12:00:00Z",
+      "text": "Aujourd'hui j'ai remarqué que je tiens mes épaules près des oreilles depuis mardi. Les redescendre a pris une respiration.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-14T12:00:00Z",
+      "text": "Ce que j'ai le plus peur de faire est exactement ce que je décris à des inconnus. Ça doit vouloir dire quelque chose.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-13T12:00:00Z",
+      "text": "Ma mère a appelé et on a parlé de rien pendant quarante minutes. C'était le meilleur moment de la semaine.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-11T12:00:00Z",
+      "text": "Rien à dire aujourd'hui, et je l'ai dit quand même. Certains jours la pratique consiste seulement à s'asseoir près de la page.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-09T12:00:00Z",
+      "text": "J'ai fini la petite chose au lieu de planifier la grande. La petite existe et la grande est encore de la météo.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-07T12:00:00Z",
+      "text": "Il a plu tout l'après-midi et je me suis autorisé à ne rien en faire. Le repos n'est pas la récompense d'avoir fini.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-05T12:00:00Z",
+      "text": "J'ai dit la chose vraie à voix haute en réunion et la salle ne s'est pas effondrée. Je dois réapprendre ça souvent.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-03T12:00:00Z",
+      "text": "J'ai compté ce qui ne s'est pas mal passé. La liste est plus longue que ce que la peur me laisse croire les mauvais matins.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-01T12:00:00Z",
+      "text": "Il s'est endormi contre mon bras dans le bus et je n'ai pas bougé pendant onze arrêts. Certaines choses valent un bras mort.",
+      "reflected": false
+    },
+    {
+      "date": "2026-07-29T12:00:00Z",
+      "text": "Recommencer. Je suis toujours en train de recommencer. C'est peut-être ça, le commencement, encore et encore, jusqu'à faire une vie.",
+      "reflected": true
+    }
+  ]
+}

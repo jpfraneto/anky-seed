@@ -1,5 +1,11 @@
-Cosas pequeñas, sobre todo.
+Un Anky más tranquilo.
 
-Esta versión se trata de quitarse del medio: se llega antes a la primera tecla, el archivo se desplaza con más calma, y se corrigieron detalles de cómo se guardan, se reabren y se releen las sesiones.
+Una página, un cajón. La escritura siempre está frente a ti, y todo lo que has escrito entra deslizándose desde el costado.
 
-Ningún botón nuevo. Solo menos motivos para dejar de escribir.
+Estadísticas. Tu racha, y un calendario de los días en que escribiste.
+
+Ajustes, rehechos. Una línea por ajuste.
+
+Escribe antes de hacer scroll. Un solo interruptor bloquea las apps que te distraen hasta que hayas escrito.
+
+Anky Pro ahora puede ser mensual o anual.

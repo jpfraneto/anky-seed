@@ -206,7 +206,7 @@ struct FinishedSessionView: View {
 
                         // The day, quietly, under the back button — never a
                         // centered title over the writing.
-                        Text(Self.dateFormatter.string(from: artifact.createdAt).lowercased())
+                        Text(Self.dateFormatter.string(from: artifact.createdAt))
                             .font(.fraunces(12, weight: .light))
                             .foregroundStyle(Color.ankyInkSoft.opacity(0.7))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -296,6 +296,27 @@ struct FinishedSessionView: View {
         // The same paper every other surface stands on, so the list, this
         // document, and the writing page never read as three apps.
         .background(Color.ankyPaper.ignoresSafeArea())
+        // Scrolled text must not run under the clock: paper stands solid
+        // behind the status bar and thins out beneath the floating controls.
+        .overlay(alignment: .top) {
+            // The fade is a background of a strip that touches the top edge,
+            // which is what lets it reach up behind the status bar.
+            Color.clear
+                .frame(height: 48)
+                .background {
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.ankyPaper, location: 0),
+                            .init(color: Color.ankyPaper, location: 0.5),
+                            .init(color: Color.ankyPaper.opacity(0), location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
+                }
+                .allowsHitTesting(false)
+        }
         .overlay(alignment: .topLeading) {
             HStack(spacing: 6) {
                 if let onOpenMenu {

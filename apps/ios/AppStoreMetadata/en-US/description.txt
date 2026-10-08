@@ -18,6 +18,8 @@ From there you can ask Anky for a reflection: it reads what you wrote and tells 
 
 Or you can record yourself reading your own words aloud, and keep the video.
 
+Your streak, and a calendar of the days you wrote, are one tap away.
+
 WRITE BEFORE YOU SCROLL
 
 Anky can stand between you and the apps you open without deciding to. Write your minutes first, and the rest of the day opens.
@@ -26,7 +28,7 @@ WHAT IT COSTS
 
 Writing is free. It will always be free. The blank page, the timer, the archive, the recording — none of that is behind anything.
 
-Reflections are the part that costs money to run, so that is the part you pay for. Buy them in packs, or subscribe to Anky Pro for reflections from the strongest model available. If you would rather not pay at all, long-press the copy button and take your writing to whichever AI tool you already use. Anky will help you do that.
+Reflections are free too, on a basic model. Anky Pro gives you reflections from the strongest model available. If you would rather not pay at all, use Copy Prompt + Anky in the menu and take your writing to whichever AI tool you already use.
 
 ANKY PRO
 

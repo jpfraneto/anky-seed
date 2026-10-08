@@ -14,7 +14,7 @@
 "stepKeepThreadAlive" = "Keep the thread alive";
 "stepLetSilenceCloseIt" = "Let silence close it";
 "writeEightMinutes" = "Write 8 minutes";
-"start again" = "start again";
+"start again" = "Start again";
 "open reflection" = "Open reflection";
 "I remember you." = "I remember you.";
 "An encrypted Anky backup is waiting in iCloud." = "An encrypted Anky backup is waiting in iCloud.";
@@ -37,11 +37,11 @@
 "Delete" = "Delete";
 "Cancel" = "Cancel";
 "This permanently deletes this writing session. This cannot be undone." = "This permanently deletes this writing session. This cannot be undone.";
-"the mirror did not open" = "the mirror did not open";
+"the mirror did not open" = "The mirror did not open";
 "Your private space to be witnessed." = "Your private space to be witnessed.";
 "Go to current day" = "Go to current day";
 "UTC day progress" = "UTC day progress";
-"showed up" = "showed up";
+"showed up" = "Showed up";
 "Open all ankys" = "Open all ankys";
 "You don't need another place to perform." = "You don't need another place to perform.";
 "Anky gives you 8 minutes to let out what you're carrying." = "Anky gives you 8 minutes to let out what you're carrying.";
@@ -85,40 +85,40 @@
 "reflection" = "reflection";
 "reflections" = "reflections";
 "Encrypted iCloud backup is on. Last updated %@." = "Encrypted iCloud backup is on. Last updated %@.";
-"anky is finding the live thread." = "anky is finding the live thread.";
-"the mirror is not ready to nudge unfinished ankys yet." = "the mirror is not ready to nudge unfinished ankys yet.";
-"anky could not return a nudge right now." = "anky could not return a nudge right now.";
-"what detail here still wants one more sentence?" = "what detail here still wants one more sentence?";
+"anky is finding the live thread." = "Anky is finding the live thread.";
+"the mirror is not ready to nudge unfinished ankys yet." = "The mirror is not ready to nudge unfinished ankys yet.";
+"anky could not return a nudge right now." = "Anky could not return a nudge right now.";
+"what detail here still wants one more sentence?" = "What detail here still wants one more sentence?";
 "This writing session could not be deleted." = "This writing session could not be deleted.";
-"i am opening a quiet channel." = "i am opening a quiet channel.";
-"i am preparing your reflection." = "i am preparing your reflection.";
-"i am carrying the thread to the mirror." = "i am carrying the thread to the mirror.";
-"something answered. i am threading it back." = "something answered. i am threading it back.";
-"the mirror is already holding this thread." = "the mirror is already holding this thread.";
-"i am still waiting with the mirror." = "i am still waiting with the mirror.";
-"writing the reflection... %d characters" = "writing the reflection... %d characters";
-"opening the mirror..." = "opening the mirror...";
-"received your writing..." = "received your writing...";
-"reading your .anky..." = "reading your .anky...";
-"preparing your writing..." = "preparing your writing...";
-"opening the way..." = "opening the way...";
-"validating the ritual..." = "validating the ritual...";
-"checking reflection access..." = "checking reflection access...";
-"preparing the reflection..." = "preparing the reflection...";
-"anky is writing..." = "anky is writing...";
-"bringing it back..." = "bringing it back...";
-"settling..." = "settling...";
-"checking payment options..." = "checking payment options...";
-"payment verified..." = "payment verified...";
-"opening the scroll..." = "opening the scroll...";
+"i am opening a quiet channel." = "I am opening a quiet channel.";
+"i am preparing your reflection." = "I am preparing your reflection.";
+"i am carrying the thread to the mirror." = "I am carrying the thread to the mirror.";
+"something answered. i am threading it back." = "Something answered. I am threading it back.";
+"the mirror is already holding this thread." = "The mirror is already holding this thread.";
+"i am still waiting with the mirror." = "I am still waiting with the mirror.";
+"writing the reflection... %d characters" = "Writing the reflection... %d characters";
+"opening the mirror..." = "Opening the mirror...";
+"received your writing..." = "Received your writing...";
+"reading your .anky..." = "Reading your .anky...";
+"preparing your writing..." = "Preparing your writing...";
+"opening the way..." = "Opening the way...";
+"validating the ritual..." = "Validating the ritual...";
+"checking reflection access..." = "Checking reflection access...";
+"preparing the reflection..." = "Preparing the reflection...";
+"anky is writing..." = "Anky is writing...";
+"bringing it back..." = "Bringing it back...";
+"settling..." = "Settling...";
+"checking payment options..." = "Checking payment options...";
+"payment verified..." = "Payment verified...";
+"opening the scroll..." = "Opening the scroll...";
 "Could not load reflections." = "Could not load reflections.";
 "Anky could not return a reflection right now." = "Anky could not return a reflection right now.";
-"anky is working..." = "anky is working...";
-"i am waiting with the mirror." = "i am waiting with the mirror.";
+"anky is working..." = "Anky is working...";
+"i am waiting with the mirror." = "I am waiting with the mirror.";
 "Backspace and enter stay outside this chamber. Just keep writing." = "Backspace and enter stay outside this chamber. Just keep writing.";
-"stay with the next true sentence." = "stay with the next true sentence.";
-"que detalle de esto todavia quiere otra frase?" = "que detalle de esto todavia quiere otra frase?";
-"no saved sessions with this tag." = "no saved sessions with this tag.";
+"stay with the next true sentence." = "Stay with the next true sentence.";
+"que detalle de esto todavia quiere otra frase?" = "Que detalle de esto todavia quiere otra frase?";
+"no saved sessions with this tag." = "No saved sessions with this tag.";
 "word" = "word";
 "words" = "words";
 "Writing time %@" = "Writing time %@";
@@ -173,10 +173,10 @@
 "Danger zone" = "Danger zone";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them.";
 "Delete local data" = "Delete local data";
-"writing is always free" = "writing is always free";
-"support / feedback" = "support / feedback";
-"email support@anky.app. include only what you choose to write." = "email support@anky.app. include only what you choose to write.";
-"copy your .anky or copy your writing." = "copy your .anky or copy your writing.";
+"writing is always free" = "Writing is always free";
+"support / feedback" = "Support / feedback";
+"email support@anky.app. include only what you choose to write." = "Email support@anky.app. Include only what you choose to write.";
+"copy your .anky or copy your writing." = "Copy your .anky or copy your writing.";
 "%d words, %@, %d backspaces, %d enters" = "%d words, %@, %d backspaces, %d enters";
 "%d writings · %d reflections" = "%d writings · %d reflections";
 "Anky experience time %@" = "Anky experience time %@";
@@ -199,29 +199,29 @@
 "WRITE %d MINUTES" = "WRITE %d MINUTES";
 "Writing stays local unless you export or ask for a reflection." = "Writing stays local unless you export or ask for a reflection.";
 "Your archive is yours. Export readable writings or keep an encrypted iCloud backup." = "Your archive is yours. Export readable writings or keep an encrypted iCloud backup.";
-"device lock app protection" = "device lock app protection";
-"stay close.\ni’m listening for the shape underneath." = "stay close.\ni’m listening for the shape underneath.";
+"device lock app protection" = "Device lock app protection";
+"stay close.\ni’m listening for the shape underneath." = "Stay close.\nI’m listening for the shape underneath.";
 "unknown" = "unknown";
 "%@. %@" = "%@. %@";
 "Anky companion" = "Anky companion";
-"copy your .anky" = "copy your .anky";
-"copy your writing" = "copy your writing";
-"copied .anky" = "copied .anky";
-"copy opening .anky" = "copy opening .anky";
-"copied text" = "copied text";
-"copy opening text" = "copy opening text";
-"copy closing .anky" = "copy closing .anky";
-"copy closing text" = "copy closing text";
-"the experience is open" = "the experience is open";
-"the experience is complete" = "the experience is complete";
-"recover access" = "recover access";
-"cancel" = "cancel";
-"recover" = "recover";
+"copy your .anky" = "Copy your .anky";
+"copy your writing" = "Copy your writing";
+"copied .anky" = "Copied .anky";
+"copy opening .anky" = "Copy opening .anky";
+"copied text" = "Copied text";
+"copy opening text" = "Copy opening text";
+"copy closing .anky" = "Copy closing .anky";
+"copy closing text" = "Copy closing text";
+"the experience is open" = "The experience is open";
+"the experience is complete" = "The experience is complete";
+"recover access" = "Recover access";
+"cancel" = "Cancel";
+"recover" = "Recover";
 "Ankys" = "Ankys";
 "Minutes" = "Minutes";
 "Streak" = "Streak";
 "Anky not found" = "Anky not found";
-"your reflection is ready." = "your reflection is ready.";
+"your reflection is ready." = "Your reflection is ready.";
 "Today" = "Today";
 "Be with what is here" = "Be with what is here";
 "Let it all out" = "Let it all out";
@@ -242,19 +242,19 @@
 "Legal document unavailable. Please contact support@anky.app." = "Legal document unavailable. Please contact support@anky.app.";
 
 /* Free-tier target moment + emergency door (2026-07-06) */
-"your target, reached." = "your target, reached.";
-"you wrote what you set out to write today. that is the whole practice." = "you wrote what you set out to write today. that is the whole practice.";
-"not now" = "not now";
+"your target, reached." = "Your target, reached.";
+"you wrote what you set out to write today. that is the whole practice." = "You wrote what you set out to write today. That is the whole practice.";
+"not now" = "Not now";
 "emergency? open without writing" = "Emergency? Unlock your apps without writing";
 "Emergency: open your apps without writing" = "Emergency: unlock your apps without writing";
 
 /* Gate off-switch (2026-07-06) */
 "Disable app blocking" = "Disable app blocking";
-"take the door down?" = "take the door down?";
-"your apps open freely again. the gate waits here whenever you want it back." = "your apps open freely again. the gate waits here whenever you want it back.";
-"turn it off" = "turn it off";
-"keep the gate" = "keep the gate";
-"the gate is off. your apps are open." = "the gate is off. your apps are open.";
+"take the door down?" = "Stop blocking apps?";
+"your apps open freely again. the gate waits here whenever you want it back." = "Your apps will open without writing first. You can turn this back on anytime.";
+"turn it off" = "Turn off";
+"keep the gate" = "Keep blocking";
+"the gate is off. your apps are open." = "Blocking is off. Your apps are open.";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
 "skip" = "Skip";
@@ -263,7 +263,7 @@
 "The unveiling" = "The unveiling";
 "Every level of your practice is a painting. Each second you write reveals the current one, stroke by stroke — and past level 8, Anky paints each canvas from the essence of your writing, never the words themselves." = "Every level of your practice is a painting. Each second you write reveals the current one, stroke by stroke — and past level 8, Anky paints each canvas from the essence of your writing, never the words themselves.";
 "You just completed a painting. It hangs in your gallery now, finished and yours. What blooms and recedes here is a glimpse of the next canvas — you earn it back stroke by stroke." = "You just completed a painting. It hangs in your gallery now, finished and yours. What blooms and recedes here is a glimpse of the next canvas — you earn it back stroke by stroke.";
-"anky is reading…" = "anky is reading…";
+"anky is reading…" = "Anky is reading…";
 "Anky is painting…" = "Anky is painting…";
 "Your writing stats" = "Your writing stats";
 "Your practice" = "Your practice";
@@ -281,19 +281,19 @@
 "Skip the breath — open my apps now" = "Skip the breath — open my apps now";
 "Your apps are unlocked." = "Your apps are unlocked.";
 "Back" = "Back";
-"write one true thing" = "write one true thing";
-"finish a sentence · opens a 15-min pass" = "finish a sentence · opens a 15-min pass";
-"write to your target · opens the day" = "write to your target · opens the day";
-"keep going for your daily target" = "keep going for your daily target";
-"your apps are unlocked for the day" = "your apps are unlocked for the day";
-"your apps are open · this writing is for you" = "your apps are open · this writing is for you";
-"target met · your apps are unlocked for the day" = "target met · your apps are unlocked for the day";
-"daily target met" = "daily target met";
+"write one true thing" = "Write one true thing";
+"finish a sentence · opens a 15-min pass" = "Finish a sentence · opens a 15-min pass";
+"write to your target · opens the day" = "Write to your target · opens the day";
+"keep going for your daily target" = "Keep going for your daily target";
+"your apps are unlocked for the day" = "Your apps are unlocked for the day";
+"your apps are open · this writing is for you" = "Your apps are open · this writing is for you";
+"target met · your apps are unlocked for the day" = "Target met · your apps are unlocked for the day";
+"daily target met" = "Daily target met";
 
 /* Feedback pass 2026-07-08: unlock-at-threshold pill, sealing stay line, founder link, reflection retry */
 "or stay" = "or stay";
 "to complete your daily target" = "to complete your daily target";
-"take a screenshot of this and send it to the founder" = "take a screenshot of this and send it to the founder";
+"take a screenshot of this and send it to the founder" = "Take a screenshot of this and send it to the founder";
 "here" = "here";
 "ask for the reflection again" = "Ask for the reflection again";
 "This writing never received its reflection. Your words are safe on this device." = "This writing never received its reflection. Your words are safe on this device.";
@@ -325,7 +325,7 @@
 "Talk what is alive." = "Talk what is alive.";
 "No need to explain it well." = "No need to explain it well.";
 "No need to explain." = "No need to explain.";
-"what you shared" = "what you shared";
+"what you shared" = "What you shared";
 "Speech recognition permission is needed to talk with Anky." = "Speech recognition permission is needed to talk with Anky.";
 "Microphone permission is needed to keep recording." = "Microphone permission is needed to keep recording.";
 "Nothing you've written contains that yet." = "Nothing you've written contains that yet.";
@@ -340,12 +340,12 @@
 "revealed by seconds format" = "revealed by %@ seconds of your writing";
 "ceremony revealed title format" = "“%@” — revealed by %@ seconds of your writing.";
 "WELCOME TO LEVEL %d" = "WELCOME TO LEVEL %d";
-"anky is preparing your canvas…" = "anky is preparing your canvas…";
+"anky is preparing your canvas…" = "Anky is preparing your canvas…";
 "Quick pass count format" = "Quick pass · %d left today";
 "Made with love by Anky, Inc" = "Made with 💚 by Anky, Inc";
 "mins" = "mins";
 "Writing journey accessibility format" = "Writing journey, day %d of %d, %d writing days";
-"day count format" = "day %d of %d";
+"day count format" = "Day %d of %d";
 "mins written format" = "%d mins written";
 "writings count format" = "%d writings";
 "That's %d years" = "That's %d years";
@@ -355,10 +355,10 @@
 "This writing session cannot be continued." = "This writing session cannot be continued.";
 "Could not continue this writing session." = "Could not continue this writing session.";
 "Finish this rhythm before opening another artifact." = "Finish this rhythm before opening another artifact.";
-"i couldn't find a readable .anky in that." = "i couldn't find a readable .anky in that.";
-"i couldn't open that .anky yet." = "i couldn't open that .anky yet.";
+"i couldn't find a readable .anky in that." = "I couldn't find a readable .anky in that.";
+"i couldn't open that .anky yet." = "I couldn't open that .anky yet.";
 "Could not save this .anky." = "Could not save this .anky.";
-"nudges open with anky's subscription. the writing is still yours." = "nudges open with anky's subscription. the writing is still yours.";
+"nudges open with anky's subscription. the writing is still yours." = "Nudges open with Anky's subscription. The writing is still yours.";
 "Search" = "Search";
 "Back to today" = "Back to today";
 "Ask Anky for reflection" = "Ask Anky for reflection";
@@ -413,11 +413,11 @@
 "Your first painting is still arriving, stroke by stroke." = "Your first painting is still arriving, stroke by stroke.";
 "Your name" = "Your name";
 "daily target minutes a day format" = "%d minutes a day";
-"later" = "later";
-"not yet" = "not yet";
+"later" = "Later";
+"not yet" = "Not yet";
 "of your waking life." = "of your waking life.";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device.";
-"your name" = "your name";
+"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "Recovering replaces the private access used for Ask Anky and your subscription. Local .anky files stay on this device.";
+"your name" = "Your name";
 "“The Door” · your first canvas" = "“The Door” · your first canvas";
 
 /* Localization completion pass 2026-07-09: dynamic setting and gate keys */
@@ -439,8 +439,8 @@
 "Plans are loading. You can still write for free." = "Plans are loading. You can still write for free.";
 "Encrypted backup is on." = "Encrypted backup is on.";
 "Keep an encrypted copy of your archive." = "Keep an encrypted copy of your archive.";
-"unlock apps · 15 min" = "unlock apps · 15 min";
-"unlock apps · rest of day" = "unlock apps · rest of day";
+"unlock apps · 15 min" = "Unlock apps · 15 min";
+"unlock apps · rest of day" = "Unlock apps · rest of day";
 
 /* Reflection reveal localization pass 2026-07-09 */
 "This writing could not be prepared for reflection." = "This writing could not be prepared for reflection.";
@@ -527,45 +527,45 @@
 "New AI reflections are an Anky Pro feature, subject to service limits." = "New AI reflections are an Anky Pro feature, subject to service limits.";
 "Personalized painting progression after level 8 is part of Anky Pro." = "Personalized painting progression after level 8 is part of Anky Pro.";
 "The 96-day journey is part of Anky Pro." = "The 96-day journey is part of Anky Pro.";
-"level 8 complete — explore Anky Pro" = "level 8 complete — explore Anky Pro";
+"level 8 complete — explore Anky Pro" = "Level 8 complete — explore Anky Pro";
 "AI reflections and nudges, the 96-day journey, automatic target unlocks, and personalized art after level 8." = "AI reflections and nudges, the 96-day journey, automatic target unlocks, and personalized art after level 8.";
 "Your Anky Pro trial ends tomorrow" = "Your Anky Pro trial ends tomorrow";
 "Manage or cancel in Apple subscription settings. Pro includes automatic rest-of-day unlocking after you reach your target." = "Manage or cancel in Apple subscription settings. Pro includes automatic rest-of-day unlocking after you reach your target.";
-"with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day.";
-"explore Anky Pro" = "explore Anky Pro";
-"keep writing · it counts toward your target" = "keep writing · it counts toward your target";
+"with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day." = "With verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day.";
+"explore Anky Pro" = "Explore Anky Pro";
+"keep writing · it counts toward your target" = "Keep writing · it counts toward your target";
 
 // App Clip handoff 2026-07-17
-"the words you wrote before installing anky are already here." = "the words you wrote before installing anky are already here.";
+"the words you wrote before installing anky are already here." = "The words you wrote before installing Anky are already here.";
 
 // Lean gate 2026-07-17
-"skin in the game opens the gate" = "skin in the game opens the gate";
-"weekly" = "weekly";
+"skin in the game opens the gate" = "Skin in the game opens the gate";
+"weekly" = "Weekly";
 "monthly" = "Monthly";
 "yearly" = "Yearly";
 
 // Onboarding animatic 2026-07-17
-"what should i call you?" = "what should i call you?";
+"what should i call you?" = "What should I call you?";
 "skip" = "Skip";
 
 // Axis reflection error surface 2026-07-18
-"the reflection was lost on the way" = "the reflection was lost on the way";
-"tap to ask again" = "tap to ask again";
+"the reflection was lost on the way" = "The reflection was lost on the way";
+"tap to ask again" = "Tap to ask again";
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
 "keep writing" = "Keep writing";
-"get anky's reflection" = "get anky's reflection";
+"get anky's reflection" = "Get Anky's reflection";
 "Reopen this session and keep going." = "Reopen this session and keep going.";
 "Send this writing to Anky and receive a reflection." = "Send this writing to Anky and receive a reflection.";
-"tap to open the gate" = "tap to open the gate";
-"just leave" = "just leave";
+"tap to open the gate" = "Tap to open the gate";
+"just leave" = "Just leave";
 "Let this day settle. Your writing is saved on this device." = "Let this day settle. Your writing is saved on this device.";
-"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm";
-"untitled" = "untitled";
+"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "Don't want to pay? Copy prompt + Anky from the menu and take your writing to your favorite LLM";
+"untitled" = "Untitled";
 
 /* The plain landing list (2026-08-04) */
-"nothing here yet" = "nothing here yet";
-"search" = "search";
+"nothing here yet" = "Nothing here yet";
+"search" = "Search";
 "Clear search" = "Clear search";
 
 /* Geshtu writing machine controls (2026-08-14) */
@@ -595,8 +595,8 @@
 "you daily target pending format" = "%d min today · %d min from tomorrow · automatic unlock";
 "you daily target format" = "%d minutes · automatic rest-of-day unlock";
 "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model." = "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model.";
-"reaching your target automatically unlocks protected apps for the rest of the day." = "reaching your target automatically unlocks protected apps for the rest of the day.";
-"level 8 complete — your next painting waits" = "level 8 complete — your next painting waits";
+"reaching your target automatically unlocks protected apps for the rest of the day." = "Reaching your target automatically unlocks protected apps for the rest of the day.";
+"level 8 complete — your next painting waits" = "Level 8 complete — your next painting waits";
 
 /* Complete Settings and writing controls localization (2026-08-26) */
 "Subscription" = "Subscription";
@@ -729,7 +729,7 @@
 "New writing" = "New writing";
 "Stats" = "Stats";
 "Close search" = "Close search";
-"nothing found" = "nothing found";
+"nothing found" = "Nothing found";
 "full ankys" = "full ankys";
 "longest streak" = "longest streak";
 "words per minute" = "words per minute";

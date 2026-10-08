@@ -62,7 +62,7 @@ struct GalleryView: View {
                                         progress: entry.progress,
                                         glowStrength: 0.5
                                     )
-                                    Text(AnkyLocalization.ui("gallery tile title format", entry.package.title.lowercased(), entry.package.level))
+                                    Text(AnkyLocalization.ui("gallery tile title format", entry.package.title, entry.package.level))
                                         .font(.ankyCaption)
                                         .foregroundStyle(Color.ankyInkSoft)
                                         .lineLimit(1)

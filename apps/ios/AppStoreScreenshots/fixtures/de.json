@@ -1,0 +1,87 @@
+{
+  "appLocale": "de",
+  "appStoreLocale": "de-DE",
+  "languageName": "Deutsch",
+  "simulatorLanguage": "de",
+  "simulatorLocale": "de_DE",
+  "keyboards": [
+    "de_DE@sw=QWERTZ-German;hw=Automatic"
+  ],
+  "headlines": {
+    "ritual": "Schreib 8 Minuten.",
+    "simplicity": "Die einfachste\nSchreib-App.",
+    "reflection": "Erhalte eine Reflexion\nzu deinem Text.",
+    "archive": "Dein Archiv,\ngeordnet.",
+    "recording": "Nimm dich beim\nLesen auf."
+  },
+  "ritual": {
+    "elapsedMs": 38000,
+    "text": "Ich denke immer, ich brauche eine bessere Idee, bevor ich anfangen darf. Aber die Seite verlangt das nie. Sie verlangt nur, dass ich weitergehe, und das Weitergehen ist es, was die Idee kommen lässt."
+  },
+  "simplicity": {
+    "elapsedMs": 19000,
+    "text": "Hier gibt es nichts zu ordnen. Nur diese Zeile, und dann die nächste."
+  },
+  "feature": {
+    "date": "2026-08-18T12:00:00Z",
+    "text": "Heute Morgen fiel das Licht von der Seite herein und ich setzte mich hin, bevor ich es mir ausreden konnte. Die Wohnung hatte noch diese angehaltene Stille, die sie hat, bevor jemand etwas von mir braucht. Ich sage mir seit Monaten, dass ich mit der eigentlichen Arbeit anfange, sobald sich die Dinge beruhigen, und langsam verstehe ich, dass die Dinge sich nicht beruhigen, dass genau das Ruhe ist: ein kleines Fenster, eine laute Straße, und ich, die sich trotzdem entscheidet. Ich will etwas Ehrliches machen. Nichts Beeindruckendes. Etwas Ehrliches. Ich verwechsle diese beiden Wörter ständig und verliere ganze Wochen in dem Abstand dazwischen. Also fange ich hier an, mit dem Licht, das das auf dem Boden macht, mit dem Kaffee, der kalt wird, weil ich lieber schreibe als trinke.",
+    "reflection": "## Worum du gekreist bist\n\nDu hast dich hingesetzt, um über deine Arbeit zu schreiben, und die ganze Sitzung damit verbracht, einen Raum zu beschreiben. Das Licht, die Stille, den kalten Kaffee. Das ist kein Ausweichen. Das ist deine Art, dir zu sagen, wo die Arbeit wirklich wohnt.\n\n## Der Unterschied, den du benannt hast\n\nEhrlich, nicht beeindruckend. Du sagst, du verwechselst die beiden und verlierst Wochen in diesem Abstand. Achte darauf, dass du längst weißt, was du willst. Die Verwirrung ging nie um Definitionen. Sie geht darum, wen du dir beim Zuschauen vorstellst.\n\nDu hast nicht gewartet, bis der Raum leiser wird. Du hast angefangen, während er genau so laut war."
+  },
+  "archive": [
+    {
+      "date": "2026-08-17T12:00:00Z",
+      "text": "Ich bin ohne Grund bis ans Ende der Straße und wieder zurück gelaufen. Nichts wurde gelöst, aber etwas hat sich gelockert.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-16T12:00:00Z",
+      "text": "Heute ist mir aufgefallen, dass ich die Schultern seit Dienstag auf Ohrenhöhe trage. Sie fallen zu lassen kostete einen Atemzug.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-14T12:00:00Z",
+      "text": "Wovor ich am meisten Angst habe, ist genau das, was ich Fremden beschreibe. Das muss etwas bedeuten.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-13T12:00:00Z",
+      "text": "Meine Mutter rief an und wir sprachen vierzig Minuten über nichts. Es war das Beste an dieser Woche.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-11T12:00:00Z",
+      "text": "Heute nichts zu sagen, und ich habe es trotzdem gesagt. An manchen Tagen ist die Übung nur, sich neben die leere Seite zu setzen.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-09T12:00:00Z",
+      "text": "Ich habe die kleine Sache fertig gemacht, statt die große zu planen. Die kleine ist echt, die große ist noch Wetter.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-07T12:00:00Z",
+      "text": "Den ganzen Nachmittag Regen, und ich habe mir erlaubt, nichts dagegen zu tun. Ruhe ist keine Belohnung fürs Fertigwerden.",
+      "reflected": false
+    },
+    {
+      "date": "2026-08-05T12:00:00Z",
+      "text": "Ich habe das Wahre in der Besprechung laut gesagt und der Raum ist nicht untergegangen. Das muss ich immer wieder neu lernen.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-03T12:00:00Z",
+      "text": "Ich habe gezählt, was nicht schiefgegangen ist. Die Liste ist länger, als die Angst mich an schlechten Morgen glauben lässt.",
+      "reflected": true
+    },
+    {
+      "date": "2026-08-01T12:00:00Z",
+      "text": "Er schlief im Bus an meinem Arm ein und ich habe mich elf Haltestellen lang nicht bewegt. Manches ist einen tauben Arm wert.",
+      "reflected": false
+    },
+    {
+      "date": "2026-07-29T12:00:00Z",
+      "text": "Neu anfangen. Ich fange immer wieder neu an. Vielleicht ist das alles, der Anfang, wieder und wieder, bis er ein Leben ist.",
+      "reflected": true
+    }
+  ]
+}
