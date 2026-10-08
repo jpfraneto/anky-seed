@@ -54,7 +54,7 @@ struct LocalNotificationScheduler {
             comment: "Annual Pro trial expiry notification title"
         )
         content.body = NSLocalizedString(
-            "Manage or cancel in Apple subscription settings. Pro includes automatic rest-of-day unlocking after you reach your target.",
+            "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model.",
             comment: "Annual Pro trial expiry notification body"
         )
         content.sound = .default

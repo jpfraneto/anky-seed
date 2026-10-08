@@ -47,6 +47,7 @@ final class RevealViewModel: ObservableObject {
     private var reflectionWatcherTask: Task<Void, Never>?
     private var reflectionRetryTask: Task<Void, Never>?
     private var reflectionRetryStartedAt: Date?
+    private var reflectionRetryAttempt = 0
     private var reflectionRequestInFlight = false
     private var reflectionBackgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var streamingReflectionBuffer = ""
@@ -54,9 +55,8 @@ final class RevealViewModel: ObservableObject {
     private let reflectionRetryLimit: TimeInterval = 120
     private var activeReflectionHash: String?
     private var didPrepareAfterFirstRender = false
-    /// The Geshtu Redesign send vigil sets this to "axis" so the backend returns
-    /// the blessing descent (spec §6). Nil everywhere else — the legacy reveal
-    /// keeps the long markdown reflection.
+    /// Optional specialized backend surface. Geshtu leaves this nil so full
+    /// writing sessions receive the standard Markdown reflection.
     var reflectionSurface: String?
     /// The Geshtu Redesign fires generation at the sentinel (channel close), before
     /// the writer has chosen to send (spec §12, addendum A3 / verification Q4). A
@@ -200,7 +200,8 @@ final class RevealViewModel: ObservableObject {
         do {
             try archive.delete(artifact)
             try? reflectionStore.delete(hash: artifact.hash)
-            try sessionIndexStore.delete(hash: artifact.hash)
+            try? sessionIndexStore.delete(hash: artifact.hash)
+            abandonReflectionAfterDeletion()
             reflection = nil
             isDeleted = true
         } catch {
@@ -274,6 +275,9 @@ final class RevealViewModel: ObservableObject {
     }
 
     private func submitReflectionRequest(allowWhileAsking: Bool) async {
+        guard !isDeleted else {
+            return
+        }
         guard !reflectionRequestInFlight else {
             return
         }
@@ -318,6 +322,7 @@ final class RevealViewModel: ObservableObject {
         )
         if reflectionRetryStartedAt == nil {
             reflectionRetryStartedAt = Date()
+            reflectionRetryAttempt = 0
         }
         requestStore.markPending(hash: requestHash)
         startPendingReflectionWatcher()
@@ -336,9 +341,9 @@ final class RevealViewModel: ObservableObject {
                 identity: identity,
                 appVersion: AnkyAppVersion.headerValue,
                 surface: reflectionSurface,
-                ageYears: WriterProfileStore().ageYears(),
                 progress: { [weak self] event in
                     await MainActor.run {
+                        guard self?.isDeleted == false else { return }
                         self?.progressStage = event.stage
                         self?.reflectionStatusMessage = Self.progressMessage(for: event.stage, fallback: event.message)
                         if let self {
@@ -353,12 +358,16 @@ final class RevealViewModel: ObservableObject {
                 },
                 reflectionChunk: { [weak self] event in
                     await MainActor.run {
-                        if let self {
+                        if let self, !self.isDeleted {
                             self.appendStreamingReflectionChunk(event)
                         }
                     }
                 }
             )
+            guard !isDeleted else {
+                abandonReflectionAfterDeletion()
+                return
+            }
             flushStreamingReflectionBuffer()
             reflectionStatusMessage = AnkyLocalization.ui("something answered. i am threading it back.")
 
@@ -417,6 +426,10 @@ final class RevealViewModel: ObservableObject {
             isAskingAnky = false
         } catch {
             endReflectionBackgroundTask()
+            if isDeleted {
+                abandonReflectionAfterDeletion()
+                return
+            }
             let message = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Anky could not return a reflection right now.")
             let serverPayload = (error as? MirrorClientError)?.serverPayload
             if message.localizedCaseInsensitiveContains("already being reflected") {
@@ -516,6 +529,29 @@ final class RevealViewModel: ObservableObject {
         streamingReflectionPublishTask?.cancel()
         streamingReflectionPublishTask = nil
         streamingReflectionBuffer = ""
+    }
+
+    /// Deleting the writing also withdraws every local handle that could
+    /// recreate its reflection after the archive file is gone. A network
+    /// response already in flight may still arrive, but the guards in the
+    /// request path discard it instead of leaving an orphaned reflection.
+    private func abandonReflectionAfterDeletion() {
+        persistsReflection = false
+        onReflectionPersisted = nil
+        requestStore.clear(hash: activeReflectionHash ?? artifact.hash)
+        ReflectionInFlightCache.clear(hash: activeReflectionHash ?? artifact.hash)
+        reflectionWatcherTask?.cancel()
+        reflectionWatcherTask = nil
+        reflectionRetryTask?.cancel()
+        reflectionRetryTask = nil
+        resetStreamingReflectionBuffer()
+        streamingReflectionMarkdown = ""
+        reflectionStatusMessage = ""
+        progressStage = nil
+        reflectionRetryStartedAt = nil
+        reflectionRequestInFlight = false
+        isAskingAnky = false
+        endReflectionBackgroundTask()
     }
 
     static func progressMessage(for stage: String?, fallback: String? = nil) -> String {
@@ -669,8 +705,15 @@ final class RevealViewModel: ObservableObject {
             return
         }
 
+        // A 409 means another attempt may genuinely still be generating.
+        // Back off instead of hammering the signed endpoint every three
+        // seconds until its burst limiter turns the pending reflection into
+        // a 429. Later waits leave room for a slow provider to finish.
+        let delays: [UInt64] = [8, 16, 30, 45]
+        let delaySeconds = delays[min(reflectionRetryAttempt, delays.count - 1)]
+        reflectionRetryAttempt += 1
         reflectionRetryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: delaySeconds * 1_000_000_000)
             guard !Task.isCancelled else {
                 return
             }

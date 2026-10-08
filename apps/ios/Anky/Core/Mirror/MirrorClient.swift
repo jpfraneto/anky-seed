@@ -45,6 +45,25 @@ struct MirrorClient {
 
         var currentEvent: String?
         var dataLines: [String] = []
+        var streamedReflection = ""
+        var serverReportedComplete = false
+
+        // SSE is deliberately the transport so the writing can begin to come
+        // back before generation ends. If the connection loses only its final
+        // envelope after the server has announced completion, the streamed
+        // markdown is already the complete reflection and must not be thrown
+        // away (or paid for/generated a second time).
+        func recoveredCompletedStream() -> MirrorResponsePayload? {
+            let reflection = streamedReflection.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard serverReportedComplete, !reflection.isEmpty else { return nil }
+            return MirrorResponsePayload(
+                hash: AnkyHasher.sha256Hex(bytes),
+                title: Self.title(fromMarkdown: reflection),
+                reflection: reflection,
+                tags: [],
+                inference: nil
+            )
+        }
 
         func flushEvent() async throws -> MirrorResponsePayload? {
             guard let currentEvent else {
@@ -57,18 +76,25 @@ struct MirrorClient {
             case "update":
                 if let data = payload.data(using: .utf8),
                    let event = try? JSONDecoder().decode(MirrorProgressEvent.self, from: data) {
+                    if event.stage == "complete" {
+                        serverReportedComplete = true
+                    }
                     await progress?(event)
                 }
                 return nil
             case "reflection_chunk":
                 if let data = payload.data(using: .utf8),
                    let event = try? JSONDecoder().decode(MirrorReflectionChunkEvent.self, from: data) {
+                    streamedReflection += event.chunk
                     await reflectionChunk?(event)
                 }
                 return nil
             case "reflection":
                 guard let data = payload.data(using: .utf8),
                       let event = try? JSONDecoder().decode(MirrorReflectionEvent.self, from: data) else {
+                    if let recovered = recoveredCompletedStream() {
+                        return recovered
+                    }
                     throw MirrorClientError.invalidResponse
                 }
                 let reflection = event.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -118,6 +144,9 @@ struct MirrorClient {
 
         if let payload = try await flushEvent() {
             return payload
+        }
+        if let recovered = recoveredCompletedStream() {
+            return recovered
         }
         throw MirrorClientError.invalidResponse
     }

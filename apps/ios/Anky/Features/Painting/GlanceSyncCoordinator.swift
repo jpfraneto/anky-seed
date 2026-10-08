@@ -11,13 +11,12 @@ enum GlanceSyncCoordinator {
     @MainActor
     static func sync(
         progressStore: LevelProgressStore = LevelProgressStore(),
-        assetStore: PaintingAssetStore = PaintingAssetStore(),
-        entitled: Bool = EntitlementStore.lastKnownEntitledForDisplay
+        assetStore: PaintingAssetStore = PaintingAssetStore()
     ) {
-        // Phase-3: the widget mirrors the presented (boundary-held) progress,
-        // never a level the writer hasn't been shown.
-        let progress = progressStore.presentedProgress(entitled: entitled)
-        let atBoundary = progressStore.isAtBoundary(entitled: entitled)
+        // Pro changes reflection quality only; the widget mirrors the writer's
+        // full painting progression.
+        let progress = progressStore.presentedProgress(entitled: true)
+        let atBoundary = false
         let percent = Int((progress.percent * 100).rounded())
         let key = "\(progress.level)-\(percent)-\(atBoundary)"
         guard key != lastSyncedKey else { return }

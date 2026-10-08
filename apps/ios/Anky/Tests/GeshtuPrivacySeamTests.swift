@@ -4,7 +4,7 @@ import XCTest
 /// The privacy reorder (outwards pivot §4.1): nothing leaves the device at
 /// the sentinel. `prepare(for:)` stands the reflection view model up in
 /// memory; the upload fires only in `beginUpload()`, which the Anchor calls
-/// at the first explicit outward gesture (the vigil press).
+/// after the three-second vigil completes.
 @MainActor
 final class GeshtuPrivacySeamTests: XCTestCase {
     private func sealedFixtureSession() throws -> SavedAnky {
@@ -34,6 +34,8 @@ final class GeshtuPrivacySeamTests: XCTestCase {
         XCTAssertFalse(vm.isAskingAnky, "prepare(for:) must not begin the upload")
         XCTAssertNil(vm.reflection)
         XCTAssertEqual(vm.streamingReflectionMarkdown, "")
+        XCTAssertNil(vm.reflectionSurface, "full sessions must use the Markdown reflection prompt")
+        XCTAssertEqual(coordinator.channelState, .incomplete)
     }
 
     func testPrepareIsIdempotentPerHash() throws {
@@ -55,6 +57,7 @@ final class GeshtuPrivacySeamTests: XCTestCase {
         coordinator.discard()
 
         XCTAssertNil(coordinator.viewModel)
+        XCTAssertEqual(coordinator.channelState, .none)
     }
 
     func testBeginUploadWithoutPreparationIsANoOp() {
@@ -62,5 +65,43 @@ final class GeshtuPrivacySeamTests: XCTestCase {
         // Must not crash and must not create a view model from nothing.
         coordinator.beginUpload()
         XCTAssertNil(coordinator.viewModel)
+    }
+
+    func testDiscardDoesNotCancelAnExplicitlySentReflection() throws {
+        let session = try sealedFixtureSession()
+        var requestTask: Task<Void, Never>?
+        let coordinator = GeshtuReflectionCoordinator { _ in
+            let task = Task {
+                _ = try? await Task.sleep(nanoseconds: 60_000_000_000)
+            }
+            requestTask = task
+            return task
+        }
+
+        coordinator.prepare(for: session)
+        let vm = try XCTUnwrap(coordinator.viewModel)
+        XCTAssertFalse(vm.persistsReflection)
+
+        coordinator.beginUpload()
+        XCTAssertTrue(vm.persistsReflection, "the explicit ask commits the eventual result")
+        XCTAssertEqual(coordinator.channelState, .listening)
+        coordinator.discard()
+
+        XCTAssertNil(coordinator.viewModel)
+        XCTAssertFalse(try XCTUnwrap(requestTask).isCancelled)
+        requestTask?.cancel()
+    }
+
+    /// The state machine alone never sends: the request begins only where
+    /// the world pairs the phase change with an explicit `beginUpload`.
+    func testOpeningReflectionDocumentDoesNotSendTheOffering() throws {
+        let session = try sealedFixtureSession()
+        let axis = GeshtuState()
+
+        axis.channelDidClose(session: session)
+        axis.openReflectionChannel()
+
+        XCTAssertEqual(axis.phase, .reflection)
+        XCTAssertEqual(axis.pendingSession?.hash, session.hash)
     }
 }

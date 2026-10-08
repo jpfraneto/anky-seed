@@ -1,137 +1,156 @@
 import SwiftUI
+import UIKit
+import UserNotifications
 
 #if os(iOS) && canImport(FamilyControls)
 import FamilyControls
 import ManagedSettings
 #endif
 
-/// User-facing Write Before Scroll setup: authorize Screen Time, choose the
-/// apps that pull you out of yourself, and turn the writing gate on.
-/// This is the productized surface for what previously lived only in the
-/// WBS debug panel.
+/// Write Before You Scroll, as one plate on paper: a switch that says what it
+/// does, and the apps it holds. Turning the switch on walks whatever is still
+/// missing — Screen Time permission, then the choice of apps — so there is
+/// never a second button to find.
 struct GateSetupView: View {
     @ObservedObject var viewModel: WriteBeforeScrollSpikeViewModel
-    let onDone: () -> Void
 
     @State private var confirmsGateOff = false
+    /// The writer asked for the gate; keep walking the steps it still needs.
+    @State private var isTurningOn = false
+    /// iOS will not let a blocked app's screen open Anky itself: its Write
+    /// button sends a notification, and the notification opens Anky. With
+    /// notifications denied that button can do nothing, so say so here.
+    @State private var notificationsDenied = false
+    @Environment(\.scenePhase) private var scenePhase
 
-    private enum SetupStep {
-        case authorize
-        case chooseApps
-        case turnOn
-        case done
+    /// On means the chosen apps are gated by writing — including the hours
+    /// they stand open because today's writing already earned them.
+    private var isGateOn: Bool {
+        viewModel.isScreenTimeAuthorized && viewModel.state.hasSelection && !viewModel.isGateOff
     }
 
-    private var currentStep: SetupStep {
-        if !viewModel.isScreenTimeAuthorized { return .authorize }
-        if !viewModel.state.hasSelection { return .chooseApps }
-        if !viewModel.state.shieldActive { return .turnOn }
-        return .done
-    }
-
-    private var stepCaption: String {
-        switch currentStep {
-        case .authorize:
-            return "Anky needs screen time permission to hold the door."
-        case .chooseApps:
-            return "Pick the apps that pull you out of yourself."
-        case .turnOn:
-            return viewModel.isGateOff
-                ? AnkyCopyRegistry.gateOffStandingCaption
-                : "Anky will block these apps until you write."
-        case .done:
-            return "The door is standing. Write, and it opens."
-        }
-    }
-
-    private var stepButtonTitle: String {
-        switch currentStep {
-        case .authorize: return "Allow Screen Time"
-        case .chooseApps: return "Choose apps"
-        case .turnOn: return "Stay focused"
-        case .done: return "Start writing"
-        }
-    }
-
-    private func stepAction() {
-        switch currentStep {
-        case .authorize:
-            viewModel.requestAuthorization()
-        case .chooseApps:
-            #if os(iOS) && canImport(FamilyControls)
-            viewModel.isPickerPresented = true
-            #endif
-        case .turnOn:
-            viewModel.forceLock()
-        case .done:
-            onDone()
-        }
-    }
-
-    // One line, one image, one action. The single button always does the
-    // next needed step; nothing is overexplained.
-    var body: some View {
-        ZStack {
-            LazureWall(mood: .dawn)
-
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 22) {
-                    Spacer(minLength: 24)
-
-                    Image("anky-gate-door")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 271)
-                        .frame(height: 250)
-                        .accessibilityHidden(true)
-
-                    Text(AnkyLocalization.ui("Door closed, focus opens."))
-                        .font(.system(size: 30, weight: .semibold, design: .serif))
-                        .foregroundStyle(Color.ankyInk)
-                        .multilineTextAlignment(.center)
-
-                    Text(AnkyLocalization.ui(stepCaption))
-                        .font(.system(size: 15, weight: .regular, design: .serif))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .multilineTextAlignment(.center)
-
-                    selectedAppsPanel
-
-                    AnkyPrimaryButton(stepButtonTitle, action: stepAction)
-                        .padding(.top, 2)
-
-                    if currentStep != .done {
-                        Button(action: onDone) {
-                            Text(AnkyLocalization.ui("Skip"))
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    // The honest exit (2026-07-06): one control, one
-                    // confirmation. Turning the gate back on is the same
-                    // single button it always was.
-                    if currentStep == .done {
-                        Button {
-                            confirmsGateOff = true
-                        } label: {
-                            Text(AnkyLocalization.ui(AnkyCopyRegistry.gateOffLink))
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Spacer(minLength: 26)
+    private var gateBinding: Binding<Bool> {
+        Binding(
+            get: { isGateOn },
+            set: { wantsOn in
+                AnkyHaptics.light()
+                if wantsOn {
+                    isTurningOn = true
+                    continueTurningOn()
+                } else {
+                    confirmsGateOff = true
                 }
-                .padding(.horizontal, 40)
-                .frame(maxWidth: 620)
-                .frame(maxWidth: .infinity)
             }
+        )
+    }
+
+    private func continueTurningOn() {
+        guard isTurningOn else { return }
+        if !viewModel.isScreenTimeAuthorized {
+            viewModel.requestAuthorization()
+            return
         }
+        if !viewModel.state.hasSelection {
+            viewModel.isPickerPresented = true
+            return
+        }
+        // Saving a selection already arms the gate; only the explicit
+        // off-switch needs undoing.
+        if viewModel.isGateOff {
+            viewModel.forceLock()
+        }
+        isTurningOn = false
+    }
+
+    private func chooseApps() {
+        AnkyHaptics.light()
+        if viewModel.isScreenTimeAuthorized {
+            viewModel.isPickerPresented = true
+        } else {
+            isTurningOn = true
+            continueTurningOn()
+        }
+    }
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 28) {
+                Text(AnkyLocalization.ui("Blocked apps"))
+                    .font(.fraunces(30, weight: .regular))
+                    .foregroundStyle(Color.ankyInk)
+                    .padding(.top, 34)
+                    .padding(.horizontal, 4)
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 16) {
+                        rowGlyph("shield")
+                        rowTitle("Block until I write")
+                        Spacer(minLength: 8)
+                        Toggle("", isOn: gateBinding)
+                            .labelsHidden()
+                            .tint(Color.ankyInk)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 52)
+
+                    Rectangle()
+                        .fill(Color.ankyInk.opacity(0.08))
+                        .frame(height: 0.5)
+                        .padding(.leading, 54)
+
+                    Button(action: chooseApps) {
+                        HStack(alignment: .top, spacing: 16) {
+                            rowGlyph("square.grid.2x2")
+                                .frame(height: 52)
+                            appsSummary
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.ankyInkSoft.opacity(0.6))
+                                .frame(height: 52)
+                        }
+                        .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.ankyPaperDeep.opacity(0.6))
+                )
+
+                if isGateOn && notificationsDenied {
+                    notificationsPlate
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 40)
+            .frame(maxWidth: 620)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color.ankyPaper.ignoresSafeArea())
+        .environment(\.colorScheme, .light)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
         .onAppear {
             viewModel.refresh()
+            refreshNotificationStatus()
+        }
+        .onChange(of: scenePhase) { phase in
+            // Coming back from the Settings app.
+            if phase == .active {
+                refreshNotificationStatus()
+            }
+        }
+        .onChange(of: isGateOn) { _ in
+            refreshNotificationStatus()
+        }
+        .onChange(of: viewModel.authorizationStatusText) { _ in
+            if viewModel.isScreenTimeAuthorized {
+                continueTurningOn()
+            } else {
+                isTurningOn = false
+            }
         }
         .alert(
             AnkyLocalization.ui(AnkyCopyRegistry.gateOffConfirmTitle),
@@ -154,168 +173,121 @@ struct GateSetupView: View {
         .onChange(of: viewModel.isPickerPresented) { isPresented in
             if !isPresented {
                 viewModel.saveSelection()
-            }
-        }
-        #endif
-    }
-
-    @ViewBuilder
-    private var selectedAppsPanel: some View {
-        #if os(iOS) && canImport(FamilyControls)
-        if viewModel.isScreenTimeAuthorized {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text(AnkyLocalization.ui("Blocked apps"))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.ankyInk)
-                    Spacer()
-                    Button {
-                        viewModel.isPickerPresented = true
-                    } label: {
-                        Text(AnkyLocalization.ui(viewModel.state.hasSelection ? "Change" : "Choose"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.ankyViolet)
-                    }
-                    .buttonStyle(.plain)
-                }
-
                 if viewModel.state.hasSelection {
-                    selectedBlockedIconGrid
+                    continueTurningOn()
                 } else {
-                    Text(AnkyLocalization.ui("Choose the apps you want Anky to hold behind the writing door."))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .lineSpacing(3)
+                    isTurningOn = false
                 }
             }
-            .padding(18)
-            .background(Color.ankyPaper.opacity(0.58), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
-            )
         }
         #endif
     }
 
-    private var selectedBlockedIconGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 14)], spacing: 14) {
-            ForEach(selectedBlockedIconNames, id: \.self) { imageName in
-                Image(imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 74, height: 74)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
-                    )
+    // MARK: - Notifications
+
+    private var notificationsPlate: some View {
+        Button {
+            AnkyHaptics.light()
+            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        } label: {
+            VStack(spacing: 0) {
+                HStack(spacing: 16) {
+                    rowGlyph("bell.badge")
+                    rowTitle("Allow notifications")
+                    Spacer(minLength: 8)
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.6))
+                }
+                .padding(.horizontal, 16)
+                .frame(minHeight: 52)
+
+                Text(AnkyLocalization.ui("Needed to open Anky from a blocked app."))
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 54)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 12)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.ankyPaperDeep.opacity(0.6))
+        )
+    }
+
+    private func refreshNotificationStatus() {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            let status = settings.authorizationStatus
+            DispatchQueue.main.async {
+                notificationsDenied = status == .denied
+                // Never asked yet, and the gate needs it: ask now.
+                if status == .notDetermined, isGateOn {
+                    center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                        DispatchQueue.main.async { notificationsDenied = !granted }
+                    }
+                }
             }
         }
     }
 
-    private var selectedBlockedIconNames: [String] {
+    // MARK: - The apps
+
+    /// The chosen apps as their own icons, or the invitation to choose.
+    @ViewBuilder
+    private var appsSummary: some View {
         #if os(iOS) && canImport(FamilyControls)
-        let appTokens = Array(viewModel.selection.applicationTokens)
-        let categoryCount = viewModel.selection.categoryTokens.count
-        let recognizedNames = appTokens.compactMap(Self.blockedIconName)
-        let fallbackCount = max(0, appTokens.count - recognizedNames.count)
-        let fallbacks = Self.defaultSelectedIconNames
-            .filter { !recognizedNames.contains($0) }
-            .prefix(fallbackCount)
-        let categoryFallbacks = Self.defaultSelectedIconNames
-            .filter { !recognizedNames.contains($0) && !fallbacks.contains($0) }
-            .prefix(categoryCount)
-        return Array(recognizedNames + fallbacks + categoryFallbacks)
+        if viewModel.state.hasSelection {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 36), spacing: 10)], alignment: .leading, spacing: 10) {
+                ForEach(Array(viewModel.selection.applicationTokens), id: \.self) { token in
+                    tokenIcon { Label(token) }
+                }
+                ForEach(Array(viewModel.selection.categoryTokens), id: \.self) { token in
+                    tokenIcon { Label(token) }
+                }
+                ForEach(Array(viewModel.selection.webDomainTokens), id: \.self) { token in
+                    tokenIcon { Label(token) }
+                }
+            }
+            .padding(.vertical, 10)
+            .opacity(isGateOn ? 1 : 0.4)
+        } else {
+            rowTitle("Choose apps")
+                .frame(height: 52)
+        }
         #else
-        return []
+        rowTitle("Choose apps")
+            .frame(height: 52)
         #endif
     }
 
-    #if os(iOS) && canImport(FamilyControls)
-    private static func blockedIconName(for token: ApplicationToken) -> String? {
-        let application = Application(token: token)
-        let candidates = [
-            application.localizedDisplayName,
-            application.bundleIdentifier
-        ]
-        .compactMap { $0 }
-        .map(normalizedAppIdentifier)
-
-        for candidate in candidates {
-            if let exact = iconNameByIdentifier[candidate] {
-                return exact
-            }
-            if let fuzzy = iconNameByIdentifier.first(where: { identifier, _ in
-                guard identifier.count > 2, candidate.count > 2 else { return false }
-                return candidate.contains(identifier) || identifier.contains(candidate)
-            })?.value {
-                return fuzzy
-            }
-        }
-
-        return nil
+    /// Screen Time hands back opaque tokens; only the system can draw what
+    /// they stand for, and it draws them small.
+    private func tokenIcon(@ViewBuilder _ label: () -> some View) -> some View {
+        label()
+            .labelStyle(.iconOnly)
+            .scaleEffect(1.5)
+            .frame(width: 36, height: 36)
     }
 
-    private static func normalizedAppIdentifier(_ value: String) -> String {
-        value
-            .lowercased()
-            .filter { $0.isLetter || $0.isNumber }
+    private func rowGlyph(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16, weight: .regular))
+            .foregroundStyle(Color.ankyInk)
+            .frame(width: 22)
     }
 
-    private static let iconNameByIdentifier: [String: String] = [
-        "whatsapp": "blocked-whatsapp",
-        "netwhatsappwhatsapp": "blocked-whatsapp",
-        "youtube": "blocked-youtube",
-        "comgoogleiosyoutube": "blocked-youtube",
-        "chrome": "blocked-chrome",
-        "comgooglechromeios": "blocked-chrome",
-        "instagram": "blocked-instagram",
-        "comburbninstagram": "blocked-instagram",
-        "tiktok": "blocked-tiktok",
-        "commusicallymusically": "blocked-tiktok",
-        "facebook": "blocked-facebook",
-        "comfacebookfacebook": "blocked-facebook",
-        "spotify": "blocked-spotify",
-        "comspotifyclient": "blocked-spotify",
-        "snapchat": "blocked-snapchat",
-        "comtoychatsnapchat": "blocked-snapchat",
-        "netflix": "blocked-netflix",
-        "comnetflixnetflix": "blocked-netflix",
-        "reddit": "blocked-reddit",
-        "comredditreddit": "blocked-reddit",
-        "linkedin": "blocked-linkedin",
-        "comlinkedinlinkedin": "blocked-linkedin",
-        "discord": "blocked-discord",
-        "comhammerandchiseldiscord": "blocked-discord",
-        "chatgpt": "blocked-chatgpt",
-        "comopenaichat": "blocked-chatgpt",
-        "claude": "blocked-claude",
-        "comanthropicclaude": "blocked-claude",
-        "telegram": "blocked-telegram",
-        "phtelegrachtelegraph": "blocked-telegram",
-        "x": "blocked-x",
-        "twitter": "blocked-x",
-        "comatebitsphone": "blocked-x"
-    ]
-    #endif
-
-    private static let defaultSelectedIconNames = [
-        "blocked-instagram",
-        "blocked-x",
-        "blocked-tiktok",
-        "blocked-youtube",
-        "blocked-whatsapp",
-        "blocked-chrome",
-        "blocked-facebook",
-        "blocked-spotify",
-        "blocked-snapchat",
-        "blocked-netflix",
-        "blocked-reddit",
-        "blocked-linkedin",
-        "blocked-discord",
-        "blocked-chatgpt",
-        "blocked-claude",
-        "blocked-telegram"
-    ]
+    private func rowTitle(_ key: String) -> some View {
+        Text(AnkyLocalization.ui(key))
+            .font(.fraunces(17, weight: .regular))
+            .foregroundStyle(Color.ankyInk)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+    }
 }

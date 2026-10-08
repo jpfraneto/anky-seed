@@ -23,12 +23,11 @@ Ne nécessitent pas Anky Pro :
 - Commencer et terminer de nouvelles sessions
 - Créer, continuer, enregistrer, parcourir, copier, exporter et supprimer les écrits locaux
 - Lire les réflexions déjà enregistrées
-- Une impulsion locale sans serveur quand Pro est inactif
+- Des impulsions d’écriture IA, avec une alternative locale si le serveur est indisponible
 - Le contrôle Temps d’écran, le choix des apps et activer/désactiver la protection
 - Trois Pass rapides quotidiens selon la règle actuelle
 - L’accès et le déverrouillage d’urgence
-- Les peintures statiques jusqu’au niveau 8
-- Les peintures personnalisées déjà livrées
+- La progression des peintures et les peintures personnalisées déjà livrées
 - Les archives et l’historique
 - Les réglages, sauvegardes locales/iCloud, import/export, suppression, assistance et documents juridiques
 
@@ -36,24 +35,16 @@ Elles peuvent dépendre des permissions iOS, de l’appareil, du stockage et des
 
 ## 4. Fonctions Anky Pro
 
-Seuls exigent un droit actif `pro` en minuscules :
+Anky Pro offre un seul avantage : de nouvelles réflexions de meilleure qualité grâce au modèle compatible le plus puissant disponible d’Anky. Les utilisateurs gratuits peuvent toujours demander des réflexions via le canal d’inférence gratuit. L’écriture et toutes les fonctions sans lien avec les réflexions restent disponibles sans Pro.
 
-1. Les nouvelles réflexions IA du serveur pour des écrits sans réflexion enregistrée, sous réserve des limites du service.
-2. Les impulsions IA du serveur à la place de l’alternative locale, sous réserve des limites.
-3. L’accès complet au parcours de 96 jours.
-4. Le déverrouillage automatique pour le reste de la journée après l’objectif configuré.
-5. Les suggestions adaptatives d’objectif.
-6. La progression après le niveau 8, avec peintures personnalisées et cérémonies ultérieures, selon la progression, l’écriture et les limites de sécurité, capacité et génération.
-
-L’abonnement annuel ouvre les fonctions Pro indiquées. L’accès dépend du droit `pro` vérifié. À l’expiration de Pro, le contenu local existant reste ; seules les nouvelles actions Pro sont restreintes.
-
-Les services générés ont des limites raisonnables de service, sécurité, capacité et prévention des abus. Aucun nombre, modèle, style, résultat ou délai n’est garanti.
+Les réflexions sont soumises à des limites raisonnables de service, sécurité, capacité et prévention des abus. L’abonnement ne garantit aucun modèle, style, résultat ou délai précis.
 
 ## 5. Abonnements auto-renouvelables
 
-Anky propose un seul abonnement annuel facultatif et auto-renouvelable via l’App Store :
+Anky propose des abonnements annuels et mensuels facultatifs et auto-renouvelables via l’App Store. Les deux donnent accès aux mêmes fonctions Anky Pro :
 
-- **Annuel :** un an. Apple peut afficher un essai de trois jours uniquement aux personnes éligibles.
+- **Annuel :** un an. Aucun essai initial n’est proposé.
+- **Mensuel :** un mois. Aucun essai initial n’est proposé.
 
 Le prix localisé, l’éligibilité, la date de débit et les conditions montrés par Apple avant confirmation font foi. Le paiement est débité de l’Apple ID. L’abonnement se renouvelle automatiquement sauf annulation dans les réglages Apple avant renouvellement. Apple gère facturation, annulation, historique et remboursements. Supprimer Anky n’annule pas l’abonnement.
 
@@ -67,11 +58,11 @@ Le contenu généré peut être inexact, incomplet, répétitif, retardé, indis
 
 Une fonction générée transmet du contenu comme décrit dans la Politique de confidentialité. N’envoie pas de contenu sans autorisation ou que tu ne veux pas voir traité par les fournisseurs indiqués.
 
-Les peintures personnalisées après le niveau 8 dépendent d’une progression et d’une écriture suffisantes, de `pro` vérifié, de la disponibilité, des contrôles et limites. Les niveaux statiques 1–8 et peintures déjà livrées restent disponibles sans Pro.
+Les peintures personnalisées après le niveau 8 dépendent d’une progression et d’une écriture suffisantes, de la disponibilité, des contrôles et des limites de génération.
 
 ## 7. Temps d’écran et déverrouillages
 
-Le contrôle, le choix des apps, son activation/désactivation, trois Pass quotidiens et l’urgence sont gratuits. Le déverrouillage automatique après l’objectif est Pro. Pour un utilisateur gratuit, l’objectif mesure la progression et ne promet pas ce déverrouillage.
+Le contrôle, le choix des apps, son activation/désactivation, trois Pass quotidiens, l’urgence et le déverrouillage automatique après l’objectif restent disponibles sans Pro.
 
 Apple contrôle les frameworks et permissions. Le verrouillage peut être retardé ou échouer à cause d’iOS, de l’autorisation, de l’appareil, de l’heure ou de limites système. Garde un autre moyen d’accéder aux services critiques.
 

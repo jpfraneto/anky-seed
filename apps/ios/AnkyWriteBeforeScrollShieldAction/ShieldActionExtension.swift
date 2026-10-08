@@ -75,6 +75,8 @@ final class ShieldActionExtension: ShieldActionDelegate {
                 : "Shield requested Anky through notification fallback."
         }
 
+        // `.defer` asks iOS to draw the shield again, so it can say what the
+        // press did: a notification is on its way, or notifications are off.
         switch bridgeMode {
         case .directOpen:
             eventLog.append(.directOpenRequested, at: now, metadata: ["intentID": intent.id])
@@ -82,12 +84,12 @@ final class ShieldActionExtension: ShieldActionDelegate {
                 completionHandler(response)
             } else {
                 postOpenAnkyNotificationIfPossible(intent: intent, now: now) {
-                    completionHandler(.none)
+                    completionHandler(.defer)
                 }
             }
         case .notification:
             postOpenAnkyNotificationIfPossible(intent: intent, now: now) {
-                completionHandler(.none)
+                completionHandler(.defer)
             }
         }
     }
@@ -121,7 +123,7 @@ final class ShieldActionExtension: ShieldActionDelegate {
             title: AnkyCopyRegistry.emergencyNotificationTitle,
             body: AnkyCopyRegistry.emergencyNotificationBody
         ) {
-            completionHandler(.none)
+            completionHandler(.defer)
         }
     }
 

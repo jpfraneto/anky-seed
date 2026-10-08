@@ -23,12 +23,11 @@ No requieren Anky Pro:
 - Iniciar y completar sesiones nuevas
 - Crear, continuar, guardar, explorar, copiar, exportar y borrar escritos locales
 - Leer reflexiones ya guardadas
-- Un aviso local sin servidor cuando Pro está inactivo
+- Avisos de escritura de IA, con una alternativa local si el servidor no está disponible
 - Control de Tiempo de uso, selección de apps y activar/desactivar protección
 - Tres pases rápidos diarios según la política actual
 - Acceso y desbloqueo de emergencia
-- Pinturas estáticas hasta el nivel 8
-- Pinturas personalizadas ya entregadas
+- Progresión de pinturas y pinturas personalizadas ya entregadas
 - Archivo e historial
 - Ajustes, copias locales/iCloud, importar/exportar, borrar cuenta, soporte y documentos legales
 
@@ -36,24 +35,16 @@ Pueden depender de permisos de iOS, capacidad del dispositivo, almacenamiento o 
 
 ## 4. Funciones de Anky Pro
 
-Solo requieren un derecho activo `pro` en minúsculas:
+Anky Pro tiene un único beneficio: nuevas reflexiones de mayor calidad mediante el modelo compatible más potente disponible de Anky. Quienes usan la versión gratuita pueden seguir pidiendo reflexiones mediante la vía de inferencia gratuita. La escritura y todas las funciones no relacionadas con reflexiones siguen disponibles sin Pro.
 
-1. Nuevas reflexiones de IA del servidor para escritos sin reflexión guardada, sujetas a límites del servicio.
-2. Avisos de escritura de IA del servidor en vez de la alternativa local, sujetos a límites.
-3. Acceso completo al viaje de 96 días.
-4. Desbloqueo automático por el resto del día al alcanzar la meta diaria configurada.
-5. Sugerencias adaptativas de meta diaria.
-6. Progresión tras el nivel 8, con pinturas personalizadas y ceremonias posteriores, sujeta al progreso, escritura y límites de seguridad, capacidad y generación.
-
-La suscripción anual desbloquea las funciones Pro indicadas. El acceso depende del derecho `pro` verificado. Al caducar Pro, el contenido local existente permanece; solo se restringen nuevas acciones Pro.
-
-Los servicios generados tienen límites razonables de servicio, seguridad, capacidad y prevención de abuso. No se garantiza un número, modelo, estilo, resultado o plazo concreto.
+Las reflexiones tienen límites razonables de servicio, seguridad, capacidad y prevención de abuso. La suscripción no garantiza un modelo, estilo, resultado o plazo concreto.
 
 ## 5. Suscripciones con renovación automática
 
-Anky ofrece una única suscripción anual opcional con renovación automática mediante el App Store:
+Anky ofrece suscripciones opcionales anuales y mensuales con renovación automática mediante el App Store. Ambas desbloquean las mismas funciones de Anky Pro:
 
-- **Anual:** un año. Apple puede mostrar una prueba de tres días únicamente a personas elegibles.
+- **Anual:** un año. No se ofrece prueba inicial.
+- **Mensual:** un mes. No se ofrece prueba inicial.
 
 Mandan el precio localizado, elegibilidad, fecha de cobro y términos que Apple muestra antes de confirmar. El pago se carga al Apple ID y la suscripción se renueva automáticamente salvo cancelación en los ajustes de Apple antes de renovar. Apple gestiona facturación, cancelación, historial y reembolsos. Borrar Anky no cancela la suscripción.
 
@@ -67,11 +58,11 @@ El contenido generado puede ser inexacto, incompleto, repetitivo, tardío, no es
 
 Cuando pides una función generada, se transmite contenido como explica la Política de privacidad. No envíes contenido sin autorización o que no quieras que procesen los proveedores indicados.
 
-Las pinturas personalizadas tras el nivel 8 dependen de progreso y escritura suficientes, `pro` verificado, disponibilidad, controles y límites. Los niveles estáticos 1–8 y pinturas ya entregadas siguen disponibles sin Pro.
+Las pinturas personalizadas tras el nivel 8 dependen de progreso y escritura suficientes, disponibilidad, controles y límites de generación.
 
 ## 7. Tiempo de uso y desbloqueos
 
-El control, elegir apps, activarlo/desactivarlo, tres pases diarios y el acceso de emergencia son gratuitos. El desbloqueo automático por el resto del día al cumplir la meta es Pro. Para usuarios gratuitos, la meta mide progreso y no promete ese desbloqueo.
+El control, elegir apps, activarlo/desactivarlo, tres pases diarios, el acceso de emergencia y el desbloqueo automático por el resto del día al cumplir la meta están disponibles sin Pro.
 
 Apple controla los frameworks y permisos. Los bloqueos pueden retrasarse o fallar por iOS, autorización, estado del dispositivo, cambios horarios o límites del sistema. Conserva otra vía a servicios críticos.
 

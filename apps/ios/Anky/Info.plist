@@ -20,6 +20,8 @@
 		<string>default</string>
 		<key>AnnualProduct</key>
 		<string>anky.annual</string>
+		<key>MonthlyProduct</key>
+		<string>anky.monthly</string>
 	</dict>
 	<!-- P2 Anky Recording: reading a reflection aloud to camera. Capture stays
 	     on device; the clip only leaves if the writer shares it. -->

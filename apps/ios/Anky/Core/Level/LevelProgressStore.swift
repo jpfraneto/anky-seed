@@ -103,61 +103,33 @@ struct LevelProgressStore {
         AnkyLevel.progress(forTotalSeconds: load().totalSeconds)
     }
 
-    // MARK: Phase-3 boundary
+    // MARK: Historical painting boundary
 
-    /// Levels 1–8 are shared static default paintings with no generation
-    /// cost (decision 2026-07-08), so the free tier deepens all the way
-    /// through them and holds at 8 — dynamic per-writer paintings start at
-    /// level 9 and belong to the subscription. Presentation never advances
-    /// past this level unentitled. Mirrors the backend's STATIC_LEVEL_MAX /
-    /// FREE_GENERATION_MAX_LEVEL.
+    /// Level 8 remains a useful ceremony/generation threshold. It is no longer
+    /// a subscription boundary: Pro changes reflection quality only.
     static let freeBoundaryLevel = 8
 
-    /// The static/dynamic line (distinct from the free/paid line above). Levels
+    /// The static/dynamic line. Levels
     /// at or below it are shared static paintings — the same art for every
-    /// writer, downloaded instantly, no per-writer generation. Levels 2–8 are
-    /// free; 9–15 are the curated paid "second octave" (still shared art, just
-    /// entitlement-gated). Beyond it the client holds the last painting. Mirrors
+    /// writer, downloaded instantly, no per-writer generation. Levels 2–15 are
+    /// the curated arc for every writer. Beyond it the client holds the last painting. Mirrors
     /// the backend's STATIC_LEVEL_MAX — keep the two in lockstep.
     static let staticLevelMax = 15
 
-    /// What the UI shows. Entitled writers see the true curve; a free writer
-    /// past the boundary sees level 8 serenely complete at 100%. The counter
-    /// underneath keeps every second — nothing is ever lost, and the true
-    /// level reappears the moment entitlement does.
+    /// Compatibility signature retained for older callers. Entitlement no
+    /// longer changes painting progress.
     func presentedProgress(entitled: Bool) -> AnkyLevel.Progress {
-        let real = progress
-        guard !entitled, real.level > Self.freeBoundaryLevel else {
-            return real
-        }
-        let required = AnkyLevel.requirementSeconds(forLevel: Self.freeBoundaryLevel)
-        return AnkyLevel.Progress(
-            level: Self.freeBoundaryLevel,
-            secondsIntoLevel: required,
-            secondsRequired: required,
-            percent: 1.0,
-            totalSeconds: real.totalSeconds
-        )
+        progress
     }
 
-    /// True while a free writer stands at the held-100% moment.
+    /// The former paid painting boundary is retired.
     func isAtBoundary(entitled: Bool) -> Bool {
-        !entitled && progress.level > Self.freeBoundaryLevel
+        false
     }
 
-    /// Claims the one boundary_reached funnel report. Returns true exactly
-    /// once, when the writer first stands at the boundary.
+    /// Kept as a no-op for persisted clients that still call the old funnel.
     func claimBoundaryReport(entitled: Bool) -> Bool {
-        guard isAtBoundary(entitled: entitled) else {
-            return false
-        }
-        var snapshot = load()
-        guard !snapshot.didReportBoundary else {
-            return false
-        }
-        snapshot.didReportBoundary = true
-        save(snapshot)
-        return true
+        false
     }
 
     /// Credits a sealed session. When the session replaced a continued

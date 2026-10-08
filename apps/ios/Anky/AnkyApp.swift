@@ -23,6 +23,11 @@ final class AnkyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         FreshInstallGuard.refreshIfFreshInstall()
         UNUserNotificationCenter.current().delegate = self
         AnkyFraunces.register()
+        #if DEBUG
+        // App Store screenshot staging. Launch-argument gated and compiled
+        // out of Release: an ordinary launch never enters it.
+        ScreenshotStage.prepareProcess()
+        #endif
         // A session written in the App Clip before the install: claim it from
         // the handoff container into normal session storage (the same path a
         // natively written session takes). This lives in the delegate — not a

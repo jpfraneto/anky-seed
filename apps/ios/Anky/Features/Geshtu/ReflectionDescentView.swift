@@ -2,22 +2,18 @@
 //  ReflectionDescentView.swift
 //  Anky — the Geshtu Redesign (spec §6).
 //
-//  Anky's reflection descends: 4–6 short lines settling top-to-bottom onto the
-//  lazure ground, the topmost line slightly more luminous. The writer's own
-//  words, returned and warmed. Once the first reflection has arrived, the same
-//  surface opens into a private conversation rooted in that writing.
+//  Anky's Markdown reflection settles beneath the writing on the lazure
+//  ground. The surface ends with the reflection itself.
 //
-//  Latency hiding (spec §12): the reflection request fires the instant the
-//  vigil press begins (the writer's first explicit outward gesture), so the
-//  0.9–30 s descent wait covers most of the generation. If it is not ready on
-//  arrival, the cooled gold spiral tracery lingers, pulsing very slowly — no
-//  spinner, no "Anky is thinking" copy. The ear is simply still listening.
+//  The reflection request fires only after the three-second vigil completes.
+//  If it is not ready on arrival, only the quiet status text remains — no icon
+//  or spinner between the sealed writing and the reflection.
 //
 //  Privacy reorder (outwards pivot §4.1): nothing leaves the device at the
 //  sentinel anymore. `prepare(for:)` only constructs the view model at
 //  channel close; the actual POST /anky starts in `beginUpload()`, called
-//  from the Anchor's press — never earlier. This makes the privacy policy's
-//  "sent on explicit request" sentence true.
+//  from the Anchor's completed hold — never earlier. This makes the privacy
+//  policy's "sent on explicit request" sentence true.
 //
 
 import SwiftUI
@@ -30,6 +26,7 @@ import SwiftUI
 @MainActor
 final class GeshtuReflectionCoordinator: ObservableObject {
     @Published private(set) var viewModel: RevealViewModel?
+    @Published private(set) var channelState: GeshtuReflectionChannelState = .none
     /// Fires when a reflection for a sent vigil actually reaches the store —
     /// the only moment the free vigil may be marked spent (a vigil whose
     /// reflection never arrives keeps the credit).
@@ -37,15 +34,24 @@ final class GeshtuReflectionCoordinator: ObservableObject {
 
     private var task: Task<Void, Never>?
     private var currentHash: String?
+    private var uploadWasSent = false
+    private let requestStarter: @MainActor (RevealViewModel) -> Task<Void, Never>
+
+    init(
+        requestStarter: @escaping @MainActor (RevealViewModel) -> Task<Void, Never> = { vm in
+            Task { await vm.askAnkyForSealedSession() }
+        }
+    ) {
+        self.requestStarter = requestStarter
+    }
 
     /// Stand the view model up for a just-sealed session — memory only, no
     /// network. Idempotent per hash. The writing has NOT left the device when
     /// this returns; that is the whole point (outwards pivot §4.1).
     func prepare(for session: SavedAnky) {
         if currentHash == session.hash, viewModel != nil { return }
-        cancelTask()
+        releaseCurrentRequest()
         let vm = RevealViewModel(artifact: session)
-        vm.reflectionSurface = "axis"
         // Hold the result in memory only; it reaches the store only if the
         // vigil sends (addendum A3 / verification Q4). An unsent session's
         // reflection is never attached to its entry as if it had been received.
@@ -53,33 +59,61 @@ final class GeshtuReflectionCoordinator: ObservableObject {
         vm.onReflectionPersisted = { [weak self] in self?.onPersisted?() }
         viewModel = vm
         currentHash = session.hash
+        channelState = ReflectionStore().load(hash: session.hash) == nil ? .incomplete : .complete
     }
 
-    /// The writer pressed the Anchor: the first explicit outward gesture.
+    /// The writer completed the three-second hold: the explicit outward act.
     /// Only now do the exact writing bytes leave the device. Safe to call on
-    /// every press — the view model dedupes an in-flight request, and a
-    /// re-press after a failure is exactly the retry path.
+    /// every completed hold — the view model dedupes an in-flight request,
+    /// and another hold after a failure is exactly the retry path.
     func beginUpload() {
         guard let vm = viewModel else { return }
         // Already answered, or a request is still on the wire: nothing to
         // start. (An errored request has isAskingAnky == false, so a re-press
         // after a failure is exactly the retry.)
         if vm.reflection != nil || vm.isAskingAnky { return }
-        task = Task { await vm.askAnkyForSealedSession() }
+        // The explicit ask is the commit point. From here the result belongs
+        // to this writing even if the writer returns to the strata while a
+        // slow provider is answering. The backend deliberately does not keep
+        // reflection text, so cancelling a sent request on navigation would
+        // make a successful server response unrecoverable.
+        vm.persistPendingReflection()
+        uploadWasSent = true
+        channelState = .listening
+        let request = requestStarter(vm)
+        task = Task { [weak self, weak vm] in
+            await request.value
+            guard let self, let vm, self.currentHash == vm.hash else { return }
+            self.channelState = vm.reflection == nil ? .incomplete : .complete
+        }
     }
 
     /// The vigil completed: the offering was carried. Commit the held reflection
     /// to the store so the sent day owns it in the strata (addendum A3 / Q4).
     func commit() {
         viewModel?.persistPendingReflection()
+        if viewModel?.reflection != nil { channelState = .complete }
     }
 
     /// The day settled unsent, or a new session began: drop the in-flight
     /// result without ever persisting it (unsent ≠ sent — Q4).
     func discard() {
-        cancelTask()
+        releaseCurrentRequest()
         viewModel = nil
         currentHash = nil
+        channelState = .none
+    }
+
+    /// Prepared-but-unsent work is disposable. Once the writer explicitly
+    /// sent it, release the UI's handle without cancelling the request: the
+    /// task retains its view model long enough to persist the returned result.
+    private func releaseCurrentRequest() {
+        if uploadWasSent {
+            task = nil
+        } else {
+            cancelTask()
+        }
+        uploadWasSent = false
     }
 
     private func cancelTask() {
@@ -91,14 +125,25 @@ final class GeshtuReflectionCoordinator: ObservableObject {
 // MARK: - The canonical finished-session screen
 
 enum FinishedSessionStage: Equatable {
-    /// The writing has sealed and the writer has not yet chosen whether to
-    /// continue it, ask Anky, or leave it on device.
-    case awaitingChoice
     /// The reflection is in flight or has arrived; its conversation follows
     /// directly beneath the sealed writing.
+    ///
+    /// There is no "awaiting choice" stage any more (in-place completion,
+    /// 2026-08-18): a writing that has just ended never leaves the writing
+    /// surface, and its two ways forward stand in the keyboard's own place.
+    /// This screen is reached when the reflection channel opens, before or
+    /// after the writer explicitly asks Anky, or from the archive.
     case conversation
     /// The exact same screen reached from the separate archive list.
     case archived
+}
+
+private struct FinishedSessionScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
 }
 
 /// The one finished-session screen used both immediately after writing and
@@ -115,9 +160,9 @@ struct FinishedSessionView: View {
     /// use their natural document height instead.
     var keyboardTop: CGFloat?
     let stage: FinishedSessionStage
-    var onKeepWriting: () -> Void = {}
     var onRequestReflection: () -> Void = {}
-    var onClose: (() -> Void)?
+    /// The menu: slides the drawer in beside this document.
+    var onOpenMenu: (() -> Void)?
     var onLateOffer: (() -> Void)?
     /// A legacy or custom server can still deny reflection access: in that
     /// case the error line's tap raises the gate instead of a doomed retry.
@@ -125,9 +170,16 @@ struct FinishedSessionView: View {
 
     @State private var preferences = WritingPreferencesStore().load()
     @State private var didPrepare = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var observedScrollOffset: CGFloat = 0
+    @State private var scrollDirectionExtreme: CGFloat = 0
+    @State private var tracksScrollDirection = false
+    @State private var contentFrame: CGRect = .zero
+    @State private var seamY: CGFloat = 0
 
     private static let keyboardLineID = "finishedSession.keyboardLine"
+    private static let writingStartID = "finishedSession.writingStart"
+    private static let topID = "finishedSession.top"
+    private static let scrollSpace = "finishedSession.scrollSpace"
 
     var body: some View {
         GeometryReader { outer in
@@ -140,11 +192,26 @@ struct FinishedSessionView: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 0)
+                            .id(Self.topID)
+                            .background {
+                                GeometryReader { marker in
+                                    Color.clear.preference(
+                                        key: FinishedSessionScrollOffsetKey.self,
+                                        value: marker.frame(in: .named(Self.scrollSpace)).minY
+                                    )
+                                }
+                            }
+
+                        // The day, quietly, under the back button — never a
+                        // centered title over the writing.
                         Text(Self.dateFormatter.string(from: artifact.createdAt).lowercased())
-                            .font(.fraunces(14, weight: .light))
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 22)
+                            .font(.fraunces(12, weight: .light))
+                            .foregroundStyle(Color.ankyInkSoft.opacity(0.7))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 58)
 
                         // The writing, in the writer's own writing font,
                         // bottom-anchored to the keyboard line — the same
@@ -155,11 +222,12 @@ struct FinishedSessionView: View {
                             font: writingFont,
                             ink: Color.ankyUmber.opacity(0.88),
                             lineSpacing: writingLineSpacing,
-                            // The fixed top chrome's share honors this choice.
+                            // The fixed top chrome's copy honors this choice.
                             onSelectionChange: { axis.selectedQuote = $0 }
                         )
+                        .id(Self.writingStartID)
                         .padding(.horizontal, 24)
-                        .padding(.top, 80)
+                        .padding(.top, 34)
                         .frame(
                             maxWidth: .infinity,
                             minHeight: keyboardLineY.map { max(1, $0 - 58) },
@@ -167,6 +235,14 @@ struct FinishedSessionView: View {
                         )
 
                         Color.clear.frame(height: 1).id(Self.keyboardLineID)
+                            .background {
+                                GeometryReader { marker in
+                                    let y = marker.frame(in: .named(Self.scrollSpace)).minY
+                                    Color.clear
+                                        .onAppear { seamY = y }
+                                        .onChange(of: y) { seamY = $0 }
+                                }
+                            }
 
                         finishedSessionTail
                             .padding(.top, 23)
@@ -177,8 +253,31 @@ struct FinishedSessionView: View {
                                 alignment: .top
                             )
                     }
+                    .background {
+                        GeometryReader { content in
+                            let frame = content.frame(in: .named(Self.scrollSpace))
+                            Color.clear
+                                .onAppear { contentFrame = frame }
+                                .onChange(of: frame) { contentFrame = $0 }
+                        }
+                    }
+                }
+                .coordinateSpace(name: Self.scrollSpace)
+                .onPreferenceChange(FinishedSessionScrollOffsetKey.self, perform: observeScrollOffset)
+                .overlay(alignment: .trailing) {
+                    if showsDocumentRail {
+                        documentRail(viewportHeight: outer.size.height) { toAnky in
+                            AnkyHaptics.selection()
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                proxy.scrollTo(toAnky ? Self.keyboardLineID : Self.topID, anchor: .top)
+                            }
+                        }
+                        .transition(.opacity)
+                    }
                 }
                 .onAppear {
+                    tracksScrollDirection = false
+                    axis.setRevealChromeVisible(true)
                     preferences = WritingPreferencesStore().load()
                     if let keyboardLineY {
                         // A newly sealed session keeps the last line exactly
@@ -187,27 +286,115 @@ struct FinishedSessionView: View {
                         proxy.scrollTo(Self.keyboardLineID, anchor: UnitPoint(x: 0.5, y: fraction))
                     }
                 }
+                .onChange(of: axis.responseStartRequest) { _ in
+                    withAnimation(.easeInOut(duration: 0.58)) {
+                        proxy.scrollTo(Self.keyboardLineID, anchor: .top)
+                    }
+                }
             }
         }
+        // The same paper every other surface stands on, so the list, this
+        // document, and the writing page never read as three apps.
+        .background(Color.ankyPaper.ignoresSafeArea())
         .overlay(alignment: .topLeading) {
-            if let onClose {
-                Button(action: onClose) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .frame(width: 42, height: 42)
-                        .background(Color.ankyPaper.opacity(0.58), in: Circle())
+            HStack(spacing: 6) {
+                if let onOpenMenu {
+                    // The same menu, in the same place, as on the writing
+                    // page — a session is not somewhere else.
+                    finishedSessionChromeButton(
+                        systemName: "line.3.horizontal",
+                        accessibilityLabel: "Your writings"
+                    ) {
+                        AnkyHaptics.light()
+                        onOpenMenu()
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.leading, 14)
-                .padding(.top, 8)
-                .accessibilityLabel(Text(AnkyLocalization.ui("Back to archive")))
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .opacity(axis.revealChromeIsVisible ? 1 : 0)
+            .offset(y: axis.revealChromeIsVisible ? 0 : -7)
+            .allowsHitTesting(axis.revealChromeIsVisible)
+            .animation(.easeInOut(duration: 0.24), value: axis.revealChromeIsVisible)
         }
         .task {
             await viewModel.prepareAfterFirstRender()
             didPrepare = true
+            do {
+                // Ignore initial/programmatic positioning; only the reader's
+                // subsequent movement should make the controls recede.
+                try await Task.sleep(nanoseconds: 450_000_000)
+            } catch {
+                return
+            }
+            scrollDirectionExtreme = observedScrollOffset
+            tracksScrollDirection = true
         }
+        .onDisappear {
+            axis.setRevealChromeVisible(true)
+        }
+    }
+
+    // MARK: The rail
+
+    /// The rail appears once Anky has answered and the document is longer
+    /// than the screen — the only time there is somewhere else to be.
+    private var showsDocumentRail: Bool {
+        let hasReply = viewModel.reflection != nil || !viewModel.streamingReflectionMarkdown.isEmpty
+        return hasReply && contentFrame.height > 1
+    }
+
+    /// The whole document as one thin line down the trailing edge: the
+    /// writer's part in umber, Anky's in violet, a gold bead on the seam, and
+    /// a thumb showing what is on screen. Touch a part to go to its start.
+    private func documentRail(
+        viewportHeight: CGFloat,
+        onJump: @escaping (_ toAnky: Bool) -> Void
+    ) -> some View {
+        let railHeight = max(1, viewportHeight - 190)
+        let total = max(contentFrame.height, viewportHeight)
+        let seamFraction = min(1, max(0, (seamY - contentFrame.minY) / total))
+        let offsetFraction = min(1, max(0, -contentFrame.minY / total))
+        let thumbFraction = min(1, viewportHeight / total)
+        let seamAt = railHeight * seamFraction
+        let thumbHeight = max(18, railHeight * thumbFraction)
+        let thumbAt = min(railHeight - thumbHeight, railHeight * offsetFraction)
+
+        return ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                Capsule().fill(Color.ankyUmber.opacity(0.20))
+                    .frame(height: max(0, seamAt - 5))
+                Color.clear.frame(height: 10)
+                Capsule().fill(Color.ankyViolet.opacity(0.42))
+            }
+            .frame(width: 3, height: railHeight)
+
+            // A document that fits the screen has no position to show.
+            if thumbFraction < 0.98 {
+                Capsule()
+                    .fill(Color.ankyInk.opacity(0.55))
+                    .frame(width: 5, height: thumbHeight)
+                    .offset(y: thumbAt)
+            }
+
+            Circle()
+                .fill(Color.ankyGold)
+                .frame(width: 8, height: 8)
+                .offset(y: seamAt - 4)
+        }
+        .frame(width: 30, height: railHeight)
+        .contentShape(Rectangle())
+        .gesture(
+            SpatialTapGesture().onEnded { tap in
+                onJump(tap.location.y >= seamAt - 16)
+            }
+        )
+        .padding(.top, 70)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .accessibilityElement()
+        .accessibilityLabel(Text(AnkyLocalization.ui("Go to Anky's reply")))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onJump(true) }
     }
 
     // MARK: The writing's own clothes
@@ -220,66 +407,91 @@ struct FinishedSessionView: View {
         preferences.textSize.pointSize * 0.42
     }
 
+    /// A small dead zone prevents jitter from flickering the controls. While
+    /// visible we remember the highest offset and hide after moving 18pt into
+    /// the document; while hidden we remember the lowest offset and reveal
+    /// after moving 12pt back toward the top.
+    private func observeScrollOffset(_ offset: CGFloat) {
+        observedScrollOffset = offset
+        guard tracksScrollDirection else {
+            scrollDirectionExtreme = offset
+            return
+        }
+
+        if axis.revealChromeIsVisible {
+            scrollDirectionExtreme = max(scrollDirectionExtreme, offset)
+            if offset < scrollDirectionExtreme - 18 {
+                scrollDirectionExtreme = offset
+                axis.setRevealChromeVisible(false)
+            }
+        } else {
+            scrollDirectionExtreme = min(scrollDirectionExtreme, offset)
+            if offset > scrollDirectionExtreme + 12 {
+                scrollDirectionExtreme = offset
+                axis.setRevealChromeVisible(true)
+            }
+        }
+    }
+
+    private func finishedSessionChromeButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(Color.ankyInkSoft)
+                .frame(width: 44, height: 44)
+                .ankyGlass(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isDeleting)
+        .accessibilityLabel(Text(AnkyLocalization.ui(accessibilityLabel)))
+    }
+
     // MARK: The rest of the session
 
     @ViewBuilder
     private var finishedSessionTail: some View {
-        if stage == .awaitingChoice {
-            sessionChoices
-        } else if stage == .archived,
-                  didPrepare,
-                  viewModel.reflection == nil,
-                  !viewModel.isAskingAnky,
-                  viewModel.streamingReflectionMarkdown.isEmpty,
-                  viewModel.errorMessage == nil {
+        if stage == .archived,
+           didPrepare,
+           viewModel.reflection == nil,
+           !viewModel.isAskingAnky,
+           viewModel.streamingReflectionMarkdown.isEmpty,
+           viewModel.errorMessage == nil {
             archivedWithoutReflection
         } else {
             reflectionBlock
         }
     }
 
-    private var sessionChoices: some View {
-        VStack(spacing: 12) {
-            sessionAction(
-                label: "keep writing",
-                icon: "pencil.line",
-                hint: "Reopen this session and keep going.",
-                action: onKeepWriting
-            )
-            sessionAction(
-                label: "get anky's reflection",
-                icon: "sparkles",
-                prominent: true,
-                hint: "Send this writing to Anky and begin the conversation.",
-                action: onRequestReflection
-            )
-            if let onClose {
-                sessionAction(
-                    label: "just leave",
-                    icon: "arrow.down",
-                    hint: "Return to the archive. Your writing stays on this device.",
-                    action: onClose
-                )
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.top, 18)
-    }
-
     private var archivedWithoutReflection: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             Capsule()
                 .fill(Color.ankyGold.opacity(0.30))
                 .frame(width: 46, height: 1.5)
             if let onLateOffer {
-                sessionAction(
-                    label: "get anky's reflection",
-                    icon: "sparkles",
-                    prominent: true,
-                    hint: "Begin a conversation rooted in this writing.",
-                    action: onLateOffer
-                )
+                Button {
+                    onLateOffer()
+                } label: {
+                    Text(AnkyLocalization.ui("ask anky for reflection"))
+                        .font(.fraunces(17, weight: .light, italic: true))
+                        .foregroundStyle(Color.ankyInk)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .fill(Color.ankyPaper.opacity(0.92))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                        .strokeBorder(Color.ankyGold.opacity(0.55), lineWidth: 1)
+                                )
+                                .shadow(color: Color.ankyViolet.opacity(0.10), radius: 5, y: 2)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
             } else {
                 Text(AnkyLocalization.ui("This writing stayed on this device."))
                     .font(.fraunces(14, weight: .light, italic: true))
@@ -290,39 +502,12 @@ struct FinishedSessionView: View {
         .padding(.horizontal, 24)
     }
 
-    private func sessionAction(
-        label: String,
-        icon: String,
-        prominent: Bool = false,
-        hint: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .light))
-                Text(AnkyLocalization.ui(label))
-                    .font(.fraunces(prominent ? 16 : 14, weight: .light, italic: true))
-            }
-            .foregroundStyle(prominent ? Color.ankyInk : Color.ankyInkSoft)
-            .padding(.horizontal, prominent ? 20 : 16)
-            .padding(.vertical, prominent ? 11 : 9)
-            .background(
-                Capsule()
-                    .fill(Color.ankyPaper.opacity(prominent ? 0.88 : 0.72))
-                    .overlay(Capsule().stroke(Color.ankyGold.opacity(prominent ? 0.6 : 0.35), lineWidth: 1))
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(Text(AnkyLocalization.ui(hint)))
-    }
-
     // MARK: The response
 
     @ViewBuilder
     private var reflectionBlock: some View {
-        // The raw markdown is honored by the selectable glaze renderer (violet
-        // headings, gold strong text, slate emphasis).
+        // Markdown renders as prose: quiet purple body text with Anky-palette
+        // color on headings, emphasis, list ornaments, and other semantics.
         let source = (viewModel.reflection?.reflection ?? viewModel.streamingReflectionMarkdown)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         VStack(alignment: .leading, spacing: 0) {
@@ -367,45 +552,49 @@ struct FinishedSessionView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint(Text(AnkyLocalization.ui(entitlementDenied ? "tap to open the gate" : "tap to ask again")))
             } else if source.isEmpty {
-                // Still listening: the cooled gold tracery, pulsing slowly —
-                // no spinner, no "thinking" copy.
-                SpiralTracery(reduceMotion: reduceMotion, listening: true)
-                    .frame(width: 96, height: 96)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 24)
+                // Still listening: just say so. No Geshtu/spiral icon stands
+                // between the sealed writing and the words coming back.
+                VStack {
+                    Text(viewModel.reflectionStatusMessage.isEmpty
+                         ? AnkyLocalization.ui("i am preparing your reflection.")
+                         : viewModel.reflectionStatusMessage)
+                        .font(.fraunces(13, weight: .light, italic: true))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 24)
             } else {
-                // Native selection chooses any exact range; the fixed share
+                // Native selection chooses any exact range; the fixed copy
                 // control above follows that range.
                 SelectableGlazeText(
                     text: source,
-                    onSelectionChange: {
-                        axis.selectedQuote = $0
-                        axis.selectedQuoteIsAnky = $0 != nil
-                    }
+                    onSelectionChange: { axis.selectedQuote = $0 }
                 )
                 .padding(.horizontal, 30)
                 .animation(.easeOut(duration: 0.6), value: source)
 
                 if let receipt = viewModel.reflection?.inference {
-                    InferenceReceiptView(receipt: receipt)
-                        .padding(.horizontal, 30)
-                        .padding(.top, 10)
-                }
-
-                if let reflection = viewModel.reflection,
-                   !artifact.hash.isEmpty {
-                    AnkyConversationView(
-                        hash: artifact.hash,
-                        writing: artifact.reconstructedText,
-                        reflection: reflection.reflection,
-                        onWillSend: { viewModel.persistPendingReflection() },
-                        onSelectionChange: {
-                            axis.selectedQuote = $0
-                            axis.selectedQuoteIsAnky = $0 != nil
+                    VStack(alignment: .leading, spacing: 12) {
+                        InferenceReceiptView(receipt: receipt)
+                        if receipt.access == .free {
+                            Button {
+                                AnkyHaptics.light()
+                                onNeedsGate()
+                            } label: {
+                                Text(AnkyLocalization.ui("Unlock better reflections with Anky Pro"))
+                                    .font(.fraunces(14, weight: .regular))
+                                    .foregroundStyle(Color.ankyViolet)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 9)
+                                    .background(Color.ankyPaper.opacity(0.72), in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Color.ankyGold.opacity(0.45), lineWidth: 0.7))
+                            }
+                            .buttonStyle(.plain)
                         }
-                    )
+                    }
                     .padding(.horizontal, 24)
-                    .padding(.top, 48)
+                    .padding(.top, 14)
                 }
             }
         }
@@ -425,15 +614,18 @@ struct ArchivedFinishedSessionView: View {
     @StateObject private var viewModel: RevealViewModel
     @ObservedObject var axis: GeshtuState
     private let artifact: SavedAnky
-    private let onLateOffer: (() -> Void)?
+    private let onOpenMenu: (() -> Void)?
+    private let onLateOffer: ((SavedAnky, RevealViewModel) -> Void)?
 
     init(
         artifact: SavedAnky,
         axis: GeshtuState,
-        onLateOffer: (() -> Void)? = nil
+        onOpenMenu: (() -> Void)? = nil,
+        onLateOffer: ((SavedAnky, RevealViewModel) -> Void)? = nil
     ) {
         self.artifact = artifact
         self.axis = axis
+        self.onOpenMenu = onOpenMenu
         self.onLateOffer = onLateOffer
         _viewModel = StateObject(wrappedValue: RevealViewModel(artifact: artifact))
     }
@@ -445,8 +637,10 @@ struct ArchivedFinishedSessionView: View {
             artifact: artifact,
             keyboardTop: nil,
             stage: .archived,
-            onClose: nil,
-            onLateOffer: onLateOffer
+            onOpenMenu: onOpenMenu,
+            onLateOffer: onLateOffer.map { request in
+                { request(artifact, viewModel) }
+            }
         )
     }
 }
@@ -466,242 +660,19 @@ struct InferenceReceiptView: View {
     }
 }
 
-// MARK: - Conversation after the reflection
-
-@MainActor
-final class AnkyConversationViewModel: ObservableObject {
-    @Published var draft = ""
-    @Published private(set) var messages: [AnkyConversationMessage]
-    @Published private(set) var isSending = false
-    @Published var errorMessage: String?
-
-    private let hash: String
-    private let writing: String
-    private let reflection: String
-    private let reflectionStore: ReflectionStore
-    private let identityStore = WriterIdentityStore()
-
-    init(hash: String, writing: String, reflection: String, reflectionStore: ReflectionStore = ReflectionStore()) {
-        self.hash = hash
-        self.writing = writing
-        self.reflection = reflection
-        self.reflectionStore = reflectionStore
-        self.messages = reflectionStore.load(hash: hash)?.conversation ?? []
-    }
-
-    var canSend: Bool {
-        !isSending && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    func send(onWillSend: () -> Void) async {
-        let content = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !content.isEmpty, !isSending else { return }
-        draft = ""
-        errorMessage = nil
-        isSending = true
-        onWillSend()
-
-        let userMessage = AnkyConversationMessage(role: .user, content: String(content.prefix(4_000)))
-        messages.append(userMessage)
-        persist()
-
-        do {
-            let identity = try identityStore.loadOrCreate()
-            let baseURL = try MirrorConfiguration.normalizedBaseURL(from: MirrorConfiguration.currentBaseURL())
-            let requestMessages = Array(messages.suffix(24))
-            let reply = try await AnkyConversationClient(baseURL: baseURL).reply(
-                writing: writing,
-                reflection: reflection,
-                messages: requestMessages,
-                identity: identity,
-                ageYears: WriterProfileStore().ageYears()
-            )
-            messages.append(AnkyConversationMessage(
-                role: .assistant,
-                content: reply.message,
-                inference: reply.inference
-            ))
-            persist()
-            AnkyHaptics.success()
-        } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Anky could not answer right now.")
-            AnkyHaptics.warning()
-        }
-        isSending = false
-    }
-
-    func retryLast(onWillSend: () -> Void) async {
-        guard !isSending, messages.last?.role == .user else { return }
-        errorMessage = nil
-        isSending = true
-        onWillSend()
-        do {
-            let identity = try identityStore.loadOrCreate()
-            let baseURL = try MirrorConfiguration.normalizedBaseURL(from: MirrorConfiguration.currentBaseURL())
-            let reply = try await AnkyConversationClient(baseURL: baseURL).reply(
-                writing: writing,
-                reflection: reflection,
-                messages: Array(messages.suffix(24)),
-                identity: identity,
-                ageYears: WriterProfileStore().ageYears()
-            )
-            messages.append(AnkyConversationMessage(
-                role: .assistant,
-                content: reply.message,
-                inference: reply.inference
-            ))
-            persist()
-        } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Anky could not answer right now.")
-        }
-        isSending = false
-    }
-
-    private func persist() {
-        try? reflectionStore.saveConversation(messages, hash: hash)
-    }
-}
-
-struct AnkyConversationView: View {
-    @StateObject private var model: AnkyConversationViewModel
-    let onWillSend: () -> Void
-    var onSelectionChange: ((String?) -> Void)?
-    @FocusState private var isComposerFocused: Bool
-
-    init(
-        hash: String,
-        writing: String,
-        reflection: String,
-        onWillSend: @escaping () -> Void = {},
-        onSelectionChange: ((String?) -> Void)? = nil
-    ) {
-        _model = StateObject(wrappedValue: AnkyConversationViewModel(hash: hash, writing: writing, reflection: reflection))
-        self.onWillSend = onWillSend
-        self.onSelectionChange = onSelectionChange
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 12) {
-                Capsule()
-                    .fill(Color.ankyGold.opacity(0.30))
-                    .frame(height: 1)
-                Text(AnkyLocalization.ui("stay with anky"))
-                    .font(.fraunces(13, weight: .light, italic: true))
-                    .foregroundStyle(Color.ankyInkSoft)
-                    .fixedSize()
-                Capsule()
-                    .fill(Color.ankyGold.opacity(0.30))
-                    .frame(height: 1)
-            }
-
-            ForEach(model.messages) { message in
-                conversationMessage(message)
-            }
-
-            if model.isSending {
-                HStack(spacing: 9) {
-                    ProgressView().controlSize(.small).tint(Color.ankyGold)
-                    Text(AnkyLocalization.ui("anky is here…"))
-                        .font(.fraunces(14, weight: .light, italic: true))
-                        .foregroundStyle(Color.ankyInkSoft)
-                }
-                .padding(.leading, 4)
-            }
-
-            if let errorMessage = model.errorMessage {
-                Button {
-                    Task { await model.retryLast(onWillSend: onWillSend) }
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(errorMessage)
-                        Text(AnkyLocalization.ui("tap to try once more"))
-                            .opacity(0.72)
-                    }
-                    .font(.fraunces(13, weight: .light, italic: true))
-                    .foregroundStyle(Color.ankyUmber)
-                }
-                .buttonStyle(.plain)
-            }
-
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField(
-                    AnkyLocalization.ui("what wants to be said back?"),
-                    text: $model.draft,
-                    axis: .vertical
-                )
-                .font(.fraunces(16, weight: .regular))
-                .foregroundStyle(Color.ankyInk)
-                .lineLimit(1...6)
-                .focused($isComposerFocused)
-                .submitLabel(.send)
-                .onSubmit { send() }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(Color.ankyPaper.opacity(0.58), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.7)
-                }
-
-                Button(action: send) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(model.canSend ? Color.ankyPaper : Color.ankyInkSoft)
-                        .frame(width: 38, height: 38)
-                        .background(model.canSend ? Color.ankyViolet : Color.ankyInk.opacity(0.08), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!model.canSend)
-                .accessibilityLabel(AnkyLocalization.ui("Send to Anky"))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func conversationMessage(_ message: AnkyConversationMessage) -> some View {
-        switch message.role {
-        case .assistant:
-            VStack(alignment: .leading, spacing: 8) {
-                SelectableGlazeText(text: message.content, onSelectionChange: onSelectionChange)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let inference = message.inference {
-                    InferenceReceiptView(receipt: inference)
-                }
-            }
-        case .user:
-            SelectableOreText(text: message.content, onSelectionChange: onSelectionChange)
-                .padding(.leading, 34)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-    }
-
-    private func send() {
-        guard model.canSend else { return }
-        Task { await model.send(onWillSend: onWillSend) }
-    }
-}
-
-/// The pure descent layout — the gold spiral tracery at the crown and the
-/// 4–6 lines settling top-to-bottom, topmost most luminous (spec §6).
+/// The pure text descent: 4–6 lines settling top-to-bottom, topmost most
+/// luminous (spec §6). The pre-reflection Geshtu icon was deliberately removed.
 struct ReflectionLinesView: View {
     let lines: [String]
-    var reduceMotion: Bool = false
 
     var body: some View {
-        ZStack {
-            SpiralTracery(reduceMotion: reduceMotion, listening: lines.isEmpty)
-                .frame(width: 96, height: 96)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 96)
-                .frame(maxHeight: .infinity, alignment: .top)
-
+        Group {
             if !lines.isEmpty {
                 VStack(spacing: 22) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
                         Text(line)
-                            // Glaze, applied identically to every line (addendum
-                            // A4); the topmost stays slightly more luminous (§6).
+                            // Glaze, applied identically to every line; the
+                            // topmost stays slightly more luminous (§6).
                             .glazeVoice()
                             .opacity(index == 0 ? 1.0 : 0.82)
                             .multilineTextAlignment(.center)
@@ -717,23 +688,5 @@ struct ReflectionLinesView: View {
             }
         }
         .animation(.easeOut(duration: 0.6), value: lines.count)
-    }
-}
-
-/// The gold spiral tracery at the crown of the descent — the cooled ear. It
-/// pulses slowly while still listening, then settles once the words arrive.
-private struct SpiralTracery: View {
-    var reduceMotion: Bool
-    var listening: Bool
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: reduceMotion)) { context in
-            let breath = reduceMotion ? 0.5 : AnkyBreath.phase(at: context.date)
-            let glow = listening ? (0.28 + 0.30 * breath) : 0.22
-            AnchorSpiral()
-                .stroke(Color.ankyGold.opacity(glow),
-                        style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-                .shadow(color: Color.ankyGoldLight.opacity(0.4 * glow), radius: 8)
-        }
     }
 }

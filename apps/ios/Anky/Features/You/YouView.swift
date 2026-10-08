@@ -55,7 +55,7 @@ struct YouView: View {
 
                 VStack(spacing: 20) {
                         YouPanel(spacing: 0) {
-                        legalButton(icon: "you-icon-settings", title: "Customize your Anky experience", subtitle: "Daily target, name, writing, font, protection.") {
+                        legalButton(icon: "you-icon-settings", title: "Customize your Anky experience", subtitle: "Daily target, writing, font, protection.") {
                             path.append(YouRoute.settings)
                         }
 
@@ -318,14 +318,13 @@ struct YouView: View {
 
     private var dailyTargetSubtitle: String {
         if let pendingDailyTargetMinutes {
-            let key = entitlements.isEntitledForGating
-                ? "you Pro daily target pending format"
-                : "you free daily target pending format"
-            return AnkyLocalization.ui(key, dailyTargetMinutes, pendingDailyTargetMinutes)
+            return AnkyLocalization.ui(
+                "you daily target pending format",
+                dailyTargetMinutes,
+                pendingDailyTargetMinutes
+            )
         }
-        return entitlements.isEntitledForGating
-            ? AnkyLocalization.ui("you Pro daily target format", dailyTargetMinutes)
-            : AnkyLocalization.ui("you free daily target format", dailyTargetMinutes)
+        return AnkyLocalization.ui("you daily target format", dailyTargetMinutes)
     }
 
     private func refreshDailyTarget() {

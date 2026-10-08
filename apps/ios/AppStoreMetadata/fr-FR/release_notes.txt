@@ -1,0 +1,5 @@
+De petites choses, surtout.
+
+Cette version cherche à s'effacer : on arrive plus vite à la première touche, l'archive défile plus calmement, et quelques correctifs touchent la façon dont les séances sont enregistrées, rouvertes et relues.
+
+Aucun nouveau bouton. Juste moins de raisons d'arrêter d'écrire.

@@ -1,12 +1,8 @@
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#endif
-
 /// Analytics-free local record of where the flow was left, for physical QA.
-/// 1–11 = the in-view screens (10 = paywall), 12 = gate setup, 13 = the
-/// Day 1 threshold, 0 = finished. Never leaves the device.
+/// 1–10 = the in-view screens (9 = paywall), 0 = finished. Never leaves the
+/// device.
 enum OnboardingFlowProgress {
     static let key = "anky.onboardingLastScreen"
 
@@ -19,19 +15,16 @@ enum OnboardingFlowProgress {
     }
 }
 
-/// The 13-screen onboarding. Screens 1–5 are the pre-dawn world (the scroll
-/// world, aubergine washes pooling on parchment); from screen 6 the lazure
-/// paper wall dawns behind Anky and stays — including screen 10, the paywall:
+/// The onboarding. Screens 1–5 are the pre-dawn world (the scroll world,
+/// aubergine washes pooling on parchment); from screen 6 the lazure paper wall
+/// dawns behind Anky and stays — including the paywall:
 /// the world turned to light at Meet Anky, and the thread does not un-fill
-/// because money entered the room. One tap or gesture per screen; the only
-/// typing is the optional name. Screens 12 (gate setup) and 13 (Day 1
-/// threshold) live in AppRoot — this view ends by calling `onFinished`.
+/// because money entered the room. This view ends by calling `onFinished`.
 struct AnkyOnboardingView: View {
     @ObservedObject var entitlements: EntitlementStore
     let onFinished: () -> Void
 
     @State private var screen = 1
-    @State private var writerName = ""
     @State private var targetMinutes: Double = Double(DailyTargetStore.defaultMinutes)
     @State private var phoneHoursBracket: PhoneHoursBracket?
     @State private var mathBeatOneVisible = false
@@ -39,29 +32,19 @@ struct AnkyOnboardingView: View {
     @State private var mathCTAVisible = false
     @State private var notificationsDenied = false
     @State private var isRequestingNotifications = false
-    @State private var keyboardHeight: CGFloat = 0
-    @State private var showsSelfieCamera = false
-    @State private var avatarImage: UIImage? = AvatarStore().loadImage()
-    @State private var nameImageScale: CGFloat = 1
-    @FocusState private var isNameFieldFocused: Bool
     @State private var swipeTranslation: CGFloat = 0
     @State private var swipeTargetScreen: Int?
     @State private var swipeLockedHorizontal: Bool?
     @State private var isSettlingSwipe = false
 
     private static let dawnStartScreen = 6
-    private static let targetScreenIndex = 8
-    private static let paywallScreenIndex = 10
-    private static let screenCount = 11
+    private static let targetScreenIndex = 7
+    private static let paywallScreenIndex = 9
+    private static let screenCount = 10
     private static let ctaFooterHeight: CGFloat = 16
 
     private var isDawn: Bool {
         screen >= Self.dawnStartScreen
-    }
-
-    private var keyboardLift: CGFloat {
-        guard keyboardHeight > 0 else { return 0 }
-        return screen == 7 ? min(28, keyboardHeight * 0.12) : keyboardHeight
     }
 
     var body: some View {
@@ -87,8 +70,6 @@ struct AnkyOnboardingView: View {
                     .padding(.bottom, 34)
             }
             .padding(.horizontal, 30)
-            .padding(.bottom, keyboardLift)
-            .animation(.easeOut(duration: 0.25), value: keyboardLift)
         }
         .ignoresSafeArea()
         .simultaneousGesture(onboardingSwipeGesture)
@@ -100,25 +81,6 @@ struct AnkyOnboardingView: View {
             if newScreen == 5 {
                 revealMathBeats()
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
-            guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
-                return
-            }
-            keyboardHeight = max(0, UIScreen.main.bounds.maxY - frame.minY)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
-        }
-        .fullScreenCover(isPresented: $showsSelfieCamera) {
-            SelfieCameraPicker { image in
-                if let image {
-                    avatarImage = image
-                    AvatarStore().save(image)
-                }
-                showsSelfieCamera = false
-            }
-            .ignoresSafeArea()
         }
     }
 
@@ -134,10 +96,9 @@ struct AnkyOnboardingView: View {
             case 4: hoursScreen
             case 5: mathScreen
             case 6: meetAnkyScreen
-            case 7: nameScreen
-            case 8: targetScreen
-            case 9: paintingsScreen
-            case 10: paywallScreen
+            case 7: targetScreen
+            case 8: paintingsScreen
+            case 9: paywallScreen
             default: notificationsScreen
             }
         }
@@ -217,7 +178,7 @@ struct AnkyOnboardingView: View {
         VStack(spacing: 13) {
             onboardingImage("onboarding-3")
             nightTitle("Write before you scroll.")
-            nightBody("One sentence grants a free 15-minute Quick Pass. With Anky Pro, reaching your daily target automatically unlocks protected apps for the rest of the day.")
+            nightBody("Anky Pro only changes the quality of new reflections. Writing and everything else stay free.")
             nightCTA("Look at my day.") { advance() }
         }
     }
@@ -345,151 +306,7 @@ struct AnkyOnboardingView: View {
         .multilineTextAlignment(.center)
     }
 
-    // MARK: - Screen 7 · The name
-
-    private var nameScreen: some View {
-        ZStack {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    dismissNameKeyboard()
-                }
-
-            VStack(spacing: 18) {
-                // Anky listens for the name — and steps aside when the
-                // keyboard needs the room.
-                if keyboardHeight == 0 {
-                    flowImage("anky-flow-name-badge", maxWidth: 316, height: 316)
-                        .scaleEffect(nameImageScale)
-                        .transition(.opacity)
-                        .gesture(nameImageMagnification)
-                        .onTapGesture(count: 2) {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                                nameImageScale = 1
-                            }
-                        }
-                        .onTapGesture {
-                            dismissNameKeyboard()
-                        }
-                }
-
-                Text(AnkyLocalization.ui("What should I call you?"))
-                    .font(.ankyTitle)
-                    .foregroundStyle(Color.ankyInk)
-                    .multilineTextAlignment(.center)
-                    .onTapGesture {
-                        dismissNameKeyboard()
-                    }
-
-                VeilCard {
-                    TextField(
-                        text: $writerName,
-                        prompt: Text(AnkyLocalization.ui("Your name"))
-                            .foregroundColor(Color.ankyInkSoft.opacity(0.72))
-                    ) {
-                        EmptyView()
-                    }
-                        .focused($isNameFieldFocused)
-                        .font(.ankyProse)
-                        .foregroundStyle(Color.ankyInk)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .onSubmit { saveNameAndAdvance() }
-                }
-
-                Text(AnkyLocalization.ui("Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source."))
-                    .font(.ankyCaption)
-                    .foregroundStyle(Color.ankyInkSoft)
-                    .multilineTextAlignment(.center)
-                    .onTapGesture {
-                        dismissNameKeyboard()
-                    }
-
-                dawnCTA("Continue") { saveNameAndAdvance() }
-
-                Button {
-                    writerName = ""
-                    AnkyHaptics.light()
-                    advance()
-                } label: {
-                    Text(AnkyLocalization.ui("later"))
-                        .font(.ankyCaption)
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
-                        .underline()
-                        .frame(minWidth: 88)
-                        .frame(height: Self.ctaFooterHeight)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func dismissNameKeyboard() {
-        guard screen == 7 else {
-            return
-        }
-        isNameFieldFocused = false
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-
-    private var nameImageMagnification: some Gesture {
-        MagnificationGesture()
-            .onChanged { value in
-                nameImageScale = min(2.6, max(1, value))
-            }
-            .onEnded { value in
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                    nameImageScale = min(2.6, max(1, value))
-                }
-            }
-    }
-
-    /// The optional selfie: taken once here, kept only on this phone,
-    /// and worn as the writer's face across the rest of the app.
-    private var selfieButton: some View {
-        Button {
-            AnkyHaptics.light()
-            showsSelfieCamera = true
-        } label: {
-            VStack(spacing: 8) {
-                ZStack {
-                    if let avatarImage {
-                        Image(uiImage: avatarImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 92, height: 92)
-                            .clipShape(Circle())
-                    } else {
-                        Circle()
-                            .fill(Color.ankyPaper.opacity(0.62))
-                            .frame(width: 92, height: 92)
-
-                        Image(systemName: "camera")
-                            .font(.system(size: 26, weight: .light))
-                            .foregroundStyle(Color.ankyInkSoft)
-                    }
-                }
-                .overlay(Circle().strokeBorder(Color.ankyGold.opacity(0.55), lineWidth: 1))
-                .shadow(color: Color.ankyViolet.opacity(0.16), radius: 12, y: 4)
-
-                Text(AnkyLocalization.ui(avatarImage == nil ? "add a selfie" : "retake"))
-                    .font(.ankyCaption)
-                    .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(AnkyLocalization.ui("Take a selfie"))
-    }
-
-    private func saveNameAndAdvance() {
-        let store = WritingAnchorStore()
-        store.save(writerName: writerName, anchorSentence: store.anchorSentence)
-        advance()
-    }
-
-    // MARK: - Screen 8 · The target
+    // MARK: - Screen 7 · The target
 
     private var targetScreen: some View {
         VStack(spacing: 18) {
@@ -556,7 +373,7 @@ struct AnkyOnboardingView: View {
         }
     }
 
-    // MARK: - Screen 9 · The paintings
+    // MARK: - Screen 8 · The paintings
 
     /// The reward, shown before the ask: the first painting fully revealed
     /// (bundled, so it renders offline) above the locked underdrawings of
@@ -595,7 +412,7 @@ struct AnkyOnboardingView: View {
         .multilineTextAlignment(.center)
     }
 
-    // MARK: - Screen 10 · The paywall (post-dawn, same room as the map)
+    // MARK: - Screen 9 · The paywall (post-dawn, same room as the map)
 
     /// The ask, placed after the paintings promise (the reward made
     /// visible) and before the Day 1 threshold. Purchase and restore are
@@ -620,7 +437,7 @@ struct AnkyOnboardingView: View {
         }
     }
 
-    // MARK: - Screen 11 · Notifications
+    // MARK: - Screen 10 · Notifications
 
     private var notificationsScreen: some View {
         VStack(spacing: 18) {
@@ -961,49 +778,6 @@ private struct OnboardingDots: View {
             return .ankyGold
         }
         return isDawn ? Color.ankyInk.opacity(0.18) : Color.ankyViolet.opacity(0.32)
-    }
-}
-
-// MARK: - Selfie camera
-
-/// Front-camera capture for the writer's avatar. The image never leaves
-/// the device — AvatarStore keeps it in the app's Documents directory.
-private struct SelfieCameraPicker: UIViewControllerRepresentable {
-    let onComplete: (UIImage?) -> Void
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        if UIImagePickerController.isCameraDeviceAvailable(.front) {
-            picker.cameraDevice = .front
-        }
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onComplete: onComplete)
-    }
-
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let onComplete: (UIImage?) -> Void
-
-        init(onComplete: @escaping (UIImage?) -> Void) {
-            self.onComplete = onComplete
-        }
-
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-        ) {
-            onComplete(info[.originalImage] as? UIImage)
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            onComplete(nil)
-        }
     }
 }
 

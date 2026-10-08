@@ -21,20 +21,17 @@ enum WritingRhythmColor {
     }
 }
 
-/// A whisper of a line above the keyboard: full when a key just landed,
-/// draining right to left through the configured terminal stillness.
+/// A whisper of a line on the keyboard's top edge, draining right to left
+/// through the configured terminal stillness. No track behind it — when the
+/// writer is typing there is nothing there at all.
 struct SilenceLifeBar: View {
     let remaining: Double
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.ankyInk.opacity(0.05))
-                Capsule()
-                    .fill(Color.ankyUmber.opacity(0.34))
-                    .frame(width: max(0, geometry.size.width * min(1, max(0, remaining))))
-            }
+            Rectangle()
+                .fill(Color.ankyUmber.opacity(0.34))
+                .frame(width: max(0, geometry.size.width * min(1, max(0, remaining))))
         }
     }
 }

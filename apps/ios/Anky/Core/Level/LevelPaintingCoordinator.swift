@@ -31,7 +31,6 @@ final class LevelPaintingCoordinator: ObservableObject {
     /// EntitlementStore. Defaults to false so the client fails closed the
     /// same way the server does — generation beyond the free boundary never
     /// fires without a subscription, it just waits behind the veil.
-    var entitledForGating = false
 
     init(
         progressStore: LevelProgressStore = LevelProgressStore(),
@@ -80,8 +79,7 @@ final class LevelPaintingCoordinator: ObservableObject {
     ///
     /// A custom level (9+) has no ceremony until its painting exists: the
     /// writer summons it through the ritual, and only a delivered canvas is
-    /// unveiled. This covers both the free writer at the boundary (never a
-    /// package) and the Pro writer who hasn't performed the ritual yet.
+    /// unveiled.
     func presentableCeremonyLevel(unhurried: Bool) -> Int? {
         guard unhurried, let owed = owedCeremonyLevel else { return nil }
         if owed > LevelProgressStore.freeBoundaryLevel,
@@ -92,7 +90,7 @@ final class LevelPaintingCoordinator: ObservableObject {
     }
 
     /// The custom level (9+) whose painting the writer may summon right now by
-    /// offering their chapter — nil unless entitled, past the static boundary,
+    /// offering their chapter — nil past the static boundary,
     /// with no painting yet and nothing already generating. This is the ritual
     /// that replaces automatic generation past level 8.
     func pendingRitualLevel() -> Int? {
@@ -162,9 +160,9 @@ final class LevelPaintingCoordinator: ObservableObject {
         let owed = progressStore.owedCeremonyLevel
         owedCeremonyLevel = owed
         owedCeremonyAssetsReady = owed.map { assetStore.installedPackage(forLevel: $0) != nil } ?? false
-        if progressStore.claimBoundaryReport(entitled: entitledForGating) {
-            AnkyFunnel.report(AnkyFunnel.boundaryReached)
-        }
+        // Painting progression is free; the historical subscription boundary
+        // is deliberately never presented.
+        _ = progressStore.claimBoundaryReport(entitled: true)
     }
 
     /// §3.2 trigger: prepare the next level's painting when the writer is
@@ -181,14 +179,10 @@ final class LevelPaintingCoordinator: ObservableObject {
         }
         // Shared static levels pre-fetch their default package so the ceremony
         // is ready the moment the level is crossed. This spans the curated set
-        // through 15: 2–8 are free, 9–15 are the paid second octave — the same
-        // shared art either way, entitlement-gated for the paid range. Beyond
+        // through 15. Beyond
         // the curated set the client holds the last painting, so nothing
         // auto-prepares there.
         guard targetLevel <= LevelProgressStore.staticLevelMax else {
-            return
-        }
-        if targetLevel > LevelProgressStore.freeBoundaryLevel, !entitledForGating {
             return
         }
         let phase = progressStore.phase(forLevel: targetLevel)

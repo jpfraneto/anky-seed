@@ -116,12 +116,9 @@ struct PaintingHomeView: View {
             PaywallSheet(store: entitlements, origin: "journey")
         }
         .onChange(of: entitlements.verificationState) { state in
-            // A display-only cached entitlement may paint continuity, but it
-            // must never dissolve a paid boundary. Only current verification
-            // can close the veil and expose Pro progression.
-            if state.hasVerifiedPro {
-                showsBoundaryVeil = false
-            }
+            // Subscription changes only reflection quality; painting progress
+            // simply refreshes alongside the rest of the account state.
+            showsBoundaryVeil = false
             refreshEverything()
         }
     }
@@ -133,22 +130,8 @@ struct PaintingHomeView: View {
             TabView(selection: $heroPage) {
                 paintingPage(side: side)
                     .tag(0)
-                if entitlements.isEntitledForGating {
-                    JourneyCardView(side: side)
-                        .tag(1)
-                } else {
-                    // Phase-3 §3: the journey misted, Anky waiting at tile 1.
-                    VeiledFeature(
-                        surface: "journey",
-                        message: AnkyCopyRegistry.veilJourney,
-                        onTap: { showsJourneyPaywall = true }
-                    ) {
-                        JourneyCardView(side: side, heldAtFirstTile: true)
-                    }
-                    .frame(width: side, height: side)
-                    .frame(maxWidth: .infinity)
+                JourneyCardView(side: side)
                     .tag(1)
-                }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .frame(height: side + 8)
@@ -544,7 +527,7 @@ struct PaintingHomeView: View {
                             .overlay(Circle().strokeBorder(Color.ankyGold.opacity(0.45), lineWidth: 0.8))
                     }
 
-                    Text(writerName)
+                    Text(AnkyLocalization.ui(writerName))
                         .font(.system(size: 20, weight: .semibold, design: .serif))
                         .foregroundStyle(Color.ankyInk)
                 }
@@ -596,7 +579,9 @@ struct PaintingHomeView: View {
         // Adopted / updated writers land at their true level, no ceremony
         // crawl through the shared static paintings.
         store.reconcileCeremonyPointerIfNeeded()
-        let entitled = entitlements.isEntitledForGating
+        // Pro is reflection quality only. Painting and journey progression
+        // follow the writing practice for every writer.
+        let entitled = true
 
         let assetStore = PaintingAssetStore()
         assetStore.installStarterIfNeeded()
@@ -607,8 +592,7 @@ struct PaintingHomeView: View {
         // than a previous one hanging at a false 100%.
         store.healOrphanedCustomCeremonies { assetStore.installedPackage(forLevel: $0) != nil }
 
-        // The free tier presents the boundary — level 8 serenely
-        // complete — while the counter underneath keeps every second.
+        // The complete writing-led painting arc is available to every writer.
         levelProgress = store.presentedProgress(entitled: entitled)
         atBoundary = store.isAtBoundary(entitled: entitled)
         ceremonyOwed = store.owedCeremonyLevel != nil && !atBoundary

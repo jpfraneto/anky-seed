@@ -166,25 +166,19 @@ enum WriteBeforeScrollShieldReconciler {
     }
 }
 
-/// Paid automatic daily grants are local convenience state, not proof of an
-/// active subscription. They may survive only while `pro` has been verified
-/// for the current activation. Free Quick Passes and emergency access use
-/// different tiers/sources and are deliberately unaffected.
+/// Daily grants belong to the writing practice, not the subscription. Pro is
+/// reflection quality only, so entitlement changes never create or revoke an
+/// unlock the writer already earned.
 enum PaidDailyUnlockReconciliationPolicy {
-    private static let paidTierRawValue = "daily"
-    private static let writingSourceRawValue = "writing"
-
-    static func canCreate(hasCurrentVerifiedPro: Bool) -> Bool {
-        hasCurrentVerifiedPro
+    static func canCreate(hasCurrentVerifiedPro _: Bool) -> Bool {
+        true
     }
 
     static func shouldRevoke(
-        tierRawValue: String?,
-        sourceRawValue: String?,
-        hasCurrentVerifiedPro: Bool
+        tierRawValue _: String?,
+        sourceRawValue _: String?,
+        hasCurrentVerifiedPro _: Bool
     ) -> Bool {
-        !hasCurrentVerifiedPro
-            && tierRawValue == paidTierRawValue
-            && sourceRawValue == writingSourceRawValue
+        false
     }
 }

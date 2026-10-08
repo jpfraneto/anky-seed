@@ -1,0 +1,5 @@
+Small things, mostly.
+
+This one is about getting out of the way: quicker to the first keystroke, steadier scrolling through the archive, and fixes to how sessions are saved, reopened and read back.
+
+No new buttons. Just fewer reasons to stop writing.

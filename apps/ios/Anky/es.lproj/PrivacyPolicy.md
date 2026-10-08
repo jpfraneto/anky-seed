@@ -17,23 +17,15 @@ Siguen siendo gratuitas y no requieren Anky Pro:
 - Iniciar y completar nuevas sesiones de escritura
 - Crear, continuar, guardar, explorar, copiar, exportar y eliminar escritos locales
 - Leer reflexiones ya guardadas en el dispositivo
-- Un aviso de escritura local, sin servidor, cuando Pro está inactivo
+- Avisos de escritura de IA, con una alternativa local si el servidor no está disponible
 - El control de Tiempo de uso, la selección de apps protegidas y activar o desactivar la protección
 - Tres pases rápidos diarios según la política de desbloqueo actual
 - Acceso y desbloqueo de emergencia
-- Progresión de pinturas estáticas hasta el nivel 8
-- Pinturas personalizadas entregadas anteriormente
+- Progresión de pinturas y pinturas personalizadas entregadas anteriormente
 - Archivo e historial de escritura
 - Ajustes, copias locales/iCloud, importar/exportar, eliminar la cuenta, soporte y pantallas legales
 
-Solo requieren el derecho activo `pro` en minúsculas:
-
-1. Nuevas reflexiones de IA generadas en el servidor para escritos sin una reflexión guardada, sujetas a límites del servicio.
-2. Avisos de escritura de IA generados en el servidor en lugar de la alternativa local gratuita, sujetos a límites del servicio.
-3. Acceso completo al viaje de escritura de 96 días.
-4. Desbloqueo automático de Tiempo de uso por el resto del día al alcanzar la meta diaria configurada.
-5. Sugerencias adaptativas de meta diaria.
-6. Progresión después del nivel 8, incluida la generación de pinturas personalizadas y ceremonias posteriores, sujeta al progreso, escritura y límites de seguridad, capacidad y generación.
+Un derecho activo `pro` en minúsculas cambia una sola cosa: las nuevas reflexiones usan la vía de inferencia compatible más potente de Anky. Quienes usan la versión gratuita pueden seguir pidiendo reflexiones mediante la vía gratuita. La escritura y todas las funciones no relacionadas con reflexiones siguen disponibles sin Pro.
 
 Los servicios generados siempre están sujetos a límites razonables de servicio, seguridad, capacidad y prevención de abuso.
 
@@ -61,7 +53,7 @@ Al pedir expresamente una nueva reflexión, la app envía los bytes exactos del 
 
 ### Avisos de escritura de IA
 
-Cuando Pro está verificado y pides un aviso del servidor, se envía el escrito `.anky` actual por la misma ruta. Si Pro está inactivo o no puede verificarse, la app usa una alternativa local y no envía el escrito para ese aviso.
+Cuando pides un aviso del servidor, se envía el escrito `.anky` actual por la misma ruta de IA. Si el servidor no está disponible, la app usa una alternativa local.
 
 ### Pinturas personalizadas después del nivel 8
 
@@ -91,9 +83,9 @@ Anky no integra publicidad ni seguimiento entre apps. No vende datos personales 
 
 ## 6. Apple, RevenueCat y suscripciones
 
-Anky ofrece una única suscripción anual opcional con renovación automática mediante el App Store de Apple. Esta desbloquea las funciones de Anky Pro. Mandan el precio localizado y las condiciones que Apple muestra al comprar.
+Anky ofrece suscripciones opcionales anuales y mensuales con renovación automática mediante el App Store de Apple. Ambas ofrecen las mismas nuevas reflexiones de mayor calidad. Mandan el precio localizado y las condiciones que Apple muestra al comprar.
 
-La suscripción anual puede incluir una prueba de tres días solo si la persona es elegible y Apple la muestra. Se renueva automáticamente salvo cancelación en los ajustes de suscripciones de Apple.
+No se ofrece prueba inicial. La suscripción se renueva automáticamente salvo cancelación en los ajustes de suscripciones de Apple.
 
 Apple gestiona pago, renovación, cancelación, facturación, historial y reembolsos. Anky no recibe ni almacena los datos completos de la tarjeta.
 

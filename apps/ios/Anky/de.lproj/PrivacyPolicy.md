@@ -17,23 +17,15 @@ Folgendes bleibt kostenlos und benötigt kein Anky Pro:
 - Neue Schreibsitzungen beginnen und abschließen
 - Lokale Texte erstellen, fortsetzen, speichern, durchsuchen, kopieren, exportieren und löschen
 - Bereits gespeicherte Reflexionen lesen
-- Ein lokaler Schreibimpuls ohne Server, wenn Pro inaktiv ist
+- KI-Schreibimpulse mit lokaler Alternative, wenn der Server nicht verfügbar ist
 - Bildschirmzeit-Sperre, Auswahl geschützter Apps und Schutz ein-/ausschalten
 - Drei tägliche Schnellpässe nach der aktuellen Freigaberegel
 - Notfallzugang und Notfallentsperrung
-- Statische Gemälde bis einschließlich Level 8
-- Bereits gelieferte personalisierte Gemälde
+- Gemäldefortschritt und bereits gelieferte personalisierte Gemälde
 - Archiv und Schreibverlauf
 - Einstellungen, lokale/iCloud-Sicherung, Import/Export, Kontolöschung, Support und Rechtstexte
 
-Nur diese Bereiche erfordern die aktive kleingeschriebene Berechtigung `pro`:
-
-1. Neue servergenerierte KI-Reflexionen für Texte ohne gespeicherte Reflexion, vorbehaltlich der Dienstlimits.
-2. Servergenerierte KI-Schreibimpulse statt der kostenlosen lokalen Variante, vorbehaltlich der Limits.
-3. Voller Zugriff auf die 96-tägige Schreibreise.
-4. Automatische Bildschirmzeit-Entsperrung für den restlichen Tag nach Erreichen des festgelegten Tagesziels.
-5. Adaptive Vorschläge für das Tagesziel.
-6. Fortschritt nach Level 8, einschließlich personalisierter Gemälde und späterer Zeremonien, abhängig von Fortschritt, Schreiben sowie Sicherheits-, Kapazitäts- und Generierungslimits.
+Eine aktive kleingeschriebene `pro`-Berechtigung verändert genau eine Sache: Neue Reflexionen verwenden Ankys stärkeren unterstützten Inferenzkanal. Auch kostenlose Nutzer können weiterhin Reflexionen über den kostenlosen Kanal anfordern. Schreiben und alle Funktionen außerhalb von Reflexionen bleiben ohne Pro verfügbar.
 
 Generierte Dienste unterliegen stets angemessenen Dienst-, Sicherheits-, Kapazitäts- und Missbrauchsschutzlimits.
 
@@ -61,7 +53,7 @@ Wenn du ausdrücklich eine neue Reflexion anforderst, sendet die App die exakten
 
 ### KI-Schreibimpulse
 
-Wenn Pro aktuell verifiziert ist und du einen Serverimpuls anforderst, wird der aktuelle `.anky`-Text über denselben Weg verarbeitet. Ist Pro inaktiv oder nicht prüfbar, nutzt die App die lokale Variante und sendet dafür keinen Text.
+Wenn du einen Serverimpuls anforderst, wird der aktuelle `.anky`-Text über denselben KI-Weg verarbeitet. Ist der Server nicht verfügbar, nutzt die App die lokale Variante.
 
 ### Personalisierte Gemälde nach Level 8
 
@@ -91,9 +83,9 @@ Anky enthält keine Werbung und kein appübergreifendes Tracking. Daten werden n
 
 ## 6. Apple, RevenueCat und Abos
 
-Anky bietet über den App Store ein optionales, automatisch verlängerbares Jahresabo an. Es schaltet die Anky Pro-Funktionen frei. Maßgeblich sind der lokalisierte Preis und die Bedingungen, die Apple beim Kauf anzeigt.
+Anky bietet über den App Store optionale, automatisch verlängerbare Jahres- und Monatsabos an. Beide bieten dieselben hochwertigeren neuen Reflexionen. Maßgeblich sind der lokalisierte Preis und die Bedingungen, die Apple beim Kauf anzeigt.
 
-Das Jahresabo kann nur für berechtigte Personen und nur bei Anzeige durch Apple einen dreitägigen Test enthalten. Es verlängert sich automatisch, sofern es nicht in Apples Abo-Einstellungen gekündigt wird.
+Es wird kein Einführungs-Testzeitraum angeboten. Das Abo verlängert sich automatisch, sofern es nicht in Apples Abo-Einstellungen gekündigt wird.
 
 Apple bearbeitet Zahlung, Verlängerung, Kündigung, Abrechnung, Verlauf und Erstattung. Anky erhält oder speichert keine vollständigen Kartendaten.
 

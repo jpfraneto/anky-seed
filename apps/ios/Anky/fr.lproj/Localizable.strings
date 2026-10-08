@@ -15,7 +15,7 @@
 "stepLetSilenceCloseIt" = "Laissez le silence le fermer";
 "writeEightMinutes" = "Écrire 8 minutes";
 "start again" = "recommencer";
-"open reflection" = "ouvrir la réflexion";
+"open reflection" = "Ouvrir la réflexion";
 "I remember you." = "Je me souviens de vous.";
 "An encrypted Anky backup is waiting in iCloud." = "Une sauvegarde chiffrée d' Anky vous attend dans iCloud.";
 "Restoring" = "Restauration";
@@ -257,7 +257,7 @@
 "the gate is off. your apps are open." = "la porte est désactivée. tes apps sont ouvertes.";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
-"skip" = "passer";
+"skip" = "Passer";
 "Skip the unveiling" = "Passer le dévoilement";
 "What is happening?" = "Que se passe-t-il ?";
 "The unveiling" = "Le dévoilement";
@@ -295,7 +295,7 @@
 "to complete your daily target" = "pour atteindre ton objectif du jour";
 "take a screenshot of this and send it to the founder" = "fais une capture d’écran et envoie-la au fondateur";
 "here" = "ici";
-"ask for the reflection again" = "redemander la réflexion";
+"ask for the reflection again" = "Redemander la réflexion";
 "This writing never received its reflection. Your words are safe on this device." = "Ce texte n’a jamais reçu sa réflexion. Tes mots sont en sécurité sur cet appareil.";
 "Anky could not reach the mirror this time. Your writing is safe on this device." = "Anky n’a pas pu atteindre le miroir cette fois. Ton écrit est en sécurité sur cet appareil.";
 
@@ -541,26 +541,26 @@
 // Lean gate 2026-07-17
 "skin in the game opens the gate" = "s'engager ouvre la porte";
 "weekly" = "hebdomadaire";
-"monthly" = "mensuel";
-"yearly" = "annuel";
+"monthly" = "Mensuel";
+"yearly" = "Annuel";
 
 // Onboarding animatic 2026-07-17
 "what should i call you?" = "comment devrais-je t'appeler ?";
-"skip" = "passer";
+"skip" = "Passer";
 
 // Axis reflection error surface 2026-07-18
 "the reflection was lost on the way" = "la réflexion s'est perdue en chemin";
 "tap to ask again" = "touche pour redemander";
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
-"keep writing" = "continuer à écrire";
+"keep writing" = "Continuer à écrire";
 "get anky's reflection" = "recevoir la réflexion d'anky";
 "Reopen this session and keep going." = "Rouvre cette session et continue à écrire.";
 "Send this writing to Anky and receive a reflection." = "Envoie ce texte à Anky et reçois une réflexion.";
 "tap to open the gate" = "touche pour ouvrir la porte";
 "just leave" = "juste partir";
 "Let this day settle. Your writing is saved on this device." = "Laisse cette journée se déposer. Ton écriture reste enregistrée sur cet appareil.";
-"don't want to pay? long-press the copy button and take your writing to your favorite llm" = "tu ne veux pas payer ? appuie longuement sur le bouton copier et emporte ton écriture vers ton llm préféré";
+"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "tu ne veux pas payer ? copie prompt + anky depuis le menu et emporte ton écriture vers ton llm préféré";
 "untitled" = "sans titre";
 
 /* The plain landing list (2026-08-04) */
@@ -576,3 +576,178 @@
 "Opens writing settings" = "Ouvre les réglages d’écriture";
 "remaining" = "restant";
 "written" = "écrit";
+/* Explications par appui long du menu du minuteur (2026-08-20) */
+"Backspace is on. You can revise or delete words while writing." = "La suppression est activée. Vous pouvez corriger ou effacer des mots pendant l’écriture.";
+"Backspace is off. Your words keep moving forward without deletion." = "La suppression est désactivée. Vos mots avancent sans pouvoir être effacés.";
+"The stillness rule is on. Eight quiet seconds ends and saves the writing." = "La règle de silence est activée. Huit secondes de calme terminent et enregistrent l’écriture.";
+"The stillness rule is off. Only you decide when the writing ends." = "La règle de silence est désactivée. Vous seul décidez quand l’écriture se termine.";
+"Duration option explanation format" = "Écrivez avec un objectif de %d minutes. Le compte à rebours s’écoule et vous pouvez continuer ensuite.";
+"No time limit. The clock counts up, and only you end the writing." = "Aucune limite de temps. Le temps s’écoule et vous seul terminez l’écriture.";
+"Hold Geshtu for three seconds to ask Anky to reflect on this writing." = "Maintenez Geshtu pendant trois secondes pour demander à Anky de réfléchir à ce texte.";
+"The writing session has already started" = "La session d’écriture a déjà commencé";
+"Anky Pro only changes the quality of new reflections. Writing and everything else stay free." = "Anky Pro change uniquement la qualité des nouvelles réflexions. L’écriture et tout le reste restent gratuits.";
+"Renew for stronger new reflections. Writing and everything else stay free." = "Renouvelle pour obtenir de nouvelles réflexions plus profondes. L’écriture et tout le reste restent gratuits.";
+"Unlock stronger, more thoughtful reflections from Anky." = "Débloque des réflexions d’Anky plus profondes et plus réfléchies.";
+"Better reflections from Anky's strongest available model" = "De meilleures réflexions avec le modèle le plus puissant disponible d’Anky";
+"Unlock better reflections with Anky Pro" = "Débloquer de meilleures réflexions avec Anky Pro";
+"Reaching this target automatically unlocks protected apps for the rest of the day. Sessions are never cut short." = "Atteindre cet objectif déverrouille automatiquement les apps protégées pour le reste de la journée. Les sessions ne sont jamais interrompues.";
+"pending daily target footnote format" = "Aujourd’hui reste à %d min · %d min dès demain. L’atteindre déverrouille automatiquement les apps protégées pour le reste de la journée.";
+"you daily target pending format" = "%d min aujourd’hui · %d min dès demain · déverrouillage automatique";
+"you daily target format" = "%d minutes · déverrouillage automatique pour la journée";
+"Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model." = "Gérez ou annulez dans les réglages d’abonnement Apple. Pro offre de meilleures réflexions avec le modèle le plus puissant disponible d’Anky.";
+"reaching your target automatically unlocks protected apps for the rest of the day." = "atteindre votre objectif déverrouille automatiquement les apps protégées pour le reste de la journée.";
+"level 8 complete — your next painting waits" = "niveau 8 terminé — votre prochaine peinture vous attend";
+
+/* Localisation complète des réglages et commandes d'écriture (2026-08-26) */
+"Subscription" = "Abonnement";
+"Intelligence & cost" = "Intelligence et coût";
+"Your daily writing" = "Votre écriture quotidienne";
+"The silence that closes the channel" = "Le silence qui ferme le canal";
+"Anky server" = "Serveur Anky";
+"Writing" = "Écriture";
+"Font & size" = "Police et taille";
+"Protection" = "Protection";
+"Your keys" = "Vos clés";
+"Delete account" = "Supprimer le compte";
+"Your paintings" = "Vos peintures";
+"Support" = "Assistance";
+"Legal" = "Mentions légales";
+"About" = "À propos";
+"Backspace" = "Retour arrière";
+"Off keeps the ritual: words only move forward." = "Désactivé, le rituel demeure : les mots avancent seulement.";
+"8 second rule" = "Règle des 8 secondes";
+"On, stillness ends the writing. Off, only you do." = "Activée, l'immobilité termine l'écriture. Désactivée, vous seul décidez.";
+"Autocorrect & suggestions" = "Correction et suggestions";
+"The keyboard's spelling help and word bar." = "L'aide orthographique et la barre de suggestions du clavier.";
+"Stillness before reflection" = "Silence avant la réflexion";
+"iCloud backup" = "Sauvegarde iCloud";
+"Ask before opening your writing." = "Demander avant d'ouvrir vos écrits.";
+"Apps that are blocked" = "Apps bloquées";
+"Choose what waits until you have written." = "Choisissez ce qui attendra que vous ayez écrit.";
+"Chat with the founder" = "Discuter avec le fondateur";
+"Telegram — a human answers." = "Telegram — une personne vous répond.";
+"Send feedback" = "Envoyer un avis";
+"Anky grows from what you tell us." = "Anky grandit grâce à ce que vous nous dites.";
+"Contact via email" = "Contacter par e-mail";
+"support@anky.app" = "support@anky.app";
+"Share Anky" = "Partager Anky";
+"Give a friend a door before the noise." = "Offrez à un proche une porte avant le bruit.";
+"Your writing stays yours." = "Vos écrits restent les vôtres.";
+"The agreement for using Anky." = "L'accord d'utilisation d'Anky.";
+"Walk through the introduction again" = "Revoir l'introduction";
+"Replay the onboarding, from the first door." = "Rejouez l'introduction depuis la première porte.";
+"continue writing" = "Continuer à écrire";
+"ask anky for reflection" = "Demander une réflexion à Anky";
+"enable backspace" = "Activer le retour arrière";
+"keep it disabled" = "Le laisser désactivé";
+"end writing" = "Terminer l'écriture";
+"Reopen this writing and keep going." = "Rouvrez cet écrit et continuez.";
+"Send this writing to Anky and begin the conversation." = "Envoyez cet écrit à Anky et commencez la conversation.";
+"Deletion is allowed from now on." = "Vous pouvez maintenant effacer.";
+"Words keep moving forward only." = "Les mots continuent seulement d'avancer.";
+"Finish and save this writing." = "Terminez et enregistrez cet écrit.";
+"Return to the page." = "Revenir à la page.";
+"Choose how long you mean to write" = "Choisissez combien de temps vous souhaitez écrire";
+"Your writings" = "Vos écrits";
+"No time limit" = "Sans limite de temps";
+"silence seconds format" = "%d secondes de silence";
+"%d seconds" = "%d secondes";
+"%@ lock" = "Verrouillage par %@";
+
+/* Textes visibles qui revenaient auparavant à l'anglais */
+"Advanced: connect this app to any compatible Anky server. Writing and conversation go to that server only when you explicitly ask Anky." = "Avancé : connectez cette app à tout serveur Anky compatible. Les écrits et conversations ne sont envoyés à ce serveur que lorsque vous sollicitez explicitement Anky.";
+"Connected." = "Connecté.";
+"Using Anky's default server." = "Serveur Anky par défaut utilisé.";
+"Could not connect to that server." = "Impossible de se connecter à ce serveur.";
+"Use default" = "Utiliser par défaut";
+"Free means free inference" = "Gratuit signifie une inférence gratuite";
+"Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "Anky Gratuit utilise volontairement la voie d'intelligence la moins puissante que nous pouvons proposer durablement : le routeur de modèles à 0 $ d'OpenRouter. La qualité, la vitesse et la disponibilité peuvent varier. Pro finance une inférence prise en charge ; il ne débloque pas le droit de parler à Anky.";
+"Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "Chaque réponse affiche un reçu d'inférence avec le modèle réel et le coût indiqué en USD. Les demandes exigent un endpoint sans conservation des données ; Anky n'envoie rien lorsqu'aucun n'est disponible.";
+"When your writing rests this long, the words settle and the Geshtu rises to receive them." = "Quand votre écriture reste silencieuse aussi longtemps, les mots se posent et le Geshtu se lève pour les recevoir.";
+"Public address" = "Adresse publique";
+"Copied" = "Copié";
+"Copy public address" = "Copier l'adresse publique";
+"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "Issue de votre phrase de récupération. Vous pouvez la partager : elle permet de vérifier que vos écrits sont bien les vôtres.";
+"Recovery phrase" = "Phrase de récupération";
+"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "Ces 12 mots sont votre compte. Quiconque les possède le contrôle. Anky ne les voit jamais et ne peut pas les récupérer pour vous : notez-les et gardez-les dans un lieu auquel vous seul avez accès.";
+"Reveal recovery phrase" = "Afficher la phrase de récupération";
+"Delete Account & Data" = "Supprimer le compte et les données";
+"Permanently delete this device archive, iCloud backup, and Anky server records." = "Supprimez définitivement les archives de cet appareil, la sauvegarde iCloud et les données du serveur Anky.";
+"This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "Cette action supprime définitivement tous les écrits et peintures de cet appareil, votre sauvegarde Anky iCloud et toutes les données serveur de ce compte : état de l'abonnement, journal des sessions, progression, historique des générations et événements d'utilisation.";
+"Your writings were never stored on the Anky server. The server only saw .anky bytes transiently when you asked for reflection or painting generation." = "Vos écrits n'ont jamais été stockés sur le serveur Anky. Le serveur n'a vu les octets .anky que temporairement lorsque vous avez demandé une réflexion ou la création d'une peinture.";
+"An active App Store subscription is not cancelled here. Cancel it separately in Settings → Apple ID → Subscriptions." = "Un abonnement App Store actif n'est pas annulé ici. Annulez-le séparément dans Réglages → Identifiant Apple → Abonnements.";
+"Open Apple Subscriptions" = "Ouvrir les abonnements Apple";
+"Type DELETE to confirm." = "Saisissez DELETE pour confirmer.";
+"Account and data deleted from this device, Anky iCloud backup, and Anky server records." = "Le compte et les données ont été supprimés de cet appareil, de la sauvegarde Anky iCloud et du serveur Anky.";
+"Could not delete server account data. Nothing was deleted from this device." = "Impossible de supprimer les données du compte sur le serveur. Rien n'a été supprimé de cet appareil.";
+"Paste is not available here." = "Le collage n'est pas disponible ici.";
+"Could not recover this writing session." = "Impossible de récupérer cette session d'écriture.";
+"This writing has already been reflected." = "Cet écrit a déjà reçu une réflexion.";
+"Show status" = "Afficher l'état";
+"Inference receipt: %@" = "Reçu d'inférence : %@";
+"This writing stayed on this device." = "Cet écrit est resté sur cet appareil.";
+"saved to your camera roll" = "Enregistré dans votre photothèque";
+"Recording" = "Enregistrement";
+"OK" = "OK";
+"Record yourself reading this" = "Enregistrez-vous en train de lire ceci";
+"Share as a card" = "Partager sous forme de carte";
+"Select a passage first, or share the opening." = "Sélectionnez d'abord un passage ou partagez le début.";
+"Screen recording isn't available on this device right now." = "L'enregistrement de l'écran n'est pas disponible sur cet appareil pour le moment.";
+"Anky needs the camera to put you in the frame." = "Anky a besoin de la caméra pour vous placer dans l'image.";
+"Camera access is off for Anky. You can allow it in Settings." = "L'accès d'Anky à la caméra est désactivé. Vous pouvez l'autoriser dans Réglages.";
+"The front camera couldn't be reached." = "Impossible d'accéder à la caméra avant.";
+"Anky needs permission to add videos to your photo library. You can allow it in Settings." = "Anky a besoin de votre autorisation pour ajouter des vidéos à votre photothèque. Vous pouvez l'autoriser dans Réglages.";
+"The clip couldn't be saved to your camera roll." = "Impossible d'enregistrer la vidéo dans votre photothèque.";
+"REC" = "ENR";
+"Skip and continue with free writing" = "Ignorer et continuer avec l'écriture gratuite";
+"I have the image. Your check-in has been saved." = "J'ai l'image. Votre point d'étape a été enregistré.";
+"I read this: %@. Your raw check-in has been saved." = "J'ai lu ceci : %@. Votre point d'étape brut a été enregistré.";
+"Write with me first." = "Écrivez d'abord avec moi.";
+"Put one thought into words to open this door." = "Mettez une pensée en mots pour ouvrir cette porte.";
+"Emergency unlock" = "Déverrouillage d'urgence";
+"iOS needs one extra tap from here. We'll send a notification that opens Anky." = "iOS demande un toucher supplémentaire depuis cet écran. Nous enverrons une notification qui ouvre Anky.";
+"Send notification" = "Envoyer la notification";
+"Didn't receive the notification? Try again" = "Notification non reçue ? Réessayer";
+"Tap the notification" = "Touchez la notification";
+"Tap the notification to write." = "Touchez la notification pour écrire.";
+"Open Anky manually" = "Ouvrir Anky manuellement";
+"Notifications are off, so iOS can't open Anky from this shield. Open Anky from your Home Screen to write." = "Les notifications sont désactivées, iOS ne peut donc pas ouvrir Anky depuis cet écran. Ouvrez Anky depuis l'écran d'accueil pour écrire.";
+"Try notification again" = "Réessayer la notification";
+"Back to archive" = "Retour aux archives";
+"Daily target, writing, font, protection." = "Objectif quotidien, écriture, police et protection.";
+"Write Before You Scroll" = "Écrivez avant de faire défiler";
+"Choose the apps Anky gates." = "Choisissez les apps qu'Anky bloque.";
+"Data" = "Données";
+"private access" = "Accès privé";
+"private to this device" = "Privé sur cet appareil";
+"Privacy" = "Confidentialité";
+"Local-first writing and reflection" = "Écriture et réflexion d'abord locales";
+
+/* One-surface shell: drawer and stats */
+"Close menu" = "Fermer le menu";
+"Recents" = "Récents";
+"New writing" = "Nouvelle écriture";
+"Stats" = "Statistiques";
+"Close search" = "Fermer la recherche";
+"nothing found" = "rien trouvé";
+"full ankys" = "ankys complets";
+"longest streak" = "plus longue série";
+"words per minute" = "mots par minute";
+"days written" = "jours d'écriture";
+"Copy Anky" = "Copier Anky";
+"Copy Prompt + Anky" = "Copier Prompt + Anky";
+"More" = "Plus";
+"Record" = "Enregistrer";
+"Dismiss camera" = "Fermer la caméra";
+"Go to Anky's reply" = "Aller à la réponse d'Anky";
+"Start recording" = "Démarrer l'enregistrement";
+"Stop recording" = "Arrêter l'enregistrement";
+"Copy" = "Copier";
+"Connect" = "Connecter";
+"Block until I write" = "Bloquer jusqu'à ce que j'écrive";
+"full anky" = "anky complet";
+"Write before you scroll" = "Écris avant de faire défiler";
+"Anky is waiting for you" = "Anky t'attend";
+"Allow notifications" = "Autoriser les notifications";
+"Needed to open Anky from a blocked app." = "Nécessaires pour ouvrir Anky depuis une app bloquée.";
+"Notifications are off. Open Anky from your Home Screen." = "Les notifications sont désactivées. Ouvre Anky depuis ton écran d'accueil.";

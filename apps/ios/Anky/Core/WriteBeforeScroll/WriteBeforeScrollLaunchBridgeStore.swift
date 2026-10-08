@@ -230,33 +230,33 @@ struct WriteBeforeScrollLaunchBridgeStore {
         switch bridgeMode {
         case .directOpen:
             return WriteBeforeScrollShieldCopy(
-                title: "Write with me first.",
-                subtitle: "Put one thought into words to open this door.",
-                primaryButton: "Write",
-                secondaryButton: "Emergency unlock"
+                title: AnkyCopyRegistry.localized("Write with me first."),
+                subtitle: AnkyCopyRegistry.localized("Put one thought into words to open this door."),
+                primaryButton: AnkyCopyRegistry.localized("Write"),
+                secondaryButton: AnkyCopyRegistry.localized("Emergency unlock")
             )
         case .notification:
             switch fallbackState {
             case .initial:
                 return WriteBeforeScrollShieldCopy(
-                    title: "Write before you scroll.",
-                    subtitle: "iOS needs one extra tap from here. We'll send a notification that opens Anky.",
-                    primaryButton: "Send notification",
-                    secondaryButton: "Emergency unlock"
+                    title: AnkyCopyRegistry.localized("Write before you scroll."),
+                    subtitle: AnkyCopyRegistry.localized("iOS needs one extra tap from here. We'll send a notification that opens Anky."),
+                    primaryButton: AnkyCopyRegistry.localized("Send notification"),
+                    secondaryButton: AnkyCopyRegistry.localized("Emergency unlock")
                 )
             case .notificationSent:
                 return WriteBeforeScrollShieldCopy(
-                    title: "Tap the notification",
-                    subtitle: "Tap the notification to write.",
-                    primaryButton: "Didn't receive the notification? Try again",
-                    secondaryButton: "Emergency unlock"
+                    title: AnkyCopyRegistry.localized("Tap the notification"),
+                    subtitle: AnkyCopyRegistry.localized("Tap the notification to write."),
+                    primaryButton: AnkyCopyRegistry.localized("Didn't receive the notification? Try again"),
+                    secondaryButton: AnkyCopyRegistry.localized("Emergency unlock")
                 )
             case .notificationsDisabled:
                 return WriteBeforeScrollShieldCopy(
-                    title: "Open Anky manually",
-                    subtitle: "Notifications are off, so iOS can't open Anky from this shield. Open Anky from your Home Screen to write.",
-                    primaryButton: "Try notification again",
-                    secondaryButton: "Emergency unlock"
+                    title: AnkyCopyRegistry.localized("Open Anky manually"),
+                    subtitle: AnkyCopyRegistry.localized("Notifications are off, so iOS can't open Anky from this shield. Open Anky from your Home Screen to write."),
+                    primaryButton: AnkyCopyRegistry.localized("Try notification again"),
+                    secondaryButton: AnkyCopyRegistry.localized("Emergency unlock")
                 )
             }
         }

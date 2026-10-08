@@ -20,12 +20,12 @@ enum AnkyPurchasesConfig {
     static let offeringID = "default"
 
     static let subscriptionGroupName = "Anky"
+    /// Both durations grant the same `pro` entitlement. The storefront keeps
+    /// the choice simple: annual or monthly, with StoreKit's localized price.
     static let annualProductID = "anky.annual"
-    /// Historical identifiers remain recognizable so an older purchase can
-    /// still be described and restored. They are not offered for sale.
     static let monthlyProductID = "anky.monthly"
     static let weeklyProductID = "anky.weekly"
-    static let purchasableProductIDs: Set<String> = [annualProductID]
+    static let purchasableProductIDs: Set<String> = [annualProductID, monthlyProductID]
 
     /// The honest reminder fires this long BEFORE the trial converts —
     /// "your trial ends tomorrow", while there is still real time to

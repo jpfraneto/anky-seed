@@ -1,0 +1,5 @@
+Vor allem Kleinigkeiten.
+
+In dieser Version geht es darum, aus dem Weg zu gehen: schneller zum ersten Tastendruck, ruhigeres Scrollen durch das Archiv, und ein paar Korrekturen daran, wie Sitzungen gespeichert, wieder geöffnet und nachgelesen werden.
+
+Keine neuen Knöpfe. Nur weniger Gründe aufzuhören.

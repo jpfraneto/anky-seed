@@ -12,17 +12,20 @@ final class SubscriptionRemediationTests: XCTestCase {
 
     func testCanonicalIOSPurchaseConfiguration() {
         XCTAssertEqual(AnkyPurchasesConfig.annualProductID, "anky.annual")
-        XCTAssertEqual(AnkyPurchasesConfig.purchasableProductIDs, ["anky.annual"])
-        // Historical identifiers stay recognizable for receipts/status, but
-        // are deliberately absent from the purchasable catalog.
         XCTAssertEqual(AnkyPurchasesConfig.monthlyProductID, "anky.monthly")
+        XCTAssertEqual(AnkyPurchasesConfig.purchasableProductIDs, ["anky.annual", "anky.monthly"])
+        // Historical weekly identifiers stay recognizable for receipts/status,
+        // but are deliberately absent from the purchasable catalog.
         XCTAssertEqual(AnkyPurchasesConfig.weeklyProductID, "anky.weekly")
         XCTAssertEqual(AnkyPurchasesConfig.entitlementID, "pro")
         XCTAssertEqual(AnkyPurchasesConfig.offeringID, "default")
-        XCTAssertEqual(AnkySubscriptionPlan.allCases, [.annual])
+        XCTAssertEqual(AnkySubscriptionPlan.allCases, [.annual, .monthly])
         XCTAssertEqual(AnkySubscriptionPlan.annual.entitlementID, "pro")
         XCTAssertEqual(AnkySubscriptionPlan.annual.expectedPeriod.value, 1)
         XCTAssertEqual(AnkySubscriptionPlan.annual.expectedPeriod.unit, .year)
+        XCTAssertEqual(AnkySubscriptionPlan.monthly.entitlementID, "pro")
+        XCTAssertEqual(AnkySubscriptionPlan.monthly.expectedPeriod.value, 1)
+        XCTAssertEqual(AnkySubscriptionPlan.monthly.expectedPeriod.unit, .month)
     }
 
     func testReleaseInspectablePurchaseMetadataMatchesRuntimeConstants() throws {
@@ -33,30 +36,29 @@ final class SubscriptionRemediationTests: XCTestCase {
                 as? [String: Any]
         )
         let config = try XCTUnwrap(plist["AnkyRevenueCatConfiguration"] as? [String: String])
-        XCTAssertEqual(Set(config.keys), ["AnnualProduct", "Entitlement", "Offering"])
+        XCTAssertEqual(Set(config.keys), ["AnnualProduct", "MonthlyProduct", "Entitlement", "Offering"])
         XCTAssertEqual(config["AnnualProduct"], AnkyPurchasesConfig.annualProductID)
+        XCTAssertEqual(config["MonthlyProduct"], AnkyPurchasesConfig.monthlyProductID)
         XCTAssertEqual(config["Entitlement"], AnkyPurchasesConfig.entitlementID)
         XCTAssertEqual(config["Offering"], AnkyPurchasesConfig.offeringID)
     }
 
-    func testAnnualOnlyCatalogIgnoresLegacyAndUnknownProducts() {
+    func testAnnualAndMonthlyCatalogIgnoresLegacyAndUnknownProducts() {
         XCTAssertEqual(
             SubscriptionCatalogPolicy.discoveredPlans(
                 productIDs: ["anky.weekly", "anky.monthly", "anky.annual"]
             ),
-            [.annual]
+            [.annual, .monthly]
         )
         XCTAssertEqual(
             SubscriptionCatalogPolicy.discoveredPlans(productIDs: ["anky.yearly"]),
             []
         )
-        XCTAssertTrue(SubscriptionCatalogPolicy.containsRequiredPlans(productIDs: ["anky.annual"]))
+        XCTAssertFalse(SubscriptionCatalogPolicy.containsRequiredPlans(productIDs: ["anky.monthly"]))
         XCTAssertTrue(SubscriptionCatalogPolicy.containsRequiredPlans(
             productIDs: ["anky.weekly", "anky.monthly", "anky.annual"]
         ))
-        XCTAssertFalse(SubscriptionCatalogPolicy.containsRequiredPlans(
-            productIDs: ["anky.weekly", "anky.monthly"]
-        ))
+        XCTAssertFalse(SubscriptionCatalogPolicy.containsRequiredPlans(productIDs: ["anky.annual"]))
     }
 
     func testTrialCopyIsNeverDisplayed() {
@@ -144,12 +146,11 @@ final class SubscriptionRemediationTests: XCTestCase {
             .writing, .localWritingNudge, .existingReflection, .gate,
             .quickPass, .emergencyUnlock, .staticPaintingLevelsOneThroughEight,
             .deliveredPersonalizedPainting, .archiveAndHistory, .backupAndSettings,
-        ]
-        let proFeatures: [AnkyFeature] = [
-            .newAIReflection, .serverWritingNudge, .journey,
+            .serverWritingNudge, .journey,
             .automaticDailyTargetUnlock, .adaptiveTargetSuggestions,
             .personalizedPaintingAfterLevelEight,
         ]
+        let proFeatures: [AnkyFeature] = [.betterAIReflection]
         for feature in freeFeatures {
             XCTAssertFalse(AnkyFeatureAccessPolicy.requiresPro(feature), "\(feature)")
         }
@@ -159,46 +160,13 @@ final class SubscriptionRemediationTests: XCTestCase {
         XCTAssertEqual(Set(freeFeatures + proFeatures).count, AnkyFeature.allCases.count)
     }
 
-    func testUnverifiedOrInactiveEntitlementRevokesOnlyPaidDailyUnlock() {
-        for verified in [false] {
-            XCTAssertTrue(PaidDailyUnlockReconciliationPolicy.shouldRevoke(
-                tierRawValue: "daily",
-                sourceRawValue: "writing",
-                hasCurrentVerifiedPro: verified
-            ))
-        }
+    func testDailyUnlockDoesNotDependOnPro() {
         XCTAssertFalse(PaidDailyUnlockReconciliationPolicy.shouldRevoke(
             tierRawValue: "daily",
-            sourceRawValue: "writing",
-            hasCurrentVerifiedPro: true
-        ))
-        XCTAssertFalse(PaidDailyUnlockReconciliationPolicy.shouldRevoke(
-            tierRawValue: "quick",
             sourceRawValue: "writing",
             hasCurrentVerifiedPro: false
         ))
-        XCTAssertFalse(PaidDailyUnlockReconciliationPolicy.shouldRevoke(
-            tierRawValue: "daily",
-            sourceRawValue: "emergency",
-            hasCurrentVerifiedPro: false
-        ))
-    }
-
-    func testSubscriptionExpiryRelaunchRegressionScenarioFailsClosed() {
-        let cachedEntitled = true
-        let revenueCatNowActive = false
-        let dailyTargetWasReachedBeforeRelaunch = true
-        XCTAssertTrue(cachedEntitled)
-        XCTAssertTrue(dailyTargetWasReachedBeforeRelaunch)
-        XCTAssertTrue(PaidDailyUnlockReconciliationPolicy.shouldRevoke(
-            tierRawValue: "daily",
-            sourceRawValue: "writing",
-            hasCurrentVerifiedPro: revenueCatNowActive
-        ))
-        XCTAssertFalse(EntitlementVerificationState.refreshFailed.hasVerifiedPro)
-        XCTAssertFalse(EntitlementVerificationState.verifiedInactive.hasVerifiedPro)
-        XCTAssertTrue(EntitlementVerificationState.verifiedActive.hasVerifiedPro)
-        XCTAssertFalse(PaidDailyUnlockReconciliationPolicy.canCreate(
+        XCTAssertTrue(PaidDailyUnlockReconciliationPolicy.canCreate(
             hasCurrentVerifiedPro: false
         ))
         XCTAssertTrue(PaidDailyUnlockReconciliationPolicy.canCreate(
@@ -209,7 +177,7 @@ final class SubscriptionRemediationTests: XCTestCase {
     func testPaywallUsesFunctionalPublicLegalControls() {
         XCTAssertEqual(
             SubscriptionLegalLinks.privacyPolicyURL.absoluteString,
-            "https://anky.app/privacy-policy"
+            "https://anky.app/privacy-policy/"
         )
         XCTAssertEqual(
             SubscriptionLegalLinks.termsOfUseURL.absoluteString,
@@ -225,15 +193,9 @@ final class SubscriptionRemediationTests: XCTestCase {
         ] {
             XCTAssertTrue(source.contains(identifier), identifier)
         }
-        for benefit in [
-            "AI reflections and writing nudges, subject to service limits",
-            "Full access to the 96-day writing journey",
-            "Automatic rest-of-day unlock after reaching your target",
-            "Adaptive daily-target suggestions",
-            "Personalized painting progression after level 8, subject to progress and service limits",
-        ] {
-            XCTAssertTrue(source.contains("\"\(benefit)\""), benefit)
-        }
+        XCTAssertTrue(source.contains("\"Better reflections from Anky's strongest available model\""))
+        XCTAssertFalse(source.contains("96-day writing journey"))
+        XCTAssertFalse(source.contains("Automatic rest-of-day unlock"))
     }
 
     func testAllSixLocalizedAppAndBundledLegalResourcesExist() {
@@ -262,9 +224,10 @@ final class SubscriptionRemediationTests: XCTestCase {
             guard let id = product["productID"] as? String else { return nil }
             return (id, product)
         })
-        XCTAssertEqual(Set(byID.keys), ["anky.annual"])
+        XCTAssertEqual(Set(byID.keys), ["anky.monthly", "anky.annual"])
+        XCTAssertEqual(byID["anky.monthly"]?["recurringSubscriptionPeriod"] as? String, "P1M")
         XCTAssertEqual(byID["anky.annual"]?["recurringSubscriptionPeriod"] as? String, "P1Y")
-        // The 3-day annual intro offer is gone (trial disabled, 2026-07-24).
+        XCTAssertTrue(byID["anky.monthly"]?["introductoryOffer"] is NSNull)
         XCTAssertTrue(byID["anky.annual"]?["introductoryOffer"] is NSNull)
     }
 }

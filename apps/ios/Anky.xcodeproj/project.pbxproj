@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */; };
+		8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */; };
+		8AF100000000000000000003 /* Screenshot/ScreenshotStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001003 /* Screenshot/ScreenshotStage.swift */; };
+		8AF100000000000000000004 /* ScreenshotFixtures.json in Resources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001004 /* Screenshot/ScreenshotFixtures.json */; };
 		8A0000010000000000000001 /* AnkyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001001 /* AnkyApp.swift */; };
 		8A0000010000000000000002 /* AppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001002 /* AppRoot.swift */; };
 		8A0000010000000000000003 /* WriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001003 /* WriteView.swift */; };
@@ -95,6 +99,7 @@
 		8A0000170000000000000007 /* WriteBeforeScrollLaunchBridgeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100A /* WriteBeforeScrollLaunchBridgeStore.swift */; };
 		8A0000170000000000000008 /* WriteBeforeScrollLaunchBridgeModeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100B /* WriteBeforeScrollLaunchBridgeModeResolver.swift */; };
 		8A0000170000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000170000000000001005 /* PrivacyInfo.xcprivacy */; };
+		8A000017000000000000000A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A00000F0000000000003001 /* Localizable.strings */; };
 		8A0000180000000000000001 /* AnkyWriteBeforeScrollShieldConfiguration.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001003 /* AnkyWriteBeforeScrollShieldConfiguration.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8A0000180000000000000002 /* ShieldConfigurationExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001001 /* ShieldConfigurationExtension.swift */; };
 		8A0000180000000000000003 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
@@ -103,6 +108,7 @@
 		8A0000180000000000000006 /* WriteBeforeScrollLaunchBridgeModeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000016000000000000100B /* WriteBeforeScrollLaunchBridgeModeResolver.swift */; };
 		8A0000180000000000000008 /* anky_shield_door_icon.webp in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001006 /* anky_shield_door_icon.webp */; };
 		8A0000180000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000180000000000001007 /* PrivacyInfo.xcprivacy */; };
+		8A000018000000000000000A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A00000F0000000000003001 /* Localizable.strings */; };
 		8A0000190000000000000001 /* AnkyWriteBeforeScrollMonitor.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001003 /* AnkyWriteBeforeScrollMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8A0000190000000000000002 /* DeviceActivityMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000190000000000001001 /* DeviceActivityMonitorExtension.swift */; };
 		8A0000190000000000000003 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
@@ -166,10 +172,10 @@
 		8A0000B0000000000000001D /* GlanceSharedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101B /* GlanceSharedState.swift */; };
 		8A0000B0000000000000001E /* GlanceSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */; };
 		8A0000C10000000000000001 /* JourneyAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C10000000000001001 /* JourneyAnchor.swift */; };
-		8A0000C10000000000000002 /* Features/Geshtu/AnchorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000002 /* Features/Geshtu/AnchorView.swift */; };
+		8A0000C10000000000000002 /* Features/Geshtu/RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000002 /* Features/Geshtu/RecordButton.swift */; };
 		8A0000C10000000000000003 /* Features/Geshtu/GeshtuWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000003 /* Features/Geshtu/GeshtuWorldView.swift */; };
 		8A0000C10000000000000011 /* Features/Geshtu/GeshtuState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000011 /* Features/Geshtu/GeshtuState.swift */; };
-		8A0000C10000000000000012 /* Features/Geshtu/LandingStrataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000012 /* Features/Geshtu/LandingStrataView.swift */; };
+		8A0000C10000000000000012 /* Features/Geshtu/SessionDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000012 /* Features/Geshtu/SessionDrawerView.swift */; };
 		8A0000C10000000000000015 /* Features/Geshtu/ReflectionDescentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000C20000000000000015 /* Features/Geshtu/ReflectionDescentView.swift */; };
 		8A0000D00000000000000001 /* AnkyGlanceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8A0000D00000000000000010 /* AnkyGlanceWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */; };
@@ -218,7 +224,6 @@
 		8A0000E60000000000000002 /* AnimaticStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001002 /* AnimaticStage.swift */; };
 		8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001003 /* AnimaticTimeline.swift */; };
 		8A0000E60000000000000004 /* CarveRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001004 /* CarveRevealView.swift */; };
-		8A0000E60000000000000005 /* NameEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001005 /* NameEntryView.swift */; };
 		8A0000E60000000000000006 /* TIMELINE.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001006 /* TIMELINE.json */; };
 		8A0000F10000000000000001 /* QuoteSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001001 /* QuoteSanitizer.swift */; };
 		8A0000F10000000000000002 /* ShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000F10000000000001002 /* ShareCardView.swift */; };
@@ -227,6 +232,7 @@
 		8A0000FE0000000000000001 /* AnkyRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000FE0000000000001001 /* AnkyRecordingView.swift */; };
 		8A0000FF0000000000000001 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000FF0000000000001001 /* Fonts */; };
 		8AED0000000000000000B00F /* GeshtuPrivacySeamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AED0000000000000000100F /* GeshtuPrivacySeamTests.swift */; };
+		8AED0000000000000000B01F /* WritingDecisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AED0000000000000000101F /* WritingDecisionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -353,6 +359,10 @@
 		8A0000070000000000001002 /* AnkyAppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyAppVersion.swift; sourceTree = "<group>"; };
 		8A0000090000000000001001 /* TagSessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSessionsListView.swift; sourceTree = "<group>"; };
 		8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyNudgeGenerator.swift; sourceTree = "<group>"; };
+		8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScreenshotMode.swift; path = Screenshot/ScreenshotMode.swift; sourceTree = "<group>"; };
+		8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScreenshotFixtures.swift; path = Screenshot/ScreenshotFixtures.swift; sourceTree = "<group>"; };
+		8AF100000000000000001003 /* Screenshot/ScreenshotStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScreenshotStage.swift; path = Screenshot/ScreenshotStage.swift; sourceTree = "<group>"; };
+		8AF100000000000000001004 /* Screenshot/ScreenshotFixtures.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = ScreenshotFixtures.json; path = Screenshot/ScreenshotFixtures.json; sourceTree = "<group>"; };
 		8A00000B0000000000001001 /* AnkyLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyLocalization.swift; sourceTree = "<group>"; };
 		8A00000C0000000000001001 /* ICloudBackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudBackupStore.swift; sourceTree = "<group>"; };
 		8A00000D0000000000001001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -462,10 +472,10 @@
 		8A0000B0000000000000101B /* GlanceSharedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSharedState.swift; sourceTree = "<group>"; };
 		8A0000B0000000000000101C /* GlanceSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlanceSyncCoordinator.swift; sourceTree = "<group>"; };
 		8A0000C10000000000001001 /* JourneyAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyAnchor.swift; sourceTree = "<group>"; };
-		8A0000C20000000000000002 /* Features/Geshtu/AnchorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/AnchorView.swift; sourceTree = "<group>"; };
+		8A0000C20000000000000002 /* Features/Geshtu/RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/RecordButton.swift; sourceTree = "<group>"; };
 		8A0000C20000000000000003 /* Features/Geshtu/GeshtuWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/GeshtuWorldView.swift; sourceTree = "<group>"; };
 		8A0000C20000000000000011 /* Features/Geshtu/GeshtuState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/GeshtuState.swift; sourceTree = "<group>"; };
-		8A0000C20000000000000012 /* Features/Geshtu/LandingStrataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/LandingStrataView.swift; sourceTree = "<group>"; };
+		8A0000C20000000000000012 /* Features/Geshtu/SessionDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/SessionDrawerView.swift; sourceTree = "<group>"; };
 		8A0000C20000000000000015 /* Features/Geshtu/ReflectionDescentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Geshtu/ReflectionDescentView.swift; sourceTree = "<group>"; };
 		8A0000D00000000000001001 /* AnkyGlanceWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyGlanceWidgetsBundle.swift; sourceTree = "<group>"; };
 		8A0000D00000000000001002 /* AnkyGlanceWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkyGlanceWidgets.entitlements; sourceTree = "<group>"; };
@@ -496,7 +506,6 @@
 		8A0000E60000000000001002 /* AnimaticStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticStage.swift; sourceTree = "<group>"; };
 		8A0000E60000000000001003 /* AnimaticTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticTimeline.swift; sourceTree = "<group>"; };
 		8A0000E60000000000001004 /* CarveRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarveRevealView.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001005 /* NameEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameEntryView.swift; sourceTree = "<group>"; };
 		8A0000E60000000000001006 /* TIMELINE.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = TIMELINE.json; sourceTree = "<group>"; };
 		8A0000F10000000000001001 /* QuoteSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteSanitizer.swift; sourceTree = "<group>"; };
 		8A0000F10000000000001002 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
@@ -505,6 +514,7 @@
 		8A0000FE0000000000001001 /* AnkyRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyRecordingView.swift; sourceTree = "<group>"; };
 		8A0000FF0000000000001001 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		8AED0000000000000000100F /* GeshtuPrivacySeamTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeshtuPrivacySeamTests.swift; sourceTree = "<group>"; };
+		8AED0000000000000000101F /* WritingDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingDecisionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -593,10 +603,10 @@
 				8A0000C20000000000000015 /* Features/Geshtu/ReflectionDescentView.swift */,
 				8A0000D20000000000000014 /* Features/Geshtu/GeshtuDebugSeed.swift */,
 				8A0000D20000000000000015 /* Features/Geshtu/GeshtuVoices.swift */,
-				8A0000C20000000000000012 /* Features/Geshtu/LandingStrataView.swift */,
+				8A0000C20000000000000012 /* Features/Geshtu/SessionDrawerView.swift */,
 				8A0000C20000000000000011 /* Features/Geshtu/GeshtuState.swift */,
 				8A0000C20000000000000003 /* Features/Geshtu/GeshtuWorldView.swift */,
-				8A0000C20000000000000002 /* Features/Geshtu/AnchorView.swift */,
+				8A0000C20000000000000002 /* Features/Geshtu/RecordButton.swift */,
 				8A0000010000000000003004 /* Features */,
 				8A0000010000000000003007 /* Core */,
 				8A0000050000000000003001 /* Support */,
@@ -796,6 +806,10 @@
 				8A0000050000000000001006 /* AnkyverseDayPalette.swift */,
 				8A00000B0000000000001001 /* AnkyLocalization.swift */,
 				8A0000A20000000000001001 /* AnkyLazure.swift */,
+				8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */,
+				8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */,
+				8AF100000000000000001003 /* Screenshot/ScreenshotStage.swift */,
+				8AF100000000000000001004 /* Screenshot/ScreenshotFixtures.json */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -809,7 +823,6 @@
 				8A0000E60000000000001002 /* AnimaticStage.swift */,
 				8A0000E60000000000001003 /* AnimaticTimeline.swift */,
 				8A0000E60000000000001004 /* CarveRevealView.swift */,
-				8A0000E60000000000001005 /* NameEntryView.swift */,
 				8A0000E60000000000001006 /* TIMELINE.json */,
 			);
 			path = Onboarding;
@@ -992,6 +1005,7 @@
 				8A0000E00000000000001004 /* SubscriptionRemediationTests.swift */,
 				8A0000F10000000000001004 /* QuoteSanitizerTests.swift */,
 				8AED0000000000000000100F /* GeshtuPrivacySeamTests.swift */,
+				8AED0000000000000000101F /* WritingDecisionTests.swift */,
 			);
 			path = Anky/Tests;
 			sourceTree = "<group>";
@@ -1023,7 +1037,6 @@
 				8A0000010000000000002001 /* Frameworks */,
 				8A0000010000000000005002 /* Resources */,
 				8A0000170000000000005003 /* Embed App Extensions */,
-				8A0000E50000000000005003 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
@@ -1032,7 +1045,6 @@
 				8A0000180000000000006002 /* PBXTargetDependency */,
 				8A0000190000000000006002 /* PBXTargetDependency */,
 				8A0000D00000000000006002 /* PBXTargetDependency */,
-				8A0000E50000000000006002 /* PBXTargetDependency */,
 			);
 			name = Anky;
 			packageProductDependencies = (
@@ -1248,6 +1260,7 @@
 				8A0000B00000000000000017 /* JourneyKingdoms in Resources */,
 				8A0000100000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 				8A0000E60000000000000006 /* TIMELINE.json in Resources */,
+				8AF100000000000000000004 /* ScreenshotFixtures.json in Resources */,
 				8A00000F0000000000000001 /* Localizable.strings in Resources */,
 				8A0000110000000000000001 /* PrivacyPolicy.md in Resources */,
 				8A0000120000000000000001 /* TermsAndConditions.md in Resources */,
@@ -1258,6 +1271,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A000017000000000000000A /* Localizable.strings in Resources */,
 				8A0000170000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1266,6 +1280,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A000018000000000000000A /* Localizable.strings in Resources */,
 				8A0000180000000000000008 /* anky_shield_door_icon.webp in Resources */,
 				8A0000180000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -1340,14 +1355,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A0000010000000000000001 /* AnkyApp.swift in Sources */,
+				8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */,
+				8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */,
+				8AF100000000000000000003 /* Screenshot/ScreenshotStage.swift in Sources */,
 				8A0000010000000000000002 /* AppRoot.swift in Sources */,
 				8A0000C10000000000000015 /* Features/Geshtu/ReflectionDescentView.swift in Sources */,
 				8A0000D10000000000000014 /* Features/Geshtu/GeshtuDebugSeed.swift in Sources */,
 				8A0000D10000000000000015 /* Features/Geshtu/GeshtuVoices.swift in Sources */,
-				8A0000C10000000000000012 /* Features/Geshtu/LandingStrataView.swift in Sources */,
+				8A0000C10000000000000012 /* Features/Geshtu/SessionDrawerView.swift in Sources */,
 				8A0000C10000000000000011 /* Features/Geshtu/GeshtuState.swift in Sources */,
 				8A0000C10000000000000003 /* Features/Geshtu/GeshtuWorldView.swift in Sources */,
-				8A0000C10000000000000002 /* Features/Geshtu/AnchorView.swift in Sources */,
+				8A0000C10000000000000002 /* Features/Geshtu/RecordButton.swift in Sources */,
 				8A0000010000000000000003 /* WriteView.swift in Sources */,
 				8A0000010000000000000004 /* WriteViewModel.swift in Sources */,
 				8A0000F20000000000000001 /* GeshtuWritingMachine.swift in Sources */,
@@ -1412,7 +1430,6 @@
 				8A0000E60000000000000002 /* AnimaticStage.swift in Sources */,
 				8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */,
 				8A0000E60000000000000004 /* CarveRevealView.swift in Sources */,
-				8A0000E60000000000000005 /* NameEntryView.swift in Sources */,
 				8A0000130000000000000001 /* CheckInFlowView.swift in Sources */,
 				8A0000130000000000000002 /* CheckInViewModel.swift in Sources */,
 				8A0000130000000000000003 /* HomeDailyChamberView.swift in Sources */,
@@ -1548,6 +1565,7 @@
 				8A0000E00000000000000003 /* SubscriptionRemediationTests.swift in Sources */,
 				8A0000F10000000000000004 /* QuoteSanitizerTests.swift in Sources */,
 				8AED0000000000000000B00F /* GeshtuPrivacySeamTests.swift in Sources */,
+				8AED0000000000000000B01F /* WritingDecisionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1780,7 +1798,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1819,7 +1837,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1857,7 +1875,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
@@ -1880,7 +1898,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
@@ -1903,7 +1921,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
@@ -1926,7 +1944,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
@@ -1949,7 +1967,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
@@ -1972,7 +1990,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
@@ -1995,7 +2013,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
@@ -2018,7 +2036,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
@@ -2040,7 +2058,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -2061,7 +2079,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -2083,7 +2101,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2114,7 +2132,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

@@ -63,19 +63,30 @@ struct WritingPreferences: Codable, Equatable {
     var fontChoice: AnkyWritingFontChoice
     var textSize: AnkyWritingTextSize
     var terminalSilenceMs: Int64
+    /// The 8 second rule (product name). When true — the default — the
+    /// configured stillness ends the writing. The writer can retire it from
+    /// the writing surface itself, and turn it back on here.
+    var eightSecondRuleEnabled: Bool
+    /// The ∞ duration: the writing has no endpoint. The clock counts up from
+    /// 0:00 and stillness never ends the session — only the writer does.
+    var durationIsInfinite: Bool
 
     init(
         backspaceAllowed: Bool,
         autocorrectEnabled: Bool,
         fontChoice: AnkyWritingFontChoice,
         textSize: AnkyWritingTextSize,
-        terminalSilenceMs: Int64
+        terminalSilenceMs: Int64,
+        eightSecondRuleEnabled: Bool = true,
+        durationIsInfinite: Bool = false
     ) {
         self.backspaceAllowed = backspaceAllowed
         self.autocorrectEnabled = autocorrectEnabled
         self.fontChoice = fontChoice
         self.textSize = textSize
         self.terminalSilenceMs = AnkyDuration.clampedTerminalSilenceMs(terminalSilenceMs)
+        self.eightSecondRuleEnabled = eightSecondRuleEnabled
+        self.durationIsInfinite = durationIsInfinite
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -84,6 +95,8 @@ struct WritingPreferences: Codable, Equatable {
         case fontChoice
         case textSize
         case terminalSilenceMs
+        case eightSecondRuleEnabled
+        case durationIsInfinite
     }
 
     init(from decoder: Decoder) throws {
@@ -96,6 +109,10 @@ struct WritingPreferences: Codable, Equatable {
             try container.decodeIfPresent(Int64.self, forKey: .terminalSilenceMs)
                 ?? AnkyDuration.defaultTerminalSilenceMs
         )
+        // Preferences written before the rule became switchable: the rule was
+        // always in force, and every session was a finite one.
+        eightSecondRuleEnabled = try container.decodeIfPresent(Bool.self, forKey: .eightSecondRuleEnabled) ?? true
+        durationIsInfinite = try container.decodeIfPresent(Bool.self, forKey: .durationIsInfinite) ?? false
     }
 
     static let ritualDefault = WritingPreferences(
@@ -103,7 +120,9 @@ struct WritingPreferences: Codable, Equatable {
         autocorrectEnabled: true,
         fontChoice: .default,
         textSize: .default,
-        terminalSilenceMs: AnkyDuration.defaultTerminalSilenceMs
+        terminalSilenceMs: AnkyDuration.defaultTerminalSilenceMs,
+        eightSecondRuleEnabled: true,
+        durationIsInfinite: false
     )
 
     var effectiveTerminalSilenceMs: Int64 {

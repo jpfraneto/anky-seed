@@ -3,16 +3,23 @@ import RevenueCat
 
 enum AnkySubscriptionPlan: String, CaseIterable, Hashable {
     case annual
+    case monthly
 
     var productID: String {
-        AnkyPurchasesConfig.annualProductID
+        switch self {
+        case .annual: return AnkyPurchasesConfig.annualProductID
+        case .monthly: return AnkyPurchasesConfig.monthlyProductID
+        }
     }
 
     /// Billing duration is presentation/configuration truth only. Feature
     /// access never branches on this value; every plan grants the same `pro`
     /// entitlement.
     var expectedPeriod: (value: Int, unit: SubscriptionPeriod.Unit) {
-        (1, .year)
+        switch self {
+        case .annual: return (1, .year)
+        case .monthly: return (1, .month)
+        }
     }
 
     var entitlementID: String {
@@ -25,9 +32,9 @@ enum SubscriptionCatalogPolicy {
         Set(AnkySubscriptionPlan.allCases.filter { productIDs.contains($0.productID) })
     }
 
-    /// The paywall's catalog invariant: the approved annual plan must be
-    /// present. Extra or historical products never become purchasable merely
-    /// because RevenueCat returns them.
+    /// The paywall's catalog invariant: both approved durations must be
+    /// present. Extra products never become purchasable merely because
+    /// RevenueCat returns them.
     static func containsRequiredPlans(productIDs: Set<String>) -> Bool {
         AnkySubscriptionPlan.allCases.allSatisfy { productIDs.contains($0.productID) }
     }
@@ -51,8 +58,8 @@ enum SubscriptionCatalogPolicy {
     }
 }
 
-/// Trial copy is legal only in the single positively-confirmed state. Every
-/// other state deliberately renders the ordinary annual purchase terms.
+/// Trial eligibility is retained as store truth, but the storefront does not
+/// advertise a trial.
 enum AnnualTrialEligibilityState: Equatable {
     case loading
     case eligible
@@ -185,7 +192,7 @@ enum AnkyFeature: CaseIterable {
     case deliveredPersonalizedPainting
     case archiveAndHistory
     case backupAndSettings
-    case newAIReflection
+    case betterAIReflection
     case serverWritingNudge
     case journey
     case automaticDailyTargetUnlock
@@ -196,12 +203,7 @@ enum AnkyFeature: CaseIterable {
 enum AnkyFeatureAccessPolicy {
     static func requiresPro(_ feature: AnkyFeature) -> Bool {
         switch feature {
-        case .newAIReflection,
-             .serverWritingNudge,
-             .journey,
-             .automaticDailyTargetUnlock,
-             .adaptiveTargetSuggestions,
-             .personalizedPaintingAfterLevelEight:
+        case .betterAIReflection:
             return true
         case .writing,
              .localWritingNudge,
@@ -212,14 +214,19 @@ enum AnkyFeatureAccessPolicy {
              .staticPaintingLevelsOneThroughEight,
              .deliveredPersonalizedPainting,
              .archiveAndHistory,
-             .backupAndSettings:
+             .backupAndSettings,
+             .serverWritingNudge,
+             .journey,
+             .automaticDailyTargetUnlock,
+             .adaptiveTargetSuggestions,
+             .personalizedPaintingAfterLevelEight:
             return false
         }
     }
 }
 
 enum SubscriptionLegalLinks {
-    static let privacyPolicyURL = URL(string: "https://anky.app/privacy-policy")!
+    static let privacyPolicyURL = URL(string: "https://anky.app/privacy-policy/")!
     static let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 }
 

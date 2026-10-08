@@ -17,6 +17,52 @@
     {
      "adHocOffers": [],
      "codeOffers": [],
+     "displayPrice": "9.99",
+     "familyShareable": false,
+     "groupNumber": 1,
+     "internalID": "A4000002",
+     "introductoryOffer": null,
+     "localizations": [
+      {
+       "description": "Better AI reflections",
+       "displayName": "Anky Pro Monthly",
+       "locale": "en_US"
+      },
+      {
+       "description": "Mejores reflexiones con IA",
+       "displayName": "Anky Pro Mensual",
+       "locale": "es_ES"
+      },
+      {
+       "description": "De meilleures réflexions par IA",
+       "displayName": "Anky Pro mensuel",
+       "locale": "fr_FR"
+      },
+      {
+       "description": "Bessere KI-Reflexionen",
+       "displayName": "Anky Pro monatlich",
+       "locale": "de_DE"
+      },
+      {
+       "description": "更好的 AI 反思",
+       "displayName": "Anky Pro 月度订阅",
+       "locale": "zh_Hans"
+      },
+      {
+       "description": "बेहतर AI reflections",
+       "displayName": "Anky Pro मासिक",
+       "locale": "hi_IN"
+      }
+     ],
+     "productID": "anky.monthly",
+     "recurringSubscriptionPeriod": "P1M",
+     "referenceName": "Anky Pro Monthly",
+     "subscriptionGroupID": "A4000000",
+     "type": "RecurringSubscription"
+    },
+    {
+     "adHocOffers": [],
+     "codeOffers": [],
      "displayPrice": "88.90",
      "familyShareable": false,
      "groupNumber": 1,
@@ -24,32 +70,32 @@
      "introductoryOffer": null,
      "localizations": [
       {
-       "description": "AI reflections, journey & art after level 8",
+       "description": "Better AI reflections",
        "displayName": "Anky Pro Annual",
        "locale": "en_US"
       },
       {
-       "description": "Reflexiones IA, viaje y arte tras nivel 8",
+       "description": "Mejores reflexiones con IA",
        "displayName": "Anky Pro Anual",
        "locale": "es_ES"
       },
       {
-       "description": "Réflexions IA, parcours et art après niv. 8",
+       "description": "De meilleures réflexions par IA",
        "displayName": "Anky Pro annuel",
        "locale": "fr_FR"
       },
       {
-       "description": "KI-Reflexionen, Reise und Kunst ab Level 9",
+       "description": "Bessere KI-Reflexionen",
        "displayName": "Anky Pro Jährlich",
        "locale": "de_DE"
       },
       {
-       "description": "AI 反思、96 天旅程与 8 级后艺术",
+       "description": "更好的 AI 反思",
        "displayName": "Anky Pro 年度订阅",
        "locale": "zh_Hans"
       },
       {
-       "description": "AI चिंतन, यात्रा और स्तर 8 के बाद कला",
+       "description": "बेहतर AI reflections",
        "displayName": "Anky Pro वार्षिक",
        "locale": "hi_IN"
       }

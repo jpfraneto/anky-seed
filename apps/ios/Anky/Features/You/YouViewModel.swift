@@ -78,16 +78,18 @@ final class YouViewModel: ObservableObject {
             defaults: defaults
         )
         self.defaults = defaults
-        refresh()
     }
 
+    /// Reads everything the seed (settings) displays. Deliberately NOT called
+    /// from `init`: this view model backs a surface reached by opening the
+    /// seed, and constructing it used to block launch on a wallet derivation,
+    /// two directory walks and two full archive exports. Surfaces that show
+    /// this data call `refresh()` when they appear.
     func refresh() {
         do {
             accountId = try identityStore.loadOrCreate().accountId
             ankyFileURLs = archive.fileURLs()
             reflectionFileURLs = reflectionStore.fileURLs()
-            backupZipURL = try backupExporter.exportBackup()
-            formattedWritingExportURL = try backupExporter.exportFormattedWritings()
             identityStatus = AnkyLocalization.ui("Private access")
             isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             let iCloudStatus = iCloudBackupStore.status

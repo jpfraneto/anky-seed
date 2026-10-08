@@ -899,3 +899,24 @@ extension AnkyWritingFontChoice {
         }
     }
 }
+
+// MARK: - Floating glass
+
+extension View {
+    /// The floating controls of the one-surface shell: liquid glass where the
+    /// system has it (iOS 26), frosted paper with a hairline before that.
+    @ViewBuilder
+    func ankyGlass<S: Shape>(in shape: S, interactive: Bool = true) -> some View {
+        if #available(iOS 26.0, *) {
+            // Glass is not a hit-testable fill: without an explicit shape only
+            // the glyph inside would take the touch.
+            contentShape(shape)
+                .glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        } else {
+            contentShape(shape)
+                .background(.ultraThinMaterial, in: shape)
+                .overlay(shape.stroke(Color.ankyInk.opacity(0.10), lineWidth: 0.75))
+                .shadow(color: Color.ankyInk.opacity(0.10), radius: 6, y: 2)
+        }
+    }
+}

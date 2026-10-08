@@ -70,7 +70,7 @@ enum AnkyCopyRegistry {
 
     // MARK: Painting ritual (custom levels, 9+)
 
-    /// The waiting canvas invitation shown on the painting home once a Pro
+    /// The waiting canvas invitation shown on the painting home once a
     /// writer crosses a custom level (9+) whose painting has not been summoned
     /// yet. Past level 8 the paintings are no longer automatic — the writer
     /// chooses the moment to offer their chapter to be painted.
@@ -133,8 +133,8 @@ enum AnkyCopyRegistry {
     static let freeTargetMomentLine =
         "you wrote what you set out to write today. that is the whole practice."
     static let freeTargetMomentSubscriberLine =
-        "with verified Anky Pro, reaching your target automatically unlocks protected apps for the rest of the day."
-    static let freeTargetMomentCTA = "explore Anky Pro"
+        "reaching your target automatically unlocks protected apps for the rest of the day."
+    static let freeTargetMomentCTA = "keep writing"
     static let freeTargetMomentDismiss = "not now"
 
     // MARK: Reflection loading (phase-2 §7)
@@ -167,18 +167,18 @@ enum AnkyCopyRegistry {
 
     // MARK: The veils (phase-3 §3) — *not yet*, never *denied*
 
-    static let veilReflection = "New AI reflections are an Anky Pro feature, subject to service limits."
-    static let veilCeremony = "Personalized painting progression after level 8 is part of Anky Pro."
-    static let veilJourney = "The 96-day journey is part of Anky Pro."
+    static let veilReflection = "Anky Pro unlocks better reflections from stronger intelligence."
+    static let veilCeremony = "This painting is still becoming."
+    static let veilJourney = "The journey opens through writing."
 
     // MARK: Boundary-truthful ambient surfaces (phase-3 §5)
 
     static let boundaryWidgetLine = "a new painting waits"
-    static let boundaryQuickAction = "level 8 complete — explore Anky Pro"
+    static let boundaryQuickAction = "level 8 complete — your next painting waits"
 
     // MARK: Paywall sheet (phase-3 §4)
 
     static let paywallSheetTitle = "the deepening"
     static let paywallSheetVoiceLine =
-        "AI reflections and nudges, the 96-day journey, automatic target unlocks, and personalized art after level 8."
+        "Better reflections from Anky's strongest available model."
 }

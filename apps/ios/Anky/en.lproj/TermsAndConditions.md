@@ -23,12 +23,11 @@ These features do not require Anky Pro:
 - Starting and completing new writing sessions
 - Creating, continuing, saving, browsing, copying, exporting, and deleting local writings
 - Reading already-saved reflections
-- A local non-server writing nudge when Pro is inactive
+- AI writing nudges, with a local fallback when the server is unavailable
 - The Screen Time gate, protected-app selection, and enabling/disabling protection
 - Three daily Quick Passes under the current unlock policy
 - Emergency access and emergency unlock
-- Static painting progression through level 8
-- Previously delivered personalized paintings
+- Painting progression and previously delivered personalized paintings
 - Archive and writing history
 - Settings, local/iCloud backup, import/export, account deletion, support, and legal screens
 
@@ -36,24 +35,16 @@ Free-feature availability can still depend on iOS permissions, device capabiliti
 
 ## 4. Anky Pro features
 
-Only these feature families require a currently active lowercase `pro` entitlement:
+Anky Pro has one benefit: higher-quality new reflections using Anky's strongest available supported model. Free writers can still request reflections through the free inference lane. Writing and every non-reflection feature remain available without Pro.
 
-1. New server-generated AI reflections for writings without an existing saved reflection, subject to service limits.
-2. Server-generated AI writing nudges instead of the free local fallback, subject to service limits.
-3. Full access to the 96-day writing journey.
-4. Automatic rest-of-day Screen Time unlocking after you reach the configured daily writing target.
-5. Adaptive daily-target suggestions.
-6. Progression beyond level 8, including personalized painting generation and later painting ceremonies, subject to progress, writing, safety, capacity, and generation limits.
-
-The annual subscription unlocks the Pro features above. Feature access depends on the verified `pro` entitlement. Existing local content is not removed when Pro lapses; only new Pro actions and access narrow.
-
-Generated services are subject to reasonable service, safety, capacity, and abuse-prevention limits. A subscription does not guarantee any particular number, model, style, output, ceremony, or generation time.
+Reflection services are subject to reasonable service, safety, capacity, and abuse-prevention limits. A subscription does not guarantee a particular model, style, output, or generation time.
 
 ## 5. Auto-renewable subscriptions
 
-Anky offers one optional auto-renewable annual subscription through Apple's App Store.
+Anky offers optional auto-renewable annual and monthly subscriptions through Apple's App Store. Both unlock the same Anky Pro features.
 
-- **Annual:** one year. Apple may offer a three-day free trial only to eligible users and only when Apple displays it.
+- **Annual:** one year. No introductory trial is offered.
+- **Monthly:** one month. No introductory trial is offered.
 
 The localized price, offer eligibility, charge date, and renewal terms shown by Apple before confirmation control. Never rely on an amount shown outside Apple's purchase confirmation as a guaranteed price.
 
@@ -69,11 +60,11 @@ Generated output is produced automatically and can be inaccurate, incomplete, re
 
 When you request a generated feature, content is transmitted and processed as described in the Privacy Policy. Do not submit content you lack the right to use or do not want processed by the listed providers.
 
-Personalized paintings after level 8 depend on eligible progress, sufficient writing, a verified Pro entitlement, provider availability, safety and capacity checks, and generation limits. Static levels 1–8 and personalized paintings already delivered remain available without Pro.
+Personalized paintings after level 8 depend on eligible progress, sufficient writing, provider availability, safety and capacity checks, and generation limits.
 
 ## 7. Screen Time gate and unlocks
 
-The gate itself, protected-app selection, enabling/disabling it, three daily Quick Passes, and emergency access are free. Automatic rest-of-day unlocking from reaching the daily writing target is a Pro feature. The configured target is a progress measure for free users and does not promise an automatic daily unlock.
+The gate, protected-app selection, enabling/disabling it, three daily Quick Passes, emergency access, and automatic rest-of-day unlocking after reaching the daily writing target are available without Pro.
 
 Apple controls Screen Time frameworks and permissions. Locks and unlocks may be delayed, interrupted, or unavailable because of iOS, authorization, device state, time changes, or system limits. Always retain another way to reach safety-critical apps and services.
 

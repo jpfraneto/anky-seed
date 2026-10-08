@@ -47,26 +47,20 @@ final class LevelProgressStoreTests: XCTestCase {
         XCTAssertTrue(store.unreportedSessions().isEmpty)
     }
 
-    // MARK: Phase-3 boundary
+    // MARK: Painting progression is free
 
-    func testPresentedProgressHoldsAtBoundaryForFreeWriters() {
+    func testPresentedProgressDoesNotDependOnPro() {
         let store = temporaryStore()
         // Bank lifetime seconds past level 9 — the first dynamically
         // generated level now that 1–8 ship as shared static defaults
-        // (decision 2026-07-08); the free display holds at 8.
+        // (decision 2026-07-08).
         let pastBoundaryMs = Int64(AnkyLevel.thresholdSeconds(forLevel: 9) + 60) * 1000
         store.creditSealedSession(hash: hash(31), durationMs: pastBoundaryMs)
         XCTAssertEqual(store.progress.level, 9)
 
-        let held = store.presentedProgress(entitled: false)
-        XCTAssertEqual(held.level, 8)
-        XCTAssertEqual(held.percent, 1.0)
-        XCTAssertEqual(held.secondsIntoLevel, held.secondsRequired)
-        // Nothing lost: the true total is carried through the veil.
-        XCTAssertEqual(held.totalSeconds, store.progress.totalSeconds)
-
+        XCTAssertEqual(store.presentedProgress(entitled: false).level, 9)
         XCTAssertEqual(store.presentedProgress(entitled: true).level, 9)
-        XCTAssertTrue(store.isAtBoundary(entitled: false))
+        XCTAssertFalse(store.isAtBoundary(entitled: false))
         XCTAssertFalse(store.isAtBoundary(entitled: true))
     }
 
@@ -79,15 +73,14 @@ final class LevelProgressStoreTests: XCTestCase {
         XCTAssertFalse(store.isAtBoundary(entitled: false))
     }
 
-    func testBoundaryReportClaimsExactlyOnce() {
+    func testHistoricalBoundaryReportIsRetired() {
         let store = temporaryStore()
         store.creditSealedSession(hash: hash(34), durationMs: 480_000)
         XCTAssertFalse(store.claimBoundaryReport(entitled: false), "not at boundary yet")
         let pastBoundaryMs = Int64(AnkyLevel.thresholdSeconds(forLevel: 9) + 60) * 1000
         store.creditSealedSession(hash: hash(35), durationMs: pastBoundaryMs)
-        XCTAssertFalse(store.claimBoundaryReport(entitled: true), "entitled writers have no boundary")
-        XCTAssertTrue(store.claimBoundaryReport(entitled: false))
-        XCTAssertFalse(store.claimBoundaryReport(entitled: false), "one report per life")
+        XCTAssertFalse(store.claimBoundaryReport(entitled: true))
+        XCTAssertFalse(store.claimBoundaryReport(entitled: false))
     }
 
     func testPendingStrokeSecondsConsumeOnce() {

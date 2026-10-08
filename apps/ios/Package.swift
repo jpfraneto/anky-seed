@@ -45,7 +45,8 @@ let package = Package(
                 "GeshtuPrivacySeamTests.swift",
                 "JourneyAnchorTests.swift",
                 "QuoteSanitizerTests.swift",
-                "SubscriptionRemediationTests.swift"
+                "SubscriptionRemediationTests.swift",
+                "WritingDecisionTests.swift"
             ]
         )
     ]

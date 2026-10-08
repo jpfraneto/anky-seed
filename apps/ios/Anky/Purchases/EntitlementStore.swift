@@ -106,6 +106,10 @@ final class EntitlementStore: ObservableObject {
         packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.annualProductID }
     }
 
+    var monthlyPackage: Package? {
+        packages.first { $0.storeProduct.productIdentifier == AnkyPurchasesConfig.monthlyProductID }
+    }
+
     var activePackage: Package? {
         guard let activeProductID else {
             return nil
@@ -138,7 +142,7 @@ final class EntitlementStore: ObservableObject {
         guard !isLoadingPackages else {
             return
         }
-        // Loading is done once the approved annual plan is here. Historical
+        // Loading is done once both approved durations are here. Historical
         // or future products in the offering are not purchase options.
         if SubscriptionCatalogPolicy.containsRequiredPlans(
             productIDs: Set(packages.map { $0.storeProduct.productIdentifier })
@@ -168,8 +172,8 @@ final class EntitlementStore: ObservableObject {
                 }
                 return SubscriptionCatalogPolicy.packageMatchesExpectedPeriod(package, plan: plan)
             }
-            // Only a missing annual plan is an error. Extras were filtered out
-            // and never fail the load.
+            // A missing approved duration is an offering error. Extras were
+            // filtered out and never fail the load.
             offeringsErrorLine = SubscriptionCatalogPolicy.containsRequiredPlans(
                 productIDs: Set(packages.map { $0.storeProduct.productIdentifier })
             )

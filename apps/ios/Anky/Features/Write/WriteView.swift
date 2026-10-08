@@ -10,13 +10,12 @@ struct WriteView: View {
     /// The keyboard's last global top edge, held past dismissal so the sealed
     /// beat can occupy the identical footprint and the words never move.
     @State private var lastObservedKeyboardMinY: CGFloat?
-    @State private var writingPreferences = WritingPreferencesStore().load()
     @State private var dailyTargetMs = DailyTargetStore().effectiveTargetMs()
     @State private var appsOpenForDay = false
     @State private var targetMetToday = false
-    /// The writer tapped Anky's eyes or the timer: a quiet sheet to retune
-    /// how long they mean to write and how long a stillness seals the page.
-    @State private var showsQuickSettings = false
+    /// The writer tapped the clock: a row of minutes unfolds under it. What
+    /// they choose applies to this session and is what the next one starts at.
+    @State private var showsTargetPicker = false
     /// The status pill can be dismissed to bare paper with a tap — its
     /// footprint stays, invisible, and a tap on that space brings it back.
     @State private var isPillDimmed = false
@@ -35,7 +34,6 @@ struct WriteView: View {
     /// keyboard withdraws and these rise where it stood — the words never
     /// leave the surface they were written on.
     private let onReflect: () -> Void
-    private let onSkip: () -> Void
     private let onContinueWriting: () -> Void
 
     init(
@@ -45,7 +43,6 @@ struct WriteView: View {
         onCompleted: @escaping (SavedAnky) -> Void,
         onCloseToMap: @escaping () -> Void,
         onReflect: @escaping () -> Void = {},
-        onSkip: @escaping () -> Void = {},
         onContinueWriting: @escaping () -> Void = {}
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -54,7 +51,6 @@ struct WriteView: View {
         self.onCompleted = onCompleted
         self.onCloseToMap = onCloseToMap
         self.onReflect = onReflect
-        self.onSkip = onSkip
         self.onContinueWriting = onContinueWriting
     }
 
@@ -67,11 +63,12 @@ struct WriteView: View {
                     containerSize: geometry.size,
                     safeAreaBottom: geometry.safeAreaInsets.bottom
                 )
-                // Once sealed, the beat inherits the keyboard's EXACT top edge,
-                // so the written words keep the identical bottom inset and do
-                // not shift a pixel as the keyboard withdraws behind the beat.
+                // Whatever stands in the keyboard's place — a decision, or the
+                // finished writing's two ways forward — inherits the keyboard's
+                // EXACT top edge, so the written words keep the identical
+                // bottom inset and do not shift a pixel underneath it.
                 let keyboardTop: CGFloat = {
-                    if showsPostSessionBeat {
+                    if showsBottomSurface {
                         return lastObservedKeyboardMinY ?? (globalFrame.maxY - reservedKeyboard)
                     }
                     if let minY = keyboardFrame?.minY {
@@ -90,6 +87,10 @@ struct WriteView: View {
                     glyphs: viewModel.displayedGlyphs,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: acceptsWritingInput,
+                    // The same view, in a different interaction state — never a
+                    // second copy of the writing (spec §13). Sealed, it stops
+                    // taking input and becomes free to scroll.
+                    isReadOnly: showsPostSessionBeat,
                     // On the device's blank page the drag belongs to the
                     // put-down flick (GeshtuWorldView's device gesture, device
                     // split 2026-07-22); the text view's own scrolling begins
@@ -99,12 +100,21 @@ struct WriteView: View {
                     rightInset: textSideInset,
                     textOpacity: writingTextOpacity,
                     colorScheme: colorScheme,
-                    preferences: writingPreferences,
-                    onText: viewModel.accept,
-                    onReplaceTail: viewModel.replaceForwardTail,
-                    onRejectedInput: viewModel.nudgeInvalidInput
+                    preferences: viewModel.preferences,
+                    onText: acceptWritingInput,
+                    onReplaceTail: { prefixCount, replacementText in
+                        dismissSessionSettingsForWriting()
+                        viewModel.replaceForwardTail(
+                            keepingPrefixCharacterCount: prefixCount,
+                            with: replacementText
+                        )
+                    },
+                    onRejectedInput: handleRejectedInput
                 )
-                .allowsHitTesting(acceptsWritingInput)
+                // A finished writing still takes touches — that is how it is
+                // scrolled and how a passage is selected to copy. Only a
+                // standing decision makes the page inert.
+                .allowsHitTesting(acceptsWritingInput || showsPostSessionBeat)
                 .frame(width: geometry.size.width, height: textViewHeight)
                 .clipped()
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
@@ -115,7 +125,7 @@ struct WriteView: View {
                 // begins. A quiet deepening of the parchment, not a panel:
                 // this is the page's own ground, seen from below when the
                 // world scrolls past it.
-                if axisMode && !showsPostSessionBeat {
+                if axisMode && !showsBottomSurface {
                     let reserveTop = keyboardTop - globalFrame.minY
                     let reserveHeight = max(1, globalFrame.maxY - keyboardTop
                         + geometry.safeAreaInsets.bottom)
@@ -163,34 +173,58 @@ struct WriteView: View {
 
                 if axisMode {
                     AxisWritingTopBar(
-                        timeText: timerText,
-                        timeCaption: timerCaption,
-                        timerProgress: timerProgress,
+                        timeText: axisTimerText,
                         silenceProgress: silenceProgress,
-                        canPutDown: !viewModel.hasStarted,
-                        isSealed: showsPostSessionBeat,
-                        onBack: {
-                            AnkyHaptics.light()
-                            viewModel.persistForNavigation()
-                            // Putting the device down deliberately: the
-                            // keyboard falls first, then the device recedes
-                            // into the Anchor and the world stands revealed.
-                            UIApplication.shared.sendAction(
-                                #selector(UIResponder.resignFirstResponder),
-                                to: nil, from: nil, for: nil
-                            )
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
-                                onCloseToMap()
-                            }
+                        isCompleted: showsPostSessionBeat,
+                        settingsEnabled: !viewModel.hasStarted,
+                        showsMenu: showsMenuButton,
+                        targetMinutes: Int(dailyTargetMs / 60_000),
+                        durationIsInfinite: viewModel.durationIsInfinite,
+                        backspaceAllowed: viewModel.backspaceEnabled,
+                        eightSecondRuleEnabled: viewModel.preferences.eightSecondRuleEnabled,
+                        showsTargetPicker: $showsTargetPicker,
+                        onSetBackspaceAllowed: { allowed in
+                            AnkyHaptics.selection()
+                            viewModel.setBackspaceAllowed(allowed)
                         },
-                        onOpenSettings: {
-                            AnkyHaptics.light()
-                            showsQuickSettings = true
-                        }
+                        onSetEightSecondRuleEnabled: { enabled in
+                            AnkyHaptics.selection()
+                            viewModel.setEightSecondRuleEnabled(enabled)
+                        },
+                        onChooseTarget: { minutes in
+                            AnkyHaptics.selection()
+                            // Applies to the session on screen AND is what the
+                            // next one starts at (user request, 2026-08-17) —
+                            // not the old next-local-day deferral.
+                            viewModel.chooseDuration(minutes: minutes)
+                            dailyTargetMs = DailyTargetStore().effectiveTargetMs()
+                            WriteBeforeScrollEventLogStore().append(
+                                .targetChanged,
+                                metadata: ["newMinutes": "\(minutes)"]
+                            )
+                        },
+                        onChooseInfinite: {
+                            AnkyHaptics.selection()
+                            viewModel.chooseInfiniteDuration()
+                            WriteBeforeScrollEventLogStore().append(
+                                .targetChanged,
+                                metadata: ["newMinutes": "infinite"]
+                            )
+                        },
+                        onOpenWritings: handleMenuTap
                     )
                     .padding(.horizontal, 16)
-                    .frame(width: geometry.size.width, height: 92, alignment: .top)
-                    .position(x: geometry.size.width / 2, y: 52)
+                    // The bar's top edge stays at 6 whether or not the minute
+                    // row is unfolded beneath it.
+                    .frame(
+                        width: geometry.size.width,
+                        height: showsTargetPicker ? 196 : 44,
+                        alignment: .top
+                    )
+                    .position(
+                        x: geometry.size.width / 2,
+                        y: 6 + (showsTargetPicker ? 98 : 22)
+                    )
                     .zIndex(20)
                 } else {
                     WritingTopChrome(
@@ -208,10 +242,6 @@ struct WriteView: View {
                         onFocus: {
                             viewModel.focusWritingKeyboard()
                         },
-                        onOpenSettings: {
-                            AnkyHaptics.light()
-                            showsQuickSettings = true
-                        },
                         onTogglePillDim: {
                             AnkyHaptics.selection()
                             isPillDimmed.toggle()
@@ -223,36 +253,34 @@ struct WriteView: View {
                     .zIndex(20)
                 }
 
-                // The life-bar: the eight seconds of sealing silence made
-                // visible, a hair above the keyboard. It surfaces after two
-                // quiet seconds and drains right to left toward the seal.
+                // The sealing silence made visible: one bar resting on the
+                // keyboard's top edge, surfacing after three quiet seconds and
+                // draining right to left toward the seal. Nothing else.
                 SilenceLifeBar(remaining: 1 - silenceProgress)
-                    .frame(width: max(1, geometry.size.width - 48), height: 2)
+                    .frame(width: geometry.size.width, height: 5)
                     .position(
                         x: geometry.size.width / 2,
-                        y: max(14, keyboardTop - globalFrame.minY - 14)
+                        y: max(1, keyboardTop - globalFrame.minY - 2.5)
                     )
                     .opacity(showsSilenceBar ? 1 : 0)
                     .animation(.easeInOut(duration: 0.4), value: showsSilenceBar)
                     .allowsHitTesting(false)
                     .zIndex(22)
 
-                // The post-session beat fills the keyboard's exact footprint —
-                // top edge at the keyboard's old top, extending to the physical
-                // bottom — so the words above stay put and are never covered.
-                if showsPostSessionBeat && !axisMode {
+                // The bottom interaction surface fills the keyboard's exact
+                // footprint — top edge at the keyboard's old top, extending to
+                // the physical bottom — so the words above stay put and are
+                // never covered. It is the same region the keys occupy: the
+                // machine's lower half, wearing a different face.
+                if showsBottomSurface {
                     let beatTop = keyboardTop - globalFrame.minY
                     let beatHeight = max(1, globalFrame.maxY - keyboardTop
                         + geometry.safeAreaInsets.bottom)
-                    PostSessionActionBar(
-                        onReflect: onReflect,
-                        onContinueWriting: onContinueWriting,
-                        onSkip: onSkip
-                    )
-                    .frame(width: geometry.size.width, height: beatHeight, alignment: .top)
-                    .position(x: geometry.size.width / 2, y: beatTop + beatHeight / 2)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(24)
+                    bottomSurface
+                        .frame(width: geometry.size.width, height: beatHeight, alignment: .top)
+                        .position(x: geometry.size.width / 2, y: beatTop + beatHeight / 2)
+                        .transition(.opacity)
+                        .zIndex(24)
                 }
             }
         }
@@ -264,14 +292,8 @@ struct WriteView: View {
                 .ignoresSafeArea()
         }
         .ignoresSafeArea(.keyboard)
-        .sheet(isPresented: $showsQuickSettings, onDismiss: {
-            writingPreferences = WritingPreferencesStore().load()
-            dailyTargetMs = DailyTargetStore().effectiveTargetMs()
-            refreshOpenDayState()
-        }) {
-            WritingQuickSettingsSheet()
-        }
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: showsPostSessionBeat)
+        // The machine changes around the writing — never the writing.
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: viewModel.uiState)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(showsMapButton ? .visible : .hidden, for: .navigationBar)
@@ -290,7 +312,7 @@ struct WriteView: View {
             updateKeyboardFrame(nil)
         }
         .onAppear {
-            writingPreferences = WritingPreferencesStore().load()
+            viewModel.refreshPreferences()
             dailyTargetMs = DailyTargetStore().effectiveTargetMs()
             refreshOpenDayState()
             viewModel.bindCompletion(onCompleted)
@@ -303,6 +325,17 @@ struct WriteView: View {
             if isFocused {
                 viewModel.prepareForWritingScene()
             }
+        }
+        // The keyboard's place changed hands. Whatever raised the decision —
+        // a refused key, the way-out control, or the stillness itself — the
+        // keys withdraw here, once, so the surface beneath is never covered.
+        // VoiceOver is told too, or the writer hears nothing at all where the
+        // keyboard used to be.
+        .onChange(of: viewModel.uiState) { state in
+            if case .decision = state {
+                dismissKeyboard()
+            }
+            UIAccessibility.post(notification: .layoutChanged, argument: nil)
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active, shouldFocus {
@@ -330,6 +363,23 @@ struct WriteView: View {
         targetMetToday = writtenTodayMs >= DailyTargetStore().effectiveTargetMs(now: now)
     }
 
+    /// The clock's expanded controls belong to the moment before writing.
+    /// The first forward input returns the page to bare paper automatically,
+    /// without making the writer dismiss configuration by hand.
+    private func acceptWritingInput(_ text: String) {
+        if !text.isEmpty {
+            dismissSessionSettingsForWriting()
+        }
+        viewModel.accept(text)
+    }
+
+    private func dismissSessionSettingsForWriting() {
+        guard showsTargetPicker else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            showsTargetPicker = false
+        }
+    }
+
     /// The melt band covers the top chrome (156pt tall, centered at y 84 →
     /// bottom edge ~162) and releases the page fully a few lines below it.
     private static let chromeMeltHeight: CGFloat = 210
@@ -338,6 +388,143 @@ struct WriteView: View {
     /// keyboard has withdrawn, so the post-session options take its place.
     private var showsPostSessionBeat: Bool {
         viewModel.completedArtifact != nil
+    }
+
+    /// Something other than the keyboard holds the machine's lower half.
+    private var showsBottomSurface: Bool {
+        viewModel.bottomSurfaceStands
+    }
+
+    // MARK: - The bottom interaction surface (spec §1)
+
+    /// The keyboard's own region, wearing whichever face the moment calls for:
+    /// a two-choice decision while writing, or the two ways forward once the
+    /// writing has ended. Never a sheet, never an alert, never a floating card.
+    @ViewBuilder
+    private var bottomSurface: some View {
+        switch viewModel.uiState {
+        case .decision(let decision):
+            decisionSurface(for: decision)
+        case .completed:
+            MachineChoiceSurface(
+                first: .init(
+                    label: "continue writing",
+                    hint: "Reopen this writing and keep going.",
+                    action: onContinueWriting
+                ),
+                second: .init(
+                    label: "ask anky for reflection",
+                    hint: "Send this writing to Anky and begin the conversation.",
+                    action: onReflect
+                ),
+                emphasizesSecond: true
+            )
+        case .active:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func decisionSurface(for decision: WritingDecision) -> some View {
+        switch decision {
+        case .enableBackspace:
+            MachineChoiceSurface(
+                first: .init(
+                    label: "enable backspace",
+                    hint: "Deletion is allowed from now on.",
+                    action: {
+                        AnkyHaptics.light()
+                        viewModel.enableBackspaceFromDecision()
+                    }
+                ),
+                second: .init(
+                    label: "keep it disabled",
+                    hint: "Words keep moving forward only.",
+                    action: {
+                        AnkyHaptics.selection()
+                        viewModel.keepBackspaceDisabled()
+                    }
+                ),
+                emphasizesSecond: true
+            )
+        case .endWriting:
+            MachineChoiceSurface(
+                first: .init(
+                    label: "end writing",
+                    hint: "Finish and save this writing.",
+                    action: {
+                        AnkyHaptics.medium()
+                        viewModel.endWritingFromDecision()
+                    }
+                ),
+                second: .init(
+                    label: "keep writing",
+                    hint: "Return to the page.",
+                    action: {
+                        AnkyHaptics.selection()
+                        viewModel.keepWritingFromDecision()
+                    }
+                ),
+                emphasizesSecond: true
+            )
+        }
+    }
+
+    // MARK: - The way out (spec §6)
+
+    /// While the 8 second rule is holding the session, the way out is the
+    /// stillness itself and the menu stays out of sight. It returns the moment
+    /// the writing ends — and it is always there before the first keystroke,
+    /// and whenever the writer, not the rule, owns the ending.
+    private var showsMenuButton: Bool {
+        if showsPostSessionBeat {
+            return true
+        }
+        if !viewModel.hasStarted {
+            return true
+        }
+        return !viewModel.eightSecondRuleActive
+    }
+
+    /// The menu never risks the writing: with a live session on the page it
+    /// asks first, and only an explicit "end writing" seals it.
+    private func handleMenuTap() {
+        AnkyHaptics.light()
+        guard !showsPostSessionBeat else {
+            leaveForWritings()
+            return
+        }
+        // A live session asks before it ends; a blank page simply leaves.
+        guard !viewModel.requestEndWritingDecision() else {
+            return
+        }
+        leaveForWritings()
+    }
+
+    /// One tap, straight out: the words stay on the page (the clock and the
+    /// sentinel simply stop), the keyboard falls, and the writings list is
+    /// standing where the page was.
+    private func leaveForWritings() {
+        viewModel.standDownForNavigation()
+        dismissKeyboard()
+        onCloseToMap()
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+
+    /// A refused key. Backspace is the one refusal the machine will stop and
+    /// ask about — once per writing, in the keyboard's own place.
+    private func handleRejectedInput(_ input: RejectedWritingInput) {
+        viewModel.nudgeInvalidInput(input)
+        guard input == .backspaceDisabled else {
+            return
+        }
+        viewModel.requestBackspaceDecision()
     }
 
     private var writingTextOpacity: Double {
@@ -367,9 +554,19 @@ struct WriteView: View {
         dailyTargetMs - viewModel.elapsedMs > 0 ? "remaining" : "written"
     }
 
-    private var timerProgress: Double {
-        guard dailyTargetMs > 0 else { return 1 }
-        return min(1, max(0, Double(viewModel.elapsedMs) / Double(dailyTargetMs)))
+    /// The writing page's whole chrome, right side: one continuous clock. It
+    /// counts down to the chosen duration, and past it simply keeps reading the
+    /// total time written — 7:59, 8:00, 8:01 — never restarting, never wearing
+    /// a plus. An ∞ session counts up from 0:00 from the first keystroke.
+    private var axisTimerText: String {
+        guard !viewModel.durationIsInfinite else {
+            return AnkyDuration.clock(viewModel.elapsedMs)
+        }
+        let remaining = dailyTargetMs - viewModel.elapsedMs
+        if remaining > 0 {
+            return AnkyDuration.clock(remaining)
+        }
+        return AnkyDuration.clock(viewModel.elapsedMs)
     }
 
     private var showsMapButton: Bool {
@@ -408,6 +605,11 @@ struct WriteView: View {
     }
 
     private var silenceProgress: Double {
+        // No rule, nothing gathering: the chrome keeps its full presence and
+        // the hairline never appears.
+        guard viewModel.eightSecondRuleActive else {
+            return 0
+        }
         // The spiral doubles as the stillness indicator on Daily sessions.
         // Quick Pass ends in motion — once the passive unlock has applied,
         // the indicator goes inert; the practice's stillness is not asked
@@ -416,15 +618,16 @@ struct WriteView: View {
            viewModel.elapsedMs < DailyTargetStore().effectiveTargetMs() {
             return 0
         }
-        return min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(writingPreferences.effectiveTerminalSilenceMs)))
+        return min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(viewModel.preferences.effectiveTerminalSilenceMs)))
     }
 
-    /// The bar earns its place only once the writer has actually paused —
-    /// two seconds in — and leaves the moment a key lands or the seal takes.
+    /// The line earns its place only once the writer has actually paused —
+    /// three seconds in — and leaves the moment a key lands or the seal takes.
     private var showsSilenceBar: Bool {
-        viewModel.hasStarted
+        viewModel.eightSecondRuleActive
+            && viewModel.hasStarted
             && viewModel.canAcceptInput
-            && silenceProgress >= 0.25
+            && viewModel.silenceElapsedMs >= 3000
             && silenceProgress < 1
     }
 
@@ -449,14 +652,6 @@ struct WriteView: View {
         }
     }
 
-    private func stableRingCenterY(globalFrame: CGRect, ringRadius: CGFloat) -> CGFloat {
-        let targetGlobalY = UIScreen.main.bounds.height * 0.36
-        let targetLocalY = targetGlobalY - globalFrame.minY
-        let minimumY = ringRadius + 24
-        let maximumY = max(minimumY, globalFrame.height - ringRadius - 24)
-        return min(max(targetLocalY, minimumY), maximumY)
-    }
-
     private func reservedKeyboardHeight(containerSize: CGSize, safeAreaBottom: CGFloat) -> CGFloat {
         if let lastObservedKeyboardHeight {
             return lastObservedKeyboardHeight
@@ -474,44 +669,36 @@ struct WriteView: View {
 
 }
 
-/// The post-session beat, resting where the keyboard stood. No writing card —
-/// the writer's words are already the surface behind it; these are only the
-/// three quiet ways forward: reflect (the one act that sends it), keep
-/// writing, or let it be.
-private struct PostSessionActionBar: View {
-    let onReflect: () -> Void
-    let onContinueWriting: () -> Void
-    let onSkip: () -> Void
+/// The machine's lower half when it is not the keyboard: two keys, resting on
+/// the same parchment shelf the keys stood on. Used for every contextual
+/// decision and for the finished writing's ways forward — one surface, one
+/// grammar. Every decision is binary; the way to the other writings is the
+/// menu, always in its place at the top.
+private struct MachineChoiceSurface: View {
+    struct Choice {
+        let label: String
+        let hint: String
+        let action: () -> Void
+    }
+
+    let first: Choice
+    let second: Choice
+    /// The quieter, more conservative option carries the weight — the machine
+    /// never leans on the writer to change how it works.
+    var emphasizesSecond = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            SlideToReflect(label: "slide to reflect", onComplete: onReflect)
-                .padding(.horizontal, 2)
+        VStack(spacing: 10) {
+            key(first, prominent: !emphasizesSecond)
+            key(second, prominent: emphasizesSecond)
 
-            HStack(spacing: 24) {
-                Button(action: onContinueWriting) {
-                    Text(AnkyLocalization.ui("continue writing"))
-                        .font(.system(size: 14, weight: .medium, design: .serif))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .underline()
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onSkip) {
-                    Text(AnkyLocalization.ui("skip"))
-                        .font(.system(size: 14, weight: .medium, design: .serif))
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.78))
-                }
-                .buttonStyle(.plain)
-            }
-
-            // The controls rest at the top of the footprint — right where the
-            // keys began, a breath under the last line — and the shelf fills
-            // the rest of the space the keyboard held.
+            // The keys rest at the top of the footprint — right where the
+            // keyboard's own began, a breath under the last line — and the
+            // shelf fills the rest of the space the keyboard held.
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 26)
-        .padding(.top, 22)
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
         .frame(maxWidth: 620)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
@@ -533,149 +720,33 @@ private struct PostSessionActionBar: View {
             }
         )
     }
-}
 
-/// A quiet dial the writer reaches from Anky's eyes or the timer: how long
-/// they mean to write today, and how long a stillness has to hold before the
-/// page seals. Both persist through the same stores the Settings screen uses.
-private struct WritingQuickSettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var targetMinutes: Double = Double(DailyTargetStore.defaultMinutes)
-    @State private var effectiveTargetMinutes = DailyTargetStore.defaultMinutes
-    @State private var pendingTargetMinutes: Int?
-    @State private var stillnessSeconds: Double = Double(AnkyDuration.defaultTerminalSilenceMs / 1000)
-
-    private var silenceRange: ClosedRange<Double> {
-        Double(AnkyDuration.minTerminalSilenceMs / 1000)...Double(AnkyDuration.maxTerminalSilenceMs / 1000)
-    }
-
-    var body: some View {
-        VStack(spacing: 22) {
-            Capsule()
-                .fill(Color.ankyInk.opacity(0.14))
-                .frame(width: 40, height: 5)
-                .padding(.top, 10)
-
-            Text(AnkyLocalization.ui("Tune this session"))
-                .font(.ankyTitle)
-                .foregroundStyle(Color.ankyInk)
-
-            VeilCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(AnkyLocalization.ui("minute count format", Int(targetMinutes)))
-                            .font(.ankyHeading)
-                            .foregroundStyle(Color.ankyInk)
-                            .contentTransition(.numericText())
-                            .animation(.easeOut(duration: 0.15), value: Int(targetMinutes))
-                        Spacer()
-                        AnkySunGlyph(size: 22, color: .ankyGold)
-                    }
-
-                    Slider(
-                        value: $targetMinutes,
-                        in: Double(DailyTargetStore.minutesRange.lowerBound)...Double(DailyTargetStore.minutesRange.upperBound),
-                        step: 1
-                    ) { isEditing in
-                        if !isEditing { commitDailyTarget() }
-                    }
-                    .tint(Color.ankyGold)
-
-                    Text(AnkyLocalization.ui(dailyTargetFootnote))
-                        .font(.ankyCaption)
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .lineSpacing(3)
-                }
-            }
-
-            VeilCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(AnkyLocalization.ui("Stillness before reflection"))
-                            .font(.ankyLabel)
-                            .foregroundStyle(Color.ankyInk)
-                        Spacer()
-                        Text(AnkyLocalization.ui("%d seconds", Int(stillnessSeconds)))
-                            .font(.ankyCaption)
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .contentTransition(.numericText())
-                            .animation(.easeOut(duration: 0.15), value: Int(stillnessSeconds))
-                    }
-
-                    Slider(
-                        value: $stillnessSeconds,
-                        in: silenceRange,
-                        step: 1
-                    ) { isEditing in
-                        if !isEditing { commitStillness() }
-                    }
-                    .tint(Color.ankyViolet)
-
-                    Text(AnkyLocalization.ui("How long the page must go quiet before it seals. You can also change this in Settings."))
-                        .font(.ankyCaption)
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .lineSpacing(3)
-                }
-            }
-
-            Spacer(minLength: 0)
+    private func key(_ choice: Choice, prominent: Bool) -> some View {
+        Button(action: choice.action) {
+            Text(AnkyLocalization.ui(choice.label))
+                .font(.fraunces(17, weight: .light, italic: true))
+                .foregroundStyle(prominent ? Color.ankyInk : Color.ankyInkSoft)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, minHeight: 58)
+                .background(
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(Color.ankyPaper.opacity(prominent ? 0.92 : 0.68))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .strokeBorder(
+                                    Color.ankyGold.opacity(prominent ? 0.55 : 0.28),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: Color.ankyViolet.opacity(prominent ? 0.10 : 0.05), radius: 5, y: 2)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         }
-        .padding(.horizontal, 22)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(
-            LinearGradient(
-                colors: [Color.ankyPaper, Color.ankyPaperDeep],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.hidden)
-        .onAppear(perform: refresh)
-    }
-
-    private var dailyTargetFootnote: String {
-        if let pendingTargetMinutes, pendingTargetMinutes != effectiveTargetMinutes {
-            return AnkyLocalization.ui(
-                "Today stays at %d min; your new target of %d min begins tomorrow.",
-                effectiveTargetMinutes,
-                pendingTargetMinutes
-            )
-        }
-        return AnkyLocalization.ui("Your daily target — the writing that opens your apps. Sessions are never cut short.")
-    }
-
-    private func refresh() {
-        let store = DailyTargetStore()
-        effectiveTargetMinutes = store.effectiveTargetMinutes()
-        pendingTargetMinutes = store.pendingTargetMinutes()
-        targetMinutes = Double(pendingTargetMinutes ?? effectiveTargetMinutes)
-        let preferences = WritingPreferencesStore().load()
-        stillnessSeconds = Double(preferences.effectiveTerminalSilenceMs / 1000)
-    }
-
-    private func commitDailyTarget() {
-        AnkyHaptics.selection()
-        let change = DailyTargetStore().requestTargetChange(to: Int(targetMinutes))
-        WriteBeforeScrollEventLogStore().append(
-            .targetChanged,
-            metadata: [
-                "oldMinutes": "\(change.oldMinutes)",
-                "newMinutes": "\(change.newMinutes)"
-            ]
-        )
-        let store = DailyTargetStore()
-        effectiveTargetMinutes = store.effectiveTargetMinutes()
-        pendingTargetMinutes = store.pendingTargetMinutes()
-    }
-
-    private func commitStillness() {
-        AnkyHaptics.selection()
-        WritingPreferencesStore().update { preferences in
-            preferences.terminalSilenceMs = Int64(stillnessSeconds.rounded()) * 1000
-        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text(AnkyLocalization.ui(choice.hint)))
     }
 }
 
@@ -737,54 +808,304 @@ private enum WritingSessionPillState: Equatable {
     }
 }
 
-/// The axis writing surface's two mounted controls: the target dial and the
-/// machine menu. Putting the machine down remains available only before the
-/// first keystroke; after that, the menu still reaches non-destructive writing
-/// settings without creating a new escape from the forward-only ritual.
+/// The writing page's entire chrome (simplification pass, 2026-08-17): a menu
+/// out to the writings on the left, the countdown on the right, both on one
+/// line. No dial, no dropdown, no wood. Tapping the clock unfolds the two
+/// writing rules followed by the minute choices.
 private struct AxisWritingTopBar: View {
     let timeText: String
-    let timeCaption: String
-    let timerProgress: Double
     let silenceProgress: Double
-    let canPutDown: Bool
-    /// Once the session seals, the countdown has said all it can — its spot
-    /// is ceded to the world's fixed top chrome (share / record / settings).
-    let isSealed: Bool
-    let onBack: () -> Void
-    let onOpenSettings: () -> Void
+    /// The writing has ended: the session's own controls (the clock and its
+    /// minutes) step aside, and the top-right is the finished writing's —
+    /// copy, record — held by the world's fixed chrome.
+    let isCompleted: Bool
+    /// Session rules are chosen before the first character. Once writing has
+    /// begun the clock is status only and no longer opens the settings.
+    let settingsEnabled: Bool
+    /// The way out. Hidden while the 8 second rule is the one that ends the
+    /// session (spec §6); back the moment the writing is finished.
+    let showsMenu: Bool
+    let targetMinutes: Int
+    let durationIsInfinite: Bool
+    let backspaceAllowed: Bool
+    let eightSecondRuleEnabled: Bool
+    @Binding var showsTargetPicker: Bool
+    let onSetBackspaceAllowed: (Bool) -> Void
+    let onSetEightSecondRuleEnabled: (Bool) -> Void
+    let onChooseTarget: (Int) -> Void
+    let onChooseInfinite: () -> Void
+    let onOpenWritings: () -> Void
+
+    @State private var optionExplanation: String?
 
     var body: some View {
-        HStack(alignment: .top) {
-            if !isSealed {
-                GeshtuMenuButton(
-                    canPutDown: canPutDown,
-                    onPutDown: onBack,
-                    onOpenSettings: onOpenSettings
-                )
-                .transition(.opacity)
+        VStack(spacing: 10) {
+            HStack(spacing: 0) {
+                if showsMenu {
+                    Button(action: onOpenWritings) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Color.ankyInkSoft)
+                            .frame(width: 44, height: 44)
+                            .ankyGlass(in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(AnkyLocalization.ui("Your writings"))
+                    .transition(.opacity)
+                }
+
+                Spacer(minLength: 0)
+
+                if !isCompleted {
+                    Button {
+                        guard settingsEnabled else { return }
+                        AnkyHaptics.light()
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            showsTargetPicker.toggle()
+                            if !showsTargetPicker { optionExplanation = nil }
+                        }
+                    } label: {
+                        Text(timeText)
+                            .font(.system(size: 17, design: .serif))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.ankyInkSoft)
+                            .contentTransition(.numericText())
+                            .padding(.horizontal, 16)
+                            .frame(height: 44)
+                            .ankyGlass(in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!settingsEnabled)
+                    .accessibilityLabel(AnkyLocalization.ui("Writing time %@", timeText))
+                    .accessibilityHint(
+                        settingsEnabled
+                            ? AnkyLocalization.ui("Choose how long you mean to write")
+                            : AnkyLocalization.ui("The writing session has already started")
+                    )
+                }
             }
+            .frame(minHeight: 44)
 
-            Spacer()
+            if showsTargetPicker && !isCompleted {
+                minuteRow
+                    .transition(.opacity.combined(with: .offset(y: -6)))
 
-            if !isSealed {
-                GeshtuTimerDial(
-                    timeText: timeText,
-                    caption: timeCaption,
-                    progress: timerProgress,
-                    action: onOpenSettings
-                )
+                if let optionExplanation {
+                    Text(optionExplanation)
+                        .font(.fraunces(13, weight: .light, italic: true))
+                        .foregroundStyle(Color.ankyInkSoft.opacity(0.9))
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 286, alignment: .trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .transition(.opacity.combined(with: .offset(y: -3)))
+                }
             }
         }
-        // Sealed, the bar returns to full presence (the silence that sealed
+        // Finished, the bar returns to full presence (the silence that ended
         // the page had faded it); live, it recedes as the silence gathers.
-        .opacity(isSealed ? 1 : chromeOpacity)
-        .animation(.easeInOut(duration: 0.3), value: canPutDown)
-        .animation(.easeInOut(duration: 0.4), value: isSealed)
+        .opacity(isCompleted ? 1 : chromeOpacity)
+        .animation(.easeInOut(duration: 0.4), value: isCompleted)
+        .animation(.easeInOut(duration: 0.3), value: showsMenu)
         .animation(.linear(duration: 0.16), value: silenceProgress)
     }
 
-    /// The chrome recedes as the sealing silence gathers — same fade as the
-    /// legacy chrome.
+    /// The two rules stand in their own column beside a roomy two-row duration
+    /// pad. A control in force is the only one wearing anything.
+    private var minuteRow: some View {
+        let minutes = Array(DailyTargetStore.minutesRange)
+
+        return HStack(spacing: 10) {
+            Spacer(minLength: 0)
+
+            VStack(spacing: 6) {
+                ruleToggle(
+                    icon: "delete.backward",
+                    isOn: backspaceAllowed,
+                    accessibilityLabel: "Backspace",
+                accessibilityHint: backspaceAllowed
+                    ? "Double tap to keep words moving forward only."
+                    : "Double tap to allow deletion.",
+                explanation: AnkyLocalization.ui(
+                    backspaceAllowed
+                        ? "Backspace is on. You can revise or delete words while writing."
+                        : "Backspace is off. Your words keep moving forward without deletion."
+                ),
+                explanationAfterTap: AnkyLocalization.ui(
+                    backspaceAllowed
+                        ? "Backspace is off. Your words keep moving forward without deletion."
+                        : "Backspace is on. You can revise or delete words while writing."
+                ),
+                action: { onSetBackspaceAllowed(!backspaceAllowed) }
+            )
+                ruleToggle(
+                    icon: "hourglass",
+                    isOn: eightSecondRuleEnabled,
+                    accessibilityLabel: "8 second rule",
+                    accessibilityHint: eightSecondRuleEnabled
+                        ? "Double tap so only you end the writing."
+                        : "Double tap so eight seconds of stillness ends the writing.",
+                    explanation: AnkyLocalization.ui(
+                        eightSecondRuleEnabled
+                            ? "The stillness rule is on. Eight quiet seconds ends and saves the writing."
+                            : "The stillness rule is off. Only you decide when the writing ends."
+                    ),
+                    explanationAfterTap: AnkyLocalization.ui(
+                        eightSecondRuleEnabled
+                            ? "The stillness rule is off. Only you decide when the writing ends."
+                            : "The stillness rule is on. Eight quiet seconds ends and saves the writing."
+                    ),
+                    action: { onSetEightSecondRuleEnabled(!eightSecondRuleEnabled) }
+                )
+            }
+
+            Rectangle()
+                .fill(Color.ankyInk.opacity(0.10))
+                .frame(width: 0.5, height: 68)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    ForEach(Array(minutes.prefix(5)), id: \.self) { minutes in
+                        durationChip(
+                            label: "\(minutes)",
+                            isChosen: !durationIsInfinite && minutes == targetMinutes,
+                            accessibilityLabel: AnkyLocalization.ui("minute count format", minutes),
+                            explanation: AnkyLocalization.ui(
+                                "Duration option explanation format",
+                                minutes
+                            ),
+                            action: { onChooseTarget(minutes) }
+                        )
+                    }
+                }
+
+                HStack(spacing: 4) {
+                    ForEach(Array(minutes.dropFirst(5)), id: \.self) { minutes in
+                        durationChip(
+                            label: "\(minutes)",
+                            isChosen: !durationIsInfinite && minutes == targetMinutes,
+                            accessibilityLabel: AnkyLocalization.ui("minute count format", minutes),
+                            explanation: AnkyLocalization.ui(
+                                "Duration option explanation format",
+                                minutes
+                            ),
+                            action: { onChooseTarget(minutes) }
+                        )
+                    }
+                    durationChip(
+                        label: "∞",
+                        isChosen: durationIsInfinite,
+                        accessibilityLabel: AnkyLocalization.ui("No time limit"),
+                        explanation: AnkyLocalization.ui(
+                            "No time limit. The clock counts up, and only you end the writing."
+                        ),
+                        action: onChooseInfinite
+                    )
+                }
+            }
+        }
+    }
+
+    /// Their quiet filled state is enough to say "on" without adding labels or
+    /// a second settings panel to the writing page.
+    private func ruleToggle(
+        icon: String,
+        isOn: Bool,
+        accessibilityLabel: String,
+        accessibilityHint: String,
+        explanation: String,
+        explanationAfterTap: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(isOn ? Color.ankyInk : Color.ankyInkSoft.opacity(0.38))
+            .frame(width: 40, height: 40)
+            .background {
+                if isOn {
+                    Circle().fill(Color.ankyPaperDeep.opacity(0.8))
+                }
+            }
+            .contentShape(Circle())
+            .gesture(optionGesture(
+                action: action,
+                explanation: explanation,
+                explanationAfterTap: explanationAfterTap
+            ))
+            .accessibilityElement()
+            .accessibilityLabel(AnkyLocalization.ui(accessibilityLabel))
+            .accessibilityValue(AnkyLocalization.ui(isOn ? "On" : "Off"))
+            .accessibilityHint(AnkyLocalization.ui(accessibilityHint))
+            .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+            .accessibilityAction(named: Text(AnkyLocalization.ui(accessibilityLabel))) {
+                action()
+            }
+    }
+
+    private func durationChip(
+        label: String,
+        isChosen: Bool,
+        accessibilityLabel: String,
+        explanation: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        let choose = {
+            action()
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showsTargetPicker = false
+                optionExplanation = nil
+            }
+        }
+
+        return Text(label)
+            .font(.system(size: 18, design: .serif))
+            .monospacedDigit()
+            .foregroundStyle(isChosen ? Color.ankyInk : Color.ankyInkSoft.opacity(0.5))
+            .frame(width: 40, height: 40)
+            .background {
+                if isChosen {
+                    Circle().fill(Color.ankyPaperDeep.opacity(0.8))
+                }
+            }
+            .contentShape(Circle())
+            .gesture(optionGesture(action: choose, explanation: explanation))
+            .accessibilityElement()
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityAddTraits(isChosen ? [.isButton, .isSelected] : .isButton)
+            .accessibilityAction(named: Text(accessibilityLabel)) {
+                choose()
+            }
+    }
+
+    /// Tap chooses; a deliberate hold explains. Making the gestures mutually
+    /// exclusive prevents a help hold from also toggling or dismissing.
+    private func optionGesture(
+        action: @escaping () -> Void,
+        explanation: String,
+        explanationAfterTap: String? = nil
+    ) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.55, maximumDistance: 18)
+            .exclusively(before: TapGesture())
+            .onEnded { result in
+                switch result {
+                case .first(true):
+                    AnkyHaptics.selection()
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        optionExplanation = explanation
+                    }
+                case .second:
+                    action()
+                    if optionExplanation != nil, let explanationAfterTap {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            optionExplanation = explanationAfterTap
+                        }
+                    }
+                default:
+                    break
+                }
+            }
+    }
+
+    /// The chrome recedes as the sealing silence gathers.
     private var chromeOpacity: Double {
         max(0.28, 1 - min(1, max(0, silenceProgress)) * 0.72)
     }
@@ -800,23 +1121,18 @@ private struct WritingTopChrome: View {
     let showsBackButton: Bool
     let onBack: () -> Void
     let onFocus: () -> Void
-    let onOpenSettings: () -> Void
     let onTogglePillDim: () -> Void
 
     var body: some View {
         VStack(spacing: 18) {
             ZStack {
                 // Anky's eyes hold the center — she watches over the page.
-                // A tap opens the quiet dial for session length and stillness.
                 Image("anky-flow-writing-eyes")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 80)
                     .opacity(chromeOpacity)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onOpenSettings)
-                    .accessibilityLabel(AnkyLocalization.ui("Writing settings"))
-                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHidden(true)
 
                 HStack(alignment: .top) {
                     Group {
@@ -855,11 +1171,8 @@ private struct WritingTopChrome: View {
                             .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
                     }
                     .opacity(chromeOpacity)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onOpenSettings)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(AnkyLocalization.ui("Writing time %@", "\(timeText) \(timeCaption)"))
-                    .accessibilityAddTraits(.isButton)
                 }
             }
 
@@ -967,6 +1280,9 @@ private struct WritingStatePill: View {
 /// each glyph warms toward madder — pigment drying into the page.
 enum RejectedWritingInput {
     case backspace
+    /// The writer pressed backspace while backspace is switched off — the one
+    /// refusal the machine stops and asks about (spec §2).
+    case backspaceDisabled
     case enter
     case paste
 }
@@ -975,6 +1291,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     let glyphs: [WritingGlyph]
     let focusID: UUID
     let shouldFocus: Bool
+    /// The writing has ended: the same view, now unwritable and free to
+    /// scroll. Its words never move to another view (spec §13).
+    let isReadOnly: Bool
     /// False on the device's blank page: the pan then belongs to the put-down
     /// flick that recedes the device into the Anchor (device split,
     /// 2026-07-22). Flips true with the first keystroke.
@@ -1002,11 +1321,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.tintColor = UIColor(Color.ankyUmber)
         textView.keyboardAppearance = .light
         textView.textAlignment = .left
-        textView.isEditable = true
+        textView.isEditable = !isReadOnly
         textView.isUserInteractionEnabled = true
-        // Keep the keyboard dock physically attached while the keyboard rides
-        // the finger down and away during an interactive dismissal.
-        textView.keyboardDismissMode = .interactiveWithAccessory
+        textView.keyboardDismissMode = .interactive
         textView.autocorrectionType = preferences.autocorrectEnabled ? .yes : .no
         textView.autocapitalizationType = .sentences
         // Spell-check stays off regardless of autocorrect: the red
@@ -1020,7 +1337,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 24, left: 24, bottom: bottomInset, right: rightInset)
         textView.contentInset = .zero
         textView.verticalScrollIndicatorInsets.bottom = bottomInset
-        textView.isScrollEnabled = innerScrollEnabled
+        textView.isScrollEnabled = innerScrollEnabled || isReadOnly
         // Interactive dismissal needs the pan to engage even while the page
         // is shorter than the screen — the bounce is what carries the finger
         // over the keyboard.
@@ -1028,7 +1345,6 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.showsVerticalScrollIndicator = false
         textView.measurementLineSpacing = preferences.textSize.pointSize * 0.42
         textView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
-        textView.inputAccessoryView = GeshtuKeyboardAccessoryView()
 
         if shouldFocus {
             DispatchQueue.main.async {
@@ -1040,9 +1356,16 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.isScrollEnabled != innerScrollEnabled {
-            uiView.isScrollEnabled = innerScrollEnabled
+        // A finished writing is always free to scroll — that is the only
+        // interaction it still has.
+        let scrollEnabled = innerScrollEnabled || isReadOnly
+        if uiView.isScrollEnabled != scrollEnabled {
+            uiView.isScrollEnabled = scrollEnabled
         }
+        if uiView.isEditable == isReadOnly {
+            uiView.isEditable = !isReadOnly
+        }
+        context.coordinator.isReadOnly = isReadOnly
         let currentGlyphs = glyphs
         let currentPreferences = preferences
         let currentColorScheme = colorScheme
@@ -1152,7 +1475,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
             }
         }
 
-        if !isComposing {
+        // A finished writing keeps whatever the writer is looking at: no
+        // forced caret, no jump to either end (spec §13).
+        if !isComposing, !isReadOnly {
             context.coordinator.forceSelectionToEnd(of: uiView)
             if let anchoredTextView = uiView as? BottomRightAnchoredTextView {
                 anchoredTextView.scrollToEndRespectingAnchor()
@@ -1269,6 +1594,9 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         /// the system keyboard applies natively (typing, autocorrect).
         var lastSyncedText = ""
         var acceptsInput = false
+        /// The writing is finished: the page belongs to the reader now — the
+        /// anchoring, the forced caret and the refusals all stand down.
+        var isReadOnly = false
         var isApplyingProgrammaticUpdate = false
         /// The writer pushed the keyboard away (the interactive drag past
         /// it). While true, the update pass must not summon it back — only a
@@ -1307,7 +1635,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         /// and once it reaches the keyboard the system slides it away,
         /// unveiling the reserved footprint beneath.
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            guard scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating,
+            // A finished writing scrolls like any document — the anchoring
+            // that pins a live page would make it immovable.
+            guard !isReadOnly,
+                  scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating,
                   let textView = scrollView as? BottomRightAnchoredTextView else { return }
             textView.pinToAnchoredOffset()
             // A decisive downward flick doesn't wait for the finger to reach
@@ -1351,7 +1682,12 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
             }
 
             guard !replacement.isEmpty else {
-                guard backspaceAllowed, let deletion = endDeletion(currentText: currentText, range: range) else {
+                guard backspaceAllowed else {
+                    // Not swallowed: the machine stops and asks (spec §2).
+                    onRejectedInput(.backspaceDisabled)
+                    return false
+                }
+                guard let deletion = endDeletion(currentText: currentText, range: range) else {
                     onRejectedInput(.backspace)
                     return false
                 }
@@ -1422,7 +1758,12 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         /// The caret lives at the end of the writing, always. Taps into the
         /// middle of the text do nothing — there is no going back.
         func textViewDidChangeSelection(_ textView: UITextView) {
-            guard !isApplyingProgrammaticUpdate, !isForcingSelectionToEnd, textView.markedTextRange == nil else {
+            // Once finished, the writer may select any range they like — that
+            // is how a passage is copied out of the page.
+            guard !isReadOnly,
+                  !isApplyingProgrammaticUpdate,
+                  !isForcingSelectionToEnd,
+                  textView.markedTextRange == nil else {
                 return
             }
             forceSelectionToEnd(of: textView)

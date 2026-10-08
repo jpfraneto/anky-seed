@@ -23,12 +23,11 @@ Kein Anky Pro benötigen:
 - Neue Schreibsitzungen beginnen und abschließen
 - Lokale Texte erstellen, fortsetzen, speichern, durchsuchen, kopieren, exportieren und löschen
 - Bereits gespeicherte Reflexionen lesen
-- Lokaler Schreibimpuls ohne Server bei inaktivem Pro
+- KI-Schreibimpulse mit lokaler Alternative, wenn der Server nicht verfügbar ist
 - Bildschirmzeit-Sperre, App-Auswahl und Schutz ein-/ausschalten
 - Drei tägliche Schnellpässe nach aktueller Regel
 - Notfallzugang und -entsperrung
-- Statische Gemälde bis Level 8
-- Bereits gelieferte personalisierte Gemälde
+- Gemäldefortschritt und bereits gelieferte personalisierte Gemälde
 - Archiv und Verlauf
 - Einstellungen, lokale/iCloud-Sicherung, Import/Export, Kontolöschung, Support und Rechtstexte
 
@@ -36,24 +35,16 @@ Sie können von iOS-Berechtigungen, Gerät, Speicher und Apple-Diensten abhänge
 
 ## 4. Anky-Pro-Funktionen
 
-Nur diese Bereiche erfordern aktives `pro` in Kleinbuchstaben:
+Anky Pro hat einen einzigen Vorteil: hochwertigere neue Reflexionen mit Ankys stärkstem verfügbaren unterstützten Modell. Auch ohne Pro können Reflexionen über den kostenlosen Inferenzkanal angefordert werden. Schreiben und alle Funktionen außerhalb von Reflexionen bleiben ohne Pro verfügbar.
 
-1. Neue Server-KI-Reflexionen für Texte ohne gespeicherte Reflexion, vorbehaltlich der Dienstlimits.
-2. Server-KI-Schreibimpulse statt der lokalen Variante, vorbehaltlich der Limits.
-3. Voller Zugriff auf die 96-Tage-Reise.
-4. Automatische Entsperrung für den restlichen Tag nach dem festgelegten Tagesziel.
-5. Adaptive Tageszielvorschläge.
-6. Fortschritt nach Level 8 mit personalisierten Gemälden und späteren Zeremonien, abhängig von Fortschritt, Schreiben sowie Sicherheits-, Kapazitäts- und Generierungslimits.
-
-Das Jahresabo schaltet die oben genannten Pro-Funktionen frei. Der Zugriff hängt von der verifizierten `pro`-Berechtigung ab. Nach Ablauf bleiben vorhandene lokale Inhalte; nur neue Pro-Aktionen werden eingeschränkt.
-
-Generierte Dienste haben angemessene Dienst-, Sicherheits-, Kapazitäts- und Missbrauchsschutzlimits. Zahl, Modell, Stil, Ergebnis oder Dauer werden nicht garantiert.
+Reflexionen unterliegen angemessenen Dienst-, Sicherheits-, Kapazitäts- und Missbrauchsschutzlimits. Ein Abo garantiert kein bestimmtes Modell, keinen Stil, kein Ergebnis und keine Dauer.
 
 ## 5. Automatisch verlängerbare Abos
 
-Anky bietet im App Store ein optionales, automatisch verlängerbares Jahresabo an:
+Anky bietet im App Store optionale, automatisch verlängerbare Jahres- und Monatsabos an. Beide schalten dieselben Anky-Pro-Funktionen frei:
 
-- **Jährlich:** ein Jahr. Apple kann nur berechtigten Personen einen dreitägigen Test anzeigen.
+- **Jährlich:** ein Jahr. Es wird kein Einführungs-Testzeitraum angeboten.
+- **Monatlich:** ein Monat. Es wird kein Einführungs-Testzeitraum angeboten.
 
 Maßgeblich sind lokalisierter Preis, Berechtigung, Belastungsdatum und Bedingungen, die Apple vor Bestätigung zeigt. Die Apple-ID wird belastet. Das Abo verlängert sich automatisch, sofern es nicht vor Verlängerung in Apples Einstellungen gekündigt wird. Apple bearbeitet Abrechnung, Kündigung, Verlauf und Erstattung. App-Löschung kündigt nicht.
 
@@ -67,11 +58,11 @@ Generierte Inhalte können falsch, unvollständig, wiederholt, verspätet, nicht
 
 Bei einer generierten Funktion wird Inhalt laut Datenschutzrichtlinie übertragen. Sende nichts ohne Berechtigung oder was die genannten Anbieter nicht verarbeiten sollen.
 
-Personalisierte Gemälde nach Level 8 erfordern ausreichenden Fortschritt und Text, verifiziertes `pro`, Verfügbarkeit, Prüfungen und Limits. Statische Level 1–8 und bereits gelieferte Gemälde bleiben ohne Pro verfügbar.
+Personalisierte Gemälde nach Level 8 erfordern ausreichenden Fortschritt und Text, Verfügbarkeit, Prüfungen und Generierungslimits.
 
 ## 7. Bildschirmzeit und Entsperrungen
 
-Sperre, App-Auswahl, Ein-/Ausschalten, drei Pässe und Notfallzugang sind kostenlos. Die automatische Tagesentsperrung beim Ziel ist Pro. Für kostenlose Nutzer misst das Ziel Fortschritt und verspricht keine automatische Entsperrung.
+Sperre, App-Auswahl, Ein-/Ausschalten, drei Pässe, Notfallzugang und die automatische Tagesentsperrung beim Ziel sind ohne Pro verfügbar.
 
 Apple kontrolliert Frameworks und Berechtigungen. Sperren können wegen iOS, Autorisierung, Gerät, Zeitänderungen oder Systemlimits verzögert werden oder ausfallen. Behalte einen anderen Zugang zu kritischen Diensten.
 

@@ -1,0 +1,5 @@
+Cosas pequeñas, sobre todo.
+
+Esta versión se trata de quitarse del medio: se llega antes a la primera tecla, el archivo se desplaza con más calma, y se corrigieron detalles de cómo se guardan, se reabren y se releen las sesiones.
+
+Ningún botón nuevo. Solo menos motivos para dejar de escribir.

@@ -138,15 +138,35 @@ struct RevealView: View {
                                     .trackReflectionVisibility()
                                     .transition(.opacity)
                             } else if let reflection = viewModel.reflection {
-                                ReflectionMarkdownPanel(
-                                    title: reflection.title,
-                                    markdown: reflection.reflection,
-                                    onShareParagraph: { shareParagraphCard($0, voice: .anky) },
-                                    shareVoice: .anky,
-                                    accent: viewModel.ctaAccentColor,
-                                    showsStandaloneTitle: viewModel.isComplete,
-                                    onSelectionChange: { selectedReflectionText = $0 }
-                                )
+                                VStack(alignment: .leading, spacing: 14) {
+                                    ReflectionMarkdownPanel(
+                                        title: reflection.title,
+                                        markdown: reflection.reflection,
+                                        onShareParagraph: { shareParagraphCard($0, voice: .anky) },
+                                        shareVoice: .anky,
+                                        accent: viewModel.ctaAccentColor,
+                                        showsStandaloneTitle: viewModel.isComplete,
+                                        onSelectionChange: { selectedReflectionText = $0 }
+                                    )
+
+                                    if let receipt = reflection.inference {
+                                        InferenceReceiptView(receipt: receipt)
+                                        if receipt.access == .free {
+                                            Button {
+                                                AnkyHaptics.light()
+                                                isShowingPaywallSheet = true
+                                            } label: {
+                                                Text(AnkyLocalization.ui("Unlock better reflections with Anky Pro"))
+                                                    .font(.system(size: 14, weight: .semibold, design: .serif))
+                                                    .foregroundStyle(Color.ankyViolet)
+                                                    .padding(.horizontal, 14)
+                                                    .padding(.vertical, 9)
+                                                    .background(Color.ankyPaper.opacity(0.72), in: Capsule())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
                                 .trackReflectionVisibility()
@@ -160,23 +180,6 @@ struct RevealView: View {
                                     isStreaming: true
                                 )
                                 .opacity(0.92)
-                                .padding(.top, 36)
-                                .id(RevealScrollTarget.reflection)
-                                .trackReflectionVisibility()
-                                .transition(.opacity)
-                            } else if !entitlements.isEntitledForGating {
-                                // Phase-3 §3: where the reflection would
-                                // bloom, the veil — the same card, misted,
-                                // one tap from the paywall.
-                                VeiledFeature(
-                                    surface: "reflection",
-                                    message: AnkyCopyRegistry.veilReflection,
-                                    onTap: { isShowingPaywallSheet = true }
-                                ) {
-                                    ReflectionGhost()
-                                }
-                                .frame(height: 240)
-                                .frame(maxWidth: .infinity)
                                 .padding(.top, 36)
                                 .id(RevealScrollTarget.reflection)
                                 .trackReflectionVisibility()
@@ -401,8 +404,7 @@ struct RevealView: View {
             ankyCompanion.hideBubble()
             isNavigationBarHidden = false
             tabBarCTAController.setScrollHidden(false)
-            if startsReflectionOnAppear, !didAutoStartReflection, viewModel.reflection == nil,
-               entitlements.isEntitledForGating {
+            if startsReflectionOnAppear, !didAutoStartReflection, viewModel.reflection == nil {
                 didAutoStartReflection = true
                 beginInlineReflection()
             }
@@ -453,12 +455,6 @@ struct RevealView: View {
     }
 
     private func beginInlineReflection() {
-        // Phase-3: free sessions never ask the mirror — the veil card is
-        // already standing where the reflection would appear.
-        guard entitlements.isEntitledForGating else {
-            requestReflectionScroll()
-            return
-        }
         inlineReflectionActive = true
         didScrollToStreamingStart = false
         requestReflectionScroll()
@@ -621,9 +617,6 @@ struct RevealView: View {
         if viewModel.reflection != nil {
             return AnkyLocalization.ui("READ REFLECTION")
         }
-        if !entitlements.isEntitledForGating {
-            return AnkyLocalization.ui("SEE WHAT ANKY SAW")
-        }
         if viewModel.isComplete {
             return AnkyLocalization.ui("REFLECT THIS ANKY")
         }
@@ -677,10 +670,6 @@ struct RevealView: View {
         if viewModel.reflection != nil {
             AnkyHaptics.light()
             requestReflectionScroll()
-        } else if !entitlements.isEntitledForGating {
-            AnkyHaptics.light()
-            AnkyFunnel.report(AnkyFunnel.veilTapped, origin: "reflection")
-            isShowingPaywallSheet = true
         } else {
             AnkyHaptics.light()
             beginInlineReflection()

@@ -1,0 +1,536 @@
+{
+  "version": 1,
+  "scenes": [
+    "ritual",
+    "simplicity",
+    "reflection",
+    "archive",
+    "recording"
+  ],
+  "locales": {
+    "en": {
+      "appLocale": "en",
+      "appStoreLocale": "en-US",
+      "languageName": "English",
+      "simulatorLanguage": "en",
+      "simulatorLocale": "en_US",
+      "keyboards": [
+        "en_US@sw=QWERTY;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "Just write for\neight minutes.",
+        "simplicity": "Nothing else.",
+        "reflection": "See what's\nunderneath.",
+        "archive": "Your archive,\norganized.",
+        "recording": "Record yourself\nreading."
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "I keep thinking I need a better idea before I am allowed to start. But the page never asks for that. It only asks me to keep moving, and the moving is what makes the idea arrive."
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "Nothing here to arrange. Only this line, and then the next one."
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "This morning the light came in sideways and I sat down before I could talk myself out of it. The whole apartment had that held-breath quality it gets before anyone needs anything from me. I have been telling myself I will start the real work once things settle down, and I am beginning to understand that things do not settle down, that this is what settled looks like: a small window, a loud street, and me deciding anyway. I want to make something honest. Not impressive. Honest. I keep confusing those two and losing whole weeks to the difference. So begin here, with the light doing that thing on the floor, with the coffee going cold because I would rather be writing than drinking it.",
+        "reflection": "## What you kept circling\n\nYou sat down to write about work and spent the entire session describing a room. The light, the quiet, the cold coffee. That is not avoidance. That is you telling yourself where the work actually lives.\n\n## The difference you named\n\nHonest, not impressive. You said you keep confusing them and losing weeks to the gap. Notice that you already know which one you want. The confusion was never about the definitions. It is about who you imagine is watching.\n\nYou did not wait for the room to get quieter. You began while it was exactly this loud."
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "I walked to the end of the street and back for no reason at all. Nothing was solved, but something loosened.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "Today I noticed I have been holding my shoulders somewhere near my ears since Tuesday. Putting them down took one breath.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "The thing I am most afraid to make is the thing I keep describing to strangers. That has to mean something.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "My mother called and we talked about nothing for forty minutes. It was the best part of the week.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "Nothing to say today, and I said it anyway. Some days the practice is only showing up near the blank page.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "I finished the small thing instead of planning the large one. The small thing is real and the large one is still weather.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "Rain all afternoon and I let myself do nothing about it. Rest is not the reward for finishing.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "I said the true thing out loud in the meeting and the room did not end. I keep having to relearn this.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "Counted the things that did not go wrong. It is a longer list than fear lets me believe on the bad mornings.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "He fell asleep against my arm on the bus and I did not move for eleven stops. Some things are worth a dead arm.",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "Begin again. I am always beginning again. Maybe that is the whole thing, the beginning, over and over, until it is a life.",
+          "reflected": true
+        }
+      ]
+    },
+    "es": {
+      "appLocale": "es",
+      "appStoreLocale": "es-MX",
+      "languageName": "Español",
+      "simulatorLanguage": "es",
+      "simulatorLocale": "es_MX",
+      "keyboards": [
+        "es_MX@sw=QWERTY-Spanish;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "Escribe ocho\nminutos.",
+        "simplicity": "Nada más.",
+        "reflection": "Mira lo que\nhay debajo.",
+        "archive": "Tu archivo,\nen orden.",
+        "recording": "Grábate\nleyendo."
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "Siempre creo que necesito una idea mejor antes de tener permiso de empezar. Pero la página nunca pide eso. Solo pide que siga moviéndome, y el movimiento es lo que hace llegar la idea."
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "Aquí no hay nada que acomodar. Solo esta línea, y después la siguiente."
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "Esta mañana la luz entró de lado y me senté antes de poder convencerme de lo contrario. La casa todavía tenía ese aire de respiración contenida que tiene antes de que alguien necesite algo de mí. Llevo meses diciéndome que voy a empezar el trabajo de verdad cuando las cosas se calmen, y estoy empezando a entender que las cosas no se calman, que esto es lo que significa calma: una ventana chica, una calle ruidosa, y yo decidiendo igual. Quiero hacer algo honesto. No impresionante. Honesto. Confundo esas dos palabras todo el tiempo y pierdo semanas enteras en la diferencia. Así que empiezo acá, con la luz haciendo eso en el piso, con el café enfriándose porque prefiero escribir a tomármelo.",
+        "reflection": "## Alrededor de qué estuviste dando vueltas\n\nTe sentaste a escribir sobre tu trabajo y pasaste la sesión entera describiendo una pieza. La luz, el silencio, el café frío. Eso no es evasión. Es tu manera de decirte dónde vive el trabajo de verdad.\n\n## La diferencia que nombraste\n\nHonesto, no impresionante. Dijiste que confundes las dos cosas y que pierdes semanas en esa distancia. Fíjate en que ya sabes cuál quieres. La confusión nunca fue de definiciones. Es sobre quién imaginas que te está mirando.\n\nNo esperaste a que la casa quedara más callada. Empezaste justo con este ruido."
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "Caminé hasta el final de la cuadra y volví sin ningún motivo. No resolví nada, pero algo se soltó.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "Hoy me di cuenta de que traigo los hombros a la altura de las orejas desde el martes. Bajarlos costó una respiración.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "Lo que más miedo me da hacer es exactamente lo que le describo a cualquier desconocido. Algo tiene que querer decir eso.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "Mi mamá llamó y hablamos de nada durante cuarenta minutos. Fue lo mejor de la semana.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "Hoy no tenía nada que decir y lo dije igual. Hay días en que la práctica es solo sentarse cerca de la página en blanco.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "Terminé la cosa chica en vez de planear la grande. La chica existe y la grande todavía es clima.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "Llovió toda la tarde y me permití no hacer nada al respecto. El descanso no es el premio por terminar.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "Dije la cosa verdadera en voz alta en la reunión y la sala no se acabó. Tengo que volver a aprender esto seguido.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "Conté las cosas que no salieron mal. Es una lista más larga de lo que el miedo me deja creer en las mañanas difíciles.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "Se quedó dormido apoyado en mi brazo en la micro y no me moví por once paraderos. Hay cosas que valen un brazo dormido.",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "Empezar de nuevo. Siempre estoy empezando de nuevo. Quizás eso es todo, el comienzo, una y otra vez, hasta que es una vida.",
+          "reflected": true
+        }
+      ]
+    },
+    "fr": {
+      "appLocale": "fr",
+      "appStoreLocale": "fr-FR",
+      "languageName": "Français",
+      "simulatorLanguage": "fr",
+      "simulatorLocale": "fr_FR",
+      "keyboards": [
+        "fr_FR@sw=AZERTY;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "Écris pendant\nhuit minutes.",
+        "simplicity": "Rien d'autre.",
+        "reflection": "Vois ce qui est\ndessous.",
+        "archive": "Tes écrits,\nrangés.",
+        "recording": "Enregistre-toi\nen lisant."
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "Je crois toujours qu'il me faut une meilleure idée avant d'avoir le droit de commencer. Mais la page ne demande jamais ça. Elle demande seulement que je continue, et c'est le mouvement qui fait venir l'idée."
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "Rien à ranger ici. Seulement cette ligne, puis la suivante."
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "Ce matin la lumière est entrée de biais et je me suis assis avant d'avoir le temps de m'en dissuader. L'appartement avait encore cet air de souffle retenu qu'il a avant que quelqu'un ait besoin de moi. Je me répète depuis des mois que je commencerai le vrai travail quand les choses se seront calmées, et je commence à comprendre que les choses ne se calment pas, que c'est exactement à ça que ressemble le calme : une petite fenêtre, une rue bruyante, et moi qui décide quand même. Je veux faire quelque chose d'honnête. Pas d'impressionnant. D'honnête. Je confonds ces deux mots sans arrêt et je perds des semaines entières dans l'écart. Alors je commence ici, avec la lumière qui fait ça sur le plancher, avec le café qui refroidit parce que je préfère écrire que le boire.",
+        "reflection": "## Ce autour de quoi tu tournais\n\nTu t'es assis pour écrire sur ton travail et tu as passé toute la séance à décrire une pièce. La lumière, le silence, le café froid. Ce n'est pas de l'évitement. C'est ta façon de te dire où le travail habite vraiment.\n\n## La différence que tu as nommée\n\nHonnête, pas impressionnant. Tu dis que tu confonds les deux et que tu perds des semaines dans cet écart. Remarque que tu sais déjà lequel tu veux. La confusion n'a jamais porté sur les définitions. Elle porte sur qui tu imagines en train de regarder.\n\nTu n'as pas attendu que la pièce devienne plus silencieuse. Tu as commencé avec exactement ce bruit."
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "J'ai marché jusqu'au bout de la rue et je suis revenu sans raison. Rien n'a été réglé, mais quelque chose s'est desserré.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "Aujourd'hui j'ai remarqué que je tiens mes épaules près des oreilles depuis mardi. Les redescendre a pris une respiration.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "Ce que j'ai le plus peur de faire est exactement ce que je décris à des inconnus. Ça doit vouloir dire quelque chose.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "Ma mère a appelé et on a parlé de rien pendant quarante minutes. C'était le meilleur moment de la semaine.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "Rien à dire aujourd'hui, et je l'ai dit quand même. Certains jours la pratique consiste seulement à s'asseoir près de la page.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "J'ai fini la petite chose au lieu de planifier la grande. La petite existe et la grande est encore de la météo.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "Il a plu tout l'après-midi et je me suis autorisé à ne rien en faire. Le repos n'est pas la récompense d'avoir fini.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "J'ai dit la chose vraie à voix haute en réunion et la salle ne s'est pas effondrée. Je dois réapprendre ça souvent.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "J'ai compté ce qui ne s'est pas mal passé. La liste est plus longue que ce que la peur me laisse croire les mauvais matins.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "Il s'est endormi contre mon bras dans le bus et je n'ai pas bougé pendant onze arrêts. Certaines choses valent un bras mort.",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "Recommencer. Je suis toujours en train de recommencer. C'est peut-être ça, le commencement, encore et encore, jusqu'à faire une vie.",
+          "reflected": true
+        }
+      ]
+    },
+    "de": {
+      "appLocale": "de",
+      "appStoreLocale": "de-DE",
+      "languageName": "Deutsch",
+      "simulatorLanguage": "de",
+      "simulatorLocale": "de_DE",
+      "keyboards": [
+        "de_DE@sw=QWERTZ-German;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "Schreib einfach\nacht Minuten.",
+        "simplicity": "Sonst nichts.",
+        "reflection": "Sieh, was\ndarunter liegt.",
+        "archive": "Dein Archiv,\ngeordnet.",
+        "recording": "Nimm dich beim\nLesen auf."
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "Ich denke immer, ich brauche eine bessere Idee, bevor ich anfangen darf. Aber die Seite verlangt das nie. Sie verlangt nur, dass ich weitergehe, und das Weitergehen ist es, was die Idee kommen lässt."
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "Hier gibt es nichts zu ordnen. Nur diese Zeile, und dann die nächste."
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "Heute Morgen fiel das Licht von der Seite herein und ich setzte mich hin, bevor ich es mir ausreden konnte. Die Wohnung hatte noch diese angehaltene Stille, die sie hat, bevor jemand etwas von mir braucht. Ich sage mir seit Monaten, dass ich mit der eigentlichen Arbeit anfange, sobald sich die Dinge beruhigen, und langsam verstehe ich, dass die Dinge sich nicht beruhigen, dass genau das Ruhe ist: ein kleines Fenster, eine laute Straße, und ich, die sich trotzdem entscheidet. Ich will etwas Ehrliches machen. Nichts Beeindruckendes. Etwas Ehrliches. Ich verwechsle diese beiden Wörter ständig und verliere ganze Wochen in dem Abstand dazwischen. Also fange ich hier an, mit dem Licht, das das auf dem Boden macht, mit dem Kaffee, der kalt wird, weil ich lieber schreibe als trinke.",
+        "reflection": "## Worum du gekreist bist\n\nDu hast dich hingesetzt, um über deine Arbeit zu schreiben, und die ganze Sitzung damit verbracht, einen Raum zu beschreiben. Das Licht, die Stille, den kalten Kaffee. Das ist kein Ausweichen. Das ist deine Art, dir zu sagen, wo die Arbeit wirklich wohnt.\n\n## Der Unterschied, den du benannt hast\n\nEhrlich, nicht beeindruckend. Du sagst, du verwechselst die beiden und verlierst Wochen in diesem Abstand. Achte darauf, dass du längst weißt, was du willst. Die Verwirrung ging nie um Definitionen. Sie geht darum, wen du dir beim Zuschauen vorstellst.\n\nDu hast nicht gewartet, bis der Raum leiser wird. Du hast angefangen, während er genau so laut war."
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "Ich bin ohne Grund bis ans Ende der Straße und wieder zurück gelaufen. Nichts wurde gelöst, aber etwas hat sich gelockert.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "Heute ist mir aufgefallen, dass ich die Schultern seit Dienstag auf Ohrenhöhe trage. Sie fallen zu lassen kostete einen Atemzug.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "Wovor ich am meisten Angst habe, ist genau das, was ich Fremden beschreibe. Das muss etwas bedeuten.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "Meine Mutter rief an und wir sprachen vierzig Minuten über nichts. Es war das Beste an dieser Woche.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "Heute nichts zu sagen, und ich habe es trotzdem gesagt. An manchen Tagen ist die Übung nur, sich neben die leere Seite zu setzen.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "Ich habe die kleine Sache fertig gemacht, statt die große zu planen. Die kleine ist echt, die große ist noch Wetter.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "Den ganzen Nachmittag Regen, und ich habe mir erlaubt, nichts dagegen zu tun. Ruhe ist keine Belohnung fürs Fertigwerden.",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "Ich habe das Wahre in der Besprechung laut gesagt und der Raum ist nicht untergegangen. Das muss ich immer wieder neu lernen.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "Ich habe gezählt, was nicht schiefgegangen ist. Die Liste ist länger, als die Angst mich an schlechten Morgen glauben lässt.",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "Er schlief im Bus an meinem Arm ein und ich habe mich elf Haltestellen lang nicht bewegt. Manches ist einen tauben Arm wert.",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "Neu anfangen. Ich fange immer wieder neu an. Vielleicht ist das alles, der Anfang, wieder und wieder, bis er ein Leben ist.",
+          "reflected": true
+        }
+      ]
+    },
+    "hi": {
+      "appLocale": "hi",
+      "appStoreLocale": "hi",
+      "languageName": "हिन्दी",
+      "simulatorLanguage": "hi",
+      "simulatorLocale": "hi_IN",
+      "keyboards": [
+        "hi@sw=Devanagari;hw=Automatic",
+        "en_US@sw=QWERTY;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "बस आठ मिनट\nलिखिए।",
+        "simplicity": "और कुछ नहीं।",
+        "reflection": "देखिए भीतर\nक्या है।",
+        "archive": "आपका संग्रह,\nसहेजा हुआ।",
+        "recording": "खुद को पढ़ते\nहुए रिकॉर्ड करें।"
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "मुझे हमेशा लगता है कि शुरू करने से पहले कोई बेहतर विचार चाहिए। पर पन्ना यह कभी नहीं माँगता। वह सिर्फ़ इतना माँगता है कि मैं चलता रहूँ, और चलते रहना ही विचार को ले आता है।"
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "यहाँ कुछ भी सजाने को नहीं है। बस यह पंक्ति, और फिर अगली।"
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "आज सुबह रोशनी तिरछी आई और मैं खुद को समझाने से पहले ही बैठ गया। घर में अब भी वही ठहरी हुई साँस थी जो किसी के मुझसे कुछ माँगने से पहले होती है। महीनों से खुद से कह रहा हूँ कि असली काम तब शुरू करूँगा जब चीज़ें थोड़ी शांत हो जाएँगी, और अब समझ आ रहा है कि चीज़ें शांत नहीं होतीं, कि शांति दिखती ही ऐसी है — एक छोटी खिड़की, एक शोर भरी सड़क, और मैं फिर भी तय करता हुआ। मुझे कुछ ईमानदार बनाना है। प्रभावशाली नहीं। ईमानदार। मैं इन दोनों को बार-बार गड्डमड्ड कर देता हूँ और उस फ़ासले में पूरे हफ़्ते गँवा देता हूँ। तो शुरुआत यहीं से, फ़र्श पर पड़ती इसी रोशनी के साथ, ठंडी होती कॉफ़ी के साथ, क्योंकि पीने से ज़्यादा मुझे लिखना है।",
+        "reflection": "## तुम किसके चारों ओर घूमते रहे\n\nतुम अपने काम के बारे में लिखने बैठे और पूरा समय एक कमरे का वर्णन करते रहे। रोशनी, चुप्पी, ठंडी कॉफ़ी। यह टालना नहीं है। यह तुम्हारा अपने आप को बताने का तरीका है कि काम असल में रहता कहाँ है।\n\n## जो फ़र्क़ तुमने नाम दिया\n\nईमानदार, प्रभावशाली नहीं। तुमने कहा कि तुम दोनों को गड्डमड्ड कर देते हो और उस फ़ासले में हफ़्ते गँवा देते हो। ध्यान दो कि तुम्हें पहले से पता है तुम्हें कौन सा चाहिए। उलझन कभी परिभाषाओं की नहीं थी। वह इस बात की है कि तुम किसे देखता हुआ मान लेते हो।\n\nतुमने कमरे के शांत होने का इंतज़ार नहीं किया। तुमने ठीक इसी शोर में शुरू किया।"
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "बिना किसी वजह गली के आख़िर तक गया और लौट आया। कुछ हल नहीं हुआ, पर भीतर कुछ ढीला ज़रूर पड़ा।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "आज ध्यान गया कि मंगलवार से मेरे कंधे कानों के पास टिके हैं। उन्हें नीचे लाने में एक साँस लगी।",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "जिसे बनाने से मैं सबसे ज़्यादा डरता हूँ, वही अजनबियों को बार-बार बताता हूँ। इसका कोई मतलब तो होगा।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "माँ का फ़ोन आया और हम चालीस मिनट तक बेमतलब बातें करते रहे। पूरे हफ़्ते की सबसे अच्छी चीज़ यही थी।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "आज कहने को कुछ नहीं था, फिर भी कहा। कुछ दिन अभ्यास बस इतना होता है कि खाली पन्ने के पास बैठ जाओ।",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "बड़ी योजना बनाने के बजाय छोटा काम पूरा किया। छोटा असली है, बड़ा अब भी सिर्फ़ मौसम है।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "दोपहर भर बारिश हुई और मैंने खुद को उसके बारे में कुछ न करने दिया। आराम काम ख़त्म करने का इनाम नहीं है।",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "मीटिंग में सच बात ऊँची आवाज़ में कह दी और कमरा ख़त्म नहीं हुआ। यह बात मुझे बार-बार दोबारा सीखनी पड़ती है।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "गिना कि क्या-क्या ग़लत नहीं हुआ। यह सूची उससे लंबी है जितना डर मुश्किल सुबहों में मानने देता है।",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "बस में वह मेरी बाँह से टिककर सो गया और मैं ग्यारह स्टॉप तक हिला नहीं। कुछ चीज़ें सुन्न बाँह के लायक़ होती हैं।",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "फिर से शुरू। मैं हमेशा फिर से शुरू ही कर रहा होता हूँ। शायद यही सब कुछ है — शुरुआत, बार-बार, जब तक वह एक ज़िंदगी न बन जाए।",
+          "reflected": true
+        }
+      ]
+    },
+    "zh-Hans": {
+      "appLocale": "zh-Hans",
+      "appStoreLocale": "zh-Hans",
+      "languageName": "简体中文",
+      "simulatorLanguage": "zh-Hans",
+      "simulatorLocale": "zh_CN",
+      "keyboards": [
+        "zh_CN@sw=Pinyin;hw=Automatic",
+        "en_US@sw=QWERTY;hw=Automatic"
+      ],
+      "headlines": {
+        "ritual": "只写八分钟。",
+        "simplicity": "别的都没有。",
+        "reflection": "看见底下\n那一层。",
+        "archive": "你的记录，\n都在这里。",
+        "recording": "录下自己\n朗读的声音。"
+      },
+      "ritual": {
+        "elapsedMs": 38000,
+        "text": "我总以为要先有个更好的想法，才有资格开始。可是这一页从来没这样要求过。它只要我继续往下写，而正是这种往下走，让想法自己走过来。"
+      },
+      "simplicity": {
+        "elapsedMs": 19000,
+        "text": "这里没有什么需要整理。只有这一行，然后是下一行。"
+      },
+      "feature": {
+        "date": "2026-08-18T12:00:00Z",
+        "text": "今天早上光是斜着照进来的，我在还没来得及说服自己之前就坐下了。屋子里还留着那种屏住呼吸的安静，是在有人需要我之前才有的安静。这几个月我一直告诉自己，等事情安定下来就开始真正的工作，而我慢慢明白，事情并不会安定下来，安定本来就长这样：一扇小窗，一条吵闹的街，还有照样做决定的我。我想做点诚实的东西。不是让人惊艳的，是诚实的。我总把这两个词弄混，然后在那点差距里丢掉整整几周。所以就从这里开始吧，从地板上那片光开始，从凉掉的咖啡开始，因为比起喝它，我更想写。",
+        "reflection": "## 你一直在绕的那件事\n\n你坐下来是要写工作，却用了整段时间描述一个房间。光、安静、凉掉的咖啡。这不是逃避。这是你在告诉自己，工作真正住在哪里。\n\n## 你说出口的那个区别\n\n诚实，而不是惊艳。你说你总把两者弄混，并在那段距离里丢掉几周。注意一下：你其实早就知道自己要哪一个。混淆从来不在定义上，而在于你想象中，是谁在看着。\n\n你没有等房间安静下来。你就是在这样的吵闹里开始的。"
+      },
+      "archive": [
+        {
+          "date": "2026-08-17T12:00:00Z",
+          "text": "没有任何理由地走到街尾又走回来。什么都没解决，但有些东西松开了。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-16T12:00:00Z",
+          "text": "今天才发现，从周二起我的肩膀一直耸到耳朵旁边。放下来只用了一口呼吸。",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-14T12:00:00Z",
+          "text": "我最害怕去做的那件事，恰恰是我逢人就讲的那件事。这总该说明点什么。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-13T12:00:00Z",
+          "text": "妈妈打来电话，我们聊了四十分钟没有内容的话。那是这一周里最好的部分。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-11T12:00:00Z",
+          "text": "今天没什么可说的，我还是说了。有些日子，练习只是坐到空白的页面旁边。",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-09T12:00:00Z",
+          "text": "我把小事做完了，而不是去筹划那件大事。小事是真的，大事还只是天气。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-07T12:00:00Z",
+          "text": "下了一下午的雨，我允许自己对此什么都不做。休息不是完成之后的奖励。",
+          "reflected": false
+        },
+        {
+          "date": "2026-08-05T12:00:00Z",
+          "text": "我在会上把真话说了出来，房间并没有塌。这件事我得反复重新学一次。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-03T12:00:00Z",
+          "text": "数了数没有出错的事。这份清单比恐惧在难熬的早晨允许我相信的要长。",
+          "reflected": true
+        },
+        {
+          "date": "2026-08-01T12:00:00Z",
+          "text": "他在公交车上靠着我的胳膊睡着了，我十一站没有动。有些事值得一条发麻的胳膊。",
+          "reflected": false
+        },
+        {
+          "date": "2026-07-29T12:00:00Z",
+          "text": "重新开始。我一直都在重新开始。也许这就是全部了——开始，一次又一次，直到它成为一生。",
+          "reflected": true
+        }
+      ]
+    }
+  }
+}

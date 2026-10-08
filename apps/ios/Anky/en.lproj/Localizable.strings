@@ -15,7 +15,7 @@
 "stepLetSilenceCloseIt" = "Let silence close it";
 "writeEightMinutes" = "Write 8 minutes";
 "start again" = "start again";
-"open reflection" = "open reflection";
+"open reflection" = "Open reflection";
 "I remember you." = "I remember you.";
 "An encrypted Anky backup is waiting in iCloud." = "An encrypted Anky backup is waiting in iCloud.";
 "Restoring" = "Restoring";
@@ -257,7 +257,7 @@
 "the gate is off. your apps are open." = "the gate is off. your apps are open.";
 
 /* QA pass 2026-07-07: ceremony chrome, seal loading, writing stats */
-"skip" = "skip";
+"skip" = "Skip";
 "Skip the unveiling" = "Skip the unveiling";
 "What is happening?" = "What is happening?";
 "The unveiling" = "The unveiling";
@@ -295,7 +295,7 @@
 "to complete your daily target" = "to complete your daily target";
 "take a screenshot of this and send it to the founder" = "take a screenshot of this and send it to the founder";
 "here" = "here";
-"ask for the reflection again" = "ask for the reflection again";
+"ask for the reflection again" = "Ask for the reflection again";
 "This writing never received its reflection. Your words are safe on this device." = "This writing never received its reflection. Your words are safe on this device.";
 "Anky could not reach the mirror this time. Your writing is safe on this device." = "Anky could not reach the mirror this time. Your writing is safe on this device.";
 
@@ -541,26 +541,26 @@
 // Lean gate 2026-07-17
 "skin in the game opens the gate" = "skin in the game opens the gate";
 "weekly" = "weekly";
-"monthly" = "monthly";
-"yearly" = "yearly";
+"monthly" = "Monthly";
+"yearly" = "Yearly";
 
 // Onboarding animatic 2026-07-17
 "what should i call you?" = "what should i call you?";
-"skip" = "skip";
+"skip" = "Skip";
 
 // Axis reflection error surface 2026-07-18
 "the reflection was lost on the way" = "the reflection was lost on the way";
 "tap to ask again" = "tap to ask again";
 
 /* The channel-close crossroads (GeshtuWorldView, 2026-07-24) */
-"keep writing" = "keep writing";
+"keep writing" = "Keep writing";
 "get anky's reflection" = "get anky's reflection";
 "Reopen this session and keep going." = "Reopen this session and keep going.";
 "Send this writing to Anky and receive a reflection." = "Send this writing to Anky and receive a reflection.";
 "tap to open the gate" = "tap to open the gate";
 "just leave" = "just leave";
 "Let this day settle. Your writing is saved on this device." = "Let this day settle. Your writing is saved on this device.";
-"don't want to pay? long-press the copy button and take your writing to your favorite llm" = "don't want to pay? long-press the copy button and take your writing to your favorite llm";
+"don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm" = "don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm";
 "untitled" = "untitled";
 
 /* The plain landing list (2026-08-04) */
@@ -576,3 +576,178 @@
 "Opens writing settings" = "Opens writing settings";
 "remaining" = "remaining";
 "written" = "written";
+/* Press-and-hold explanations for the writing timer menu (2026-08-20) */
+"Backspace is on. You can revise or delete words while writing." = "Backspace is on. You can revise or delete words while writing.";
+"Backspace is off. Your words keep moving forward without deletion." = "Backspace is off. Your words keep moving forward without deletion.";
+"The stillness rule is on. Eight quiet seconds ends and saves the writing." = "The stillness rule is on. Eight quiet seconds ends and saves the writing.";
+"The stillness rule is off. Only you decide when the writing ends." = "The stillness rule is off. Only you decide when the writing ends.";
+"Duration option explanation format" = "Write toward %d minutes. The clock counts down, and you may keep writing afterward.";
+"No time limit. The clock counts up, and only you end the writing." = "No time limit. The clock counts up, and only you end the writing.";
+"Hold Geshtu for three seconds to ask Anky to reflect on this writing." = "Hold Geshtu for three seconds to ask Anky to reflect on this writing.";
+"The writing session has already started" = "The writing session has already started";
+"Anky Pro only changes the quality of new reflections. Writing and everything else stay free." = "Anky Pro only changes the quality of new reflections. Writing and everything else stay free.";
+"Renew for stronger new reflections. Writing and everything else stay free." = "Renew for stronger new reflections. Writing and everything else stay free.";
+"Unlock stronger, more thoughtful reflections from Anky." = "Unlock stronger, more thoughtful reflections from Anky.";
+"Better reflections from Anky's strongest available model" = "Better reflections from Anky's strongest available model";
+"Unlock better reflections with Anky Pro" = "Unlock better reflections with Anky Pro";
+"Reaching this target automatically unlocks protected apps for the rest of the day. Sessions are never cut short." = "Reaching this target automatically unlocks protected apps for the rest of the day. Sessions are never cut short.";
+"pending daily target footnote format" = "Today stays at %d min · %d min from tomorrow. Reaching it automatically unlocks protected apps for the rest of the day.";
+"you daily target pending format" = "%d min today · %d min from tomorrow · automatic unlock";
+"you daily target format" = "%d minutes · automatic rest-of-day unlock";
+"Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model." = "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model.";
+"reaching your target automatically unlocks protected apps for the rest of the day." = "reaching your target automatically unlocks protected apps for the rest of the day.";
+"level 8 complete — your next painting waits" = "level 8 complete — your next painting waits";
+
+/* Complete Settings and writing controls localization (2026-08-26) */
+"Subscription" = "Subscription";
+"Intelligence & cost" = "Intelligence & cost";
+"Your daily writing" = "Your daily writing";
+"The silence that closes the channel" = "The silence that closes the channel";
+"Anky server" = "Anky server";
+"Writing" = "Writing";
+"Font & size" = "Font & size";
+"Protection" = "Protection";
+"Your keys" = "Your keys";
+"Delete account" = "Delete account";
+"Your paintings" = "Your paintings";
+"Support" = "Support";
+"Legal" = "Legal";
+"About" = "About";
+"Backspace" = "Backspace";
+"Off keeps the ritual: words only move forward." = "Off keeps the ritual: words only move forward.";
+"8 second rule" = "8-second rule";
+"On, stillness ends the writing. Off, only you do." = "When on, stillness ends the writing. When off, only you do.";
+"Autocorrect & suggestions" = "Autocorrect & suggestions";
+"The keyboard's spelling help and word bar." = "The keyboard's spelling help and word bar.";
+"Stillness before reflection" = "Stillness before reflection";
+"iCloud backup" = "iCloud backup";
+"Ask before opening your writing." = "Ask before opening your writing.";
+"Apps that are blocked" = "Apps that are blocked";
+"Choose what waits until you have written." = "Choose what waits until you have written.";
+"Chat with the founder" = "Chat with the founder";
+"Telegram — a human answers." = "Telegram — a human answers.";
+"Send feedback" = "Send feedback";
+"Anky grows from what you tell us." = "Anky grows from what you tell us.";
+"Contact via email" = "Contact via email";
+"support@anky.app" = "support@anky.app";
+"Share Anky" = "Share Anky";
+"Give a friend a door before the noise." = "Give a friend a door before the noise.";
+"Your writing stays yours." = "Your writing stays yours.";
+"The agreement for using Anky." = "The agreement for using Anky.";
+"Walk through the introduction again" = "Walk through the introduction again";
+"Replay the onboarding, from the first door." = "Replay the introduction, from the first door.";
+"continue writing" = "Continue writing";
+"ask anky for reflection" = "Ask Anky for reflection";
+"enable backspace" = "Enable backspace";
+"keep it disabled" = "Keep it disabled";
+"end writing" = "End writing";
+"Reopen this writing and keep going." = "Reopen this writing and keep going.";
+"Send this writing to Anky and begin the conversation." = "Send this writing to Anky and begin the conversation.";
+"Deletion is allowed from now on." = "Deletion is allowed from now on.";
+"Words keep moving forward only." = "Words keep moving forward only.";
+"Finish and save this writing." = "Finish and save this writing.";
+"Return to the page." = "Return to the page.";
+"Choose how long you mean to write" = "Choose how long you mean to write";
+"Your writings" = "Your writings";
+"No time limit" = "No time limit";
+"silence seconds format" = "%d seconds of silence";
+"%d seconds" = "%d seconds";
+"%@ lock" = "%@ lock";
+
+/* User-facing strings previously falling back to English */
+"Advanced: connect this app to any compatible Anky server. Writing and conversation go to that server only when you explicitly ask Anky." = "Advanced: connect this app to any compatible Anky server. Writing and conversation go to that server only when you explicitly ask Anky.";
+"Connected." = "Connected.";
+"Using Anky's default server." = "Using Anky's default server.";
+"Could not connect to that server." = "Could not connect to that server.";
+"Use default" = "Use default";
+"Free means free inference" = "Free means free inference";
+"Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky.";
+"Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available.";
+"When your writing rests this long, the words settle and the Geshtu rises to receive them." = "When your writing rests this long, the words settle and the Geshtu rises to receive them.";
+"Public address" = "Public address";
+"Copied" = "Copied";
+"Copy public address" = "Copy public address";
+"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours.";
+"Recovery phrase" = "Recovery phrase";
+"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach.";
+"Reveal recovery phrase" = "Reveal recovery phrase";
+"Delete Account & Data" = "Delete account & data";
+"Permanently delete this device archive, iCloud backup, and Anky server records." = "Permanently delete this device archive, iCloud backup, and Anky server records.";
+"This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events.";
+"Your writings were never stored on the Anky server. The server only saw .anky bytes transiently when you asked for reflection or painting generation." = "Your writings were never stored on the Anky server. The server only saw .anky bytes transiently when you asked for reflection or painting generation.";
+"An active App Store subscription is not cancelled here. Cancel it separately in Settings → Apple ID → Subscriptions." = "An active App Store subscription is not cancelled here. Cancel it separately in Settings → Apple ID → Subscriptions.";
+"Open Apple Subscriptions" = "Open Apple subscriptions";
+"Type DELETE to confirm." = "Type DELETE to confirm.";
+"Account and data deleted from this device, Anky iCloud backup, and Anky server records." = "Account and data deleted from this device, Anky iCloud backup, and Anky server records.";
+"Could not delete server account data. Nothing was deleted from this device." = "Could not delete server account data. Nothing was deleted from this device.";
+"Paste is not available here." = "Paste is not available here.";
+"Could not recover this writing session." = "Could not recover this writing session.";
+"This writing has already been reflected." = "This writing has already been reflected.";
+"Show status" = "Show status";
+"Inference receipt: %@" = "Inference receipt: %@";
+"This writing stayed on this device." = "This writing stayed on this device.";
+"saved to your camera roll" = "Saved to your camera roll";
+"Recording" = "Recording";
+"OK" = "OK";
+"Record yourself reading this" = "Record yourself reading this";
+"Share as a card" = "Share as a card";
+"Select a passage first, or share the opening." = "Select a passage first, or share the opening.";
+"Screen recording isn't available on this device right now." = "Screen recording isn't available on this device right now.";
+"Anky needs the camera to put you in the frame." = "Anky needs the camera to put you in the frame.";
+"Camera access is off for Anky. You can allow it in Settings." = "Camera access is off for Anky. You can allow it in Settings.";
+"The front camera couldn't be reached." = "The front camera couldn't be reached.";
+"Anky needs permission to add videos to your photo library. You can allow it in Settings." = "Anky needs permission to add videos to your photo library. You can allow it in Settings.";
+"The clip couldn't be saved to your camera roll." = "The clip couldn't be saved to your camera roll.";
+"REC" = "REC";
+"Skip and continue with free writing" = "Skip and continue with free writing";
+"I have the image. Your check-in has been saved." = "I have the image. Your check-in has been saved.";
+"I read this: %@. Your raw check-in has been saved." = "I read this: %@. Your raw check-in has been saved.";
+"Write with me first." = "Write with me first.";
+"Put one thought into words to open this door." = "Put one thought into words to open this door.";
+"Emergency unlock" = "Emergency unlock";
+"iOS needs one extra tap from here. We'll send a notification that opens Anky." = "iOS needs one extra tap from here. We'll send a notification that opens Anky.";
+"Send notification" = "Send notification";
+"Didn't receive the notification? Try again" = "Didn't receive the notification? Try again";
+"Tap the notification" = "Tap the notification";
+"Tap the notification to write." = "Tap the notification to write.";
+"Open Anky manually" = "Open Anky manually";
+"Notifications are off, so iOS can't open Anky from this shield. Open Anky from your Home Screen to write." = "Notifications are off, so iOS can't open Anky from this shield. Open Anky from your Home Screen to write.";
+"Try notification again" = "Try notification again";
+"Back to archive" = "Back to archive";
+"Daily target, writing, font, protection." = "Daily target, writing, font, protection.";
+"Write Before You Scroll" = "Write Before You Scroll";
+"Choose the apps Anky gates." = "Choose the apps Anky gates.";
+"Data" = "Data";
+"private access" = "Private access";
+"private to this device" = "Private to this device";
+"Privacy" = "Privacy";
+"Local-first writing and reflection" = "Local-first writing and reflection";
+
+/* One-surface shell: drawer and stats */
+"Close menu" = "Close menu";
+"Recents" = "Recents";
+"New writing" = "New writing";
+"Stats" = "Stats";
+"Close search" = "Close search";
+"nothing found" = "nothing found";
+"full ankys" = "full ankys";
+"longest streak" = "longest streak";
+"words per minute" = "words per minute";
+"days written" = "days written";
+"Copy Anky" = "Copy Anky";
+"Copy Prompt + Anky" = "Copy Prompt + Anky";
+"More" = "More";
+"Record" = "Record";
+"Dismiss camera" = "Dismiss camera";
+"Go to Anky's reply" = "Go to Anky's reply";
+"Start recording" = "Start recording";
+"Stop recording" = "Stop recording";
+"Copy" = "Copy";
+"Connect" = "Connect";
+"Block until I write" = "Block until I write";
+"full anky" = "full anky";
+"Write before you scroll" = "Write before you scroll";
+"Anky is waiting for you" = "Anky is waiting for you";
+"Allow notifications" = "Allow notifications";
+"Needed to open Anky from a blocked app." = "Needed to open Anky from a blocked app.";
+"Notifications are off. Open Anky from your Home Screen." = "Notifications are off. Open Anky from your Home Screen.";

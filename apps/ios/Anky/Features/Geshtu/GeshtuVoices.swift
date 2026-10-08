@@ -12,9 +12,10 @@
 //    Ore   — the writing at rest. Sediment: Fraunces regular, a smaller optical
 //            size, tighter leading, grayer/rawer ink. The sealed writing on the
 //            channel-closed screen and the writing inside opened strata entries.
-//    Glaze — Anky's reflection at rest. Fraunces italic (the one treatment,
-//            applied identically everywhere), more luminous ink, looser leading,
-//            more breathing room. The §6 descent and the opened-entry reflection.
+//    Glaze — Anky's reflection at rest. Fraunces regular in a quiet violet,
+//            with italics reserved for explicit Markdown emphasis, looser
+//            leading, and more breathing room. The §6 descent and the
+//            opened-entry reflection.
 //
 //  Ore/glaze applies only within lazure, at rest. The live writing session keeps
 //  its own styling (it is the act, not the record); the vigil's traveling words
@@ -44,7 +45,7 @@ private struct OreVoice: ViewModifier {
 private struct GlazeVoice: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.fraunces(20, weight: .regular, italic: true))
+            .font(.fraunces(20, weight: .regular))
             .foregroundStyle(Color.ankyGlaze)
             .lineSpacing(11)
     }
@@ -177,6 +178,11 @@ private struct NativeSelectableText: UIViewRepresentable {
 private struct GlazeAttributedRenderer {
     let text: String
 
+    private let bodyColor = UIColor(Color.ankyGlaze.opacity(0.90))
+    private let strongColor = UIColor(Color.ankyViolet)
+    private let emphasisColor = UIColor(Color.ankySlate)
+    private let codeColor = UIColor(Color.ankyUmber.opacity(0.88))
+
     func attributed() -> NSAttributedString {
         let result = NSMutableAttributedString()
         let lines = text.replacingOccurrences(of: "\r\n", with: "\n")
@@ -190,56 +196,132 @@ private struct GlazeAttributedRenderer {
     }
 
     private func attributedLine(_ raw: String) -> NSAttributedString {
-        var line = raw.trimmingCharacters(in: .whitespaces)
+        let line = raw.trimmingCharacters(in: .whitespaces)
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 11
         paragraph.paragraphSpacing = 18
 
-        var isHeading = false
-        while line.hasPrefix("#") {
-            isHeading = true
-            line.removeFirst()
-        }
-        line = line.trimmingCharacters(in: .whitespaces)
-        if line.hasPrefix("- ") || line.hasPrefix("* ") {
-            line = "•  " + line.dropFirst(2)
+        guard !line.isEmpty else {
+            return NSAttributedString(string: "", attributes: [.paragraphStyle: paragraph])
         }
 
-        if isHeading {
-            return NSAttributedString(string: line, attributes: [
-                .font: AnkyFraunces.uiFont(22, weight: .semibold),
-                .foregroundColor: UIColor(Color.ankyViolet),
-                .paragraphStyle: paragraph
-            ])
+        if isHorizontalRule(line) {
+            let result = NSMutableAttributedString()
+            paragraph.alignment = .center
+            append("·  ·  ·", to: result, style: .ornament, paragraph: paragraph)
+            return result
         }
+
+        if let heading = heading(from: line) {
+            return inline(heading.text, paragraph: paragraph, baseStyle: .heading(level: heading.level))
+        }
+
+        if line.hasPrefix(">") {
+            let markerEnd = line.dropFirst().first == " " ? 2 : 1
+            let result = NSMutableAttributedString()
+            append("│ ", to: result, style: .ornament, paragraph: paragraph)
+            result.append(inline(String(line.dropFirst(markerEnd)), paragraph: paragraph, baseStyle: .quote))
+            return result
+        }
+
+        if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("+ ") {
+            let result = NSMutableAttributedString()
+            append("•", to: result, style: .ornament, paragraph: paragraph)
+            append(" ", to: result, style: .normal, paragraph: paragraph)
+            result.append(inline(String(line.dropFirst(2)), paragraph: paragraph))
+            return result
+        }
+
+        if let numbered = numberedPrefix(in: line) {
+            let result = NSMutableAttributedString()
+            append(numbered.marker, to: result, style: .ornament, paragraph: paragraph)
+            append(" ", to: result, style: .normal, paragraph: paragraph)
+            result.append(inline(numbered.text, paragraph: paragraph))
+            return result
+        }
+
         return inline(line, paragraph: paragraph)
     }
 
-    private func inline(_ text: String, paragraph: NSMutableParagraphStyle) -> NSAttributedString {
+    private func heading(from line: String) -> (marker: String, text: String, level: Int)? {
+        let hashes = line.prefix(while: { $0 == "#" })
+        guard (1...6).contains(hashes.count),
+              line.dropFirst(hashes.count).first == " " else {
+            return nil
+        }
+        let marker = String(line.prefix(hashes.count + 1))
+        return (marker, String(line.dropFirst(marker.count)), hashes.count)
+    }
+
+    private func isHorizontalRule(_ line: String) -> Bool {
+        let compact = line.replacingOccurrences(of: " ", with: "")
+        guard compact.count >= 3, let character = compact.first,
+              character == "-" || character == "*" || character == "_" else {
+            return false
+        }
+        return compact.allSatisfy { $0 == character }
+    }
+
+    private func numberedPrefix(in line: String) -> (marker: String, text: String)? {
+        guard let dot = line.firstIndex(of: ".") else { return nil }
+        let digits = line[..<dot]
+        let space = line.index(after: dot)
+        guard !digits.isEmpty,
+              digits.allSatisfy(\.isNumber),
+              space < line.endIndex,
+              line[space] == " " else {
+            return nil
+        }
+        let marker = String(line[...dot])
+        return (marker, String(line[line.index(after: space)...]))
+    }
+
+    private func inline(
+        _ text: String,
+        paragraph: NSMutableParagraphStyle,
+        baseStyle: InlineStyle = .normal
+    ) -> NSAttributedString {
         let result = NSMutableAttributedString()
         var index = text.startIndex
+        let delimiters: [(marker: String, style: InlineStyle)] = [
+            ("***", .strongEmphasis),
+            ("___", .strongEmphasis),
+            ("**", .strong),
+            ("__", .strong),
+            ("~~", .strikethrough),
+            ("*", .emphasis),
+            ("_", .emphasis),
+            ("`", .code)
+        ]
+
         while index < text.endIndex {
-            if text[index...].hasPrefix("**"),
-               let end = text[text.index(index, offsetBy: 2)...].range(of: "**") {
-                let start = text.index(index, offsetBy: 2)
-                append(String(text[start..<end.lowerBound]), to: result, style: .strong, paragraph: paragraph)
-                index = end.upperBound
-            } else if text[index] == "*",
-                      let end = text[text.index(after: index)...].firstIndex(of: "*") {
-                append(String(text[text.index(after: index)..<end]), to: result, style: .emphasis, paragraph: paragraph)
-                index = text.index(after: end)
-            } else {
-                let strong = text[index...].range(of: "**")?.lowerBound
-                let emphasis = text[index...].firstIndex(of: "*")
-                let next = [strong, emphasis].compactMap { $0 }.min() ?? text.endIndex
-                if next == index {
-                    append(String(text[index]), to: result, style: .normal, paragraph: paragraph)
-                    index = text.index(after: index)
+            if let delimiter = delimiters.first(where: { text[index...].hasPrefix($0.marker) }) {
+                let contentStart = text.index(index, offsetBy: delimiter.marker.count)
+                if let closing = text[contentStart...].range(of: delimiter.marker),
+                   closing.lowerBound > contentStart {
+                    // Markdown punctuation stays out of the reading surface;
+                    // its content carries the semantic and palette treatment.
+                    append(
+                        String(text[contentStart..<closing.lowerBound]),
+                        to: result,
+                        style: delimiter.style,
+                        paragraph: paragraph
+                    )
+                    index = closing.upperBound
                 } else {
-                    append(String(text[index..<next]), to: result, style: .normal, paragraph: paragraph)
-                    index = next
+                    // Streaming reflections often pause on an opening token.
+                    // Hide the incomplete punctuation; the following text can
+                    // remain readable until its closing token arrives.
+                    index = contentStart
                 }
+                continue
             }
+
+            let next = delimiters
+                .compactMap { text[index...].range(of: $0.marker)?.lowerBound }
+                .min() ?? text.endIndex
+            append(String(text[index..<next]), to: result, style: baseStyle, paragraph: paragraph)
+            index = next
         }
         return result
     }
@@ -254,21 +336,55 @@ private struct GlazeAttributedRenderer {
         let color: UIColor
         switch style {
         case .normal:
-            font = AnkyFraunces.uiFont(20, italic: true)
-            color = UIColor(Color.ankyGlaze)
+            font = AnkyFraunces.uiFont(20)
+            color = bodyColor
+        case .heading(let level):
+            let size: CGFloat = level == 1 ? 24 : (level == 2 ? 22 : 20)
+            font = AnkyFraunces.uiFont(size, weight: .semibold)
+            color = strongColor
+        case .quote:
+            font = AnkyFraunces.uiFont(20)
+            color = UIColor(Color.ankyGlaze.opacity(0.76))
         case .strong:
-            font = AnkyFraunces.uiFont(20, weight: .semibold, italic: true)
-            color = UIColor(Color.ankyGold)
+            font = AnkyFraunces.uiFont(20, weight: .semibold)
+            color = strongColor
         case .emphasis:
             font = AnkyFraunces.uiFont(20, italic: true)
-            color = UIColor(Color.ankySlate)
+            color = emphasisColor
+        case .strongEmphasis:
+            font = AnkyFraunces.uiFont(20, weight: .semibold, italic: true)
+            color = strongColor
+        case .code:
+            font = UIFont.monospacedSystemFont(ofSize: 18, weight: .regular)
+            color = codeColor
+        case .strikethrough:
+            font = AnkyFraunces.uiFont(20)
+            color = bodyColor
+        case .ornament:
+            font = AnkyFraunces.uiFont(18, weight: .semibold)
+            color = strongColor
         }
-        result.append(NSAttributedString(string: string, attributes: [
+        var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: color,
             .paragraphStyle: paragraph
-        ]))
+        ]
+        if style == .strikethrough {
+            attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            attributes[.strikethroughColor] = bodyColor
+        }
+        result.append(NSAttributedString(string: string, attributes: attributes))
     }
 
-    private enum InlineStyle { case normal, strong, emphasis }
+    private enum InlineStyle: Equatable {
+        case normal
+        case heading(level: Int)
+        case quote
+        case strong
+        case emphasis
+        case strongEmphasis
+        case code
+        case strikethrough
+        case ornament
+    }
 }

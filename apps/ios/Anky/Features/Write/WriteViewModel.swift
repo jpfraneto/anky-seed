@@ -8,6 +8,24 @@ struct WritingGlyph: Equatable {
     var silenceProgress: Double
 }
 
+/// The binary decisions the machine can put to the writer mid-writing. Each
+/// one takes over the keyboard's own footprint — never a sheet, never an
+/// alert — and only one can ever stand (spec §17: no stacked dialogs).
+enum WritingDecision: Equatable {
+    /// Backspace is off and the writer just reached for it.
+    case enableBackspace
+    /// The writer reached for the way out while a session is live.
+    case endWriting
+}
+
+/// The three states the writing surface can be in. The writing itself is the
+/// stable object; this is what the machine around it is doing.
+enum WritingUIState: Equatable {
+    case active
+    case decision(WritingDecision)
+    case completed
+}
+
 @MainActor
 final class WriteViewModel: ObservableObject {
     @Published private(set) var displayedText: String = ""
@@ -15,7 +33,7 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var protocolText: String = ""
     @Published private(set) var elapsedMs: Int64 = 0
     @Published private(set) var silenceElapsedMs: Int64 = 0
-    @Published private(set) var silenceRemainingMs: Int64 = WritingPreferencesStore().load().effectiveTerminalSilenceMs
+    @Published private(set) var silenceRemainingMs: Int64 = AnkyDuration.defaultTerminalSilenceMs
     @Published private(set) var lastCharacter: Character?
     @Published private(set) var lastCharacterPulseID = UUID()
     @Published private(set) var rejectedInputPulseID = UUID()
@@ -29,6 +47,11 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var isNudgeMessageVisible = false
     @Published private(set) var isRequestingNudge = false
     @Published private(set) var completedArtifact: SavedAnky?
+    /// The decision standing in the keyboard's place, if any.
+    @Published private(set) var pendingDecision: WritingDecision?
+    /// The writing chamber's switches, held here so the surface and the
+    /// engine always read the same truth (the in-place decisions write them).
+    @Published private(set) var preferences: WritingPreferences
     @Published private(set) var writeBeforeScrollSessionMetrics = WriteBeforeScrollSessionMetrics()
     @Published private(set) var writeBeforeScrollAvailableUnlockGrant: UnlockGrant?
     @Published private(set) var writeBeforeScrollQuickPassesRemaining = UnlockPolicy.quickPassDailyAllowance
@@ -45,12 +68,8 @@ final class WriteViewModel: ObservableObject {
     /// shows the moment screen (decision 2026-07-06, once per day).
     @Published private(set) var writeBeforeScrollFreeTargetMomentPending = false
     private(set) var isGateOriginatedSession = false
-    /// Phase-3: the Daily Unlock belongs to the subscription. Kept fresh by
-    /// AppRoot from EntitlementStore; Quick Passes are untouched by this.
-    var dailyUnlockEntitled = false
-    /// Server-generated nudges fail closed until `pro` is current. The free
-    /// local nudge remains available while verification is absent or failed.
-    var serverNudgeEntitled = false
+    /// Daily unlocking belongs to the writing practice, not the subscription.
+    var dailyUnlockEntitled = true
     private(set) var gateOriginAppDisplayName: String?
 
     var hasStarted: Bool {
@@ -92,7 +111,36 @@ final class WriteViewModel: ObservableObject {
     }
 
     var canAcceptInput: Bool {
-        !isPausedOnDraft && completedArtifact == nil
+        !isPausedOnDraft && completedArtifact == nil && pendingDecision == nil
+    }
+
+    /// What the machine around the writing is doing right now.
+    var uiState: WritingUIState {
+        if let pendingDecision {
+            return .decision(pendingDecision)
+        }
+        return completedArtifact == nil ? .active : .completed
+    }
+
+    /// True while stillness may end the writing on screen. An ∞ session and a
+    /// retired rule both leave the writer as the only one who can end it.
+    var eightSecondRuleActive: Bool {
+        preferences.eightSecondRuleEnabled && !preferences.durationIsInfinite
+    }
+
+    var durationIsInfinite: Bool {
+        preferences.durationIsInfinite
+    }
+
+    var backspaceEnabled: Bool {
+        preferences.backspaceAllowed
+    }
+
+    /// True while something other than the keyboard occupies the keyboard's
+    /// footprint — a decision, or the finished writing's two ways forward.
+    /// Nothing else may be placed over that region while it stands.
+    var bottomSurfaceStands: Bool {
+        pendingDecision != nil || completedArtifact != nil
     }
 
     private var sessionEngine = WritingSessionEngine()
@@ -116,6 +164,11 @@ final class WriteViewModel: ObservableObject {
     private var resumesOnNextInput = false
     private var preservesRecoveredDraftGapOnNextInput = false
     private var continuedArtifactToReplace: SavedAnky?
+    private let preferencesStore: WritingPreferencesStore
+    /// The writer already answered these once for the writing on screen; the
+    /// machine does not ask twice about the same page. Both survive a
+    /// "continue writing" — it is the same writing — and reset with the page.
+    private var hasKeptBackspaceDisabledThisWriting = false
     private var errorMessageTask: Task<Void, Never>?
     private var errorRecallExpirationDate: Date?
     private let rejectedInputOnboardingKey = "anky.didShowRejectedInputOnboarding"
@@ -141,7 +194,7 @@ final class WriteViewModel: ObservableObject {
     /// (spec §9). Nil everywhere else — the normal stillness applies.
     var terminalSilenceOverrideMs: Int64?
     private var terminalSilenceMs: Int64 {
-        terminalSilenceOverrideMs ?? WritingPreferencesStore().load().effectiveTerminalSilenceMs
+        terminalSilenceOverrideMs ?? preferences.effectiveTerminalSilenceMs
     }
 
     init(
@@ -153,7 +206,8 @@ final class WriteViewModel: ObservableObject {
         identityStore: WriterIdentityStore = WriterIdentityStore(),
         userDefaults: UserDefaults = .standard,
         writeBeforeScrollUnlockStateStore: UnlockStateStore = UnlockStateStore(),
-        writeBeforeScrollUnlockOfferPolicy: WriteBeforeScrollUnlockOfferPolicy = WriteBeforeScrollUnlockOfferPolicy()
+        writeBeforeScrollUnlockOfferPolicy: WriteBeforeScrollUnlockOfferPolicy = WriteBeforeScrollUnlockOfferPolicy(),
+        preferencesStore: WritingPreferencesStore = WritingPreferencesStore()
     ) {
         self.draftStore = draftStore
         self.archive = archive
@@ -164,6 +218,10 @@ final class WriteViewModel: ObservableObject {
         self.userDefaults = userDefaults
         self.writeBeforeScrollUnlockStateStore = writeBeforeScrollUnlockStateStore
         self.writeBeforeScrollUnlockOfferPolicy = writeBeforeScrollUnlockOfferPolicy
+        let loadedPreferences = preferencesStore.load()
+        self.preferencesStore = preferencesStore
+        self.preferences = loadedPreferences
+        self.silenceRemainingMs = loadedPreferences.effectiveTerminalSilenceMs
         refreshTodayCount()
         // Adopt pre-level-system history exactly once, before any new seal.
         levelProgressStore.backfillIfNeeded(from: sessionIndexStore.load())
@@ -291,7 +349,7 @@ final class WriteViewModel: ObservableObject {
         // The top bar is the interface's voice: it speaks on every rejected
         // key, quietly, in the registry's words.
         switch input {
-        case .backspace:
+        case .backspace, .backspaceDisabled:
             rejectedBackspaceCount += 1
             showTransientError(AnkyCopyRegistry.backspaceMessage)
         case .enter:
@@ -303,6 +361,138 @@ final class WriteViewModel: ObservableObject {
         invalidInputHaptic.notificationOccurred(.warning)
         invalidInputHaptic.prepare()
         rejectedInputPulseID = UUID()
+    }
+
+    // MARK: - The contextual decisions (spec §1B, §2, §3, §6)
+
+    /// The writer reached for backspace while it is off. The first time in a
+    /// writing, the machine asks instead of swallowing the key.
+    /// - Returns: true when the decision surface took the keyboard's place.
+    @discardableResult
+    func requestBackspaceDecision() -> Bool {
+        guard !preferences.backspaceAllowed,
+              !hasKeptBackspaceDisabledThisWriting,
+              sessionEngine.isStarted,
+              completedArtifact == nil else {
+            return false
+        }
+        return presentDecision(.enableBackspace)
+    }
+
+    /// The writer reached for the way out with a live session on the page.
+    /// - Returns: true when a decision stands; false when there is nothing to
+    ///   end and the caller may simply navigate.
+    @discardableResult
+    func requestEndWritingDecision() -> Bool {
+        guard sessionEngine.isStarted, completedArtifact == nil, !protocolText.isEmpty else {
+            return false
+        }
+        return presentDecision(.endWriting)
+    }
+
+    /// Backspace stays. Persisted, so the writer is asked exactly once.
+    func enableBackspaceFromDecision() {
+        updatePreferences { $0.backspaceAllowed = true }
+        resumeAfterDecision()
+    }
+
+    /// The ritual holds. Not asked again for this writing; the attempted
+    /// deletion never happened.
+    func keepBackspaceDisabled() {
+        hasKeptBackspaceDisabledThisWriting = true
+        resumeAfterDecision()
+    }
+
+    /// The writer chose to end the writing from the way-out control.
+    func endWritingFromDecision() {
+        pendingDecision = nil
+        sealAndSave()
+    }
+
+    /// Any decision that means "not yet": the keyboard comes back and the
+    /// page continues from exactly where it stood.
+    func keepWritingFromDecision() {
+        resumeAfterDecision()
+    }
+
+    /// Chooses the duration in force. Minutes keep the existing daily target
+    /// (the whole unlock ladder reads it); ∞ is a preference of its own, so no
+    /// other system has to learn a new number.
+    func chooseDuration(minutes: Int) {
+        DailyTargetStore().applyImmediateTarget(minutes)
+        updatePreferences { $0.durationIsInfinite = false }
+    }
+
+    func chooseInfiniteDuration() {
+        updatePreferences { $0.durationIsInfinite = true }
+    }
+
+    /// The clock's compact controls edit the same durable writing rules as
+    /// Settings, but without asking the writer to leave the page.
+    func setBackspaceAllowed(_ allowed: Bool) {
+        updatePreferences { $0.backspaceAllowed = allowed }
+    }
+
+    func setEightSecondRuleEnabled(_ enabled: Bool) {
+        updatePreferences { $0.eightSecondRuleEnabled = enabled }
+        silenceTask?.cancel()
+        silenceElapsedMs = 0
+        silenceRemainingMs = terminalSilenceMs
+        updateLatestGlyphColorProgress(silenceElapsedMs: 0)
+
+        guard enabled,
+              !preferences.durationIsInfinite,
+              sessionEngine.isStarted,
+              !sessionEngine.isClosed,
+              completedArtifact == nil,
+              pendingDecision == nil else {
+            return
+        }
+
+        // Choosing a rule is outside the writing itself. Give the newly
+        // enabled rule a fresh eight seconds instead of letting an older
+        // pause close the page the instant the control is touched.
+        sessionEngine.prepareToResume(at: Self.nowMs())
+        startTicker()
+        scheduleSilenceClose(afterMs: terminalSilenceMs)
+    }
+
+    /// Re-reads the switches (settings may have moved them while the writer
+    /// was away). The per-writing "already asked" flags are untouched.
+    func refreshPreferences() {
+        preferences = preferencesStore.load()
+    }
+
+    @discardableResult
+    private func presentDecision(_ decision: WritingDecision) -> Bool {
+        // One surface at a time, and never over a sealed page.
+        guard pendingDecision == nil, completedArtifact == nil else {
+            return false
+        }
+        // The clock and the sentinel stand down while the writer decides —
+        // deciding is not writing time, and no stillness may seal underneath
+        // an open question.
+        silenceTask?.cancel()
+        tickerTask?.cancel()
+        if sessionEngine.isStarted, !sessionEngine.isClosed {
+            persistOnBackground()
+            isFrozen = true
+            resumesOnNextInput = true
+        }
+        pendingDecision = decision
+        return true
+    }
+
+    private func resumeAfterDecision() {
+        pendingDecision = nil
+        // The keyboard is summoned back explicitly: an accidental dismissal
+        // must never leave the writer unable to resume (spec §18).
+        keyboardFocusID = UUID()
+    }
+
+    private func updatePreferences(_ mutate: (inout WritingPreferences) -> Void) {
+        preferencesStore.update(mutate)
+        preferences = preferencesStore.load()
     }
 
     var shouldShowNudgeDialogue: Bool {
@@ -353,6 +543,21 @@ final class WriteViewModel: ObservableObject {
         persistOnBackground()
     }
 
+    /// The writer left the writing page on purpose (the menu). The session is
+    /// neither sealed nor lost: the clock and the stillness sentinel stop where
+    /// they stand, the words stay on the page, and the next keystroke resumes
+    /// exactly there — the same freeze a recovered draft waits in.
+    func standDownForNavigation() {
+        persistOnBackground()
+        guard sessionEngine.isStarted, !sessionEngine.isClosed, completedArtifact == nil else {
+            return
+        }
+        silenceTask?.cancel()
+        tickerTask?.cancel()
+        isFrozen = true
+        resumesOnNextInput = true
+    }
+
     func abandonIfEmpty() {
         guard !sessionEngine.isStarted else {
             persistOnBackground()
@@ -380,6 +585,16 @@ final class WriteViewModel: ObservableObject {
         resetForNextSession()
         clearErrorMessage()
     }
+
+    #if DEBUG
+    /// Screenshot mode only. Draft recovery restores every glyph at full
+    /// silence progress — the madder tone the sentinel wears a breath before
+    /// it closes the channel. Correct for a resumed draft; wrong for a
+    /// marketing frame of someone mid-sentence, where the writing is ink.
+    func debugPaintGlyphsAsInkForScreenshot() {
+        displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 0) }
+    }
+    #endif
 
     func beginBlankSessionFromWriteTab() {
         persistOnBackground()
@@ -415,6 +630,8 @@ final class WriteViewModel: ObservableObject {
             // is not writing time.
             preservesRecoveredDraftGapOnNextInput = false
             continuedArtifactToReplace = nil
+            pendingDecision = nil
+            hasKeptBackspaceDisabledThisWriting = false
             keyboardFocusID = UUID()
             clearErrorMessage()
             clearNudgeMessage()
@@ -468,6 +685,9 @@ final class WriteViewModel: ObservableObject {
             preservesRecoveredDraftGapOnNextInput = false
             lastMinuteHaptic = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
             lastAlarmHapticSecond = 0
+            // Continuing is the same writing, so the decisions the writer
+            // already made about it stand — only the open question goes.
+            pendingDecision = nil
             keyboardFocusID = UUID()
             clearErrorMessage()
             clearNudgeMessage()
@@ -537,6 +757,9 @@ final class WriteViewModel: ObservableObject {
     }
 
     func focusWritingKeyboard() {
+        guard pendingDecision == nil else {
+            return
+        }
         keyboardFocusID = UUID()
     }
 
@@ -556,9 +779,14 @@ final class WriteViewModel: ObservableObject {
     }
 
     func prepareForWritingScene() {
+        refreshPreferences()
         refreshTodayCount()
         refreshWriteBeforeScrollUnlockOffer()
-        keyboardFocusID = UUID()
+        // A standing decision owns the keyboard's place: do not summon the
+        // keys back over the writer's open question.
+        if pendingDecision == nil {
+            keyboardFocusID = UUID()
+        }
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         minuteHaptic.prepare()
@@ -571,7 +799,12 @@ final class WriteViewModel: ObservableObject {
     }
 
     func closeIfSilenceElapsed() {
-        guard sessionEngine.isStarted, !sessionEngine.isClosed, !isFrozen, let lastAcceptedMs = sessionEngine.lastAcceptedMs else {
+        guard eightSecondRuleActive,
+              pendingDecision == nil,
+              sessionEngine.isStarted,
+              !sessionEngine.isClosed,
+              !isFrozen,
+              let lastAcceptedMs = sessionEngine.lastAcceptedMs else {
             return
         }
 
@@ -587,20 +820,18 @@ final class WriteViewModel: ObservableObject {
     private func persistDraftAndScheduleSilence() {
         protocolText = sessionEngine.protocolText
         draftStore.save(protocolText)
+        guard eightSecondRuleActive else {
+            // No rule, no sentinel: the writing simply keeps its place until
+            // the writer ends it.
+            silenceTask?.cancel()
+            return
+        }
         scheduleSilenceClose(afterMs: terminalSilenceMs)
     }
 
     private func requestAnkyNudge(persistent: Bool = false) async {
         let text = protocolText
         guard sessionEngine.isStarted, !text.isEmpty else {
-            return
-        }
-
-        // Phase-3: server nudges are LLM calls and belong to the
-        // subscription. Free sessions get the local fallback line — the
-        // writing is still met, just not by the mirror.
-        guard serverNudgeEntitled else {
-            showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: persistent)
             return
         }
 
@@ -623,8 +854,7 @@ final class WriteViewModel: ObservableObject {
                 bytes: bytes,
                 identity: identity,
                 appVersion: AnkyAppVersion.headerValue,
-                intent: .nudge,
-                ageYears: WriterProfileStore().ageYears()
+                intent: .nudge
             )
 
             guard response.hash == AnkyHasher.sha256Hex(bytes) else {
@@ -783,6 +1013,8 @@ final class WriteViewModel: ObservableObject {
         resumesOnNextInput = false
         preservesRecoveredDraftGapOnNextInput = false
         continuedArtifactToReplace = nil
+        pendingDecision = nil
+        hasKeptBackspaceDisabledThisWriting = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         writeBeforeScrollSessionTracker.reset()
@@ -1093,18 +1325,18 @@ final class WriteViewModel: ObservableObject {
         if let lastAcceptedMs = sessionEngine.lastAcceptedMs {
             let currentSilenceElapsedMs = max(0, now - lastAcceptedMs)
             let silenceLimitMs = terminalSilenceMs
-            if currentSilenceElapsedMs >= silenceLimitMs {
+            if currentSilenceElapsedMs >= silenceLimitMs, eightSecondRuleActive {
                 closeOrFreezeAfterSilence()
                 return
             }
 
-            silenceElapsedMs = currentSilenceElapsedMs
+            silenceElapsedMs = min(currentSilenceElapsedMs, silenceLimitMs)
             silenceRemainingMs = max(0, silenceLimitMs - silenceElapsedMs)
             updateLatestGlyphColorProgress(silenceElapsedMs: silenceElapsedMs)
             if silenceElapsedMs < 1000 {
                 lastAlarmHapticSecond = 0
             }
-            if silenceElapsedMs >= 5000 {
+            if silenceElapsedMs >= 5000, eightSecondRuleActive {
                 let second = Int(silenceElapsedMs / 1000)
                 if second > lastAlarmHapticSecond {
                     alarmHaptic.notificationOccurred(.warning)
@@ -1144,7 +1376,14 @@ final class WriteViewModel: ObservableObject {
         displayedGlyphs[displayedGlyphs.count - 1].silenceProgress = progress
     }
 
+    /// The stillness ran out: with the rule in force the writing ends here.
+    /// The machine never asks about the rule (user decision, 2026-10-08) —
+    /// whether stillness ends a writing is a setting, not a question.
     private func closeOrFreezeAfterSilence() {
+        guard eightSecondRuleActive else {
+            silenceTask?.cancel()
+            return
+        }
         if completion == nil {
             needsImmediateClose = true
         } else {

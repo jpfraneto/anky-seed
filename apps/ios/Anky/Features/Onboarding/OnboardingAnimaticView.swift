@@ -27,39 +27,31 @@ enum OnboardingAnimaticLedger {
     }
 }
 
-/// The first-launch animatic (implementation pack, 2026-07-17): nine still
-/// frames, crossfades and slow zooms, one hard cut, the carve reveal, then a
-/// dissolve that reveals the LIVE name-entry screen already rendered beneath
-/// — the video does not end, it becomes the app. Wordless, silent, skippable
-/// from 3s, first launch only.
+/// The first-launch animatic: nine still frames, crossfades and slow zooms,
+/// one hard cut, and the carve reveal. It ends directly in the writing world;
+/// onboarding never asks the writer for personal profile information.
 struct OnboardingAnimaticView: View {
-    /// Called after the writer submits their name. The ledger is already
+    /// Called when the animatic completes or is skipped. The ledger is already
     /// stamped by then; the owner fades this view away into the world.
     let onFinished: () -> Void
 
-    @StateObject private var presenter = NameEntryPresenter()
     @State private var timeline = AnimaticTimeline.load()
     @State private var frames = AnimaticFrameStore()
     @State private var startedBeats: Set<Int> = []
     @State private var carveFraction: CGFloat = 0
     @State private var animaticOpacity: Double = 1
     @State private var animaticDismantled = false
+    @State private var hasFinished = false
     @State private var showsSkip = false
     @State private var driver: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            // (a) The real name screen, alive the whole time. Interaction
-            // arrives with keyboard focus at the handoff; there is nothing
-            // to touch before that.
-            NameEntryView(presenter: presenter) { _ in
-                OnboardingAnimaticLedger.markDone()
-                onFinished()
-            }
+            LazureWall(mood: .dawn)
+                .ignoresSafeArea()
 
-            // (b)+(c) The animatic layer. The lazure dissolve is simply this
-            // layer's opacity going to 0, revealing the live screen below.
+            // The animatic dissolves into the already-mounted writing world.
             if !animaticDismantled, let timeline {
                 AnimaticStage(
                     timeline: timeline,
@@ -104,14 +96,9 @@ struct OnboardingAnimaticView: View {
     private func start() {
         guard driver == nil else { return }
         guard let timeline, !reduceMotion else {
-            // Reduce Motion (or a missing timeline resource, which must
-            // never strand the user): no animatic — land on the finished
-            // name screen with a simple fade.
-            animaticDismantled = true
-            animaticOpacity = 0
-            withAnimation(.easeInOut(duration: 0.4)) {
-                presenter.completeInstantly(questionLength: NameEntryView.question.count)
-            }
+            // Reduce Motion (or a missing timeline resource) must never strand
+            // the writer in onboarding.
+            finish()
             return
         }
         driver = Task { await run(timeline) }
@@ -150,46 +137,30 @@ struct OnboardingAnimaticView: View {
         })
         events.append(Event(ms: handoff.lazure_dissolve_start_ms + handoff.lazure_dissolve_duration_ms) {
             animaticDismantled = true
-        })
-
-        // The typed question: the cursor arrives 500ms early, then the
-        // characters land in the protocol's halting rhythm — the delays are
-        // data, used verbatim.
-        events.append(Event(ms: handoff.typing_start_ms - 500) {
-            presenter.showsCursor = true
-        })
-        let questionLength = NameEntryView.question.count
-        var cursor = handoff.typing_start_ms
-        for index in 0..<questionLength {
-            let delays = handoff.per_char_delays_ms
-            cursor += delays[min(index, delays.count - 1)]
-            let typed = index + 1
-            events.append(Event(ms: cursor) {
-                presenter.typedCharacterCount = typed
-            })
-        }
-        events.append(Event(ms: cursor + handoff.keyboard_rise_delay_after_typing_ms) {
-            presenter.showsCursor = false
-            presenter.wantsFieldFocus = true
+            finish()
         })
 
         let t0 = ContinuousClock.now
         for event in events.sorted(by: { $0.ms < $1.ms }) {
             try? await Task.sleep(until: t0 + .milliseconds(event.ms), clock: .continuous)
             guard !Task.isCancelled else { return }
-            await event.action()
+            event.action()
         }
     }
 
-    /// Straight to the finished name screen in under half a second: question
-    /// fully typed, keyboard rising.
+    /// Leave the introduction immediately and enter the writing world.
     private func skip() {
         driver?.cancel()
         driver = nil
-        withAnimation(.easeInOut(duration: 0.3)) {
-            animaticOpacity = 0
-        }
+        finish()
+    }
+
+    private func finish() {
+        guard !hasFinished else { return }
+        hasFinished = true
+        OnboardingAnimaticLedger.markDone()
+        animaticOpacity = 0
         animaticDismantled = true
-        presenter.completeInstantly(questionLength: NameEntryView.question.count)
+        onFinished()
     }
 }

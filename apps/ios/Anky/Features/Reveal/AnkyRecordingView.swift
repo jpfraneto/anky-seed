@@ -2,6 +2,8 @@ import SwiftUI
 import ReplayKit
 import AVFoundation
 import AVKit
+import Photos
+import Vision
 
 // MARK: - Anky Recording v2 — screen recording with a camera bubble
 //
@@ -272,13 +274,45 @@ private struct CameraBubble: UIViewRepresentable {
 // the bubble already on it. stopRecording(withOutput:) hands us the file, so
 // the post-recording act is ours: a visible, contained share surface.
 
-/// Our own front-camera session for the selfie bubble.
+/// Our own front-camera session for the selfie bubble — and, since 2026-08-17,
+/// the person-only cut-out that replaced the rectangle. Vision's segmentation
+/// runs at `.fast` on VGA frames, entirely on the capture queue; the main
+/// thread only ever assigns a finished CGImage to a layer.
+///
+/// The v0 attempt that overheated phones was a different animal: `.balanced`
+/// segmentation full-screen, with per-frame Metal compositing on the main
+/// thread at 60fps. Here the frame is 640×480 (was `.high`), the mask is the
+/// cheap one, the render target is ~360×480, and late frames are dropped.
 final class SelfieCameraController: NSObject, ObservableObject {
     @Published private(set) var isRunning = false
     @Published var errorMessage: String?
 
     let session = AVCaptureSession()
+
+    /// Called on the main thread each time a new cut-out frame is ready.
+    /// The renderer sets this; SwiftUI is never told, so a 24fps camera does
+    /// not drive 24 view updates a second.
+    var onFrame: ((CGImage) -> Void)?
+
     private let sessionQueue = DispatchQueue(label: "anky.selfie.session")
+    private let frameQueue = DispatchQueue(label: "anky.selfie.frames")
+    private let videoOutput = AVCaptureVideoDataOutput()
+    private let segmentation = VNGeneratePersonSegmentationRequest()
+    private lazy var ciContext: CIContext = {
+        if let device = MTLCreateSystemDefaultDevice() {
+            return CIContext(mtlDevice: device, options: [.cacheIntermediates: false])
+        }
+        return CIContext(options: [.cacheIntermediates: false])
+    }()
+
+    override init() {
+        super.init()
+        // `.fast` is the level Apple documents for streaming video. At the
+        // size this is displayed the difference from `.balanced` is invisible;
+        // the difference in heat is not.
+        segmentation.qualityLevel = .fast
+        segmentation.outputPixelFormat = kCVPixelFormatType_OneComponent8
+    }
 
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -313,13 +347,45 @@ final class SelfieCameraController: NSObject, ObservableObject {
             let session = self.session
             if session.inputs.isEmpty {
                 session.beginConfiguration()
-                session.sessionPreset = .high
+                // VGA is already more pixels than the bubble can show, and the
+                // segmentation cost scales with them. `.high` was free money
+                // spent on a 132pt square.
+                session.sessionPreset = .vga640x480
                 if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
                    let input = try? AVCaptureDeviceInput(device: device),
                    session.canAddInput(input) {
                     session.addInput(input)
+                    // 24fps is past the point where a talking head reads as
+                    // live, and it halves the per-second segmentation work.
+                    if (try? device.lockForConfiguration()) != nil {
+                        device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 24)
+                        device.unlockForConfiguration()
+                    }
+                }
+                self.videoOutput.alwaysDiscardsLateVideoFrames = true
+                self.videoOutput.videoSettings = [
+                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+                ]
+                self.videoOutput.setSampleBufferDelegate(self, queue: self.frameQueue)
+                if session.canAddOutput(self.videoOutput) {
+                    session.addOutput(self.videoOutput)
                 }
                 session.commitConfiguration()
+
+                if let connection = self.videoOutput.connection(with: .video) {
+                    if #available(iOS 17.0, *) {
+                        if connection.isVideoRotationAngleSupported(90) {
+                            connection.videoRotationAngle = 90
+                        }
+                    } else if connection.isVideoOrientationSupported {
+                        connection.videoOrientation = .portrait
+                    }
+                    // A mirror, the way a mirror should be.
+                    if connection.isVideoMirroringSupported {
+                        connection.automaticallyAdjustsVideoMirroring = false
+                        connection.isVideoMirrored = true
+                    }
+                }
             }
             guard !session.inputs.isEmpty else {
                 DispatchQueue.main.async {
@@ -333,72 +399,136 @@ final class SelfieCameraController: NSObject, ObservableObject {
     }
 }
 
-/// The live front-camera layer, mirrored the way a mirror should be.
-struct SelfiePreview: UIViewRepresentable {
-    let session: AVCaptureSession
-
-    final class PreviewView: UIView {
-        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+extension SelfieCameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let frame = CIImage(cvPixelBuffer: pixelBuffer)
+        // Segmentation failing is not a reason to show nothing — the raw frame
+        // is simply the old rectangle, which is a fine floor to fall back to.
+        let cut = personOnly(frame: frame, pixelBuffer: pixelBuffer) ?? frame
+        // Always render the camera's own extent: a blend against an empty
+        // background can hand back an unbounded one.
+        guard let rendered = ciContext.createCGImage(cut, from: frame.extent) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.onFrame?(rendered)
+        }
     }
 
-    func makeUIView(context: Context) -> PreviewView {
-        let view = PreviewView()
-        view.previewLayer.session = session
-        view.previewLayer.videoGravity = .resizeAspectFill
+    /// Everything that is not the person, made transparent.
+    private func personOnly(frame: CIImage, pixelBuffer: CVPixelBuffer) -> CIImage? {
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+        do {
+            try handler.perform([segmentation])
+        } catch {
+            return nil
+        }
+        guard let maskBuffer = segmentation.results?.first?.pixelBuffer else { return nil }
+
+        // Vision returns the mask at its own, smaller resolution.
+        let mask = CIImage(cvPixelBuffer: maskBuffer)
+        guard mask.extent.width > 0, mask.extent.height > 0 else { return nil }
+        let fitted = mask
+            .transformed(by: CGAffineTransform(
+                scaleX: frame.extent.width / mask.extent.width,
+                y: frame.extent.height / mask.extent.height
+            ))
+            // A hair of feather, so the cut edge reads as a person and not as
+            // a sticker someone peeled off.
+            .applyingGaussianBlur(sigma: 1.6)
+            .cropped(to: frame.extent)
+
+        return frame.applyingFilter("CIBlendWithMask", parameters: [
+            kCIInputMaskImageKey: fitted,
+            kCIInputBackgroundImageKey: CIImage.empty()
+        ])
+    }
+}
+
+/// The cut-out person, drawn straight into a layer with a transparent
+/// background. The layer is the whole view — no clip shape, no border, no
+/// shadow — so the writing behind stays visible, and since ReplayKit records
+/// the screen, that is exactly what the clip shows.
+struct SelfieCutout: UIViewRepresentable {
+    let camera: SelfieCameraController
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.layer.contentsGravity = .resizeAspect
+        view.layer.masksToBounds = false
+        camera.onFrame = { [weak view] image in
+            // No implicit fade between frames — this is video, not a slideshow.
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            view?.layer.contents = image
+            CATransaction.commit()
+        }
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: ()) {
+        uiView.layer.contents = nil
+    }
 }
 
-/// The selfie bubble riding the bottom of the viewport — part of the screen,
-/// therefore part of the recording. A quiet REC ember while capture runs.
+/// The selfie riding the bottom of the viewport — part of the screen,
+/// therefore part of the recording. Just the person now (user request,
+/// 2026-08-17): no rectangle, no frame, nothing behind them.
 struct SelfieBubble: View {
-    let session: AVCaptureSession
-    let isRecording: Bool
+    let camera: SelfieCameraController
+
+    /// The camera's own 3:4. Matching it means `resizeAspect` neither
+    /// letterboxes nor — the thing that would give the cut-out away — clips
+    /// the top of someone's head against an invisible box.
+    static let size = CGSize(width: 132, height: 176)
 
     var body: some View {
-        SelfiePreview(session: session)
-            .frame(width: 116, height: 156)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(
-                        isRecording ? Color.ankyMadder.opacity(0.85) : Color.ankyPaper.opacity(0.9),
-                        lineWidth: 2
-                    )
+        Group {
+            #if DEBUG
+            // A simulator has no camera. Screenshot mode shows a bundled
+            // still — an intentional marketing asset, identical in every
+            // locale — through the same frame the live cutout uses.
+            if ScreenshotMode.isActive {
+                Image("ScreenshotSelfieStill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                SelfieCutout(camera: camera)
             }
-            .overlay(alignment: .topLeading) {
-                if isRecording {
-                    Circle()
-                        .fill(Color.ankyMadder)
-                        .frame(width: 9, height: 9)
-                        .padding(8)
-                }
-            }
-            .shadow(color: Color.ankyViolet.opacity(0.30), radius: 12, y: 4)
-            .animation(.easeInOut(duration: 0.3), value: isRecording)
-            .accessibilityLabel(Text("Your camera"))
+            #else
+            SelfieCutout(camera: camera)
+            #endif
+        }
+        .frame(width: Self.size.width, height: Self.size.height)
+        .accessibilityLabel(Text("Your camera"))
     }
 }
 
 /// Screen recording that hands the file back to us (unlike the RPPreview
-/// path), so the post-recording surface can be visible and contained. Every
-/// finished take gets the READ ON ANKY end card stitched to its tail before
-/// it is offered onward.
+/// path). The take goes straight to the camera roll the instant it exists —
+/// no export pass, no end card, no preview surface (user decision,
+/// 2026-08-17: "store it RIGHT AWAY as fast as possible").
 final class GeshtuScreenRecorder: NSObject, ObservableObject {
     @Published private(set) var isRecording = false
-    @Published private(set) var isStarting = false
-    /// The take ended and the end card is being stitched on.
-    @Published private(set) var isProcessing = false
-    @Published var errorMessage: String?
-    @Published var finished: FinishedRecording?
 
-    struct FinishedRecording: Identifiable {
-        let id = UUID()
-        let url: URL
-    }
+    #if DEBUG
+    /// Screenshot mode only: shows the recording chrome (the square stop
+    /// button, the armed anchor) without ReplayKit, which cannot start a
+    /// capture on a simulator.
+    func debugStandRecordingTake() { isRecording = true }
+    #endif
+
+    @Published private(set) var isStarting = false
+    /// True for a couple of seconds after a take lands in the camera roll.
+    @Published private(set) var justSaved = false
+    @Published var errorMessage: String?
 
     private let recorder = RPScreenRecorder.shared()
 
@@ -438,247 +568,45 @@ final class GeshtuScreenRecorder: NSObject, ObservableObject {
                     self.errorMessage = error.localizedDescription
                     return
                 }
-                self.isProcessing = true
-                Task { @MainActor in
-                    // Stitch the READ ON ANKY end card onto the tail. If the
-                    // stitch fails for any reason the raw take still ships.
-                    let final = (try? await RecordingOutro.appendEndCard(to: url)) ?? url
-                    self.isProcessing = false
-                    self.finished = FinishedRecording(url: final)
+                self.saveToCameraRoll(url)
+            }
+        }
+    }
+
+    /// ReplayKit already wrote a finished mp4; handing that exact file to
+    /// Photos is a move, not a re-encode. Nothing is added to it.
+    private func saveToCameraRoll(_ url: URL) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { [weak self] status in
+            guard status == .authorized || status == .limited else {
+                DispatchQueue.main.async {
+                    try? FileManager.default.removeItem(at: url)
+                    self?.errorMessage = AnkyLocalization.ui(
+                        "Anky needs permission to add videos to your photo library. You can allow it in Settings."
+                    )
+                }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+            } completionHandler: { success, error in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    try? FileManager.default.removeItem(at: url)
+                    guard success else {
+                        self.errorMessage = error?.localizedDescription
+                            ?? AnkyLocalization.ui("The clip couldn't be saved to your camera roll.")
+                        return
+                    }
+                    AnkyHaptics.success()
+                    withAnimation(.easeInOut(duration: 0.25)) { self.justSaved = true }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_200_000_000)
+                        withAnimation(.easeInOut(duration: 0.35)) { self.justSaved = false }
+                    }
                 }
             }
         }
     }
-}
-
-// MARK: - The end card (READ ON ANKY / anky.app)
-
-/// Stitches a two-second closing frame onto a finished take — the quiet
-/// sibling of TikTok's export outro: warm paper, the gold spiral, READ ON
-/// ANKY, anky.app.
-enum RecordingOutro {
-    static let tailSeconds: Double = 2.0
-
-    static func appendEndCard(to sourceURL: URL) async throws -> URL {
-        let asset = AVURLAsset(url: sourceURL)
-        let duration = try await asset.load(.duration)
-        guard let sourceVideo = try await asset.loadTracks(withMediaType: .video).first else {
-            return sourceURL
-        }
-        let naturalSize = try await sourceVideo.load(.naturalSize)
-        let transform = try await sourceVideo.load(.preferredTransform)
-        let renderSize = CGRect(origin: .zero, size: naturalSize)
-            .applying(transform).standardized.size
-
-        let composition = AVMutableComposition()
-        guard let videoTrack = composition.addMutableTrack(
-            withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid
-        ) else { return sourceURL }
-        let fullRange = CMTimeRange(start: .zero, duration: duration)
-        try videoTrack.insertTimeRange(fullRange, of: sourceVideo, at: .zero)
-
-        if let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first,
-           let audioTrack = composition.addMutableTrack(
-               withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid
-           ) {
-            try? audioTrack.insertTimeRange(fullRange, of: sourceAudio, at: .zero)
-        }
-
-        // The tail the card lives on: empty video, covered by the card layer.
-        let tail = CMTime(seconds: tailSeconds, preferredTimescale: 600)
-        videoTrack.insertEmptyTimeRange(CMTimeRange(start: duration, duration: tail))
-        let total = CMTimeAdd(duration, tail)
-
-        let instruction = AVMutableVideoCompositionInstruction()
-        instruction.timeRange = CMTimeRange(start: .zero, duration: total)
-        let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
-        layerInstruction.setTransform(transform, at: .zero)
-        instruction.layerInstructions = [layerInstruction]
-
-        let videoComposition = AVMutableVideoComposition()
-        videoComposition.renderSize = renderSize
-        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-        videoComposition.instructions = [instruction]
-
-        // The card fades in exactly when the take ends.
-        let videoLayer = CALayer()
-        videoLayer.frame = CGRect(origin: .zero, size: renderSize)
-        let cardLayer = CALayer()
-        cardLayer.frame = videoLayer.frame
-        cardLayer.contents = endCardImage(size: renderSize).cgImage
-        cardLayer.contentsGravity = .resizeAspectFill
-        cardLayer.opacity = 0
-        let fadeIn = CABasicAnimation(keyPath: "opacity")
-        fadeIn.fromValue = 0
-        fadeIn.toValue = 1
-        fadeIn.beginTime = AVCoreAnimationBeginTimeAtZero + duration.seconds
-        fadeIn.duration = 0.35
-        fadeIn.fillMode = .forwards
-        fadeIn.isRemovedOnCompletion = false
-        cardLayer.add(fadeIn, forKey: "outroFade")
-
-        let parentLayer = CALayer()
-        parentLayer.frame = videoLayer.frame
-        parentLayer.addSublayer(videoLayer)
-        parentLayer.addSublayer(cardLayer)
-        videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
-            postProcessingAsVideoLayer: videoLayer, in: parentLayer
-        )
-
-        guard let exporter = AVAssetExportSession(
-            asset: composition, presetName: AVAssetExportPresetHighestQuality
-        ) else { return sourceURL }
-        let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("anky-clip-\(UUID().uuidString).mp4")
-        exporter.outputURL = outputURL
-        exporter.outputFileType = .mp4
-        exporter.videoComposition = videoComposition
-
-        await exporter.export()
-        guard exporter.status == .completed else { return sourceURL }
-        try? FileManager.default.removeItem(at: sourceURL)
-        return outputURL
-    }
-
-    /// The card itself: warm paper, the gold spiral, READ ON ANKY, anky.app.
-    static func endCardImage(size: CGSize) -> UIImage {
-        UIGraphicsImageRenderer(size: size).image { context in
-            let ctx = context.cgContext
-            // The paper.
-            ctx.setFillColor(UIColor(
-                displayP3Red: 0.965, green: 0.937, blue: 0.894, alpha: 1
-            ).cgColor)
-            ctx.fill(CGRect(origin: .zero, size: size))
-
-            let gold = UIColor(displayP3Red: 0.878, green: 0.694, blue: 0.427, alpha: 1)
-            let ink = UIColor(displayP3Red: 0.239, green: 0.216, blue: 0.310, alpha: 1)
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let scale = size.width / 390.0
-
-            // The spiral, above the words.
-            let spiralRadius = 26.0 * scale
-            let spiralCenter = CGPoint(x: center.x, y: center.y - 90 * scale)
-            ctx.setStrokeColor(gold.cgColor)
-            ctx.setLineWidth(2.2 * scale)
-            ctx.setLineCap(.round)
-            let turns = 2.4
-            let steps = 90
-            for step in 0...steps {
-                let t = Double(step) / Double(steps)
-                let angle = t * turns * 2 * .pi
-                let radius = spiralRadius * t
-                let point = CGPoint(
-                    x: spiralCenter.x + Foundation.cos(angle) * radius,
-                    y: spiralCenter.y + Foundation.sin(angle) * radius
-                )
-                if step == 0 { ctx.move(to: point) } else { ctx.addLine(to: point) }
-            }
-            ctx.strokePath()
-
-            func draw(_ text: String, font: UIFont, color: UIColor, y: CGFloat, kern: CGFloat = 0) {
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: font, .foregroundColor: color, .kern: kern
-                ]
-                let rendered = NSAttributedString(string: text, attributes: attributes)
-                let bounds = rendered.boundingRect(
-                    with: CGSize(width: size.width, height: .greatestFiniteMagnitude),
-                    options: .usesLineFragmentOrigin, context: nil
-                )
-                rendered.draw(at: CGPoint(x: (size.width - bounds.width) / 2, y: y))
-            }
-
-            draw(
-                "READ ON ANKY",
-                font: AnkyFraunces.uiFont(30 * scale, weight: .semibold),
-                color: ink,
-                y: center.y - 24 * scale,
-                kern: 4 * scale
-            )
-            draw(
-                "anky.app",
-                font: AnkyFraunces.uiFont(22 * scale, weight: .regular, italic: true),
-                color: gold,
-                y: center.y + 34 * scale
-            )
-        }
-    }
-}
-
-/// What happens after the recording: the clip playing, and two contained,
-/// unmissable actions — share it onward, or save it to Photos. Discard is
-/// the quiet third.
-struct RecordingShareSheet: View {
-    let url: URL
-    let onDone: () -> Void
-
-    @State private var player: AVPlayer?
-    @State private var showsShare = false
-    @State private var saved = false
-
-    var body: some View {
-        ZStack {
-            LazureWall(mood: .dusk)
-
-            VStack(spacing: 20) {
-                VideoPlayer(player: player)
-                    .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(Color.ankyInk.opacity(0.10), lineWidth: 0.5)
-                    }
-                    .shadow(color: Color.ankyViolet.opacity(0.25), radius: 18, y: 6)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 28)
-
-                VStack(spacing: 12) {
-                    AnkyPrimaryButton("Share", systemImage: "square.and.arrow.up") {
-                        showsShare = true
-                    }
-                    AnkySecondaryButton(saved ? "Saved to Photos" : "Save to Photos", isEnabled: !saved) {
-                        UISaveVideoAtPathToSavedPhotosAlbum(url.path, nil, nil, nil)
-                        AnkyHaptics.light()
-                        saved = true
-                    }
-                    Button {
-                        try? FileManager.default.removeItem(at: url)
-                        onDone()
-                    } label: {
-                        Text(AnkyLocalization.ui("Discard"))
-                            .font(.system(size: 15, weight: .medium, design: .serif))
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .underline()
-                    }
-                    .padding(.top, 4)
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 28)
-            }
-        }
-        .onAppear {
-            let player = AVPlayer(url: url)
-            self.player = player
-            player.play()
-        }
-        .onDisappear {
-            player?.pause()
-        }
-        .sheet(isPresented: $showsShare) {
-            RecordingActivitySheet(items: [url])
-        }
-    }
-}
-
-/// Thin bridge to the native share sheet, for the recorded clip.
-private struct RecordingActivitySheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Built-in preview / save / share

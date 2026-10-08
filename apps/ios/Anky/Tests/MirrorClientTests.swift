@@ -85,6 +85,56 @@ final class MirrorClientTests: XCTestCase {
         ])
     }
 
+    /// Opt-in production seam check. It is skipped in ordinary test runs and
+    /// uses a throwaway identity. Set the value to `full` for the complete fixture.
+    func testLiveProductionMirrorStreamWhenExplicitlyEnabled() async throws {
+        let liveMode = ProcessInfo.processInfo.environment["ANKY_LIVE_MIRROR_TEST"]
+        guard liveMode == "1" || liveMode == "full" else {
+            throw XCTSkip("Set ANKY_LIVE_MIRROR_TEST=1 to exercise the live SSE seam.")
+        }
+        let body: Data
+        if liveMode == "full" {
+            let testDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            body = try Data(contentsOf: testDirectory
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("protocol/fixtures/valid-complete.anky"))
+        } else {
+            body = Data("1770000000000 h\n216 i".utf8)
+        }
+        let identity = WriterIdentity.generate()
+        var stages: [String] = []
+        var chunks: [String] = []
+        let startedAt = Date()
+        var firstProgressLatency: TimeInterval?
+        var firstChunkLatency: TimeInterval?
+
+        let response = try await MirrorClient(
+            baseURL: URL(string: MirrorConfiguration.defaultBaseURL)!
+        ).askAnky(
+            bytes: body,
+            identity: identity,
+            appVersion: "live-seam-test",
+            surface: "axis",
+            progress: {
+                firstProgressLatency = firstProgressLatency ?? Date().timeIntervalSince(startedAt)
+                stages.append($0.stage)
+            },
+            reflectionChunk: {
+                firstChunkLatency = firstChunkLatency ?? Date().timeIntervalSince(startedAt)
+                chunks.append($0.chunk)
+            }
+        )
+
+        XCTAssertEqual(response.hash, AnkyHasher.sha256Hex(body))
+        XCTAssertFalse(response.reflection.isEmpty)
+        XCTAssertFalse(chunks.joined().isEmpty)
+        XCTAssertTrue(stages.contains("complete"))
+        print("Live mirror first progress: \(firstProgressLatency ?? -1)s; chunks: \(chunks.count); first chunk: \(firstChunkLatency ?? -1)s; complete: \(Date().timeIntervalSince(startedAt))s")
+    }
+
     func testConversationClientSignsJSONAndSendsOnlyDerivedAge() async throws {
         let identity = WriterIdentity.generate()
         MockURLProtocol.handler = { request in
@@ -170,6 +220,48 @@ final class MirrorClientTests: XCTestCase {
 
         XCTAssertEqual(response.hash, expectedHash)
         XCTAssertEqual(response.reflection, "follow the warm sentence.")
+    }
+
+    func testMirrorClientKeepsACompletedStreamWhenFinalEnvelopeIsLost() async throws {
+        let body = Data("1770000000000 h\n480000 i".utf8)
+        let expectedHash = AnkyHasher.sha256Hex(body)
+        let identity = WriterIdentity.generate()
+
+        MockURLProtocol.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "text/event-stream; charset=utf-8"]
+            )!
+            let payload = Data("""
+                event: reflection_chunk
+                data: {"chunk":"# The Thread\\n\\n","generatedCharacters":14}
+
+                event: update
+                data: {"stage":"complete","message":"done"}
+
+                event: reflection_chunk
+                data: {"chunk":"It came all the way back.","generatedCharacters":39}
+
+                """.utf8)
+            return (response, payload)
+        }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        let client = MirrorClient(
+            baseURL: URL(string: "http://127.0.0.1:3000")!,
+            session: URLSession(configuration: configuration)
+        )
+
+        let response = try await client.askAnky(bytes: body, identity: identity)
+
+        XCTAssertEqual(response.hash, expectedHash)
+        XCTAssertEqual(response.title, "The Thread")
+        XCTAssertEqual(response.reflection, "# The Thread\n\nIt came all the way back.")
+        XCTAssertEqual(response.tags, [])
+        XCTAssertNil(response.inference)
     }
 
     func testMirrorClientPreservesServerErrorCode() async throws {

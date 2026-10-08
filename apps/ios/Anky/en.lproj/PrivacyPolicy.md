@@ -17,23 +17,15 @@ The following remain free and do not require Anky Pro:
 - Starting and completing new writing sessions
 - Creating, continuing, saving, browsing, copying, exporting, and deleting local writings
 - Reading reflections already saved on the device
-- A local, non-server writing nudge when Pro is inactive
+- AI writing nudges, with a local fallback when the server is unavailable
 - The Screen Time gate, selecting protected apps, and enabling or disabling protection
 - Three daily Quick Passes under the current unlock policy
 - Emergency access and emergency unlock
-- Static painting progression through level 8
-- Previously delivered personalized paintings
+- Painting progression and previously delivered personalized paintings
 - Archive and writing history
 - Settings, local/iCloud backup, import/export, account deletion, support, and legal screens
 
-An active lowercase `pro` entitlement is required only for:
-
-1. New server-generated AI reflections for writings without a saved reflection, subject to service limits.
-2. Server-generated AI writing nudges instead of the free local fallback, subject to service limits.
-3. Full access to the 96-day writing journey.
-4. Automatic rest-of-day Screen Time unlocking after the configured daily writing target is reached.
-5. Adaptive daily-target suggestions.
-6. Progression beyond level 8, including personalized painting generation and later painting ceremonies, subject to progress, writing, safety, capacity, and generation limits.
+An active lowercase `pro` entitlement changes one thing: new reflections use Anky's stronger supported inference lane. Free writers can still request reflections through the free inference lane. Writing and every non-reflection feature remain available without Pro.
 
 Generated services are always subject to reasonable service, safety, capacity, and abuse-prevention limits.
 
@@ -61,7 +53,7 @@ When you explicitly request a new AI reflection, the app sends the exact `.anky`
 
 ### AI writing nudges
 
-When Pro is currently verified and you request a server nudge, the app sends the current `.anky` writing to the same backend and AI-processing path. If Pro is inactive or cannot be verified, the app uses a local fallback and does not send the writing for a server nudge.
+When you request a server nudge, the app sends the current `.anky` writing to the same backend and AI-processing path. If the server is unavailable, the app uses a local fallback.
 
 ### Personalized paintings after level 8
 
@@ -91,9 +83,9 @@ Anky has no third-party advertising or cross-app tracking SDK. Anky does not sel
 
 ## 6. Apple, RevenueCat, and subscriptions
 
-Anky offers one optional auto-renewable annual subscription through Apple's App Store. It unlocks the Anky Pro feature set. The localized price and renewal terms Apple shows at purchase time control.
+Anky offers optional auto-renewable annual and monthly subscriptions through Apple's App Store. Both provide the same higher-quality new reflections. The localized price and renewal terms Apple shows at purchase time control.
 
-The annual subscription may include a three-day trial only for an eligible user and only when Apple displays that offer. It renews automatically unless cancelled in Apple's subscription settings.
+No introductory trial is offered. The subscription renews automatically unless cancelled in Apple's subscription settings.
 
 Apple handles payment, renewal, cancellation, billing, purchase history, and refund requests. Anky does not receive or store complete payment-card information.
 
