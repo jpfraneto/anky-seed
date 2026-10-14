@@ -12,7 +12,7 @@ import SwiftUI
 /// sealing, archive, profile and ceremony surfaces — behind a hardcoded
 /// `geshtuWorldEnabled = true`. None of it could render, but the root still
 /// built all seven of its view models on every launch (one of them deriving
-/// the writer's wallet from its recovery phrase, ~410ms in a debug build)
+/// the writer's account key from its recovery words, ~410ms in a debug build)
 /// before the first frame. That path is gone; see git history for it.
 struct AppRoot: View {
     var body: some View {

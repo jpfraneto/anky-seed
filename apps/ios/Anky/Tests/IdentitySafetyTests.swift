@@ -3,8 +3,8 @@ import XCTest
 
 /// Fix 10 of the 2026-07-06 pre-submission audit: the identity
 /// minimum-safe set — BIP39 checksum on import, never overwrite the
-/// current wallet in place, consult the iCloud Keychain backup before
-/// minting a new wallet on a fresh install.
+/// current account in place, consult the iCloud Keychain backup before
+/// minting a new account on a fresh install.
 final class IdentitySafetyTests: XCTestCase {
     private func freshStore() -> (WriterIdentityStore, KeychainClient) {
         let keychain = KeychainClient(service: "lat.memetics.anky.tests.\(UUID().uuidString)")
@@ -71,7 +71,7 @@ final class IdentitySafetyTests: XCTestCase {
         }
     }
 
-    // MARK: (b) import never destroys the previous wallet
+    // MARK: (b) import never destroys the previous account
 
     func testImportSnapshotsThePreviousPhrase() throws {
         let (store, _) = freshStore()
@@ -109,7 +109,7 @@ final class IdentitySafetyTests: XCTestCase {
         try keychain.delete(account: "writer-base-eoa-recovery-phrase-v1")
 
         let restored = try store.loadOrCreate()
-        XCTAssertEqual(restored.accountId, veteran.accountId, "a stranger wallet must not be minted over an existing backup")
+        XCTAssertEqual(restored.accountId, veteran.accountId, "a stranger account must not be minted over an existing backup")
     }
 
     func testFreshInstallWithoutBackupStillMintsCleanly() throws {

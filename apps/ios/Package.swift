@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "AnkyCore", targets: ["AnkyCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/web3swift-team/web3swift.git", from: "3.3.2")
+        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift", exact: "0.10.0")
     ],
     targets: [
         .target(
@@ -24,7 +24,7 @@ let package = Package(
             name: "AnkyCore",
             dependencies: [
                 "AnkyProtocol",
-                .product(name: "web3swift", package: "web3swift")
+                .product(name: "secp256k1", package: "secp256k1.swift")
             ],
             path: "Anky/Core",
             exclude: [

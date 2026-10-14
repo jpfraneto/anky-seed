@@ -36,8 +36,6 @@ struct AnkySettingsView: View {
     @State private var showsDeleteAccountSheet = false
     @State private var deleteConfirmationText = ""
     @State private var isDeletingAccount = false
-    @State private var didCopyAddress = false
-    @State private var didCopyRecoveryPhrase = false
 
     private static let founderChatURL = URL(string: "https://t.me/jpfraneto")!
     private static let shareURL = URL(string: "https://anky.app")!
@@ -55,7 +53,6 @@ struct AnkySettingsView: View {
                 writingGroup
                 typefaceGroup
                 protectionGroup
-                keysGroup
                 // Pointing the app at another server is a development tool,
                 // not a setting a writer should meet.
                 #if DEBUG
@@ -83,24 +80,17 @@ struct AnkySettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .onAppear {
-            // The account id, archive counts and iCloud backup state this
-            // screen shows are read here rather than when the view model is
-            // built — the seed is the only surface that needs them, and the
-            // read derives the wallet from its recovery phrase.
+            // Archive counts and iCloud backup state are read here rather
+            // than when the view model is built, so opening the drawer never
+            // pays for the account-key derivation.
             viewModel.refresh()
             refreshDailyTarget()
             serverAddress = MirrorConfiguration.currentBaseURL()
             writingPreferences = WritingPreferencesStore().load()
             silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
-            // Always open with the recovery phrase concealed.
-            viewModel.hideRecoveryPhrase()
             Task {
                 await entitlements.loadPackages()
             }
-        }
-        .onDisappear {
-            // Never leave the seed words sitting in memory once Settings closes.
-            viewModel.hideRecoveryPhrase()
         }
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
@@ -341,87 +331,6 @@ struct AnkySettingsView: View {
             }
             .buttonStyle(.plain)
         }
-    }
-
-    // MARK: Identity (self-sovereign keys)
-
-    /// The writer owns their account outright: a public address anyone can
-    /// verify their writing against, and the 12 words that ARE the account —
-    /// held only on this device, never on an Anky server.
-    private var keysGroup: some View {
-        group(title: "Your keys") {
-            // Public address — safe to share, derived from the recovery
-            // phrase. The row is the copy button.
-            Button {
-                copyAddress()
-            } label: {
-                row(icon: "key.horizontal", title: "Public address") {
-                    Text(viewModel.accountId)
-                        .font(.system(size: 13, weight: .regular, design: .monospaced))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: 116)
-                    Image(systemName: didCopyAddress ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .frame(width: 18)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(AnkyLocalization.ui("Copy public address"))
-
-            rowDivider
-
-            // Recovery phrase — the account itself. Revealed only behind a
-            // device-owner check; never leaves the device.
-            Button {
-                if isRecoveryPhraseRevealed {
-                    viewModel.hideRecoveryPhrase()
-                } else {
-                    Task { await viewModel.revealRecoveryPhrase() }
-                }
-            } label: {
-                row(icon: "lock.shield", title: "Recovery phrase") {
-                    Image(systemName: isRecoveryPhraseRevealed ? "eye.slash" : "eye")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(AnkyLocalization.ui(isRecoveryPhraseRevealed ? "Hide" : "Reveal recovery phrase"))
-
-            if isRecoveryPhraseRevealed {
-                VStack(alignment: .leading, spacing: 12) {
-                    RecoveryWordsGrid(words: viewModel.recoveryPhraseWords)
-
-                    Text(AnkyLocalization.ui("These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach."))
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .lineSpacing(2)
-
-                    Button {
-                        copyRecoveryPhrase()
-                    } label: {
-                        Label(
-                            AnkyLocalization.ui(didCopyRecoveryPhrase ? "Copied" : "Copy"),
-                            systemImage: didCopyRecoveryPhrase ? "checkmark" : "doc.on.doc"
-                        )
-                        .font(.fraunces(15, weight: .regular))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .modifier(ChipStyle(isSelected: false, cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
-            }
-        }
-    }
-
-    private var isRecoveryPhraseRevealed: Bool {
-        !viewModel.recoveryPhraseText.isEmpty
     }
 
     // MARK: Server
@@ -811,24 +720,6 @@ struct AnkySettingsView: View {
         }
     }
 
-    private func copyAddress() {
-        ClipboardClient().copy(viewModel.accountId)
-        AnkyHaptics.success()
-        withAnimation(.easeInOut(duration: 0.15)) { didCopyAddress = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation(.easeInOut(duration: 0.25)) { didCopyAddress = false }
-        }
-    }
-
-    private func copyRecoveryPhrase() {
-        ClipboardClient().copy(viewModel.recoveryPhraseText)
-        AnkyHaptics.success()
-        withAnimation(.easeInOut(duration: 0.15)) { didCopyRecoveryPhrase = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation(.easeInOut(duration: 0.25)) { didCopyRecoveryPhrase = false }
-        }
-    }
-
     private var deleteAccountSheet: some View {
         NavigationStack {
             ScrollView {
@@ -979,42 +870,6 @@ struct AnkySettingsView: View {
         components.path = "support@anky.app"
         components.queryItems = [URLQueryItem(name: "subject", value: subject)]
         return components.url ?? URL(string: "mailto:support@anky.app")!
-    }
-}
-
-/// The revealed recovery phrase as a numbered two-column grid — the shape
-/// people expect to copy onto paper, one word at a time.
-private struct RecoveryWordsGrid: View {
-    let words: [String]
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-    ]
-
-    var body: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(Array(words.enumerated()), id: \.offset) { index, word in
-                HStack(spacing: 8) {
-                    Text("\(index + 1)")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.6))
-                        .frame(width: 18, alignment: .trailing)
-                    Text(word)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.ankyInk)
-                        .textSelection(.enabled)
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
-                .background(Color.ankyPaper.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.ankyInk.opacity(0.08), lineWidth: 0.5)
-                )
-            }
-        }
     }
 }
 

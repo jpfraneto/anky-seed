@@ -51,22 +51,11 @@
 "Could not create a backup zip." = "backup zip नहीं बन सका।";
 "There is no writing to export yet." = "export करने के लिए अभी कोई writing नहीं है।";
 "Could not create a writing export." = "writing export नहीं बन सका।";
-"Confirm access to Anky private settings." = "Anky private settings का access confirm करें।";
-"Show your Anky recovery words." = "अपने Anky recovery words दिखाएं।";
 "Could not confirm access." = "access confirm नहीं हो सका।";
-"Could not load the recovery words." = "recovery words load नहीं हो सके।";
-"Back up your Anky recovery words to iCloud Keychain." = "अपने Anky recovery words को iCloud Keychain में backup करें।";
-"Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups." = "Recovery words iCloud Keychain में saved हैं। writing और reflection backups के लिए Data export इस्तेमाल करें।";
-"iCloud Keychain did not confirm the recovery backup." = "iCloud Keychain ने recovery backup confirm नहीं किया।";
-"Could not back up Anky recovery." = "Anky recovery backup नहीं हो सका।";
 "Recover your Anky access." = "अपना Anky access recover करें।";
 "Access recovered." = "Access recover हो गया।";
-"Recovery words must be 12 words." = "Recovery words 12 words होने चाहिए।";
-"Recovery words contain an unrecognized word." = "Recovery words में एक अनपहचाना word है।";
 "Could not recover access." = "access recover नहीं हो सका।";
 "Recover your Anky access from iCloud Keychain." = "iCloud Keychain से अपना Anky access recover करें।";
-"Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections." = "Recovery words iCloud Keychain से restored हैं। writing और reflections के लिए Data restore इस्तेमाल करें।";
-"No Anky recovery backup was found in iCloud Keychain." = "iCloud Keychain में कोई Anky recovery backup नहीं मिला।";
 "Could not recover Anky access from iCloud Keychain." = "iCloud Keychain से Anky access recover नहीं हो सका।";
 "Enable encrypted Anky iCloud backup." = "encrypted Anky iCloud backup enable करें।";
 "Encrypted iCloud backup is on." = "Encrypted iCloud backup on है।";
@@ -129,7 +118,6 @@
 "This deletes your Anky data from this device and iCloud. This cannot be undone." = "यह इस device और iCloud से आपका Anky data हटाता है। इसे वापस नहीं किया जा सकता।";
 "Anky is updating the encrypted iCloud backup." = "Anky encrypted iCloud backup update कर रहा है।";
 "Encrypted iCloud backup is on. It will run after your next writing session." = "Encrypted iCloud backup on है। यह आपके अगले writing session के बाद चलेगा।";
-"Export readable writings or turn on encrypted iCloud backup for reinstall recovery." = "Readable writings export करें या reinstall recovery के लिए encrypted iCloud backup चालू करें।";
 "Backing up" = "Backup हो रहा है";
 "Back up now" = "अभी backup करें";
 "Export writings" = "writings export करें";
@@ -138,22 +126,13 @@
 "Encrypted iCloud backup on" = "एन्क्रिप्टेड iCloud बैकअप चालू";
 "Export writings or enable iCloud" = "writings export करें या iCloud enable करें";
 "0 ankys" = "0 एन्किस";
-"Private access" = "निजी access";
 "Anky created a private local profile for this device." = "Anky ने इस device के लिए एक निजी local profile बनाया।";
 "Your writing and access stay here unless you choose to export or recover them elsewhere." = "आपकी writing और access यहीं रहते हैं, जब तक आप उन्हें export या कहीं और recover न करें।";
-"Advanced recovery" = "उन्नत वसूली";
 "These words restore your Anky access. Never share them. Anky cannot recover them for you." = "ये words आपका Anky access restore करते हैं। इन्हें कभी share न करें। Anky इन्हें आपके लिए recover नहीं कर सकता।";
-"Your recovery words can only be shown after device lock protection is enabled." = "Recovery words केवल device lock protection enable होने के बाद दिखाए जा सकते हैं।";
 "Your passcode or biometrics protect local access. They are not an Anky login." = "आपका passcode या biometrics local access बचाते हैं। वे Anky login नहीं हैं।";
-"Reveal recovery words" = "recovery words दिखाएं";
-"Copy recovery words" = "recovery words copy करें";
 "Hide" = "छिपाएं";
 "Recover access" = "access recover करें";
-"Recovery words saved in iCloud Keychain" = "Recovery words iCloud Keychain में saved हैं";
-"Back up recovery words to iCloud Keychain" = "recovery words को iCloud Keychain में backup करें";
-"This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you." = "यह आपके recovery words को device/cloud keychain में store करता है। Data export writing और reflections के लिए अलग backup है। Anky इनमें से किसी को भी पढ़ या recover नहीं कर सकता।";
 "Support ID" = "समर्थन आईडी";
-"Import recovery backup" = "recovery backup import करें";
 "Ownership note" = "स्वामित्व नोट";
 "Your writing belongs to this device unless you choose to export or recover it elsewhere." = "आपकी writing इस device से जुड़ी रहती है, जब तक आप उसे export या कहीं और recover न करें।";
 "Privacy Policy" = "गोपनीयता नीति";
@@ -169,7 +148,6 @@
 "On" = "पर";
 "Off" = "बंद";
 "Anky backs up writing and reflections after each writing session." = "Anky हर writing session के बाद writing और reflections का backup करता है।";
-"Turn this on for iCloud recovery after reinstalling." = "Reinstall के बाद iCloud recovery के लिए इसे on करें।";
 "Danger zone" = "खतरा क्षेत्र";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "यह इस device से local .anky files, local reflections और local map index हटाता है। उन्हें रखना हो तो पहले backup export करें।";
 "Delete local data" = "local data हटाएं";
@@ -397,7 +375,6 @@
 "Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source." = "Anky आपका नाम अपने बैकएंड को नहीं भेजता। यह ऐप के डेटा में रहता है और आपके Apple डिवाइस बैकअप में शामिल हो सकता है। Anky का कोड खुला स्रोत है।";
 "Take a selfie" = "Selfie लें";
 "The import could not be confirmed. Your current access is unchanged — try again." = "Import confirm नहीं हो सका। तुम्हारा current access नहीं बदला — फिर कोशिश करो।";
-"These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed." = "ये शब्द valid recovery phrase नहीं बनाते — शायद उनमें से एक गलत लिखा है। हर शब्द जाँचो और फिर कोशिश करो। कुछ नहीं बदला।";
 "Trial ends date price format" = "Trial %@ को खत्म होगा। अगर तुम App Store subscriptions में cancel नहीं करते, तो उस दिन %@ charge होगा।";
 "Try again" = "फिर कोशिश करें";
 "Version format" = "Version %@";
@@ -416,7 +393,6 @@
 "later" = "बाद में";
 "not yet" = "अभी नहीं";
 "of your waking life." = "तुम्हारे जागते जीवन का।";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "Recover करने से Ask Anky और subscription वाला private access बदल जाता है। local .anky files इस device पर रहती हैं।";
 "your name" = "तुम्हारा नाम";
 "“The Door” · your first canvas" = "“दरवाज़ा” · तुम्हारा पहला कैनवास";
 
@@ -607,7 +583,6 @@
 "Writing" = "लेखन";
 "Font & size" = "फ़ॉन्ट और आकार";
 "Protection" = "सुरक्षा";
-"Your keys" = "आपकी कुंजियाँ";
 "Delete account" = "खाता हटाएँ";
 "Your paintings" = "आपकी पेंटिंग";
 "Support" = "सहायता";
@@ -664,13 +639,7 @@
 "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "मुफ़्त Anky जानबूझकर उस सबसे साधारण इंटेलिजेंस मार्ग का उपयोग करता है जिसे हम सतत रूप से दे सकते हैं: OpenRouter का $0 मॉडल राउटर। गुणवत्ता, गति और उपलब्धता बदल सकती है। Pro समर्थित इन्फ़रेंस का खर्च देता है; यह Anky से बात करने का अधिकार अनलॉक नहीं करता।";
 "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "हर जवाब में वास्तविक मॉडल और बताई गई USD लागत की इन्फ़रेंस रसीद दिखती है। अनुरोधों के लिए शून्य-डेटा-रिटेंशन एंडपॉइंट चाहिए; ऐसा एंडपॉइंट न मिलने पर Anky कुछ नहीं भेजता।";
 "When your writing rests this long, the words settle and the Geshtu rises to receive them." = "जब आपका लेखन इतनी देर शांत रहता है, शब्द ठहर जाते हैं और Geshtu उन्हें ग्रहण करने उठता है।";
-"Public address" = "सार्वजनिक पता";
 "Copied" = "कॉपी हो गया";
-"Copy public address" = "सार्वजनिक पता कॉपी करें";
-"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "आपके रिकवरी वाक्यांश से बना। इसे साझा करना सुरक्षित है — इससे कोई भी सत्यापित कर सकता है कि लेखन आपका है।";
-"Recovery phrase" = "रिकवरी वाक्यांश";
-"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "ये 12 शब्द आपका खाता हैं। जिसके पास ये हैं, वह इसे नियंत्रित करता है। Anky इन्हें कभी नहीं देखता और आपके लिए वापस नहीं ला सकता — इन्हें लिखकर ऐसी जगह रखें जहाँ केवल आप पहुँच सकें।";
-"Reveal recovery phrase" = "रिकवरी वाक्यांश दिखाएँ";
 "Delete Account & Data" = "खाता और डेटा हटाएँ";
 "Permanently delete this device archive, iCloud backup, and Anky server records." = "इस डिवाइस का संग्रह, iCloud बैकअप और Anky सर्वर रिकॉर्ड स्थायी रूप से हटाएँ।";
 "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "यह इस डिवाइस के सभी लेखन और पेंटिंग, आपका Anky iCloud बैकअप और इस खाते के सभी सर्वर रिकॉर्ड स्थायी रूप से हटा देता है: सदस्यता स्थिति, सत्र लेजर, स्तर प्रगति, जेनरेशन इतिहास और उपयोग इवेंट।";
@@ -718,7 +687,6 @@
 "Write Before You Scroll" = "स्क्रॉल करने से पहले लिखें";
 "Choose the apps Anky gates." = "वे ऐप चुनें जिन्हें Anky रोकता है।";
 "Data" = "डेटा";
-"private access" = "निजी पहुँच";
 "private to this device" = "इस डिवाइस तक निजी";
 "Privacy" = "गोपनीयता";
 "Local-first writing and reflection" = "स्थानीय-प्रथम लेखन और चिंतन";

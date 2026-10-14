@@ -1,6 +1,4 @@
-import BigInt
 import CryptoKit
-import CryptoSwift
 import Foundation
 
 #if SWIFT_PACKAGE
@@ -28,7 +26,7 @@ enum AnkyPostSigner {
         requestTime: UInt64 = Self.nowMs(),
         client: String = "ios"
     ) throws -> SignedAnkyPost {
-        let bodySha256 = AnkyHasher.sha256Hex(body).addHexPrefix()
+        let bodySha256 = "0x" + AnkyHasher.sha256Hex(body)
         let digest = try eip712Digest(
             identity: identity,
             bodySha256: bodySha256,
@@ -43,7 +41,7 @@ enum AnkyPostSigner {
             requestTime: String(requestTime),
             client: client,
             bodySha256: bodySha256,
-            eip712Digest: digest.toHexString().addHexPrefix()
+            eip712Digest: AccountKeyCrypto.prefixedHex(digest)
         )
     }
 
@@ -79,7 +77,7 @@ enum AnkyPostSigner {
     }
 
     private static func keccak(_ data: Data) -> Data {
-        data.sha3(.keccak256)
+        AccountKeyCrypto.keccak256(data)
     }
 
     private static func encodeString(_ value: String) -> Data {
@@ -87,21 +85,21 @@ enum AnkyPostSigner {
     }
 
     private static func encodeAddress(_ value: String) throws -> Data {
-        guard let address = Data.fromHex(value), address.count == 20 else {
+        guard let address = AccountKeyCrypto.data(fromHex: value), address.count == 20 else {
             throw AnkyPostSignerError.invalidAddress
         }
         return pad32(address)
     }
 
     private static func encodeBytes32(_ value: String) throws -> Data {
-        guard let bytes = Data.fromHex(value), bytes.count == 32 else {
+        guard let bytes = AccountKeyCrypto.data(fromHex: value), bytes.count == 32 else {
             throw AnkyPostSignerError.invalidBodyHash
         }
         return bytes
     }
 
     private static func encodeUInt(_ value: UInt64) -> Data {
-        pad32(BigUInt(value).serialize())
+        pad32(withUnsafeBytes(of: value.bigEndian) { Data($0) })
     }
 
     private static func pad32(_ data: Data) -> Data {

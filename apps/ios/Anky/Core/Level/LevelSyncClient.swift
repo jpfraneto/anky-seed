@@ -142,7 +142,7 @@ struct LevelSyncClient {
     // MARK: Subscription truth and the funnel
 
     /// The server's answer after an identify: its webhook-maintained
-    /// entitlement for this wallet. `expiresAtMs` nil is a valid entitled
+    /// entitlement for this account key. `expiresAtMs` nil is a valid entitled
     /// state (open-ended promotional or lifetime grants).
     struct SubscriptionServerState: Codable, Equatable {
         let entitled: Bool
@@ -152,8 +152,8 @@ struct LevelSyncClient {
         let periodType: String?
     }
 
-    /// Tells the mirror that this wallet is the RevenueCat appUserID. The
-    /// EIP-712 headers prove the wallet; RevenueCat webhooks carry the
+    /// Tells the mirror that this account key is the RevenueCat appUserID. The
+    /// EIP-712 headers prove the account key; RevenueCat webhooks carry the
     /// entitlement truth server-side. The server rejects any attempt to
     /// attach a different appUserID to the authenticated account.
     @discardableResult

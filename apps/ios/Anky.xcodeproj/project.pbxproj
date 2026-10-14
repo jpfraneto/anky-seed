@@ -30,6 +30,7 @@
 		8A0000010000000000000010 /* ClipboardClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001010 /* ClipboardClient.swift */; };
 		8A0000010000000000000012 /* ReflectionRequestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000010000000000001013 /* ReflectionRequestStore.swift */; };
 		8A0000020000000000000002 /* WriterIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001002 /* WriterIdentity.swift */; };
+		8A0000E70000000000000001 /* AccountKeyCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E70000000000001001 /* AccountKeyCrypto.swift */; };
 		8A0000020000000000000003 /* KeychainClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001003 /* KeychainClient.swift */; };
 		8A0000020000000000000004 /* WriterIdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001004 /* WriterIdentityStore.swift */; };
 		8A0000020000000000000005 /* AnkyPostSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000020000000000001005 /* AnkyPostSigner.swift */; };
@@ -40,7 +41,7 @@
 		8A000002000000000000000A /* ReflectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100A /* ReflectionStore.swift */; };
 		8A000002000000000000000B /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100B /* MapView.swift */; };
 		8A000002000000000000000C /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100C /* MapViewModel.swift */; };
-		8A000002000000000000000D /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100D /* YouView.swift */; };
+		8A000002000000000000000D /* LegalSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100D /* LegalSheets.swift */; };
 		8A000002000000000000000E /* YouViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A000002000000000000100E /* YouViewModel.swift */; };
 		8A0000030000000000000001 /* SessionIndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001001 /* SessionIndexStore.swift */; };
 		8A0000030000000000000002 /* AppOpenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000030000000000001002 /* AppOpenStore.swift */; };
@@ -59,7 +60,7 @@
 		8A0000050000000000000006 /* AnkyverseDayPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000050000000000001006 /* AnkyverseDayPalette.swift */; };
 		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
 		8A0000070000000000000002 /* AnkyAppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000070000000000001002 /* AnkyAppVersion.swift */; };
-		8A0000080000000000000001 /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000080000000000009002 /* web3swift */; };
+		8A0000080000000000000001 /* secp256k1 in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000080000000000009002 /* secp256k1 */; };
 		8A0000090000000000000001 /* TagSessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000090000000000001001 /* TagSessionsListView.swift */; };
 		8A00000A0000000000000001 /* AnkyNudgeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000A0000000000001001 /* AnkyNudgeGenerator.swift */; };
 		8A00000B0000000000000001 /* AnkyLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A00000B0000000000001001 /* AnkyLocalization.swift */; };
@@ -329,6 +330,7 @@
 		8A0000010000000000001011 /* Anky.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anky.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000010000000000001013 /* ReflectionRequestStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReflectionRequestStore.swift; sourceTree = "<group>"; };
 		8A0000020000000000001002 /* WriterIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriterIdentity.swift; sourceTree = "<group>"; };
+		8A0000E70000000000001001 /* AccountKeyCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountKeyCrypto.swift; sourceTree = "<group>"; };
 		8A0000020000000000001003 /* KeychainClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainClient.swift; sourceTree = "<group>"; };
 		8A0000020000000000001004 /* WriterIdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriterIdentityStore.swift; sourceTree = "<group>"; };
 		8A0000020000000000001005 /* AnkyPostSigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyPostSigner.swift; sourceTree = "<group>"; };
@@ -339,7 +341,7 @@
 		8A000002000000000000100A /* ReflectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReflectionStore.swift; sourceTree = "<group>"; };
 		8A000002000000000000100B /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		8A000002000000000000100C /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
-		8A000002000000000000100D /* YouView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouView.swift; sourceTree = "<group>"; };
+		8A000002000000000000100D /* LegalSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalSheets.swift; sourceTree = "<group>"; };
 		8A000002000000000000100E /* YouViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouViewModel.swift; sourceTree = "<group>"; };
 		8A0000030000000000001001 /* SessionIndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionIndexStore.swift; sourceTree = "<group>"; };
 		8A0000030000000000001002 /* AppOpenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOpenStore.swift; sourceTree = "<group>"; };
@@ -523,7 +525,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A0000060000000000000002 /* RevenueCat in Frameworks */,
-				8A0000080000000000000001 /* web3swift in Frameworks */,
+				8A0000080000000000000001 /* secp256k1 in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -744,7 +746,7 @@
 		8A0000020000000000003002 /* You */ = {
 			isa = PBXGroup;
 			children = (
-				8A000002000000000000100D /* YouView.swift */,
+				8A000002000000000000100D /* LegalSheets.swift */,
 				8A000002000000000000100E /* YouViewModel.swift */,
 			);
 			path = You;
@@ -754,6 +756,7 @@
 			isa = PBXGroup;
 			children = (
 				8A0000020000000000001002 /* WriterIdentity.swift */,
+				8A0000E70000000000001001 /* AccountKeyCrypto.swift */,
 				8A0000020000000000001003 /* KeychainClient.swift */,
 				8A0000020000000000001004 /* WriterIdentityStore.swift */,
 				8A0000030000000000001004 /* BiometricAuthClient.swift */,
@@ -1049,7 +1052,7 @@
 			name = Anky;
 			packageProductDependencies = (
 				8A0000060000000000009002 /* RevenueCat */,
-				8A0000080000000000009002 /* web3swift */,
+				8A0000080000000000009002 /* secp256k1 */,
 			);
 			productName = Anky;
 			productReference = 8A0000010000000000001011 /* Anky.app */;
@@ -1232,7 +1235,7 @@
 			mainGroup = 8A0000010000000000003001;
 			packageReferences = (
 				8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
-				8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */,
+				8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
 			);
 			productRefGroup = 8A0000010000000000003003 /* Products */;
 			projectDirPath = "";
@@ -1412,6 +1415,7 @@
 				8A0000010000000000000012 /* ReflectionRequestStore.swift in Sources */,
 				8A0000010000000000000010 /* ClipboardClient.swift in Sources */,
 				8A0000020000000000000002 /* WriterIdentity.swift in Sources */,
+				8A0000E70000000000000001 /* AccountKeyCrypto.swift in Sources */,
 				8A0000020000000000000003 /* KeychainClient.swift in Sources */,
 				8A0000020000000000000004 /* WriterIdentityStore.swift in Sources */,
 				8A0000020000000000000005 /* AnkyPostSigner.swift in Sources */,
@@ -1423,7 +1427,7 @@
 				8A000002000000000000000A /* ReflectionStore.swift in Sources */,
 				8A000002000000000000000B /* MapView.swift in Sources */,
 				8A000002000000000000000C /* MapViewModel.swift in Sources */,
-				8A000002000000000000000D /* YouView.swift in Sources */,
+				8A000002000000000000000D /* LegalSheets.swift in Sources */,
 				8A000002000000000000000E /* YouViewModel.swift in Sources */,
 				8A00000D0000000000000001 /* OnboardingView.swift in Sources */,
 				8A0000E60000000000000001 /* OnboardingAnimaticView.swift in Sources */,
@@ -1798,7 +1802,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1837,7 +1841,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1875,7 +1879,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
@@ -1898,7 +1902,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
@@ -1921,7 +1925,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
@@ -1944,7 +1948,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
@@ -1967,7 +1971,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
@@ -1990,7 +1994,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
@@ -2013,7 +2017,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
@@ -2036,7 +2040,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
@@ -2058,7 +2062,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -2079,7 +2083,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -2101,7 +2105,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2132,7 +2136,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 65;
+				CURRENT_PROJECT_VERSION = 66;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2242,12 +2246,12 @@
 				minimumVersion = 5.0.0;
 			};
 		};
-		8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */ = {
+		8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/web3swift-team/web3swift.git";
+			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
 			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 3.3.2;
+				kind = exactVersion;
+				version = 0.10.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -2258,10 +2262,10 @@
 			package = 8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCat;
 		};
-		8A0000080000000000009002 /* web3swift */ = {
+		8A0000080000000000009002 /* secp256k1 */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8A0000080000000000009001 /* XCRemoteSwiftPackageReference "web3swift" */;
-			productName = web3swift;
+			package = 8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */;
+			productName = secp256k1;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

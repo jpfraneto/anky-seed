@@ -1,7 +1,4 @@
-import CryptoSwift
 import Foundation
-import Web3Core
-import web3swift
 
 struct AnkyIdentityDescriptor: Equatable {
     let identityVersion: String
@@ -48,10 +45,9 @@ struct WriterIdentity {
     }
 
     init(recoveryPhrase: RecoveryPhrase, chainId: UInt64 = Self.productionChainId) throws {
-        guard let seed = BIP39.seedFromMmemonics(recoveryPhrase.text),
-              let rootNode = HDNode(seed: seed),
-              let derivedNode = rootNode.derive(path: Self.derivationPath, derivePrivateKey: true),
-              let privateKey = derivedNode.privateKey else {
+        guard recoveryPhrase.hasValidChecksum,
+              let seed = AccountKeyCrypto.seed(fromPhrase: recoveryPhrase.text),
+              let privateKey = AccountKeyCrypto.derivePrivateKey(seed: seed, path: Self.derivationPath) else {
             throw WriterIdentityError.couldNotDeriveBaseIdentity
         }
 
@@ -59,15 +55,14 @@ struct WriterIdentity {
     }
 
     private init(privateKey: Data, chainId: UInt64) throws {
-        guard SECP256K1.verifyPrivateKey(privateKey: privateKey),
-              let secp256k1PublicKey = SECP256K1.privateToPublic(privateKey: privateKey, compressed: false),
-              let ethereumAddress = Utilities.publicToAddress(secp256k1PublicKey) else {
+        guard let publicKey = AccountKeyCrypto.publicKey(privateKey: privateKey, compressed: false),
+              let address = AccountKeyCrypto.accountId(uncompressedPublicKey: publicKey) else {
             throw WriterIdentityError.couldNotDeriveBaseIdentity
         }
 
         self.privateKey = privateKey
         self.chainId = chainId
-        self.address = ethereumAddress.address
+        self.address = address
     }
 
     static func generate() -> WriterIdentity {
@@ -81,29 +76,28 @@ struct WriterIdentity {
     }
 
     static func checksumAddress(_ address: String) throws -> String {
-        guard let ethereumAddress = EthereumAddress(address) else {
+        guard let checksummed = AccountKeyCrypto.checksummed(address) else {
             throw WriterIdentityError.invalidAddress
         }
-        return ethereumAddress.address
+        return checksummed
     }
 
     func signDigest(_ digest: Data) throws -> String {
         guard digest.count == 32 else {
             throw WriterIdentityError.invalidDigest
         }
-        let signature = SECP256K1.signForRecovery(hash: digest, privateKey: privateKey).serializedSignature
-        guard let signature else {
+        guard let signature = AccountKeyCrypto.signRecoverable(digest: digest, privateKey: privateKey) else {
             throw WriterIdentityError.couldNotSign
         }
-        return signature.toHexString().addHexPrefix()
+        return AccountKeyCrypto.prefixedHex(signature)
     }
 
     static func recoverAddress(digest: Data, signature: String) -> String? {
-        guard let signatureData = Data.fromHex(signature),
-              let address = Utilities.hashECRecover(hash: digest, signature: signatureData) else {
+        guard let signatureData = AccountKeyCrypto.data(fromHex: signature),
+              let publicKey = AccountKeyCrypto.recoverPublicKey(digest: digest, signature: signatureData) else {
             return nil
         }
-        return address.address
+        return AccountKeyCrypto.accountId(uncompressedPublicKey: publicKey)
     }
 }
 

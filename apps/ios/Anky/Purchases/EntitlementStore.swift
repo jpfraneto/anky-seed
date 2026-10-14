@@ -346,8 +346,8 @@ final class EntitlementStore: ObservableObject {
 
     // MARK: - Server truth
 
-    /// Tells the mirror which appUserID this wallet is — the signed
-    /// EIP-712 headers prove the wallet, the body carries nothing the
+    /// Tells the mirror which appUserID this account key is — the signed
+    /// EIP-712 headers prove the account key, the body carries nothing the
     /// server doesn't already know. The server answers from its
     /// webhook-maintained entitlement state. Nil when unreachable.
     @discardableResult

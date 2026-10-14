@@ -16,10 +16,6 @@ final class YouViewModel: ObservableObject {
     @Published private(set) var formattedWritingExportURL: URL?
     @Published private(set) var errorMessage: String?
     @Published private(set) var statusMessage: String?
-    @Published private(set) var identityStatus = AnkyLocalization.ui("Private access")
-    @Published private(set) var isIdentityBackedUpToICloud = false
-    @Published private(set) var sensitiveIdentityConfirmed = false
-    @Published private(set) var recoveryPhraseText = ""
     @Published private(set) var completeAnkyCount = 0
     @Published private(set) var completeAnkySessions: [SessionSummary] = []
     @Published private(set) var totalWritingMinutes = 0
@@ -82,7 +78,7 @@ final class YouViewModel: ObservableObject {
 
     /// Reads everything the seed (settings) displays. Deliberately NOT called
     /// from `init`: this view model backs a surface reached by opening the
-    /// seed, and constructing it used to block launch on a wallet derivation,
+    /// seed, and constructing it used to block launch on an account-key derivation,
     /// two directory walks and two full archive exports. Surfaces that show
     /// this data call `refresh()` when they appear.
     func refresh() {
@@ -90,8 +86,6 @@ final class YouViewModel: ObservableObject {
             accountId = try identityStore.loadOrCreate().accountId
             ankyFileURLs = archive.fileURLs()
             reflectionFileURLs = reflectionStore.fileURLs()
-            identityStatus = AnkyLocalization.ui("Private access")
-            isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
             let iCloudStatus = iCloudBackupStore.status
             isICloudBackupEnabled = iCloudStatus.isEnabled
             iCloudBackupLastDate = iCloudStatus.lastBackupDate
@@ -131,106 +125,6 @@ final class YouViewModel: ObservableObject {
         } catch {
             formattedWritingExportURL = nil
             errorMessage = AnkyLocalization.ui("Could not create a writing export.")
-        }
-    }
-
-    func confirmSensitiveIdentityAccess() async {
-        sensitiveIdentityConfirmed = await biometricAuth.confirm(reason: AnkyLocalization.ui("Confirm access to Anky private settings."))
-    }
-
-    /// The revealed phrase split into its 12 words (empty until revealed).
-    var recoveryPhraseWords: [String] {
-        recoveryPhraseText
-            .split(whereSeparator: { $0 == " " || $0 == "\n" })
-            .map(String.init)
-    }
-
-    func revealRecoveryPhrase() async {
-        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Show your Anky recovery words.")) else {
-            errorMessage = AnkyLocalization.ui("Could not confirm access.")
-            return
-        }
-
-        do {
-            recoveryPhraseText = try identityStore.loadOrCreateRecoveryPhrase().text
-            sensitiveIdentityConfirmed = true
-            errorMessage = nil
-        } catch {
-            errorMessage = AnkyLocalization.ui("Could not load the recovery words.")
-        }
-    }
-
-    func backUpIdentityToICloudKeychain() async {
-        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Back up your Anky recovery words to iCloud Keychain.")) else {
-            errorMessage = AnkyLocalization.ui("Could not confirm access.")
-            return
-        }
-
-        do {
-            try identityStore.backUpRecoveryPhraseToICloudKeychain()
-            isIdentityBackedUpToICloud = true
-            statusMessage = AnkyLocalization.ui("Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups.")
-            errorMessage = nil
-        } catch WriterIdentityStoreError.iCloudBackupVerificationFailed {
-            isIdentityBackedUpToICloud = false
-            errorMessage = AnkyLocalization.ui("iCloud Keychain did not confirm the recovery backup.")
-        } catch {
-            errorMessage = AnkyLocalization.ui("Could not back up Anky recovery.")
-        }
-    }
-
-    func importRecoveryPhrase(_ phraseText: String) async -> Bool {
-        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Recover your Anky access.")) else {
-            errorMessage = AnkyLocalization.ui("Could not confirm access.")
-            return false
-        }
-
-        do {
-            let identity = try identityStore.importRecoveryPhrase(phraseText)
-            accountId = identity.accountId
-            recoveryPhraseText = ""
-            sensitiveIdentityConfirmed = false
-            isIdentityBackedUpToICloud = identityStore.hasICloudRecoveryPhraseBackup()
-            refresh()
-            statusMessage = AnkyLocalization.ui("Access recovered.")
-            errorMessage = nil
-            return true
-        } catch RecoveryPhraseError.invalidWordCount {
-            errorMessage = AnkyLocalization.ui("Recovery words must be 12 words.")
-            return false
-        } catch RecoveryPhraseError.unknownWord {
-            errorMessage = AnkyLocalization.ui("Recovery words contain an unrecognized word.")
-            return false
-        } catch RecoveryPhraseError.invalidChecksum {
-            errorMessage = AnkyLocalization.ui("These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed.")
-            return false
-        } catch WriterIdentityStoreError.importVerificationFailed {
-            errorMessage = AnkyLocalization.ui("The import could not be confirmed. Your current access is unchanged — try again.")
-            return false
-        } catch {
-            errorMessage = AnkyLocalization.ui("Could not recover access.")
-            return false
-        }
-    }
-
-    func recoverIdentityFromICloudKeychain() async {
-        guard await biometricAuth.confirm(reason: AnkyLocalization.ui("Recover your Anky access from iCloud Keychain.")) else {
-            errorMessage = AnkyLocalization.ui("Could not confirm access.")
-            return
-        }
-
-        do {
-            let identity = try identityStore.recoverFromICloudKeychainBackup()
-            accountId = identity.accountId
-            recoveryPhraseText = ""
-            sensitiveIdentityConfirmed = false
-            refresh()
-            statusMessage = AnkyLocalization.ui("Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections.")
-            errorMessage = nil
-        } catch WriterIdentityStoreError.missingICloudBackup {
-            errorMessage = AnkyLocalization.ui("No Anky recovery backup was found in iCloud Keychain.")
-        } catch {
-            errorMessage = AnkyLocalization.ui("Could not recover Anky access from iCloud Keychain.")
         }
     }
 
@@ -277,11 +171,6 @@ final class YouViewModel: ObservableObject {
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? AnkyLocalization.ui("Could not update iCloud backup.")
         }
-    }
-
-    func hideRecoveryPhrase() {
-        recoveryPhraseText = ""
-        sensitiveIdentityConfirmed = false
     }
 
     func dismissMessages() {
@@ -350,9 +239,6 @@ final class YouViewModel: ObservableObject {
             reflectionFileURLs = []
             backupZipURL = nil
             formattedWritingExportURL = nil
-            recoveryPhraseText = ""
-            sensitiveIdentityConfirmed = false
-            isIdentityBackedUpToICloud = false
             isICloudBackupEnabled = false
             iCloudBackupLastDate = nil
             statusMessage = AnkyLocalization.ui("Account and data deleted from this device, Anky iCloud backup, and Anky server records.")

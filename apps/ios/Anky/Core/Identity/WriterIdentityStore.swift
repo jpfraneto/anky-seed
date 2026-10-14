@@ -12,7 +12,7 @@ import Foundation
 /// first frame. This caches the result for the lifetime of the process.
 ///
 /// Keyed by the phrase itself and cleared whenever the stored phrase is
-/// replaced (import, iCloud adoption, development reset), so a wallet swap
+/// replaced (import, iCloud adoption, development reset), so an account swap
 /// can never be served a stale identity.
 ///
 /// Note this keeps the derived private key resident in memory for the
@@ -88,7 +88,7 @@ struct WriterIdentityStore {
 
     /// A fresh install whose iCloud Keychain still carries the opt-in
     /// backup is the SAME writer — adopt that phrase instead of minting a
-    /// stranger wallet that detaches the subscription and server history.
+    /// stranger account that detaches the subscription and server history.
     private func adoptICloudBackupOrGenerate() throws -> (identity: WriterIdentity, phrase: RecoveryPhrase) {
         if let data = try? keychain.data(for: iCloudRecoveryPhraseBackupAccount, synchronizable: true),
            let phraseText = String(data: data, encoding: .utf8),
@@ -112,14 +112,14 @@ struct WriterIdentityStore {
 
     @discardableResult
     private func switchToPhrase(_ phrase: RecoveryPhrase) throws -> WriterIdentity {
-        // The active wallet is being replaced: whatever is memoized now
+        // The active account key is being replaced: whatever is memoized now
         // describes the outgoing one.
         WriterIdentityCache.invalidate()
         let identity = try Self.identity(for: phrase)
         let incoming = Data(phrase.text.utf8)
 
         // Stage the incoming phrase and snapshot the current one before the
-        // switch — the wallet being replaced must survive any failure here.
+        // switch — the account key being replaced must survive any failure here.
         try keychain.save(incoming, account: pendingImportAccount)
         guard try keychain.data(for: pendingImportAccount) == incoming else {
             throw WriterIdentityStoreError.importVerificationFailed
@@ -140,7 +140,7 @@ struct WriterIdentityStore {
     }
 
     /// The phrase that was active before the most recent import, if any —
-    /// the escape hatch from an import that replaced the wrong wallet.
+    /// the escape hatch from an import that replaced the wrong account.
     func previousRecoveryPhraseText() -> String? {
         guard let data = try? keychain.data(for: previousRecoveryPhraseAccount) else {
             return nil

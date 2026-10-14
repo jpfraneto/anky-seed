@@ -51,22 +51,11 @@
 "Could not create a backup zip." = "Impossible de créer une archive de sauvegarde.";
 "There is no writing to export yet." = "Il n'y a pas encore d'écriture à exporter.";
 "Could not create a writing export." = "Impossible de créer l'exportation d'écriture.";
-"Confirm access to Anky private settings." = "Confirmez l'accès aux paramètres privés d' Anky.";
-"Show your Anky recovery words." = "Afficher vos mots de récupération Anky.";
 "Could not confirm access." = "Impossible de confirmer l'accès.";
-"Could not load the recovery words." = "Impossible de charger les mots de récupération.";
-"Back up your Anky recovery words to iCloud Keychain." = "Sauvegarder vos mots de récupération Anky dans le trousseau iCloud.";
-"Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups." = "Mots de récupération enregistrés dans le trousseau iCloud. Utilisez l'exportation des données pour les sauvegardes d'écritures et de réflexions.";
-"iCloud Keychain did not confirm the recovery backup." = "Le trousseau iCloud n'a pas confirmé la sauvegarde de récupération.";
-"Could not back up Anky recovery." = "Impossible de sauvegarder la récupération Anky.";
 "Recover your Anky access." = "Récupérer votre accès Anky.";
 "Access recovered." = "Accès récupéré.";
-"Recovery words must be 12 words." = "Les mots de récupération doivent contenir 12 mots.";
-"Recovery words contain an unrecognized word." = "Les mots de récupération contiennent un mot non reconnu.";
 "Could not recover access." = "Impossible de récupérer l'accès.";
 "Recover your Anky access from iCloud Keychain." = "Récupérer votre accès Anky depuis le trousseau iCloud.";
-"Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections." = "Mots de récupération restaurés depuis le trousseau iCloud. Utilisez la restauration des données pour les écritures et réflexions.";
-"No Anky recovery backup was found in iCloud Keychain." = "Aucune sauvegarde de récupération Anky n'a été trouvée dans le trousseau iCloud.";
 "Could not recover Anky access from iCloud Keychain." = "Impossible de récupérer l'accès Anky depuis le trousseau iCloud.";
 "Enable encrypted Anky iCloud backup." = "Activer la sauvegarde iCloud chiffrée d' Anky.";
 "Encrypted iCloud backup is on." = "La sauvegarde iCloud chiffrée est activée.";
@@ -129,7 +118,6 @@
 "This deletes your Anky data from this device and iCloud. This cannot be undone." = "Cela supprime vos données Anky de cet appareil et d' iCloud. Cette action est irréversible.";
 "Anky is updating the encrypted iCloud backup." = "Anky met à jour la sauvegarde iCloud chiffrée.";
 "Encrypted iCloud backup is on. It will run after your next writing session." = "La sauvegarde iCloud chiffrée est activée. Elle s'exécutera après votre prochaine session d'écriture.";
-"Export readable writings or turn on encrypted iCloud backup for reinstall recovery." = "Exportez des écritures lisibles ou activez la sauvegarde iCloud chiffrée pour récupérer après une réinstallation.";
 "Backing up" = "Sauvegarde";
 "Back up now" = "Sauvegarder maintenant";
 "Export writings" = "Exporter les écritures";
@@ -138,22 +126,13 @@
 "Encrypted iCloud backup on" = "Sauvegarde iCloud chiffrée activée";
 "Export writings or enable iCloud" = "Exporter les écritures ou activer iCloud";
 "0 ankys" = "0 ankylos";
-"Private access" = "Accès privé";
 "Anky created a private local profile for this device." = "Anky a créé un profil local privé pour cet appareil.";
 "Your writing and access stay here unless you choose to export or recover them elsewhere." = "Votre écriture et votre accès restent ici, sauf si vous choisissez de les exporter ou de les récupérer ailleurs.";
-"Advanced recovery" = "Récupération avancée";
 "These words restore your Anky access. Never share them. Anky cannot recover them for you." = "Ces mots restaurent votre accès Anky. Ne les partagez jamais. Anky ne peut pas les récupérer pour vous.";
-"Your recovery words can only be shown after device lock protection is enabled." = "Vos mots de récupération ne peuvent être affichés qu'après l'activation de la protection par verrouillage de l'appareil.";
 "Your passcode or biometrics protect local access. They are not an Anky login." = "Votre code ou vos données biométriques protègent l'accès local. Ce n'est pas une connexion Anky.";
-"Reveal recovery words" = "Afficher les mots de récupération";
-"Copy recovery words" = "Copier les mots de récupération";
 "Hide" = "Masquer";
 "Recover access" = "Récupérer l'accès";
-"Recovery words saved in iCloud Keychain" = "Mots de récupération enregistrés dans le trousseau iCloud";
-"Back up recovery words to iCloud Keychain" = "Sauvegarder les mots de récupération dans le trousseau iCloud";
-"This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you." = "Cela stocke vos mots de récupération dans le trousseau de votre appareil ou du cloud. L'exportation des données est la sauvegarde séparée des écritures et réflexions. Anky ne peut ni lire ni récupérer l'un ou l'autre pour vous.";
 "Support ID" = "ID de support";
-"Import recovery backup" = "Importer une sauvegarde de récupération";
 "Ownership note" = "Note de propriété";
 "Your writing belongs to this device unless you choose to export or recover it elsewhere." = "Votre écriture appartient à cet appareil, sauf si vous choisissez de l'exporter ou de la récupérer ailleurs.";
 "Privacy Policy" = "Politique de confidentialité";
@@ -169,7 +148,6 @@
 "On" = "Activé";
 "Off" = "Désactivé";
 "Anky backs up writing and reflections after each writing session." = "Ankys auvegarde les écritures et les réflexions après chaque session d'écriture.";
-"Turn this on for iCloud recovery after reinstalling." = "Activez ceci pour récupérer via iCloud après une réinstallation.";
 "Danger zone" = "Zone dangereuse";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "Cela supprime de cet appareil les fichiers .anky locaux, les réflexions locales et l'index local de la carte. Exportez d'abord une sauvegarde si vous voulez les conserver.";
 "Delete local data" = "Supprimer les données locales";
@@ -397,7 +375,6 @@
 "Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source." = "Anky n’envoie pas ton nom à son serveur. Il reste dans les données de l’app et peut figurer dans ta sauvegarde Apple. Le code d’Anky est ouvert.";
 "Take a selfie" = "Prendre un selfie";
 "The import could not be confirmed. Your current access is unchanged — try again." = "L’importation n’a pas pu être confirmée. Ton accès actuel n’a pas changé — réessaie.";
-"These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed." = "Ces mots ne forment pas une phrase de récupération valide — l’un d’eux est probablement mal saisi. Vérifie chaque mot et réessaie. Rien n’a été modifié.";
 "Trial ends date price format" = "L’essai se termine le %@. Tu seras facturé %@ ce jour-là sauf annulation dans tes abonnements App Store.";
 "Try again" = "Réessayer";
 "Version format" = "Version %@";
@@ -416,7 +393,6 @@
 "later" = "Plus tard";
 "not yet" = "Pas encore";
 "of your waking life." = "de ta vie éveillée.";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "La récupération remplace l’accès privé utilisé pour Demander à Anky et ton abonnement. Les fichiers .anky locaux restent sur cet appareil.";
 "your name" = "Ton nom";
 "“The Door” · your first canvas" = "« La Porte » · ta première toile";
 
@@ -607,7 +583,6 @@
 "Writing" = "Écriture";
 "Font & size" = "Police et taille";
 "Protection" = "Protection";
-"Your keys" = "Vos clés";
 "Delete account" = "Supprimer le compte";
 "Your paintings" = "Vos peintures";
 "Support" = "Assistance";
@@ -664,13 +639,7 @@
 "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "Anky Gratuit utilise volontairement la voie d'intelligence la moins puissante que nous pouvons proposer durablement : le routeur de modèles à 0 $ d'OpenRouter. La qualité, la vitesse et la disponibilité peuvent varier. Pro finance une inférence prise en charge ; il ne débloque pas le droit de parler à Anky.";
 "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "Chaque réponse affiche un reçu d'inférence avec le modèle réel et le coût indiqué en USD. Les demandes exigent un endpoint sans conservation des données ; Anky n'envoie rien lorsqu'aucun n'est disponible.";
 "When your writing rests this long, the words settle and the Geshtu rises to receive them." = "Quand votre écriture reste silencieuse aussi longtemps, les mots se posent et le Geshtu se lève pour les recevoir.";
-"Public address" = "Adresse publique";
 "Copied" = "Copié";
-"Copy public address" = "Copier l'adresse publique";
-"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "Issue de votre phrase de récupération. Vous pouvez la partager : elle permet de vérifier que vos écrits sont bien les vôtres.";
-"Recovery phrase" = "Phrase de récupération";
-"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "Ces 12 mots sont votre compte. Quiconque les possède le contrôle. Anky ne les voit jamais et ne peut pas les récupérer pour vous : notez-les et gardez-les dans un lieu auquel vous seul avez accès.";
-"Reveal recovery phrase" = "Afficher la phrase de récupération";
 "Delete Account & Data" = "Supprimer le compte et les données";
 "Permanently delete this device archive, iCloud backup, and Anky server records." = "Supprimez définitivement les archives de cet appareil, la sauvegarde iCloud et les données du serveur Anky.";
 "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "Cette action supprime définitivement tous les écrits et peintures de cet appareil, votre sauvegarde Anky iCloud et toutes les données serveur de ce compte : état de l'abonnement, journal des sessions, progression, historique des générations et événements d'utilisation.";
@@ -718,7 +687,6 @@
 "Write Before You Scroll" = "Écrivez avant de faire défiler";
 "Choose the apps Anky gates." = "Choisissez les apps qu'Anky bloque.";
 "Data" = "Données";
-"private access" = "Accès privé";
 "private to this device" = "Privé sur cet appareil";
 "Privacy" = "Confidentialité";
 "Local-first writing and reflection" = "Écriture et réflexion d'abord locales";

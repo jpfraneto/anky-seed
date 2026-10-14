@@ -51,22 +51,11 @@
 "Could not create a backup zip." = "Could not create a backup zip.";
 "There is no writing to export yet." = "There is no writing to export yet.";
 "Could not create a writing export." = "Could not create a writing export.";
-"Confirm access to Anky private settings." = "Confirm access to Anky private settings.";
-"Show your Anky recovery words." = "Show your Anky recovery words.";
 "Could not confirm access." = "Could not confirm access.";
-"Could not load the recovery words." = "Could not load the recovery words.";
-"Back up your Anky recovery words to iCloud Keychain." = "Back up your Anky recovery words to iCloud Keychain.";
-"Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups." = "Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups.";
-"iCloud Keychain did not confirm the recovery backup." = "iCloud Keychain did not confirm the recovery backup.";
-"Could not back up Anky recovery." = "Could not back up Anky recovery.";
 "Recover your Anky access." = "Recover your Anky access.";
 "Access recovered." = "Access recovered.";
-"Recovery words must be 12 words." = "Recovery words must be 12 words.";
-"Recovery words contain an unrecognized word." = "Recovery words contain an unrecognized word.";
 "Could not recover access." = "Could not recover access.";
 "Recover your Anky access from iCloud Keychain." = "Recover your Anky access from iCloud Keychain.";
-"Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections." = "Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections.";
-"No Anky recovery backup was found in iCloud Keychain." = "No Anky recovery backup was found in iCloud Keychain.";
 "Could not recover Anky access from iCloud Keychain." = "Could not recover Anky access from iCloud Keychain.";
 "Enable encrypted Anky iCloud backup." = "Enable encrypted Anky iCloud backup.";
 "Encrypted iCloud backup is on." = "Encrypted iCloud backup is on.";
@@ -129,7 +118,6 @@
 "This deletes your Anky data from this device and iCloud. This cannot be undone." = "This deletes your Anky data from this device and iCloud. This cannot be undone.";
 "Anky is updating the encrypted iCloud backup." = "Anky is updating the encrypted iCloud backup.";
 "Encrypted iCloud backup is on. It will run after your next writing session." = "Encrypted iCloud backup is on. It will run after your next writing session.";
-"Export readable writings or turn on encrypted iCloud backup for reinstall recovery." = "Export readable writings or turn on encrypted iCloud backup for reinstall recovery.";
 "Backing up" = "Backing up";
 "Back up now" = "Back up now";
 "Export writings" = "Export writings";
@@ -138,22 +126,13 @@
 "Encrypted iCloud backup on" = "Encrypted iCloud backup on";
 "Export writings or enable iCloud" = "Export writings or enable iCloud";
 "0 ankys" = "0 ankys";
-"Private access" = "Private access";
 "Anky created a private local profile for this device." = "Anky created a private local profile for this device.";
 "Your writing and access stay here unless you choose to export or recover them elsewhere." = "Your writing and access stay here unless you choose to export or recover them elsewhere.";
-"Advanced recovery" = "Advanced recovery";
 "These words restore your Anky access. Never share them. Anky cannot recover them for you." = "These words restore your Anky access. Never share them. Anky cannot recover them for you.";
-"Your recovery words can only be shown after device lock protection is enabled." = "Your recovery words can only be shown after device lock protection is enabled.";
 "Your passcode or biometrics protect local access. They are not an Anky login." = "Your passcode or biometrics protect local access. They are not an Anky login.";
-"Reveal recovery words" = "Reveal recovery words";
-"Copy recovery words" = "Copy recovery words";
 "Hide" = "Hide";
 "Recover access" = "Recover access";
-"Recovery words saved in iCloud Keychain" = "Recovery words saved in iCloud Keychain";
-"Back up recovery words to iCloud Keychain" = "Back up recovery words to iCloud Keychain";
-"This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you." = "This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you.";
 "Support ID" = "Support ID";
-"Import recovery backup" = "Import recovery backup";
 "Ownership note" = "Ownership note";
 "Your writing belongs to this device unless you choose to export or recover it elsewhere." = "Your writing belongs to this device unless you choose to export or recover it elsewhere.";
 "Privacy Policy" = "Privacy Policy";
@@ -169,7 +148,6 @@
 "On" = "On";
 "Off" = "Off";
 "Anky backs up writing and reflections after each writing session." = "Anky backs up writing and reflections after each writing session.";
-"Turn this on for iCloud recovery after reinstalling." = "Turn this on for iCloud recovery after reinstalling.";
 "Danger zone" = "Danger zone";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them.";
 "Delete local data" = "Delete local data";
@@ -397,7 +375,6 @@
 "Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source." = "Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source.";
 "Take a selfie" = "Take a selfie";
 "The import could not be confirmed. Your current access is unchanged — try again." = "The import could not be confirmed. Your current access is unchanged — try again.";
-"These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed." = "These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed.";
 "Trial ends date price format" = "Trial ends %@. You will be charged %@ that day unless you cancel in App Store subscriptions.";
 "Try again" = "Try again";
 "Version format" = "Version %@";
@@ -416,7 +393,6 @@
 "later" = "Later";
 "not yet" = "Not yet";
 "of your waking life." = "of your waking life.";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "Recovering replaces the private access used for Ask Anky and your subscription. Local .anky files stay on this device.";
 "your name" = "Your name";
 "“The Door” · your first canvas" = "“The Door” · your first canvas";
 
@@ -607,7 +583,6 @@
 "Writing" = "Writing";
 "Font & size" = "Font & size";
 "Protection" = "Protection";
-"Your keys" = "Your keys";
 "Delete account" = "Delete account";
 "Your paintings" = "Your paintings";
 "Support" = "Support";
@@ -664,13 +639,7 @@
 "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky.";
 "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available.";
 "When your writing rests this long, the words settle and the Geshtu rises to receive them." = "When your writing rests this long, the words settle and the Geshtu rises to receive them.";
-"Public address" = "Public address";
 "Copied" = "Copied";
-"Copy public address" = "Copy public address";
-"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours.";
-"Recovery phrase" = "Recovery phrase";
-"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach.";
-"Reveal recovery phrase" = "Reveal recovery phrase";
 "Delete Account & Data" = "Delete account & data";
 "Permanently delete this device archive, iCloud backup, and Anky server records." = "Permanently delete this device archive, iCloud backup, and Anky server records.";
 "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events.";
@@ -718,7 +687,6 @@
 "Write Before You Scroll" = "Write Before You Scroll";
 "Choose the apps Anky gates." = "Choose the apps Anky gates.";
 "Data" = "Data";
-"private access" = "Private access";
 "private to this device" = "Private to this device";
 "Privacy" = "Privacy";
 "Local-first writing and reflection" = "Local-first writing and reflection";

@@ -1,10 +1,15 @@
-Anky 2.1.0 (65) — notes for review
+Anky 2.1.0 (66) — notes for review
 
 WHAT CHANGED IN THIS VERSION
 A redesign of existing features. No new capabilities or entitlements.
 - One writing page, with a side drawer that lists past sessions.
 - Simplified Settings and Stats screens.
 - A simplified Blocked apps screen (one switch).
+
+RESPONSE TO GUIDELINE 2.3.1(a) — NO CRYPTOCURRENCY FUNCTIONALITY
+Anky has no cryptocurrency wallet and no blockchain integration. It never connects to a blockchain network and has no balances, transfers, payments, tokens or NFTs.
+So that nobody needs an email or password, the app creates a random anonymous key on the device. Its only use is to sign requests to Anky's own server (the AI reflection and subscription status), proving that they come from the same anonymous account. It is stored in the Keychain and is never shown to the user.
+Build 65 displayed this key in Settings as "Public address" and "Recovery phrase", which made it look like a wallet. Build 66 removes that display and replaces the third-party library that came from cryptocurrency tooling with a minimal signing implementation.
 
 HOW TO TEST (no account or login required)
 1. Launch the app and type on the page. By default a session ends after 8 seconds without typing.

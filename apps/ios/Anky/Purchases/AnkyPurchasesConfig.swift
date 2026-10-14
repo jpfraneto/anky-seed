@@ -38,7 +38,7 @@ enum AnkyPurchasesConfig {
 /// same configured SDK from the first frame on.
 ///
 /// Pattern choice: `Purchases.configure(withAPIKey:appUserID:)` with the
-/// wallet address directly, NOT configure-anonymous-then-logIn. Identity
+/// account id directly, NOT configure-anonymous-then-logIn. Identity
 /// is created synchronously before this runs, so there is never a window
 /// where a purchase could attach to an anonymous RevenueCat ID. If
 /// identity creation fails we fail closed: the SDK stays unconfigured, no
@@ -53,7 +53,7 @@ enum AnkyPurchases {
         configuredAccountId != nil
     }
 
-    /// Configures on first call, re-identifies via `logIn` if the wallet
+    /// Configures on first call, re-identifies via `logIn` if the account key
     /// changed (iCloud restore adopting another writer's identity).
     /// Returns the active appUserID, or nil when identity is unavailable
     /// (fail closed — retry on next foreground).

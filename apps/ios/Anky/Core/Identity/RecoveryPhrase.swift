@@ -29,7 +29,7 @@ struct RecoveryPhrase: Hashable {
     }
 
     /// For phrases typed by a human (import): a dictionary-valid one-word
-    /// typo must fail here instead of silently deriving a stranger wallet.
+    /// typo must fail here instead of silently deriving a stranger account.
     /// Stored phrases keep loading through the non-validating inits so a
     /// pre-validation import can never brick an existing identity.
     init(text: String, validatingChecksum: Bool) throws {

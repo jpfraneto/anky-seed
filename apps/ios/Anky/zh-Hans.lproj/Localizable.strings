@@ -51,22 +51,11 @@
 "Could not create a backup zip." = "无法创建备份 zip。";
 "There is no writing to export yet." = "还没有可导出的书写。";
 "Could not create a writing export." = "无法创建书写导出。";
-"Confirm access to Anky private settings." = "确认访问 Anky 私人设置。";
-"Show your Anky recovery words." = "显示你的 Anky 恢复词。";
 "Could not confirm access." = "无法确认访问。";
-"Could not load the recovery words." = "无法加载恢复词。";
-"Back up your Anky recovery words to iCloud Keychain." = "将你的 Anky 恢复词备份到 iCloud 钥匙串。";
-"Recovery words saved to iCloud Keychain. Use Data export for writing and reflection backups." = "恢复词已保存到 iCloud 钥匙串。请使用数据导出来备份书写和反思。";
-"iCloud Keychain did not confirm the recovery backup." = "iCloud 钥匙串未确认恢复备份。";
-"Could not back up Anky recovery." = "无法备份 Anky 恢复信息。";
 "Recover your Anky access." = "恢复你的 Anky 访问。";
 "Access recovered." = "访问已恢复。";
-"Recovery words must be 12 words." = "恢复词必须是 12 个词。";
-"Recovery words contain an unrecognized word." = "恢复词包含无法识别的词。";
 "Could not recover access." = "无法恢复访问。";
 "Recover your Anky access from iCloud Keychain." = "从 iCloud 钥匙串恢复你的 Anky 访问。";
-"Recovery words restored from iCloud Keychain. Use Data restore for writing and reflections." = "恢复词已从 iCloud 钥匙串恢复。请使用数据恢复来恢复书写和反思。";
-"No Anky recovery backup was found in iCloud Keychain." = "iCloud 钥匙串中未找到 Anky 恢复备份。";
 "Could not recover Anky access from iCloud Keychain." = "无法从 iCloud 钥匙串恢复 Anky 访问。";
 "Enable encrypted Anky iCloud backup." = "启用加密的 Anky iCloud 备份。";
 "Encrypted iCloud backup is on." = "加密 iCloud 备份已开启。";
@@ -129,7 +118,6 @@
 "This deletes your Anky data from this device and iCloud. This cannot be undone." = "这会从此设备和 iCloud 删除你的 Anky 数据，且无法撤销。";
 "Anky is updating the encrypted iCloud backup." = "Anky 正在更新加密 iCloud 备份。";
 "Encrypted iCloud backup is on. It will run after your next writing session." = "加密 iCloud 备份已开启。它会在下一次书写会话后运行。";
-"Export readable writings or turn on encrypted iCloud backup for reinstall recovery." = "导出可读书写，或开启加密 iCloud 备份以便重装后恢复。";
 "Backing up" = "正在备份";
 "Back up now" = "立即备份";
 "Export writings" = "导出书写";
@@ -138,22 +126,13 @@
 "Encrypted iCloud backup on" = "加密 iCloud 备份已开启";
 "Export writings or enable iCloud" = "导出书写或启用 iCloud";
 "0 ankys" = "0 个 ankys";
-"Private access" = "私人访问";
 "Anky created a private local profile for this device." = "Anky 为此设备创建了一个私有本地资料。";
 "Your writing and access stay here unless you choose to export or recover them elsewhere." = "除非你选择导出或在其他地方恢复，否则你的书写和访问都会留在这里。";
-"Advanced recovery" = "高级恢复";
 "These words restore your Anky access. Never share them. Anky cannot recover them for you." = "这些词可以恢复你的 Anky 访问权限。不要分享它们。Anky 无法替你找回。";
-"Your recovery words can only be shown after device lock protection is enabled." = "启用设备锁保护后才能显示恢复词。";
 "Your passcode or biometrics protect local access. They are not an Anky login." = "你的密码或生物识别保护本地访问。它们不是 Anky 登录。";
-"Reveal recovery words" = "显示恢复词";
-"Copy recovery words" = "复制恢复词";
 "Hide" = "隐藏";
 "Recover access" = "恢复访问";
-"Recovery words saved in iCloud Keychain" = "恢复词已保存到 iCloud 钥匙串";
-"Back up recovery words to iCloud Keychain" = "将恢复词备份到 iCloud 钥匙串";
-"This stores your recovery words in your device/cloud keychain. Data export is the separate backup for writing and reflections. Anky cannot read or recover either for you." = "这会把恢复词存入设备或云端钥匙串。数据导出是书写和反思的独立备份。Anky 无法读取或替你恢复其中任何内容。";
 "Support ID" = "支持 ID";
-"Import recovery backup" = "导入恢复备份";
 "Ownership note" = "所有权说明";
 "Your writing belongs to this device unless you choose to export or recover it elsewhere." = "除非你选择导出或在其他地方恢复，否则你的书写属于此设备。";
 "Privacy Policy" = "隐私政策";
@@ -169,7 +148,6 @@
 "On" = "开启";
 "Off" = "关闭";
 "Anky backs up writing and reflections after each writing session." = "Anky 会在每次书写会话后备份书写和反思。";
-"Turn this on for iCloud recovery after reinstalling." = "开启后可在重装后通过 iCloud 恢复。";
 "Danger zone" = "危险区域";
 "This removes local .anky files, local reflections, and the local map index from this device. Export a backup first if you want to keep them." = "这会从此设备移除本地 .anky 文件、本地反思和本地地图索引。如果想保留它们，请先导出备份。";
 "Delete local data" = "删除本地数据";
@@ -397,7 +375,6 @@
 "Anky doesn't send your name to its backend. It stays in app data and may be included in your Apple device backup. Anky's code is open source." = "Anky 不会把你的名字发送到后端。名字保存在应用数据中，也可能包含在你的 Apple 设备备份里。Anky 的代码是开源的。";
 "Take a selfie" = "拍一张自拍";
 "The import could not be confirmed. Your current access is unchanged — try again." = "无法确认导入。你当前的访问权限未改变 — 请再试一次。";
-"These words don't form a valid recovery phrase — one of them is probably mistyped. Check each word and try again. Nothing was changed." = "这些词无法组成有效的恢复短语 — 其中一个可能输入错了。请逐个检查后重试。没有任何内容被更改。";
 "Trial ends date price format" = "试用将于 %@ 结束。除非你在 App Store 订阅中取消，否则当天将收取 %@。";
 "Try again" = "再试一次";
 "Version format" = "版本 %@";
@@ -416,7 +393,6 @@
 "later" = "稍后";
 "not yet" = "还没有";
 "of your waking life." = "清醒人生。";
-"recovering replaces the private access used for Ask Anky and your subscription. local .anky files stay on this device." = "恢复会替换用于请求 Anky 和订阅的私密访问权限。本地 .anky 文件会留在此设备上。";
 "your name" = "你的名字";
 "“The Door” · your first canvas" = "“门” · 你的第一张画布";
 
@@ -607,7 +583,6 @@
 "Writing" = "书写";
 "Font & size" = "字体与大小";
 "Protection" = "保护";
-"Your keys" = "你的密钥";
 "Delete account" = "删除账户";
 "Your paintings" = "你的画作";
 "Support" = "支持";
@@ -664,13 +639,7 @@
 "Free Anky intentionally uses the least capable intelligence lane we can sustainably offer: OpenRouter's $0 model router. Quality, speed, and availability can vary. Pro pays for supported inference; it does not unlock the right to talk with Anky." = "免费版 Anky 会特意使用我们能持续提供的最基础智能通道：OpenRouter 的 0 美元模型路由器。质量、速度和可用性可能会有波动。Pro 为受支持的推理付费；它并不是解锁与 Anky 对话的权利。";
 "Every answer shows an inference receipt with the actual model and reported USD cost. Requests require a zero-data-retention endpoint; Anky fails closed when none is available." = "每个回答都会显示推理收据，其中包含实际模型和报告的美元成本。请求必须使用零数据保留端点；如果没有可用端点，Anky 不会发送任何内容。";
 "When your writing rests this long, the words settle and the Geshtu rises to receive them." = "当你的书写静默这么久，文字会沉淀下来，Geshtu 会升起接住它们。";
-"Public address" = "公开地址";
 "Copied" = "已复制";
-"Copy public address" = "复制公开地址";
-"Derived from your recovery phrase. Safe to share — it's how anyone can verify your writing is yours." = "由你的恢复短语生成。可以安全分享 — 任何人都能用它验证书写属于你。";
-"Recovery phrase" = "恢复短语";
-"These 12 words are your account. Anyone who has them controls it. Anky never sees them and cannot recover them for you — write them down and keep them somewhere only you can reach." = "这 12 个词就是你的账户。任何拥有它们的人都能控制账户。Anky 永远看不到它们，也无法为你恢复 — 请抄写并保存在只有你能接触的地方。";
-"Reveal recovery phrase" = "显示恢复短语";
 "Delete Account & Data" = "删除账户与数据";
 "Permanently delete this device archive, iCloud backup, and Anky server records." = "永久删除此设备归档、iCloud 备份和 Anky 服务器记录。";
 "This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events." = "这将永久删除此设备上的所有书写和画作、你的 Anky iCloud 备份，以及此账户的所有服务器记录：订阅状态、会话记录、等级进度、生成历史和使用事件。";
@@ -718,7 +687,6 @@
 "Write Before You Scroll" = "滚动之前先书写";
 "Choose the apps Anky gates." = "选择由 Anky 把关的 App。";
 "Data" = "数据";
-"private access" = "私密访问";
 "private to this device" = "仅限此设备";
 "Privacy" = "隐私";
 "Local-first writing and reflection" = "本地优先的书写与反思";

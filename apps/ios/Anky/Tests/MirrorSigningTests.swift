@@ -42,4 +42,24 @@ final class MirrorSigningTests: XCTestCase {
             fixture.recoveredAddress
         )
     }
+
+    func testAccountKeyCryptoMatchesPublishedVectors() throws {
+        XCTAssertEqual(
+            AccountKeyCrypto.hexLowercase(AccountKeyCrypto.keccak256(Data())),
+            "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        )
+        XCTAssertEqual(
+            AccountKeyCrypto.hexLowercase(AccountKeyCrypto.keccak256(Data("abc".utf8))),
+            "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
+        )
+
+        let identity = try WriterIdentity(recoveryPhrase: try RecoveryPhrase(
+            text: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+        ))
+        XCTAssertEqual(identity.address, "0x9858EfFD232B4033E47d90003D41EC34EcaEda94")
+
+        let digest = AccountKeyCrypto.keccak256(Data("anky".utf8))
+        let signature = try identity.signDigest(digest)
+        XCTAssertEqual(WriterIdentity.recoverAddress(digest: digest, signature: signature), identity.address)
+    }
 }
