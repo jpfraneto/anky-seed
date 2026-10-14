@@ -17,7 +17,6 @@ const navLinks = [
   { label: "Docs", href: "/docs" },
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
-  { label: "Anky on Base", href: "/ankycoin" },
 ] as const;
 
 const socialLinks = [
