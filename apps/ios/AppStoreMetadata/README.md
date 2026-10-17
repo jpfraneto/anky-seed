@@ -40,7 +40,7 @@ Everything in the listing that described those is gone.
   each locale's anky.app page.
 - **Name and keywords:** unchanged except en-US keywords: "stream,consciousness" became "freewrite,minimal,calm".
 - **Release notes:** what a 2.1 user will notice.
-- **review_notes.txt:** rewritten for 2.2.0 (67).
+- **review_notes.txt:** rewritten for 2.2.0 (69).
 - **App Privacy:** answer "Data Not Collected" — see `../NUTRITION_LABEL.md`.
 - **In-app purchases:** Anky Pro monthly/yearly must be removed from sale in
   App Store Connect by hand; nothing in the app sells them anymore.

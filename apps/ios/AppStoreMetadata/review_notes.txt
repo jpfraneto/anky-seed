@@ -1,4 +1,4 @@
-Anky 2.2.0 (67) — notes for review
+Anky 2.2.0 (69) — notes for review
 
 WHAT CHANGED IN THIS VERSION
 Anky is now a fully offline writing app. This version removes features; it adds no new capabilities or entitlements.
