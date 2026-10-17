@@ -1,130 +1,55 @@
-# Anky-Datenschutzrichtlinie
+# Anky Datenschutzerklärung
 
-Gültig und überarbeitet am 11. Juli 2026
+Gültig und überarbeitet: 16. Oktober 2026
 
-Anky arbeitet lokal zuerst. Die grundlegende Schreibfunktion benötigt weder Anmeldung noch Abo. Deine Texte bleiben auf dem Gerät, außer du exportierst oder sicherst sie, kontaktierst den Support oder forderst ausdrücklich eine servergenerierte Funktion an.
+Anky ist eine Schreib-App, die dein Schreiben auf deinem iPhone behält. Ab Version 2.2 verbindet sich die Anky-App mit keinem Server von Anky. Es gibt kein Konto, keine Anmeldung, keine Analyse und keine Werbung.
 
 ## 1. Wer wir sind
 
-Anky wird von **Anky, Inc.**, einer Gesellschaft aus Delaware, betrieben. Kontakt: **[support@anky.app](mailto:support@anky.app)**.
+Anky wird von **Anky, Inc.** betrieben, einer Gesellschaft aus Delaware. Kontakt: **[support@anky.app](mailto:support@anky.app)**.
 
-Diese Richtlinie gilt für die iOS-App, anky.app, das Anky-Backend, Käufe, Support und verbundene Dienste. Anky ist kein medizinischer, psychologischer oder Krisendienst und keine professionelle Beratung.
+Diese Erklärung gilt für die Anky-App für iOS und die Website anky.app. Anky ist kein medizinischer, psychologischer, Krisen-, Rechts- oder Finanzdienst.
 
-## 2. Kostenlose und Pro-Funktionen
+## 2. Was auf deinem Gerät bleibt
 
-Folgendes bleibt kostenlos und benötigt kein Anky Pro:
+Anky speichert Folgendes nur auf deinem iPhone:
 
-- Neue Schreibsitzungen beginnen und abschließen
-- Lokale Texte erstellen, fortsetzen, speichern, durchsuchen, kopieren, exportieren und löschen
-- Bereits gespeicherte Reflexionen lesen
-- KI-Schreibimpulse mit lokaler Alternative, wenn der Server nicht verfügbar ist
-- Bildschirmzeit-Sperre, Auswahl geschützter Apps und Schutz ein-/ausschalten
-- Drei tägliche Schnellpässe nach der aktuellen Freigaberegel
-- Notfallzugang und Notfallentsperrung
-- Gemäldefortschritt und bereits gelieferte personalisierte Gemälde
-- Archiv und Schreibverlauf
-- Einstellungen, lokale/iCloud-Sicherung, Import/Export, Kontolöschung, Support und Rechtstexte
+- Deine Schreiben, einen unfertigen Entwurf und den Index für die Liste deiner Schreiben und deine Statistik
+- Deine Einstellungen: Dauer, 8-Sekunden-Regel, Rücktaste, Autokorrektur, Schrift und Größe
+- Wenn du die Bildschirmzeit-Sperre nutzt: die gewählten Apps (als undurchsichtige Apple-Tokens), den Zustand der Sperre und deine Freigaben
+- Einen zufälligen Schlüssel im iOS-Schlüsselbund, der nur zum Verschlüsseln deines optionalen iCloud-Backups dient
 
-Eine aktive kleingeschriebene `pro`-Berechtigung verändert genau eine Sache: Neue Reflexionen verwenden Ankys stärkeren unterstützten Inferenzkanal. Auch kostenlose Nutzer können weiterhin Reflexionen über den kostenlosen Kanal anfordern. Schreiben und alle Funktionen außerhalb von Reflexionen bleiben ohne Pro verfügbar.
+Nichts davon wird an Anky gesendet. Wir können dein Schreiben nicht lesen und haben keine Kopie davon.
 
-Generierte Dienste unterliegen stets angemessenen Dienst-, Sicherheits-, Kapazitäts- und Missbrauchsschutzlimits.
+## 3. Was Anky nicht tut
 
-## 3. Lokal gespeicherte Informationen
+- Es sendet dein Schreiben nirgendwohin.
+- Es nutzt keine KI. Wählst du **Prompt + Schreiben kopieren**, landet der Text in deiner Zwischenablage und von dort nur dort, wo du ihn einfügst. Der Dienst, in den du ihn einfügst, behandelt ihn nach seinen eigenen Bedingungen.
+- Es enthält keine Analyse-, Absturzbericht-, Werbe- oder Tracking-SDKs.
+- Es verkauft, teilt und vermietet nichts, weil es nichts erhebt.
 
-Anky speichert auf dem Gerät oder in der gemeinsamen App-Gruppe:
+## 4. Apple-Dienste, die du nutzen kannst
 
-- `.anky`-Dateien, aktive Entwürfe, lesbare Rekonstruktionen und Sitzungsindex
-- Gespeicherte KI-Reflexionen und heruntergeladene Gemälde
-- Schreibzeit, Level, Reise, Tagesziel, Pässe und Entsperrstatus
-- Einstellungen, Erinnerungen, Bildschirmzeit-App-/Kategorie-Tokens und Sperrstatus
-- Eine pseudonyme Anky-Autor-/App-Nutzerkennung und Signaturschlüssel im iOS-Schlüsselbund
-- Eine Wiederherstellungsphrase, sofern du sie nicht freiwillig im iCloud-Schlüsselbund sicherst
-- Einen nicht maßgeblichen Abo-Cache für die Anzeige; bezahlte Aktionen verlangen eine aktuelle Prüfung
+- **iCloud-Backup:** Wenn du es aktivierst, verschlüsselt Anky deine Schreiben mit AES-GCM und speichert die verschlüsselte Datei in deinem eigenen iCloud Drive. Der Schlüssel kann in deinem iCloud-Schlüsselbund gesichert werden, um auf einem neuen iPhone wiederherzustellen. Apple betreibt iCloud; Anky sieht das Backup nie.
+- **Bildschirmzeit:** Wenn du die Sperre aktivierst, regeln Apples Bildschirmzeit-Frameworks die Berechtigung und die App-Auswahl. Deine App-Liste bleibt auf dem Gerät.
+- **Mitteilungen:** Erinnerungen und Mitteilungen der Sperre plant iOS lokal.
+- **Face ID:** wird nur genutzt, um vor dem Aktivieren des iCloud-Backups zu bestätigen, dass du es bist. Apple führt die Prüfung durch; Anky erfährt nur Ja oder Nein.
 
-Schreiben, Speichern, Fortsetzen, Durchsuchen, Kopieren, Exportieren, Löschen, Lesen vorhandener Reflexionen sowie Sperre, Schnellpässe und Notfallzugang senden deinen Text nicht an das Backend.
+## 5. Support
 
-Bildschirmzeit-Auswahlen bleiben in Apple-Frameworks und lokalem Speicher. Anky sendet die Liste geschützter Apps nicht an das Backend.
+Die Einstellungen können deine Mail-App oder einen Chat-Link öffnen. Nichts wird gesendet, bevor du es sendest, und dann erhalten wir, was du schreiben wolltest.
 
-## 4. Informationen bei generierten Diensten
+## 6. Frühere Versionen
 
-### KI-Reflexionen
+Anky-Versionen vor 2.2 konnten ein Schreiben an den Anky-Server senden, wenn du ausdrücklich eine KI-Reflexion angefordert hast, und nutzten RevenueCat für Abos. Diese Versionen speicherten dein Schreiben nicht auf dem Server. Um Daten aus einer früheren Version löschen zu lassen, schreib an **[support@anky.app](mailto:support@anky.app)**.
 
-Wenn du ausdrücklich eine neue Reflexion anforderst, sendet die App die exakten `.anky`-Bytes über eine authentifizierte Verbindung an das Anky-Backend. Es prüft Datei und Hash, rekonstruiert den Text und sendet ihn mit Anweisungen an den konfigurierten KI-Anbieter. Die Reflexion kehrt zum Gerät zurück und wird lokal gespeichert.
+## 7. Deine Daten löschen
 
-### KI-Schreibimpulse
+Lösche ein einzelnes Schreiben über sein Menü. **Einstellungen → Alle Daten löschen** entfernt jedes Schreiben, jede Einstellung und jeden Schlüssel vom Gerät und löscht das Anky-iCloud-Backup. Das Löschen der App entfernt ebenfalls die lokalen Daten.
 
-Wenn du einen Serverimpuls anforderst, wird der aktuelle `.anky`-Text über denselben KI-Weg verarbeitet. Ist der Server nicht verfügbar, nutzt die App die lokale Variante.
+## 8. Kinder, Änderungen und Kontakt
 
-### Personalisierte Gemälde nach Level 8
-
-Ist personalisierter Fortschritt verfügbar, sendet die App den Text seit dem vorherigen Level an das Backend. Ein Modell verdichtet visuelle Themen; der abgeleitete Prompt geht an einen Bildanbieter. Der Rohtext wird nur vorübergehend verarbeitet und nicht in der Datenbank gespeichert. Gemäldedateien und kontobezogene Metadaten werden für erneute Zustellung gespeichert, bis das Konto gelöscht wird oder betriebliche/rechtliche Pflichten etwas anderes erfordern.
-
-Der Dienst nutzt **OpenRouter** für die Modellweiterleitung. Der aktuelle Code kann Textmodelle von Anthropic, Google und DeepSeek sowie Bildmodelle von OpenAI einsetzen. Bankr- oder Poiesis-Endpunkte werden nur bei Konfiguration genutzt; datenschutzsensible Wege werden ohne Bestätigung der verlangten Nullspeicherung übersprungen. Anbieter verarbeiten Inhalte nach eigenen Bedingungen.
-
-Anky fordert, soweit verfügbar, Einstellungen ohne Training und mit Nullspeicherung an, kann aber keine identischen Drittanbieterpraktiken garantieren. Sende nichts, das du für die gewünschte Funktion nicht verarbeiten lassen möchtest.
-
-## 5. Backend- und Betriebsdaten
-
-Das Backend verwendet eine pseudonyme Kennung aus dem lokalen kryptografischen Profil, kein klassisches Passwortkonto. Signierte Anfragen beweisen deren Kontrolle, ohne die Wiederherstellungsphrase zu senden.
-
-Für Betrieb und Schutz können gespeichert werden:
-
-- Pseudonyme Kennung
-- Sitzungshashes, Dauer und Zeitpunkte für den Fortschritt, niemals der Text
-- Level-/Zeremonienstatus, Gemäldedateien und -metadaten, Generierungs- und Idempotenzstatus
-- Kontingente und Missbrauchsschutzzähler
-- Produkt, Transaktion, Store, Zeitraum, Ablauf und `pro`-Status von RevenueCat
-- Eigene Ereignisse wie Einführung, Paywall, Kauf, Ablauf und Notfallentsperrung mit gehashter oder pseudonymer Kennung
-- Bereinigte Diagnosen: Zeit, App-Version, Plattform, Anfragehash, Route, Anbieter, Status-/Fehlerkategorie und Latenz
-
-Das Backend ist so gebaut, dass Rohtext, rekonstruierter Text sowie Reflexions- oder Impulstext nach der Antwort nicht gespeichert werden. Anky trainiert keine eigenen Modelle mit deinen Texten. Inhalt kann nur aufbewahrt werden, wenn du ihn bewusst dem Support sendest, zur Untersuchung eines von dir gemeldeten Vorfalls oder aufgrund einer Rechtspflicht.
-
-Anky enthält keine Werbung und kein appübergreifendes Tracking. Daten werden nicht verkauft und Texte nicht für Werbung genutzt. Eigene Ereignisse und Diagnosen dienen Funktion, Zuverlässigkeit, Kapazität, Sicherheit, Missbrauchsschutz und begrenzter Produktanalyse.
-
-## 6. Apple, RevenueCat und Abos
-
-Anky bietet über den App Store optionale, automatisch verlängerbare Jahres- und Monatsabos an. Beide bieten dieselben hochwertigeren neuen Reflexionen. Maßgeblich sind der lokalisierte Preis und die Bedingungen, die Apple beim Kauf anzeigt.
-
-Es wird kein Einführungs-Testzeitraum angeboten. Das Abo verlängert sich automatisch, sofern es nicht in Apples Abo-Einstellungen gekündigt wird.
-
-Apple bearbeitet Zahlung, Verlängerung, Kündigung, Abrechnung, Verlauf und Erstattung. Anky erhält oder speichert keine vollständigen Kartendaten.
-
-RevenueCat validiert Käufe und liefert Berechtigungen. Apple und RevenueCat stellen Produkt-, Kauf-, Transaktions-, Abo-, Store-, Ablauf-, Test- und Berechtigungsdaten bereit, die mit der pseudonymen Kennung verknüpft sind. Kauf und Wiederherstellung aktualisieren den Status. Werbe- oder unbefristete Freigaben können Pro ebenfalls aktivieren.
-
-Anky verkauft oder verwendet keine Reflexions-Credits, Credit-Pakete oder Credit-Guthaben.
-
-## 7. Optionale Dienste und Entscheidungen
-
-- **Verschlüsselte iCloud-Sicherung:** Bei Aktivierung speichert Anky ein AES-GCM-verschlüsseltes Archiv deiner Texte und Reflexionen in iCloud Documents. Die Wiederherstellungsphrase kann auf Wunsch separat im iCloud-Schlüsselbund liegen.
-- **Import/Export/Teilen:** Dateien gehen zum gewählten Ziel. Exportierte Kopien kann Anky nicht kontrollieren.
-- **Mitteilungen:** iOS speichert Erlaubnis und Zeitplan. Eine Testende-Erinnerung entsteht nur aus einem aktuell verifizierten Test.
-- **Sprache und Fotos:** Wählst du diese Check-ins, gelten Apple-Berechtigungen. Das aktuelle Check-in-Bild wird weder zum Backend hochgeladen noch als personalisierte Gemäldeeingabe gespeichert.
-- **Optionales Profilbild:** Ein beim Onboarding gewähltes Selfie/Avatar bleibt in den lokalen App-Dokumenten und wird nicht zum Backend hochgeladen. Es kann in aktivierten Apple-Gerätebackups enthalten sein.
-- **Support:** Die App öffnet dein Mailprogramm. Du entscheidest, ob du Adresse, pseudonyme Support-ID, Version, Text, Bilder oder Anhänge sendest.
-
-## 8. Aufbewahrung und Löschung
-
-Lokale Daten bleiben bis zur Einzellöschung, In-App-Löschung, Entfernung passender Sicherungen oder App-Löschung. App-Löschung kündigt kein Abo.
-
-**Konto und Daten löschen** sendet eine authentifizierte Anfrage zur Löschung backendbezogener Daten und entfernt anschließend Texte, Reflexionen, Einstellungen, Kennungen, Wiederherstellungsmaterial, Cache und die erreichbare Anky-iCloud-Sicherung. Das Backend löscht Sitzungs-/Leveldaten, Ereignisse, Kontingente, Generierungen und personalisierte Gemälde unter Ankys Kontrolle.
-
-Anky kann Apple-Kaufverlauf, rechtlich oder zur Validierung nötige RevenueCat-Daten, legitim aufbewahrte Supportnachrichten, exportierte Dateien oder Apple-Sicherungen nicht löschen. Ein späterer RevenueCat-Webhook kann minimalen Abo-Status neu anlegen.
-
-Betriebsdaten bleiben nur so lange, wie für diese Zwecke, Rechtspflichten, Sicherheit, Betrug/Missbrauch, Streitfälle und Buchhaltung angemessen nötig. Kontakt: **[support@anky.app](mailto:support@anky.app)**.
-
-## 9. Sicherheit, internationale Verarbeitung und Rechte
-
-Wir nutzen angemessene Maßnahmen wie verschlüsselte Übertragung, signierte Anfragen, Schlüsselbund und verschlüsselte optionale Sicherungen. Kein System ist vollkommen sicher. Schütze Gerät, Apple-ID, Wiederherstellungsphrase und Exporte.
-
-Anky, Inc. sitzt in den USA. Freiwillig gesendete Daten können dort oder in anderen Ländern der Anbieter verarbeitet werden.
-
-Je nach Wohnort hast du Rechte auf Auskunft, Berichtigung, Löschung, Export, Einschränkung oder Widerspruch. Viele Daten sind lokal und direkt unter deiner Kontrolle.
-
-## 10. Kinder, Änderungen und Kontakt
-
-Anky richtet sich nicht an Kinder unter 13 Jahren. Unter 18 sollte Anky nur mit Erlaubnis einer erziehungsberechtigten Person genutzt werden.
-
-Wir können diese Richtlinie aktualisieren und ändern dann das Revisionsdatum.
+Anky ist nicht für Kinder unter 13 Jahren gedacht. Wenn sich diese Erklärung ändert, aktualisieren wir das Datum oben.
 
 **Anky, Inc.**  
 **[support@anky.app](mailto:support@anky.app)**

@@ -9,11 +9,11 @@
     "en_US@sw=QWERTY;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "写 8 分钟。",
+    "ritual": "只管写。",
     "simplicity": "最简单的\n写作应用。",
-    "reflection": "为你写下的文字\n获得一份回响。",
-    "archive": "你的记录，\n都在这里。",
-    "recording": "录下自己\n朗读的声音。"
+    "finished": "点一下\n继续写。",
+    "timer": "选择你的\n分钟数。",
+    "archive": "每一页都留在\n你的手机上。"
   },
   "ritual": {
     "elapsedMs": 38000,

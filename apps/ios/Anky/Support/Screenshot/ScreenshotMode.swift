@@ -30,9 +30,9 @@ enum ScreenshotMode {
     enum Scene: String, CaseIterable {
         case ritual
         case simplicity
-        case reflection
+        case finished
+        case timer
         case archive
-        case recording
 
         /// Zero-padded so the App Store ordering is obvious on disk.
         var fileNumber: String {

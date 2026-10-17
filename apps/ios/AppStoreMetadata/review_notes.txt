@@ -1,30 +1,26 @@
-Anky 2.1.0 (66) — notes for review
+Anky 2.2.0 (67) — notes for review
 
 WHAT CHANGED IN THIS VERSION
-A redesign of existing features. No new capabilities or entitlements.
-- One writing page, with a side drawer that lists past sessions.
-- Simplified Settings and Stats screens.
-- A simplified Blocked apps screen (one switch).
+Anky is now a fully offline writing app. This version removes features; it adds no new capabilities or entitlements.
+- No server connection of any kind. AI reflections, the subscription (Anky Pro, RevenueCat) and all network code were removed. The app has no in-app purchases.
+- One writing page with a side drawer of past writings. A finished writing stays on the page; tapping it continues it.
+- Tapping the clock shows the 8 second rule, a minutes slider (1–8) and ∞ (no time limit).
+- The App Privacy answers are now "Data Not Collected".
 
-RESPONSE TO GUIDELINE 2.3.1(a) — NO CRYPTOCURRENCY FUNCTIONALITY
-Anky has no cryptocurrency wallet and no blockchain integration. It never connects to a blockchain network and has no balances, transfers, payments, tokens or NFTs.
-So that nobody needs an email or password, the app creates a random anonymous key on the device. Its only use is to sign requests to Anky's own server (the AI reflection and subscription status), proving that they come from the same anonymous account. It is stored in the Keychain and is never shown to the user.
-Build 65 displayed this key in Settings as "Public address" and "Recovery phrase", which made it look like a wallet. Build 66 removes that display and replaces the third-party library that came from cryptocurrency tooling with a minimal signing implementation.
+NO CRYPTOCURRENCY FUNCTIONALITY
+Anky has no wallet, no blockchain integration, no tokens and no payments. A random key is generated on the device and stored in the Keychain; its only use is to encrypt the optional iCloud backup of the user's writings. It is never shown to the user and never sent anywhere.
 
 HOW TO TEST (no account or login required)
 1. Launch the app and type on the page. By default a session ends after 8 seconds without typing.
-2. When a session ends, tap "Ask Anky for reflection" to receive an AI reflection on what you wrote.
-3. Tap the menu button (top left) to open the drawer: past sessions, Settings and Stats.
+2. The writing stays on the page. Tap it to keep writing.
+3. On a finished writing, the "…" button (top right) offers Copy writing, Copy prompt + writing (puts the text on the clipboard with a reflection prompt) and Delete.
+4. Tap the menu button (top left) to open the drawer: past writings, Settings and Stats.
 
 SCREEN TIME (FamilyControls)
 Blocking is opt-in. Go to Settings → Blocked apps, turn on "Block until I write", grant Screen Time access and choose one or two apps. Please also allow notifications when asked.
 
-iOS does not let a shield open another app, so the "Write" button on Anky's shield posts a local notification; tapping that notification opens Anky on the writing page. Writing unlocks the chosen apps.
+iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
+- "Write" opens Anky on a blank page. Finishing a sentence unlocks the chosen apps for 15 minutes (up to three times a day); writing the chosen number of minutes unlocks them for the rest of the day.
+- "Emergency unlock" opens Anky and unlocks the apps for the rest of the day immediately. No writing and no payment are required.
 
-Nobody can be locked out of their device:
-- The same switch turns blocking off at any time, with one confirmation. No writing and no payment are required.
-- The shield also has an "Emergency unlock" button, which opens a 30-second breathing exercise in Anky and then unlocks the apps. It is always free.
-- Only Anky's own shield is ever applied or removed. The app does not change any other Screen Time setting.
-
-SUBSCRIPTION
-Anky Pro is an auto-renewable subscription, monthly (anky.monthly) or yearly (anky.annual). Both products were approved previously. Writing, the archive, recording, the Screen Time gate and basic reflections are free; Anky Pro provides reflections from a stronger model. Restore Purchases is available in Settings and on the subscription screen. Links to the Terms of Use (Apple's standard EULA) and the Privacy Policy are in the App Description and on the subscription screen.
+Nobody can be locked out of their device: the same switch in Settings → Blocked apps turns blocking off at any time. Only Anky's own shield is ever applied or removed. The app does not change any other Screen Time setting.

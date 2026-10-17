@@ -1,5 +1,4 @@
 import SwiftUI
-import RevenueCat
 
 #if canImport(UIKit)
 import UIKit
@@ -14,25 +13,14 @@ struct AnkySettingsView: View {
     /// Re-enter the onboarding flow from the top. Nil on routes that can't
     /// host the replay (the row simply doesn't appear there).
     var onReplayOnboarding: (() -> Void)?
-    @EnvironmentObject private var entitlements: EntitlementStore
 
-    @AppStorage("anky.biometricIdentityConfirmation") private var biometricIdentityConfirmation = false
-    @AppStorage("anky.biometricPrivacyOnboardingCompleted") private var faceIDPrivacyOnboardingCompleted = false
-    @AppStorage("anky.skipNextFaceIDEnableAuthentication") private var skipsNextFaceIDEnableAuthentication = false
 
-    @State private var targetMinutes: Double = Double(DailyTargetStore.defaultMinutes)
-    @State private var effectiveTargetMinutes = DailyTargetStore.defaultMinutes
-    @State private var pendingTargetMinutes: Int?
-    @State private var serverAddress = MirrorConfiguration.currentBaseURL()
-    @State private var serverStatus: String?
-    @State private var isConnectingServer = false
     @State private var writingPreferences = WritingPreferencesStore().load()
     /// D3 — the silence that closes the channel, in seconds (bounds 3…30).
     @State private var silenceSeconds: Double =
         Double(WritingPreferencesStore().load().effectiveTerminalSilenceMs) / 1000
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
-    @State private var showsSubscriptionPaywall = false
     @State private var showsDeleteAccountSheet = false
     @State private var deleteConfirmationText = ""
     @State private var isDeletingAccount = false
@@ -49,22 +37,13 @@ struct AnkySettingsView: View {
                     .padding(.top, 34)
                     .padding(.horizontal, 4)
 
-                planGroup
                 writingGroup
                 typefaceGroup
                 protectionGroup
-                // Pointing the app at another server is a development tool,
-                // not a setting a writer should meet.
-                #if DEBUG
-                serverGroup
-                #endif
                 supportGroup
                 legalGroup
                 deleteGroup
                 footer
-                #if DEBUG && ANKY_INTERNAL_DEBUG
-                LevelDebugSection()
-                #endif
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 48)
@@ -84,13 +63,8 @@ struct AnkySettingsView: View {
             // than when the view model is built, so opening the drawer never
             // pays for the account-key derivation.
             viewModel.refresh()
-            refreshDailyTarget()
-            serverAddress = MirrorConfiguration.currentBaseURL()
             writingPreferences = WritingPreferencesStore().load()
             silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
-            Task {
-                await entitlements.loadPackages()
-            }
         }
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
@@ -104,9 +78,6 @@ struct AnkySettingsView: View {
                 .presentationDragIndicator(.visible)
                 .ankySheetBackground(PrivacySheetPalette.ink)
         }
-        .sheet(isPresented: $showsSubscriptionPaywall) {
-            PaywallSheet(store: entitlements, origin: "settings")
-        }
         .sheet(isPresented: $showsDeleteAccountSheet) {
             deleteAccountSheet
                 .presentationDetents([.large])
@@ -115,81 +86,10 @@ struct AnkySettingsView: View {
         }
     }
 
-    // MARK: Plan
-
-    private var planGroup: some View {
-        group {
-            Button {
-                AnkyHaptics.light()
-                showsSubscriptionPaywall = true
-            } label: {
-                VStack(spacing: 0) {
-                    row(icon: subscriptionStatusSymbol, title: subscriptionStatusTitle) {
-                        if !entitlements.isEntitledForGating {
-                            value(AnkyLocalization.ui("Anky Pro"))
-                        }
-                        chevron
-                    }
-                    if let detail = subscriptionStatusDetail {
-                        caption(detail)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            rowDivider
-
-            Button {
-                guard !entitlements.isRestoring else {
-                    return
-                }
-                AnkyHaptics.light()
-                Task {
-                    await entitlements.restore()
-                }
-            } label: {
-                VStack(spacing: 0) {
-                    row(icon: "arrow.clockwise", title: "Restore Purchases") {
-                        if entitlements.isRestoring {
-                            ProgressView().controlSize(.small)
-                        }
-                    }
-                    if let restoreLine = entitlements.restoreStatusLine {
-                        caption(restoreLine)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
     // MARK: Writing
 
     private var writingGroup: some View {
         group(title: "Writing") {
-            row(icon: "sun.max", title: "Daily target") {
-                value(AnkyLocalization.ui("minute count format", Int(targetMinutes)))
-            }
-            Slider(
-                value: $targetMinutes,
-                in: Double(DailyTargetStore.minutesRange.lowerBound)...Double(DailyTargetStore.minutesRange.upperBound),
-                step: 1
-            ) { isEditing in
-                if !isEditing {
-                    commitDailyTarget()
-                }
-            }
-            .tint(Color.ankyInk)
-            .padding(.leading, 54)
-            .padding(.trailing, 16)
-            .padding(.bottom, 12)
-
-            if let pendingTargetFootnote {
-                caption(pendingTargetFootnote)
-            }
-
-            rowDivider
-
             toggleRow(icon: "delete.backward", title: "Backspace", isOn: preferenceBinding(\.backspaceAllowed))
 
             rowDivider
@@ -308,19 +208,6 @@ struct AnkySettingsView: View {
                 caption(iCloudBackupLine)
             }
 
-            if BiometricAuthClient().canAuthenticate() {
-                rowDivider
-
-                toggleRow(
-                    icon: deviceAuthenticationIconName,
-                    title: AnkyLocalization.ui(
-                        "%@ lock",
-                        BiometricAuthClient().deviceAuthenticationName()
-                    ),
-                    isOn: faceIDBinding
-                )
-            }
-
             rowDivider
 
             Button {
@@ -330,72 +217,6 @@ struct AnkySettingsView: View {
                 row(icon: "shield", title: "Blocked apps") { chevron }
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: Server
-
-    private var serverGroup: some View {
-        group(title: "Anky server") {
-            HStack(spacing: 16) {
-                Image(systemName: "server.rack")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(Color.ankyInk)
-                    .frame(width: 22)
-
-                TextField("https://anky.example.com", text: $serverAddress)
-                    .font(.system(size: 13, weight: .regular, design: .monospaced))
-                    .foregroundStyle(Color.ankyInk)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .onSubmit { connectServer() }
-
-                Button {
-                    connectServer()
-                } label: {
-                    if isConnectingServer {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text(AnkyLocalization.ui("Connect"))
-                            .font(.fraunces(15, weight: .regular))
-                            .foregroundStyle(Color.ankyInk)
-                    }
-                }
-                .buttonStyle(.plain)
-                .disabled(isConnectingServer)
-            }
-            .padding(.horizontal, 16)
-            .frame(minHeight: 52)
-
-            if serverStatus != nil || serverAddress != MirrorConfiguration.defaultBaseURL {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    if let serverStatus {
-                        Text(AnkyLocalization.ui(serverStatus))
-                            .foregroundStyle(serverStatus == "Connected." ? Color.ankyInkSoft : Color.ankyMadder)
-                    }
-                    Spacer(minLength: 0)
-                    if serverAddress != MirrorConfiguration.defaultBaseURL {
-                        Button {
-                            MirrorConfiguration.reset()
-                            serverAddress = MirrorConfiguration.defaultBaseURL
-                            serverStatus = "Using Anky's default server."
-                            AnkyHaptics.light()
-                        } label: {
-                            Text(AnkyLocalization.ui("Use default"))
-                                .foregroundStyle(Color.ankyInk)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isConnectingServer)
-                    }
-                }
-                .font(.system(size: 12, weight: .regular))
-                .padding(.leading, 54)
-                .padding(.trailing, 16)
-                .padding(.bottom, 12)
-            }
         }
     }
 
@@ -468,7 +289,7 @@ struct AnkySettingsView: View {
                 deleteConfirmationText = ""
                 showsDeleteAccountSheet = true
             } label: {
-                row(icon: "trash", title: "Delete Account & Data", tint: .ankyMadder) { EmptyView() }
+                row(icon: "trash", title: "Delete All Data", tint: .ankyMadder) { EmptyView() }
             }
             .buttonStyle(.plain)
         }
@@ -580,105 +401,11 @@ struct AnkySettingsView: View {
 
     // MARK: State & actions
 
-    private var pendingTargetFootnote: String? {
-        guard let pendingTargetMinutes, pendingTargetMinutes != effectiveTargetMinutes else {
-            return nil
-        }
-        return AnkyLocalization.ui(
-            "pending daily target footnote format",
-            effectiveTargetMinutes,
-            pendingTargetMinutes
-        )
-    }
-
     private var iCloudBackupLine: String? {
         guard viewModel.isICloudBackupEnabled, let date = viewModel.iCloudBackupLastDate else {
             return nil
         }
         return AnkyLocalization.ui("Encrypted last backup format", date.formatted(date: .abbreviated, time: .shortened))
-    }
-
-
-    private var subscriptionStatusSymbol: String {
-        guard entitlements.isEntitledForGating else {
-            return "seal"
-        }
-        return entitlements.isPromotionalEntitlement ? "gift" : "checkmark.seal.fill"
-    }
-
-    private var subscriptionStatusTitle: String {
-        if entitlements.isEntitledForGating {
-            if entitlements.isPromotionalEntitlement {
-                return "Complimentary access"
-            }
-            if entitlements.isInIntroTrialForGating {
-                return "Free trial"
-            }
-            switch entitlements.activeProductID {
-            case AnkyPurchasesConfig.annualProductID:
-                return "Annual subscription"
-            case AnkyPurchasesConfig.monthlyProductID:
-                return "Monthly subscription"
-            default:
-                return "Active subscription"
-            }
-        }
-        return "Free"
-    }
-
-    private var subscriptionStatusDetail: String? {
-        if entitlements.isEntitledForGating {
-            if entitlements.isPromotionalEntitlement {
-                guard let endDate = entitlements.activeExpirationDate else {
-                    return "Granted access, open-ended. Nothing is charged and nothing renews."
-                }
-                let date = endDate.formatted(date: .abbreviated, time: .omitted)
-                return AnkyLocalization.ui("Granted access through date format", date)
-            }
-            if let renewalDate = entitlements.activeRenewalDate {
-                let price = activeSubscriptionPriceLine
-                let date = renewalDate.formatted(date: .abbreviated, time: .omitted)
-                if entitlements.isInIntroTrialForGating {
-                    return AnkyLocalization.ui("Trial ends date price format", date, price)
-                }
-                return AnkyLocalization.ui("Renews date price format", date, price)
-            }
-            return AnkyLocalization.ui("Anky unlocked active plan format", activeSubscriptionPriceLine)
-        }
-        return nil
-    }
-
-    private var activeSubscriptionPriceLine: String {
-        // Never borrow another plan's price when the active product cannot be
-        // resolved. StoreKit truth or an explicit unavailable state only.
-        let product = entitlements.activePackage?.storeProduct
-        guard let price = SubscriptionPriceFormatter.price(product) else {
-            return AnkyLocalization.ui("App Store price unavailable")
-        }
-        if entitlements.activeProductID == AnkyPurchasesConfig.monthlyProductID {
-            return AnkyLocalization.ui("price per month format", price)
-        }
-        return AnkyLocalization.ui("price per year format", price)
-    }
-
-    private func refreshDailyTarget() {
-        let store = DailyTargetStore()
-        effectiveTargetMinutes = store.effectiveTargetMinutes()
-        pendingTargetMinutes = store.pendingTargetMinutes()
-        targetMinutes = Double(pendingTargetMinutes ?? effectiveTargetMinutes)
-    }
-
-    private func commitDailyTarget() {
-        AnkyHaptics.selection()
-        let change = DailyTargetStore().requestTargetChange(to: Int(targetMinutes))
-        WriteBeforeScrollEventLogStore().append(
-            .targetChanged,
-            metadata: [
-                "oldMinutes": "\(change.oldMinutes)",
-                "newMinutes": "\(change.newMinutes)"
-            ]
-        )
-        refreshDailyTarget()
     }
 
     private var silenceSecondsRange: ClosedRange<Double> {
@@ -695,59 +422,18 @@ struct AnkySettingsView: View {
         silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
     }
 
-    private func connectServer() {
-        guard !isConnectingServer else { return }
-        isConnectingServer = true
-        serverStatus = nil
-        Task {
-            do {
-                let url = try MirrorConfiguration.normalizedBaseURL(from: serverAddress)
-                try await MirrorConfiguration.checkConnection(to: url)
-                _ = try MirrorConfiguration.save(url.absoluteString)
-                await MainActor.run {
-                    serverAddress = url.absoluteString
-                    serverStatus = "Connected."
-                    isConnectingServer = false
-                    AnkyHaptics.success()
-                }
-            } catch {
-                await MainActor.run {
-                    serverStatus = (error as? LocalizedError)?.errorDescription ?? "Could not connect to that server."
-                    isConnectingServer = false
-                    AnkyHaptics.warning()
-                }
-            }
-        }
-    }
-
     private var deleteAccountSheet: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(AnkyLocalization.ui("Delete Account & Data"))
+                    Text(AnkyLocalization.ui("Delete All Data"))
                         .font(.ankyTitle)
                         .foregroundStyle(Color.ankyMadder)
 
-                    Text(AnkyLocalization.ui("This permanently deletes all writings and paintings on this device, your Anky iCloud backup, and all server records for this account: subscription state, session ledger, level progress, generation history, and usage events."))
+                    Text(AnkyLocalization.ui("This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere."))
                         .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(Color.ankyPaper)
                         .lineSpacing(5)
-
-                    Text(AnkyLocalization.ui("Your writings were never stored on the Anky server. The server only saw .anky bytes transiently when you asked for reflection or painting generation."))
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.ankyPaper)
-                        .lineSpacing(5)
-
-                    Text(AnkyLocalization.ui("An active App Store subscription is not cancelled here. Cancel it separately in Settings → Apple ID → Subscriptions."))
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(Color.ankyPaper)
-                        .lineSpacing(5)
-
-                    Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
-                        Label(AnkyLocalization.ui("Open Apple Subscriptions"), systemImage: "arrow.up.forward.app")
-                            .font(.system(size: 15, weight: .semibold))
-                    }
-                    .tint(Color.ankyGold)
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(AnkyLocalization.ui("Type DELETE to confirm."))
@@ -770,7 +456,7 @@ struct AnkySettingsView: View {
                                 ProgressView()
                                     .tint(Color.ankyPaper)
                             } else {
-                                Text(AnkyLocalization.ui("Delete Account & Data"))
+                                Text(AnkyLocalization.ui("Delete All Data"))
                                     .font(.system(size: 16, weight: .semibold))
                             }
                             Spacer()
@@ -816,51 +502,6 @@ struct AnkySettingsView: View {
             } else {
                 viewModel.disableICloudBackup()
             }
-        }
-    }
-
-    private var deviceAuthenticationIconName: String {
-        switch BiometricAuthClient().deviceAuthenticationName() {
-        case "Face ID":
-            return "faceid"
-        case "Touch ID":
-            return "touchid"
-        case "Optic ID":
-            return "eye"
-        default:
-            return "lock"
-        }
-    }
-
-    private var faceIDBinding: Binding<Bool> {
-        Binding {
-            biometricIdentityConfirmation
-        } set: { isEnabled in
-            AnkyHaptics.light()
-            setFaceID(isEnabled)
-        }
-    }
-
-    private func setFaceID(_ isEnabled: Bool) {
-        guard isEnabled != biometricIdentityConfirmation else {
-            return
-        }
-
-        if !isEnabled {
-            biometricIdentityConfirmation = false
-            AnkyHaptics.light()
-            return
-        }
-
-        Task {
-            guard await BiometricAuthClient().confirm(reason: AnkyLocalization.text(.protectFaceIDReason)) else {
-                AnkyHaptics.warning()
-                return
-            }
-            skipsNextFaceIDEnableAuthentication = true
-            faceIDPrivacyOnboardingCompleted = true
-            biometricIdentityConfirmation = true
-            AnkyHaptics.success()
         }
     }
 

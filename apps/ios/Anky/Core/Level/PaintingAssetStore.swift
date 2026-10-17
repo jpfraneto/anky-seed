@@ -136,30 +136,4 @@ struct PaintingAssetStore {
         }
     }
 
-    /// Downloads and installs a level's package from the server.
-    @discardableResult
-    func downloadPackage(
-        level: Int,
-        client: LevelSyncClient = LevelSyncClient(),
-        identityStore: WriterIdentityStore = WriterIdentityStore()
-    ) async throws -> PaintingPackage {
-        if let existing = installedPackage(forLevel: level) {
-            return existing
-        }
-        let identity = try identityStore.loadOrCreate()
-        // Sequential on purpose: each GET signs the same empty body, and two
-        // signatures minted in the same millisecond would collide with the
-        // server's replay protection.
-        let finalPng = try await client.fetchAsset(level: level, file: "final.png", identity: identity)
-        let underPng = try await client.fetchAsset(level: level, file: "underdrawing.png", identity: identity)
-        let mapPng = try await client.fetchAsset(level: level, file: "revealmap.png", identity: identity)
-        let metaJson = try await client.fetchAsset(level: level, file: "meta.json", identity: identity)
-        return try install(
-            level: level,
-            finalPng: finalPng,
-            underdrawingPng: underPng,
-            revealMapPng: mapPng,
-            metaJson: metaJson
-        )
-    }
 }

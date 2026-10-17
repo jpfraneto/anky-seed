@@ -8,11 +8,11 @@
     "en_US@sw=QWERTY;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "Write 8 minutes.",
+    "ritual": "Just write.",
     "simplicity": "The simplest\nwriting app.",
-    "reflection": "Get a reflection\non your writing.",
-    "archive": "Your archive,\norganized.",
-    "recording": "Record yourself\nreading."
+    "finished": "Tap to keep\nwriting.",
+    "timer": "Choose your\nminutes.",
+    "archive": "Every page stays\non your phone."
   },
   "ritual": {
     "elapsedMs": 38000,

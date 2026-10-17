@@ -28,7 +28,21 @@ final class WritingRulePreferenceTests: XCTestCase {
     func testRitualDefaultKeepsTheRuleAndAFiniteDuration() {
         XCTAssertTrue(WritingPreferences.ritualDefault.eightSecondRuleEnabled)
         XCTAssertFalse(WritingPreferences.ritualDefault.durationIsInfinite)
-        XCTAssertFalse(WritingPreferences.ritualDefault.backspaceAllowed)
+        XCTAssertTrue(WritingPreferences.ritualDefault.backspaceAllowed)
+    }
+
+    func testBackspaceTurnsOnOnceThenRespectsTheWriter() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "WritingRulePreferenceTests.backspace"))
+        defaults.removePersistentDomain(forName: "WritingRulePreferenceTests.backspace")
+        var old = WritingPreferences.ritualDefault
+        old.backspaceAllowed = false
+        defaults.set(try JSONEncoder().encode(old), forKey: WritingPreferencesStore.key)
+
+        let store = WritingPreferencesStore(defaults: defaults)
+        XCTAssertTrue(store.load().backspaceAllowed)
+
+        store.update { $0.backspaceAllowed = false }
+        XCTAssertFalse(store.load().backspaceAllowed)
     }
 
     func testRetiredRuleAndInfiniteDurationSurviveARoundTrip() throws {

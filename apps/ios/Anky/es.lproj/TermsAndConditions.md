@@ -1,97 +1,45 @@
 # Términos de uso de Anky
 
-Vigentes y revisados: 11 de julio de 2026
+Vigentes y revisados: 16 de octubre de 2026
 
-Estos Términos regulan la app, el sitio, el backend, los servicios generados y las suscripciones de **Anky, Inc.** Al usar Anky aceptas estos Términos y la [Política de privacidad](https://anky.app/es/privacy-policy). Si descargaste Anky del App Store, también se aplica el [Contrato de licencia estándar de Apple](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) y prevalece cuando corresponda.
+Estos Términos rigen tu uso de la app de Anky y del sitio anky.app, operados por **Anky, Inc.** Al usar Anky aceptas estos Términos y la [Política de privacidad](https://anky.app/es/privacy-policy). Si descargaste Anky desde la App Store de Apple, también aplica el [Contrato de licencia estándar para el usuario final](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) de Apple.
 
-## 1. Requisitos y seguridad
+## 1. Qué es Anky
 
-Debes tener al menos 13 años. Si eres menor de 18, úsalo con permiso de tu responsable legal.
+Anky es una app de escritura. Escribes, tu escritura se guarda en tu teléfono y puedes copiarla, continuarla o eliminarla. Anky es gratis y no tiene cuenta ni suscripción.
 
-Anky es una herramienta de escritura y reflexión, no terapia, medicina, servicio de crisis ni asesoría profesional. No diagnostica, trata, supervisa ni previene afecciones. Ante riesgo de daño, contacta de inmediato con emergencias o una persona cualificada. No dependas del control de Tiempo de uso ni del desbloqueo de emergencia para acceso crítico.
+Anky no es terapeuta, médico, servicio de crisis ni asesor de ningún tipo. Si podrías hacerte daño o hacerle daño a alguien, contacta de inmediato a los servicios de emergencia locales o a una persona calificada.
 
-## 2. Tus escritos y datos locales
+## 2. Tu escritura
 
-Conservas la propiedad de tus escritos. Concedes a Anky y sus proveedores un permiso limitado para procesar contenido solo al prestar una función que solicites, operar y proteger el servicio, responder al soporte iniciado por ti o cumplir la ley.
+Tu escritura es tuya. Anky no la recibe, así que no reclama ningún derecho sobre ella.
 
-La escritura básica prioriza el dispositivo. Eres responsable del dispositivo, Apple ID, frase de recuperación, exportaciones y copias. Guarda una copia propia de lo importante. Borrar la app puede eliminar datos locales y no cancela una suscripción.
+Tu escritura vive en tu dispositivo y, si lo activas, en una copia de seguridad cifrada en tu iCloud. Eres responsable de tu dispositivo, tu cuenta de Apple y tus copias de seguridad. Eliminar la app elimina la escritura del dispositivo.
 
-## 3. Funciones gratuitas
+## 3. El bloqueo de Tiempo en pantalla
 
-No requieren Anky Pro:
+El bloqueo es opcional. Apple controla los frameworks de Tiempo en pantalla, y los bloqueos y desbloqueos pueden retrasarse o no estar disponibles por iOS, los permisos o el estado del dispositivo. Puedes desactivar el bloqueo en cualquier momento en Configuración → Apps bloqueadas, y el escudo siempre ofrece un desbloqueo de emergencia. Ten siempre otra forma de acceder a las apps que necesitas para tu seguridad.
 
-- Iniciar y completar sesiones nuevas
-- Crear, continuar, guardar, explorar, copiar, exportar y borrar escritos locales
-- Leer reflexiones ya guardadas
-- Avisos de escritura de IA, con una alternativa local si el servidor no está disponible
-- Control de Tiempo de uso, selección de apps y activar/desactivar protección
-- Tres pases rápidos diarios según la política actual
-- Acceso y desbloqueo de emergencia
-- Progresión de pinturas y pinturas personalizadas ya entregadas
-- Archivo e historial
-- Ajustes, copias locales/iCloud, importar/exportar, borrar cuenta, soporte y documentos legales
+## 4. Uso aceptable
 
-Pueden depender de permisos de iOS, capacidad del dispositivo, almacenamiento o servicios de Apple.
+No uses Anky de forma ilegal, no lo sometas a ingeniería inversa más allá de lo que permite la ley y no finjas una afiliación con Anky.
 
-## 4. Funciones de Anky Pro
+## 5. Propiedad y comentarios
 
-Anky Pro tiene un único beneficio: nuevas reflexiones de mayor calidad mediante el modelo compatible más potente disponible de Anky. Quienes usan la versión gratuita pueden seguir pidiendo reflexiones mediante la vía de inferencia gratuita. La escritura y todas las funciones no relacionadas con reflexiones siguen disponibles sin Pro.
+Anky, Inc. y sus licenciantes son dueños de la app, su diseño, su marca y su código, salvo donde una licencia de código abierto diga otra cosa. Si nos envías comentarios, podemos usarlos sin deberte nada.
 
-Las reflexiones tienen límites razonables de servicio, seguridad, capacidad y prevención de abuso. La suscripción no garantiza un modelo, estilo, resultado o plazo concreto.
+## 6. Cambios
 
-## 5. Suscripciones con renovación automática
+Podemos cambiar o descontinuar funciones. No prometemos que Anky esté siempre disponible ni que sea compatible con todos los dispositivos.
 
-Anky ofrece suscripciones opcionales anuales y mensuales con renovación automática mediante el App Store. Ambas desbloquean las mismas funciones de Anky Pro:
+## 7. Exenciones y limitación de responsabilidad
 
-- **Anual:** un año. No se ofrece prueba inicial.
-- **Mensual:** un mes. No se ofrece prueba inicial.
+En la medida que la ley lo permita, Anky se ofrece "tal cual" y "según disponibilidad", sin garantías de ningún tipo, incluida la idoneidad para un fin concreto o la conservación de datos. Haz tus propias copias de seguridad.
 
-Mandan el precio localizado, elegibilidad, fecha de cobro y términos que Apple muestra antes de confirmar. El pago se carga al Apple ID y la suscripción se renueva automáticamente salvo cancelación en los ajustes de Apple antes de renovar. Apple gestiona facturación, cancelación, historial y reembolsos. Borrar Anky no cancela la suscripción.
+En la medida que la ley lo permita, Anky, Inc. no es responsable de daños indirectos, incidentales, especiales o consecuentes, ni de la pérdida de datos o escritura. Nuestra responsabilidad total por cualquier reclamación relacionada con Anky no superará USD 50. Algunas jurisdicciones no permiten estos límites, así que puede que no te apliquen por completo.
 
-**Restaurar compras** consulta a Apple y RevenueCat usando el mismo Apple ID. Si la compra termina pero no aparece `pro`, restaura y contacta con **[support@anky.app](mailto:support@anky.app)**. El acceso comienza al verificarse el derecho. Las concesiones promocionales pueden activar Pro sin cobro ni renovación.
+## 8. Ley aplicable
 
-Anky no vende ni usa créditos de reflexión, paquetes, saldos ni reflexiones individuales de pago.
+Estos Términos se rigen por la ley de Delaware, salvo donde aplique una ley local obligatoria. Nada de esto elimina derechos del consumidor que no se pueden renunciar legalmente. Si estos Términos cambian, actualizaremos la fecha de arriba.
 
-## 6. IA y pinturas
-
-El contenido generado puede ser inexacto, incompleto, repetitivo, tardío, no estar disponible, sorprender o resultar incómodo. Puede interpretar mal idioma, tono, intención o contexto. No es asesoría profesional y eres responsable de su uso.
-
-Cuando pides una función generada, se transmite contenido como explica la Política de privacidad. No envíes contenido sin autorización o que no quieras que procesen los proveedores indicados.
-
-Las pinturas personalizadas tras el nivel 8 dependen de progreso y escritura suficientes, disponibilidad, controles y límites de generación.
-
-## 7. Tiempo de uso y desbloqueos
-
-El control, elegir apps, activarlo/desactivarlo, tres pases diarios, el acceso de emergencia y el desbloqueo automático por el resto del día al cumplir la meta están disponibles sin Pro.
-
-Apple controla los frameworks y permisos. Los bloqueos pueden retrasarse o fallar por iOS, autorización, estado del dispositivo, cambios horarios o límites del sistema. Conserva otra vía a servicios críticos.
-
-## 8. Uso aceptable
-
-No puedes usar Anky ilegalmente, vulnerar derechos, enviar contenido no autorizado, atacar o sobrecargar el servicio, evadir derechos o controles de seguridad/límites, acceder a datos ajenos, abusar mediante automatización, crear instrucciones para causar daño, ni revender o falsear una relación con Anky.
-
-Podemos limitar funciones del servidor para proteger a usuarios, proveedores, servicio o ley. Esto no nos da propiedad de tus escritos locales.
-
-## 9. Propiedad intelectual y comentarios
-
-Anky, Inc. y sus licenciantes poseen la app, diseño, marca, personajes, documentación y servicio, salvo donde una licencia de código abierto diga otra cosa. Conservas tus escritos.
-
-Si envías comentarios, permites que Anky los use sin restricción ni compensación. Evita incluir contenido privado que no quieras que lea soporte.
-
-## 10. Disponibilidad, cambios y finalización
-
-Podemos cambiar o retirar funciones, proveedores, límites o planes conforme a la ley y las reglas del App Store. Apple gestiona cambios de precio. No garantizamos disponibilidad continua, compatibilidad permanente ni que cada generación se complete.
-
-Puedes dejar de usar Anky y usar las herramientas de borrado. Podemos limitar el servidor por abuso, seguridad, ley u operación. El contenido local gratuito sigue bajo tu control, sujeto al dispositivo y las copias.
-
-## 11. Exenciones y límite de responsabilidad
-
-En la medida permitida por ley, Anky se ofrece «tal cual» y «según disponibilidad», sin garantías de comerciabilidad, idoneidad, ausencia de infracción, precisión, disponibilidad o conservación de datos.
-
-En la medida permitida por ley, Anky, Inc. y su personal/proveedores no responden por daños indirectos, incidentales, especiales, consecuentes, ejemplares o punitivos, ni pérdida de datos, escritos, acceso, beneficios u oportunidades. La responsabilidad total no superará el mayor entre lo pagado a Anky en el App Store durante los 12 meses anteriores y 50 USD. Algunas jurisdicciones no permiten estos límites.
-
-## 12. Ley y cambios
-
-Rige la ley de Delaware, salvo normas locales obligatorias. Nada elimina derechos de consumo irrenunciables. Podemos actualizar estos Términos y cambiar su fecha.
-
-Consultas: **[support@anky.app](mailto:support@anky.app)**
+Preguntas: **[support@anky.app](mailto:support@anky.app)**

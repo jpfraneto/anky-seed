@@ -41,12 +41,7 @@ let package = Package(
             // Xcode test target. SwiftPM intentionally covers the portable
             // protocol/core surface only.
             exclude: [
-                "DraftRecoveryTests.swift",
-                "GeshtuPrivacySeamTests.swift",
-                "JourneyAnchorTests.swift",
-                "QuoteSanitizerTests.swift",
-                "SubscriptionRemediationTests.swift",
-                "WritingDecisionTests.swift"
+                "DraftRecoveryTests.swift"
             ]
         )
     ]

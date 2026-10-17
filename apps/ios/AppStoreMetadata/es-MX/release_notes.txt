@@ -1,11 +1,15 @@
-Un Anky más tranquilo.
+El Anky más simple hasta ahora.
 
-Una página, un cajón. La escritura siempre está frente a ti, y todo lo que has escrito entra deslizándose desde el costado.
+Anky ya no se conecta a ningún servidor. Sin reflexiones de IA, sin suscripción, sin cuenta. Tu escritura nunca sale de tu teléfono.
 
-Estadísticas. Tu racha, y un calendario de los días en que escribiste.
+Toca el reloj para ver una sola línea: la regla de los 8 segundos, un control para tus minutos y ∞.
 
-Ajustes, rehechos. Una línea por ajuste.
+¿Terminaste una escritura? Tócala para seguir. La misma página, las mismas palabras.
 
-Escribe antes de hacer scroll. Un solo interruptor bloquea las apps que te distraen hasta que hayas escrito.
+El retroceso viene activado. Apágalo en Configuración si quieres escribir solo hacia adelante.
 
-Anky Pro ahora puede ser mensual o anual.
+Copia cualquier escritura, o cópiala con un prompt de reflexión para pegarla en la IA que ya usas.
+
+Las estadísticas son más simples: ese día escribiste o no.
+
+Las apps bloqueadas se desbloquean en cuanto escribes, y el desbloqueo de emergencia del escudo vuelve a funcionar.

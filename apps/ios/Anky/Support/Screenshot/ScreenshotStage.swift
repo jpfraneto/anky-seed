@@ -46,9 +46,9 @@ enum ScreenshotStage {
         }
     }
 
-    /// Scene 05 stands the camera and an in-progress take.
-    static var stagesRecording: Bool {
-        ScreenshotMode.isActive && ScreenshotMode.scene == .recording
+    /// The timer scene shows the clock's duration line unfolded.
+    static var opensDurationLine: Bool {
+        ScreenshotMode.isActive && ScreenshotMode.scene == .timer
     }
 
     /// Scenes 01 and 02 are worthless without a keyboard, and a simulator
@@ -144,32 +144,19 @@ enum ScreenshotStage {
     /// feature writing as the most recent day.
     private static func seedArchive(_ fixture: ScreenshotLocaleFixture) {
         let archive = LocalAnkyArchive()
-        let reflections = ReflectionStore()
 
         for entry in fixture.archive.sorted(by: { $0.date < $1.date }) {
-            guard let saved = save(entry.text, at: entry.date, in: archive) else {
+            guard save(entry.text, at: entry.date, in: archive) != nil else {
                 fail("Could not seal archive entry dated \(entry.date).")
                 return
             }
-            guard entry.reflected else { continue }
-            try? reflections.save(LocalReflection(
-                hash: saved.hash,
-                title: "",
-                reflection: shortBlessing(for: entry.text),
-                createdAt: saved.createdAt
-            ))
         }
 
         guard let feature = save(fixture.feature.text, at: fixture.feature.date, in: archive) else {
             fail("Could not seal the feature writing.")
             return
         }
-        try? reflections.save(LocalReflection(
-            hash: feature.hash,
-            title: "",
-            reflection: fixture.feature.reflection,
-            createdAt: feature.createdAt
-        ))
+        try? SessionIndexStore().rebuild(archive: archive, reflectionStore: ReflectionStore())
         featureHash = feature.hash
     }
 
@@ -214,14 +201,6 @@ enum ScreenshotStage {
         }
     }
 
-    /// A four line blessing in the §6 voice for the column's reflected days.
-    /// Never shown at full size in any scene — it only has to make the
-    /// reflected/unreflected distinction real in the archive.
-    private static func shortBlessing(for text: String) -> String {
-        let opening = text.split(separator: " ").prefix(4).joined(separator: " ")
-        return "\(opening)\n\n\u{2014}"
-    }
-
     // MARK: - Phase two: the world, on first appearance
 
     @MainActor
@@ -239,24 +218,17 @@ enum ScreenshotStage {
         switch scene {
         case .ritual:
             guard stageWriting(fixture.ritual, into: writeViewModel) else { return }
-            axis.debugSetPhase(.writing)
         case .simplicity:
             guard stageWriting(fixture.simplicity, into: writeViewModel) else { return }
-            axis.debugSetPhase(.writing)
-        case .reflection, .recording:
+        case .finished:
             guard let hash = featureHash,
                   let entry = try? LocalAnkyArchive().load(hash: hash) else {
                 ScreenshotMode.signalFailure("The feature writing is not in the archive.")
                 return
             }
             axis.openEntry(entry)
-            if scene == .reflection {
-                // Bring the seam — where the writing ends and Anky's response
-                // begins — onto the screen, which is what this scene is about.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    axis.requestResponseStart()
-                }
-            }
+        case .timer:
+            break
         case .archive:
             axis.openDrawer()
         }
@@ -308,7 +280,7 @@ enum ScreenshotStage {
     /// and the archive's first lazy rows. The keyboard gets longer, because it
     /// is the one thing here that depends on how the simulator was booted.
     private static func confirmReady(scene: ScreenshotMode.Scene, fixture: ScreenshotLocaleFixture) {
-        let needsKeyboard = scene == .ritual || scene == .simplicity
+        let needsKeyboard = scene == .ritual || scene == .simplicity || scene == .timer
         DispatchQueue.main.async {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
                 awaitKeyboard(scene: scene, fixture: fixture, required: needsKeyboard, attempt: 0)

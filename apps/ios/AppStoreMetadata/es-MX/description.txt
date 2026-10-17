@@ -1,40 +1,36 @@
-Una página en blanco, y nada delante de ella.
+Una página en blanco. Nada delante de ella.
 
-Sin feed. Sin seguidores. Sin configuración. Abres Anky y ya estás escribiendo.
+Anky es la app de escritura más simple que pudimos hacer. La abres y ya estás escribiendo. Sin cuenta. Sin feed. Sin seguidores. Sin IA. Nada que configurar y nada que desbloquear.
 
 CÓMO FUNCIONA
 
-Ocho minutos es lo predeterminado. También lo es la regla que hace que funcione: si te detienes ocho segundos, la sesión termina. Y no hay tecla de retroceso. No puedes volver a arreglar la última frase, así que sigues hacia adelante y escribes la siguiente.
+Toca el reloj para elegir cuánto quieres escribir, de uno a ocho minutos, o ∞ para no tener límite.
 
-Ese es todo el truco. El bloqueo del escritor casi siempre es editar demasiado pronto. Anky saca la edición de la mesa hasta que terminas.
+El reloj de arena a su lado es la regla de los 8 segundos: si dejas de escribir ocho segundos, la escritura termina. Te mantiene avanzando en vez de volver sobre la última frase. Apágala y solo tú decides cuándo terminas.
 
-Todo lo predeterminado es tuyo. Cambia la duración, la quietud, el retroceso, la tipografía.
+Esa es toda la app.
 
 CUANDO TERMINAS
 
-Tu escritura queda sellada en un archivo privado, en tu teléfono, con fecha y búsqueda. No se publica nada. No hay público, y ese es justamente el punto.
+Tus palabras se quedan exactamente donde están. Toca la página y sigue escribiendo, hoy o cualquier otro día.
 
-Desde ahí puedes pedirle a Anky una reflexión: lee lo que escribiste y te dice lo que notó. La cosa debajo de la cosa. La pregunta a la que le diste vueltas ocho minutos sin responder.
+Cada escritura se guarda en tu teléfono, con fecha y con búsqueda, en un cajón que se desliza desde un lado. Copia una escritura con un toque, o cópiala junto a un prompt de reflexión para pegarla en la IA que ya usas, si quieres.
 
-O puedes grabarte leyendo tus propias palabras en voz alta y quedarte con el video.
+Tu racha y un calendario de los días que escribiste están a un toque. Escribiste hoy o no.
 
-Tu racha, y un calendario de los días en que escribiste, están a un toque.
+TUYO, Y SOLO TUYO
 
-ESCRIBE ANTES DE SCROLLEAR
+Anky no se conecta a ningún servidor. Tu escritura nunca se sube, nunca se lee y nunca se usa para entrenar nada. No hay analíticas ni anuncios. Si quieres un respaldo, activa la copia de seguridad cifrada en iCloud y va a tu propio iCloud.
 
-Anky puede ponerse entre tú y las apps que abres sin haberlo decidido. Escribe tus minutos primero, y el resto del día se abre.
+ESCRIBE ANTES DE HACER SCROLL
 
-CUÁNTO CUESTA
+Si quieres, Anky puede ponerse entre tú y las apps que abres sin decidirlo. Elígelas en Configuración. Cuando vayas a abrir una, escribe primero. Una frase terminada abre un pase corto, y escribir tus minutos abre el resto del día. Apágalo cuando quieras.
 
-Escribir es gratis. Siempre lo va a ser. La página en blanco, el temporizador, el archivo, la grabación: nada de eso está detrás de un muro.
+Configuración tiene lo demás: retroceso, autocorrección, cuánto dura la quietud, la tipografía y su tamaño.
 
-Las reflexiones también son gratis, con un modelo básico. Anky Pro te da reflexiones del modelo más capaz disponible. Y si prefieres no pagar nada, usa Copiar Prompt + Anky en el menú y lleva tu escritura a la herramienta de IA que ya uses.
+Gratis. Sin suscripción. Sin compras.
 
-ANKY PRO
+Política de privacidad: https://anky.app/es/privacy-policy
+Términos de uso: https://anky.app/es/terms
 
-Suscripción automática opcional, mensual o anual. El pago se carga a tu cuenta de Apple al confirmar la compra. Se renueva automáticamente a menos que desactives la renovación al menos 24 horas antes del final del período vigente, y el cargo de renovación ocurre dentro de las 24 horas previas al final de ese período. Puedes gestionarla o cancelarla cuando quieras en Ajustes, cuenta de Apple, Suscripciones.
-
-Términos de uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Política de privacidad: https://anky.app/privacy-policy
-
-Ocho minutos. Una página. Mañana empiezas de nuevo.
+Ábrela. Escribe. Ciérrala.

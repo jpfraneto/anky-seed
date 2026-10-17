@@ -59,11 +59,7 @@ check ITSAppUsesNonExemptEncryption "export compliance answered (False)" "v is F
 
 echo "-- merged from INFOPLIST_KEY_ build settings"
 check NSSupportsLiveActivities "trial Live Activity" "v is True"
-check NSCameraUsageDescription "camera usage string (selfie avatar) — missing = crash on use" "bool(v)"
-check NSMicrophoneUsageDescription "microphone usage string (dictation) — missing = crash on use" "bool(v)"
-check NSSpeechRecognitionUsageDescription "speech usage string (spoken check-in) — missing = crash on use" "bool(v)"
-check NSPhotoLibraryUsageDescription "photo library usage string" "bool(v)"
-check NSFaceIDUsageDescription "Face ID purpose string" "bool(v) and 'Face ID' in v"
+check NSFaceIDUsageDescription "Face ID purpose string (iCloud backup confirmation)" "bool(v) and 'Face ID' in v"
 check LSApplicationCategoryType "App Store category" "v == 'public.app-category.healthcare-fitness'"
 
 if [[ "$TARGET" == *.xcarchive ]]; then

@@ -1,40 +1,36 @@
-Une page blanche, et rien devant elle.
+Une page blanche. Rien devant elle.
 
-Pas de fil d'actualité. Pas d'abonnés. Aucune configuration. Tu ouvres Anky et tu écris déjà.
+Anky est l'app d'écriture la plus simple que nous ayons pu faire. Tu l'ouvres et tu écris déjà. Pas de compte. Pas de fil d'actualité. Pas d'abonnés. Pas d'IA. Rien à configurer, rien à débloquer.
 
 COMMENT ÇA MARCHE
 
-Huit minutes, par défaut. Et la règle qui fait tout tenir : si tu t'arrêtes huit secondes, la séance se termine. Il n'y a pas de retour arrière. Tu ne peux pas revenir corriger la dernière phrase, alors tu avances et tu écris la suivante.
+Touche l'horloge pour choisir combien de temps tu veux écrire, d'une à huit minutes, ou ∞ pour ne pas avoir de limite.
 
-C'est toute l'astuce. Le blocage de l'écrivain, c'est presque toujours corriger trop tôt. Anky retire la correction de la table jusqu'à la fin.
+Le sablier à côté, c'est la règle des 8 secondes : si tu arrêtes de taper pendant huit secondes, l'écriture se termine. Elle te fait avancer au lieu de revenir sur la dernière phrase. Désactive-la et toi seul décides quand tu as fini.
 
-Tous les réglages sont à toi : la durée, le silence, le retour arrière, la typographie.
+C'est toute l'app.
 
 QUAND TU AS FINI
 
-Ton texte est scellé dans une archive privée, sur ton téléphone, datée et consultable. Rien n'est publié. Il n'y a pas de public, et c'est précisément l'idée.
+Tes mots restent exactement où ils sont. Touche la page et continue, aujourd'hui ou n'importe quel autre jour.
 
-De là, tu peux demander une réflexion à Anky : il lit ce que tu as écrit et te dit ce qu'il a remarqué. La chose sous la chose. La question autour de laquelle tu as tourné huit minutes sans y répondre.
+Chaque écriture est enregistrée sur ton téléphone, datée et consultable, dans un tiroir qui glisse depuis le côté. Copie une écriture d'un geste, ou copie-la avec un prompt de réflexion pour la coller dans l'IA que tu utilises déjà, si tu le souhaites.
 
-Ou tu peux t'enregistrer en lisant tes propres mots à voix haute, et garder la vidéo.
+Ta série de jours et un calendrier des jours où tu as écrit sont à un geste. Tu as écrit aujourd'hui, ou pas.
 
-Ta série, et un calendrier des jours où tu as écrit, sont à un geste.
+À TOI, ET À TOI SEUL
+
+Anky ne se connecte à aucun serveur. Ton écriture n'est jamais envoyée, jamais lue et jamais utilisée pour entraîner quoi que ce soit. Pas d'analytics, pas de publicité. Si tu veux une sauvegarde, active la sauvegarde iCloud chiffrée : elle va dans ton propre iCloud.
 
 ÉCRIS AVANT DE SCROLLER
 
-Anky peut se placer entre toi et les applications que tu ouvres sans l'avoir décidé. Écris tes minutes d'abord, et le reste de la journée s'ouvre.
+Si tu le veux, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans Réglages. Quand tu en ouvres une, écris d'abord. Une phrase terminée ouvre un court passage, et écrire tes minutes ouvre le reste de la journée. Désactive-le quand tu veux.
 
-CE QUE ÇA COÛTE
+Réglages contient le reste : retour arrière, correction automatique, la durée du silence, la police et sa taille.
 
-Écrire est gratuit. Ça le restera. La page blanche, le minuteur, l'archive, l'enregistrement : rien de tout cela n'est derrière un mur.
+Gratuit. Sans abonnement. Sans achat.
 
-Les réflexions sont gratuites aussi, avec un modèle de base. Anky Pro te donne des réflexions du modèle le plus capable disponible. Et si tu préfères ne rien payer, utilise Copier Prompt + Anky dans le menu et emporte ton texte vers l'outil d'IA que tu utilises déjà.
+Politique de confidentialité : https://anky.app/fr/privacy-policy
+Conditions d'utilisation : https://anky.app/fr/terms
 
-ANKY PRO
-
-Abonnement à renouvellement automatique facultatif, mensuel ou annuel. Le paiement est débité de ton compte Apple à la confirmation de l'achat. Il se renouvelle automatiquement sauf si le renouvellement est désactivé au moins 24 heures avant la fin de la période en cours, et le débit intervient dans les 24 heures précédant la fin de cette période. Tu peux gérer ou résilier à tout moment dans Réglages, compte Apple, Abonnements.
-
-Conditions d'utilisation : https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Politique de confidentialité : https://anky.app/privacy-policy
-
-Huit minutes. Une page. Demain, tu recommences.
+Ouvre-la. Écris. Ferme-la.

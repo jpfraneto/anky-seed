@@ -8,11 +8,11 @@
     "es_MX@sw=QWERTY-Spanish;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "Escribe 8 minutos.",
+    "ritual": "Solo escribe.",
     "simplicity": "La app de escritura\nmás simple.",
-    "reflection": "Recibe una reflexión\nsobre lo que escribiste.",
-    "archive": "Tu archivo,\nen orden.",
-    "recording": "Grábate\nleyendo."
+    "finished": "Toca para seguir\nescribiendo.",
+    "timer": "Elige tus\nminutos.",
+    "archive": "Cada página se queda\nen tu teléfono."
   },
   "ritual": {
     "elapsedMs": 38000,

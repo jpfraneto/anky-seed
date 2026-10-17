@@ -83,8 +83,7 @@ struct SessionDrawerView: View {
         }
         .onAppear(perform: reload)
         // A sealed or deleted session changes the list; re-read whenever the
-        // page changes and whenever the drawer is about to be looked at.
-        .onChange(of: axis.phase) { _ in reload() }
+        // drawer is about to be looked at.
         .onChange(of: axis.drawerIsOpen) { isOpen in
             if isOpen {
                 reload()
@@ -310,23 +309,22 @@ struct WritingStatsView: View {
                     figure("\(stats.longestStreak)", "longest streak", size: 26, alignment: .trailing)
                 }
 
-                WritingCalendar(writtenDays: stats.writtenDays, completeDays: stats.completeDays)
+                WritingCalendar(writtenDays: stats.writtenDays)
 
                 VStack(spacing: 0) {
                     totalsRow(
-                        ("\(stats.sessions)", "writings"),
-                        ("\(stats.completeAnkys)", "full ankys")
+                        ("\(stats.daysWritten)", "days written"),
+                        ("\(stats.sessions)", "writings")
                     )
                     hairline
                     totalsRow(
                         (stats.totalTimeText, "time written"),
-                        ("\(stats.daysWritten)", "days written")
+                        (stats.words.formatted(), "words")
                     )
                     hairline
-                    totalsRow(
-                        (stats.words.formatted(), "words"),
-                        ("\(stats.wordsPerMinute)", "words per minute")
-                    )
+                    figure("\(stats.wordsPerMinute)", "words per minute", size: 26)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -396,17 +394,15 @@ struct WritingStatsView: View {
 }
 
 /// A month on the wall: every day by its number, the days with writing
-/// marked, the days with a full anky filled. Today wears a ring. The arrows
+/// filled. Today wears a ring. The arrows
 /// walk back as far as the first writing.
 private struct WritingCalendar: View {
     let writtenDays: Set<Date>
-    let completeDays: Set<Date>
 
     /// Months back from the current one; never positive.
     @State private var monthOffset = 0
 
     private let calendar = Calendar.current
-    private static let writtenInk = 0.14
     private static let daySize: CGFloat = 36
 
     var body: some View {
@@ -435,11 +431,6 @@ private struct WritingCalendar: View {
                     }
                 }
             }
-
-            HStack(spacing: 16) {
-                legend(Color.ankyInk.opacity(Self.writtenInk), "written")
-                legend(Color.ankyInk, "full anky")
-            }
         }
         .padding(16)
         .background(
@@ -449,30 +440,23 @@ private struct WritingCalendar: View {
     }
 
     private func dayCell(_ day: Date) -> some View {
-        let isComplete = completeDays.contains(day)
         let isWritten = writtenDays.contains(day)
         let isAhead = day > today
         return Text("\(calendar.component(.day, from: day))")
             .font(.fraunces(15, weight: .regular))
             .monospacedDigit()
             .foregroundStyle(
-                isComplete
-                    ? Color.ankyPaper
-                    : (isWritten ? Color.ankyInk : Color.ankyInkSoft.opacity(isAhead ? 0.35 : 0.8))
+                isWritten ? Color.ankyPaper : Color.ankyInkSoft.opacity(isAhead ? 0.35 : 0.8)
             )
             .frame(width: Self.daySize, height: Self.daySize)
             .background {
-                Circle().fill(
-                    isComplete
-                        ? Color.ankyInk
-                        : (isWritten ? Color.ankyInk.opacity(Self.writtenInk) : Color.clear)
-                )
+                Circle().fill(isWritten ? Color.ankyInk : Color.clear)
             }
             .overlay {
                 if day == today {
                     Circle()
                         .strokeBorder(Color.ankyInk, lineWidth: 1)
-                        .padding(isComplete ? -3 : 0)
+                        .padding(isWritten ? -3 : 0)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -492,17 +476,6 @@ private struct WritingCalendar: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-    }
-
-    private func legend(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-            Text(WritingStatsView.sentenceCased(AnkyLocalization.ui(label)))
-                .font(.fraunces(12, weight: .light))
-                .foregroundStyle(Color.ankyInkSoft)
-        }
     }
 
     // MARK: Days
@@ -547,16 +520,13 @@ private struct WritingCalendar: View {
 
 struct WritingStats: Equatable {
     var sessions = 0
-    var completeAnkys = 0
     var words = 0
     var totalMs: Int64 = 0
     var daysWritten = 0
     var currentStreak = 0
     var longestStreak = 0
-    /// The days with any writing, and those among them that hold a full
-    /// anky — each as the start of its day.
+    /// The days with any writing, each as the start of its day.
     var writtenDays: Set<Date> = []
-    var completeDays: Set<Date> = []
 
     static let empty = WritingStats()
 
@@ -564,18 +534,13 @@ struct WritingStats: Equatable {
 
     init(sessions list: [SavedAnky], now: Date = Date(), calendar: Calendar = .current) {
         sessions = list.count
-        completeAnkys = list.filter(\.isComplete).count
         words = list.reduce(0) {
             $0 + $1.reconstructedText.split { $0.isWhitespace || $0.isNewline }.count
         }
         totalMs = list.reduce(0) { $0 + $1.durationMs }
 
         for session in list {
-            let day = calendar.startOfDay(for: session.createdAt)
-            writtenDays.insert(day)
-            if session.isComplete {
-                completeDays.insert(day)
-            }
+            writtenDays.insert(calendar.startOfDay(for: session.createdAt))
         }
         let days = writtenDays
         daysWritten = days.count

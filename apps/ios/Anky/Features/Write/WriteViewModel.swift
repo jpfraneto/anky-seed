@@ -8,24 +8,6 @@ struct WritingGlyph: Equatable {
     var silenceProgress: Double
 }
 
-/// The binary decisions the machine can put to the writer mid-writing. Each
-/// one takes over the keyboard's own footprint — never a sheet, never an
-/// alert — and only one can ever stand (spec §17: no stacked dialogs).
-enum WritingDecision: Equatable {
-    /// Backspace is off and the writer just reached for it.
-    case enableBackspace
-    /// The writer reached for the way out while a session is live.
-    case endWriting
-}
-
-/// The three states the writing surface can be in. The writing itself is the
-/// stable object; this is what the machine around it is doing.
-enum WritingUIState: Equatable {
-    case active
-    case decision(WritingDecision)
-    case completed
-}
-
 @MainActor
 final class WriteViewModel: ObservableObject {
     @Published private(set) var displayedText: String = ""
@@ -43,12 +25,7 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var todayAnkyCount = 0
     @Published private(set) var errorMessage: String?
     @Published private(set) var isErrorMessageVisible = false
-    @Published private(set) var nudgeMessage: String?
-    @Published private(set) var isNudgeMessageVisible = false
-    @Published private(set) var isRequestingNudge = false
     @Published private(set) var completedArtifact: SavedAnky?
-    /// The decision standing in the keyboard's place, if any.
-    @Published private(set) var pendingDecision: WritingDecision?
     /// The writing chamber's switches, held here so the surface and the
     /// engine always read the same truth (the in-place decisions write them).
     @Published private(set) var preferences: WritingPreferences
@@ -111,15 +88,7 @@ final class WriteViewModel: ObservableObject {
     }
 
     var canAcceptInput: Bool {
-        !isPausedOnDraft && completedArtifact == nil && pendingDecision == nil
-    }
-
-    /// What the machine around the writing is doing right now.
-    var uiState: WritingUIState {
-        if let pendingDecision {
-            return .decision(pendingDecision)
-        }
-        return completedArtifact == nil ? .active : .completed
+        !isPausedOnDraft && completedArtifact == nil
     }
 
     /// True while stillness may end the writing on screen. An ∞ session and a
@@ -136,13 +105,6 @@ final class WriteViewModel: ObservableObject {
         preferences.backspaceAllowed
     }
 
-    /// True while something other than the keyboard occupies the keyboard's
-    /// footprint — a decision, or the finished writing's two ways forward.
-    /// Nothing else may be placed over that region while it stands.
-    var bottomSurfaceStands: Bool {
-        pendingDecision != nil || completedArtifact != nil
-    }
-
     private var sessionEngine = WritingSessionEngine()
     private let draftStore: ActiveDraftStore
     private let archive: LocalAnkyArchive
@@ -153,7 +115,6 @@ final class WriteViewModel: ObservableObject {
     private let userDefaults: UserDefaults
     private var silenceTask: Task<Void, Never>?
     private var tickerTask: Task<Void, Never>?
-    private var nudgeTask: Task<Void, Never>?
     private var quickPassUnlockLineTask: Task<Void, Never>?
     private var completion: ((SavedAnky) -> Void)?
     private var writeBeforeScrollUnlockAvailabilityHandler: ((UnlockGrant) -> Void)?
@@ -165,15 +126,9 @@ final class WriteViewModel: ObservableObject {
     private var preservesRecoveredDraftGapOnNextInput = false
     private var continuedArtifactToReplace: SavedAnky?
     private let preferencesStore: WritingPreferencesStore
-    /// The writer already answered these once for the writing on screen; the
-    /// machine does not ask twice about the same page. Both survive a
-    /// "continue writing" — it is the same writing — and reset with the page.
-    private var hasKeptBackspaceDisabledThisWriting = false
     private var errorMessageTask: Task<Void, Never>?
     private var errorRecallExpirationDate: Date?
     private let rejectedInputOnboardingKey = "anky.didShowRejectedInputOnboarding"
-    private var lastLocalNudgeDate: Date?
-    private var localNudgeOffset = 0
     private var lastMinuteHaptic = 0
     private var lastAlarmHapticSecond = 0
     private var writeBeforeScrollSessionTracker = WriteBeforeScrollSessionMetricTracker()
@@ -187,8 +142,6 @@ final class WriteViewModel: ObservableObject {
     private let ritualCompleteImpactHaptic = UIImpactFeedbackGenerator(style: .heavy)
     private let alarmHaptic = UINotificationFeedbackGenerator()
     private let invalidInputHaptic = UINotificationFeedbackGenerator()
-    private let nudgeStartHaptic = UIImpactFeedbackGenerator(style: .soft)
-    private let nudgeResultHaptic = UINotificationFeedbackGenerator()
     /// The Geshtu onboarding rehearsal shortens the sentinel so the reveal (and
     /// the long-press vigil) is discoverable within a reviewer's patience
     /// (spec §9). Nil everywhere else — the normal stillness applies.
@@ -349,7 +302,7 @@ final class WriteViewModel: ObservableObject {
         // The top bar is the interface's voice: it speaks on every rejected
         // key, quietly, in the registry's words.
         switch input {
-        case .backspace, .backspaceDisabled:
+        case .backspace:
             rejectedBackspaceCount += 1
             showTransientError(AnkyCopyRegistry.backspaceMessage)
         case .enter:
@@ -361,58 +314,6 @@ final class WriteViewModel: ObservableObject {
         invalidInputHaptic.notificationOccurred(.warning)
         invalidInputHaptic.prepare()
         rejectedInputPulseID = UUID()
-    }
-
-    // MARK: - The contextual decisions (spec §1B, §2, §3, §6)
-
-    /// The writer reached for backspace while it is off. The first time in a
-    /// writing, the machine asks instead of swallowing the key.
-    /// - Returns: true when the decision surface took the keyboard's place.
-    @discardableResult
-    func requestBackspaceDecision() -> Bool {
-        guard !preferences.backspaceAllowed,
-              !hasKeptBackspaceDisabledThisWriting,
-              sessionEngine.isStarted,
-              completedArtifact == nil else {
-            return false
-        }
-        return presentDecision(.enableBackspace)
-    }
-
-    /// The writer reached for the way out with a live session on the page.
-    /// - Returns: true when a decision stands; false when there is nothing to
-    ///   end and the caller may simply navigate.
-    @discardableResult
-    func requestEndWritingDecision() -> Bool {
-        guard sessionEngine.isStarted, completedArtifact == nil, !protocolText.isEmpty else {
-            return false
-        }
-        return presentDecision(.endWriting)
-    }
-
-    /// Backspace stays. Persisted, so the writer is asked exactly once.
-    func enableBackspaceFromDecision() {
-        updatePreferences { $0.backspaceAllowed = true }
-        resumeAfterDecision()
-    }
-
-    /// The ritual holds. Not asked again for this writing; the attempted
-    /// deletion never happened.
-    func keepBackspaceDisabled() {
-        hasKeptBackspaceDisabledThisWriting = true
-        resumeAfterDecision()
-    }
-
-    /// The writer chose to end the writing from the way-out control.
-    func endWritingFromDecision() {
-        pendingDecision = nil
-        sealAndSave()
-    }
-
-    /// Any decision that means "not yet": the keyboard comes back and the
-    /// page continues from exactly where it stood.
-    func keepWritingFromDecision() {
-        resumeAfterDecision()
     }
 
     /// Chooses the duration in force. Minutes keep the existing daily target
@@ -444,8 +345,7 @@ final class WriteViewModel: ObservableObject {
               !preferences.durationIsInfinite,
               sessionEngine.isStarted,
               !sessionEngine.isClosed,
-              completedArtifact == nil,
-              pendingDecision == nil else {
+              completedArtifact == nil else {
             return
         }
 
@@ -463,67 +363,9 @@ final class WriteViewModel: ObservableObject {
         preferences = preferencesStore.load()
     }
 
-    @discardableResult
-    private func presentDecision(_ decision: WritingDecision) -> Bool {
-        // One surface at a time, and never over a sealed page.
-        guard pendingDecision == nil, completedArtifact == nil else {
-            return false
-        }
-        // The clock and the sentinel stand down while the writer decides —
-        // deciding is not writing time, and no stillness may seal underneath
-        // an open question.
-        silenceTask?.cancel()
-        tickerTask?.cancel()
-        if sessionEngine.isStarted, !sessionEngine.isClosed {
-            persistOnBackground()
-            isFrozen = true
-            resumesOnNextInput = true
-        }
-        pendingDecision = decision
-        return true
-    }
-
-    private func resumeAfterDecision() {
-        pendingDecision = nil
-        // The keyboard is summoned back explicitly: an accidental dismissal
-        // must never leave the writer unable to resume (spec §18).
-        keyboardFocusID = UUID()
-    }
-
     private func updatePreferences(_ mutate: (inout WritingPreferences) -> Void) {
         preferencesStore.update(mutate)
         preferences = preferencesStore.load()
-    }
-
-    var shouldShowNudgeDialogue: Bool {
-        isRequestingNudge || isNudgeMessageVisible
-    }
-
-    var nudgeDialogueMessage: String {
-        if isRequestingNudge {
-            return AnkyLocalization.ui("anky is finding the live thread.")
-        }
-        return nudgeMessage ?? ""
-    }
-
-    @discardableResult
-    func startAnkyNudgeIfPossible() -> Bool {
-        guard sessionEngine.isStarted, !protocolText.isEmpty else {
-            return false
-        }
-        guard !isNudgeMessageVisible else {
-            return true
-        }
-        if let lastLocalNudgeDate, Date().timeIntervalSince(lastLocalNudgeDate) < 3 {
-            if nudgeMessage != nil {
-                isNudgeMessageVisible = true
-                return true
-            }
-            return true
-        }
-
-        showContextualNudge()
-        return true
     }
 
     /// Writes the unsealed session to the draft file as a crash artifact.
@@ -611,7 +453,6 @@ final class WriteViewModel: ObservableObject {
             }
             silenceTask?.cancel()
             tickerTask?.cancel()
-            nudgeTask?.cancel()
 
             sessionEngine = restoredEngine
             completedArtifact = nil
@@ -630,17 +471,43 @@ final class WriteViewModel: ObservableObject {
             // is not writing time.
             preservesRecoveredDraftGapOnNextInput = false
             continuedArtifactToReplace = nil
-            pendingDecision = nil
-            hasKeptBackspaceDisabledThisWriting = false
             keyboardFocusID = UUID()
             clearErrorMessage()
-            clearNudgeMessage()
             draftStore.save(protocolText)
             return true
         } catch {
             showPersistentError(AnkyLocalization.ui("Could not recover this writing session."))
             return false
         }
+    }
+
+    /// Puts a finished writing on the page, exactly as a just-sealed one
+    /// stands: the words read-only, the keyboard down. A tap reopens it.
+    func showFinishedSession(_ artifact: SavedAnky) {
+        persistOnBackground()
+        resetForNextSession()
+        clearErrorMessage()
+        let text = artifact.reconstructedText
+        completedArtifact = artifact
+        displayedText = text
+        displayedGlyphs = text.map { WritingGlyph(character: $0, silenceProgress: 0) }
+        protocolText = artifact.text
+        elapsedMs = artifact.durationMs
+        isFrozen = true
+    }
+
+    /// The writer tapped a finished writing: it becomes the live writing
+    /// again — same words, and the reseal replaces the saved one.
+    @discardableResult
+    func reopenFinishedSession() -> Bool {
+        guard let artifact = completedArtifact else { return false }
+        return continueSession(from: artifact, allowCompleted: true)
+    }
+
+    /// The writer ended the writing themselves (the menu, mid-session).
+    func endWriting() {
+        guard sessionEngine.isStarted, completedArtifact == nil, !protocolText.isEmpty else { return }
+        sealAndSave()
     }
 
     @discardableResult
@@ -651,12 +518,6 @@ final class WriteViewModel: ObservableObject {
             clearCompletedSession()
             return false
         }
-        guard reflectionStore.load(hash: artifact.hash) == nil else {
-            showPersistentError(AnkyLocalization.ui("This writing has already been reflected."))
-            clearCompletedSession()
-            return false
-        }
-
         do {
             let draftText = LocalAnkyArchive.reopenableDraftText(from: artifact.text)
             let restoredEngine = try WritingSessionEngine(draftText: draftText)
@@ -667,7 +528,6 @@ final class WriteViewModel: ObservableObject {
 
             silenceTask?.cancel()
             tickerTask?.cancel()
-            nudgeTask?.cancel()
 
             sessionEngine = restoredEngine
             completedArtifact = nil
@@ -685,12 +545,8 @@ final class WriteViewModel: ObservableObject {
             preservesRecoveredDraftGapOnNextInput = false
             lastMinuteHaptic = min(AnkyDuration.completeRitualMinutes, Int(elapsedMs / 60_000))
             lastAlarmHapticSecond = 0
-            // Continuing is the same writing, so the decisions the writer
-            // already made about it stand — only the open question goes.
-            pendingDecision = nil
             keyboardFocusID = UUID()
             clearErrorMessage()
-            clearNudgeMessage()
             continuedArtifactToReplace = artifact
             draftStore.save(protocolText)
             return true
@@ -729,25 +585,6 @@ final class WriteViewModel: ObservableObject {
         }
     }
 
-    @discardableResult
-    func replayRecentPromptIfAvailable() -> Bool {
-        if sessionEngine.isStarted, !protocolText.isEmpty {
-            return startAnkyNudgeIfPossible()
-        }
-
-        guard let errorMessage,
-              !errorMessage.isEmpty,
-              !isErrorMessageVisible,
-              let errorRecallExpirationDate,
-              Date() <= errorRecallExpirationDate else {
-            return false
-        }
-
-        isErrorMessageVisible = true
-        scheduleErrorFade(message: errorMessage)
-        return true
-    }
-
     func openWritingPortal() {
         refreshWriteBeforeScrollUnlockOffer()
         writeBeforeScrollQuickPassesRemaining = QuickPassStore().remainingPasses()
@@ -757,36 +594,14 @@ final class WriteViewModel: ObservableObject {
     }
 
     func focusWritingKeyboard() {
-        guard pendingDecision == nil else {
-            return
-        }
         keyboardFocusID = UUID()
-    }
-
-    /// Shown when the user arrives from a blocked app's shield: their own
-    /// anchor sentence from onboarding, or a plain invitation if none exists.
-    /// Read from the main app container only — never from App Group storage.
-    func showWriteBeforeScrollAnchorReminderIfAvailable() {
-        guard !sessionEngine.isStarted else {
-            return
-        }
-        showTransientNudge(WritingAnchorStore().shieldArrivalMessage)
-    }
-
-    func dismissCurrentPrompt() {
-        clearErrorMessage()
-        clearNudgeMessage()
     }
 
     func prepareForWritingScene() {
         refreshPreferences()
         refreshTodayCount()
         refreshWriteBeforeScrollUnlockOffer()
-        // A standing decision owns the keyboard's place: do not summon the
-        // keys back over the writer's open question.
-        if pendingDecision == nil {
-            keyboardFocusID = UUID()
-        }
+        keyboardFocusID = UUID()
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         minuteHaptic.prepare()
@@ -794,13 +609,10 @@ final class WriteViewModel: ObservableObject {
         ritualCompleteImpactHaptic.prepare()
         alarmHaptic.prepare()
         invalidInputHaptic.prepare()
-        nudgeStartHaptic.prepare()
-        nudgeResultHaptic.prepare()
     }
 
     func closeIfSilenceElapsed() {
         guard eightSecondRuleActive,
-              pendingDecision == nil,
               sessionEngine.isStarted,
               !sessionEngine.isClosed,
               !isFrozen,
@@ -827,60 +639,6 @@ final class WriteViewModel: ObservableObject {
             return
         }
         scheduleSilenceClose(afterMs: terminalSilenceMs)
-    }
-
-    private func requestAnkyNudge(persistent: Bool = false) async {
-        let text = protocolText
-        guard sessionEngine.isStarted, !text.isEmpty else {
-            return
-        }
-
-        guard let baseURL = URL(string: MirrorConfiguration.currentBaseURL(defaults: userDefaults)) else {
-            showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: persistent)
-            return
-        }
-
-        isRequestingNudge = true
-        isNudgeMessageVisible = true
-        nudgeMessage = nil
-        nudgeStartHaptic.impactOccurred(intensity: 0.48)
-        nudgeStartHaptic.prepare()
-        defer { isRequestingNudge = false }
-
-        do {
-            let bytes = Data(text.utf8)
-            let identity = try identityStore.loadOrCreate()
-            let response = try await MirrorClient(baseURL: baseURL).askAnky(
-                bytes: bytes,
-                identity: identity,
-                appVersion: AnkyAppVersion.headerValue,
-                intent: .nudge
-            )
-
-            guard response.hash == AnkyHasher.sha256Hex(bytes) else {
-                throw MirrorClientError.hashMismatch
-            }
-
-            guard !Task.isCancelled else {
-                return
-            }
-            nudgeResultHaptic.notificationOccurred(.success)
-            nudgeResultHaptic.prepare()
-            showNudge(Self.oneLineNudge(from: response.reflection), persistent: persistent)
-        } catch {
-            guard !Task.isCancelled else {
-                return
-            }
-            nudgeResultHaptic.notificationOccurred(.warning)
-            nudgeResultHaptic.prepare()
-            if persistent {
-                showNudge(Self.postSilenceFallbackNudge(from: displayedText.isEmpty ? protocolText : displayedText), persistent: true)
-            } else {
-                let message = (error as? LocalizedError)?.errorDescription ?? "anky could not return a nudge right now."
-                let serverPayload = (error as? MirrorClientError)?.serverPayload
-                showTransientNudge(Self.nudgeErrorMessage(from: message, serverPayload: serverPayload))
-            }
-        }
     }
 
     private func scheduleSilenceClose(afterMs milliseconds: Int64) {
@@ -950,9 +708,6 @@ final class WriteViewModel: ObservableObject {
                 replacedDurationMs: replacedDurationMs,
                 sealedAt: sealedAt
             )
-            Task.detached(priority: .utility) {
-                await LevelSyncClient.flushUnreported()
-            }
             writeBeforeScrollUnlockStateStore.markWrote(at: sealedAt)
             writeBeforeScrollEventLog.append(
                 .wbsSessionSealed,
@@ -1013,8 +768,6 @@ final class WriteViewModel: ObservableObject {
         resumesOnNextInput = false
         preservesRecoveredDraftGapOnNextInput = false
         continuedArtifactToReplace = nil
-        pendingDecision = nil
-        hasKeptBackspaceDisabledThisWriting = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         writeBeforeScrollSessionTracker.reset()
@@ -1028,9 +781,6 @@ final class WriteViewModel: ObservableObject {
         isGateOriginatedSession = false
         gateOriginAppDisplayName = nil
         keyboardFocusID = UUID()
-        clearNudgeMessage()
-        lastLocalNudgeDate = nil
-        localNudgeOffset = 0
     }
 
     private func recordWriteBeforeScrollProgress(acceptedCharacterCount: Int, now epochMs: Int64) {
@@ -1221,88 +971,6 @@ final class WriteViewModel: ObservableObject {
         errorMessage = nil
         isErrorMessageVisible = false
         errorRecallExpirationDate = nil
-    }
-
-    private func showTransientNudge(_ message: String) {
-        showNudge(message, persistent: false)
-    }
-
-    private func showNudge(_ message: String, persistent: Bool) {
-        nudgeTask?.cancel()
-        nudgeMessage = message
-        isNudgeMessageVisible = true
-        guard !persistent else {
-            return
-        }
-        nudgeTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 6_000_000_000)
-            guard !Task.isCancelled else { return }
-            if self?.nudgeMessage == message {
-                self?.clearNudgeMessage()
-            }
-        }
-    }
-
-    private func clearNudgeMessage() {
-        nudgeTask?.cancel()
-        nudgeMessage = nil
-        isNudgeMessageVisible = false
-    }
-
-    private func showContextualNudge() {
-        let writing = displayedText.isEmpty ? protocolText : displayedText
-        let message = AnkyNudgeGenerator.generateNudge(
-            from: writing,
-            timeWritten: TimeInterval(elapsedMs) / 1000,
-            wordCount: wordCount,
-            offset: localNudgeOffset
-        )
-        localNudgeOffset += 1
-        lastLocalNudgeDate = Date()
-        showTransientNudge(message)
-    }
-
-    private static func oneLineNudge(from text: String) -> String {
-        let cleaned = text
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first { !$0.isEmpty } ?? text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let withoutHeading = cleaned.replacingOccurrences(
-            of: #"^#+\s*"#,
-            with: "",
-            options: .regularExpression
-        )
-        return withoutHeading.isEmpty ? AnkyLocalization.ui("stay with the next true sentence.") : withoutHeading
-    }
-
-    private static func nudgeErrorMessage(from message: String, serverPayload: MirrorServerErrorPayload? = nil) -> String {
-        if serverPayload?.isEntitlementDenied == true {
-            return AnkyLocalization.ui("nudges open with anky's subscription. the writing is still yours.")
-        }
-        if message.localizedCaseInsensitiveContains("incomplete") {
-            return AnkyLocalization.ui("the mirror is not ready to nudge unfinished ankys yet.")
-        }
-        return AnkyLocalization.ui("anky could not return a nudge right now.")
-    }
-
-    private var wordCount: Int {
-        let writing = displayedText.isEmpty ? protocolText : displayedText
-        return writing
-            .split { $0.isWhitespace || $0.isNewline }
-            .count
-    }
-
-    private static func postSilenceFallbackNudge(from writing: String) -> String {
-        let lower = " \(writing.lowercased()) "
-        let looksSpanish = lower.range(of: #"[áéíóúñ¿¡]"#, options: .regularExpression) != nil
-            || [" que ", " de ", " en ", " para ", " pero ", " estoy ", " siento ", " quiero "].contains { lower.contains($0) }
-
-        if looksSpanish {
-            return AnkyLocalization.ui("que detalle de esto todavia quiere otra frase?")
-        }
-
-        return AnkyLocalization.ui("what detail here still wants one more sentence?")
     }
 
     private func startTicker() {

@@ -1,11 +1,15 @@
-A calmer Anky.
+The simplest Anky yet.
 
-One page, one drawer. The writing is always in front of you, and everything you have written slides in from the side.
+Anky no longer connects to any server. No AI reflections, no subscription, no account. Your writing never leaves your phone.
 
-Stats. Your streak, and a calendar of the days you wrote.
+Tap the clock for one line: the 8 second rule, a slider for your minutes, and ∞.
 
-Settings, redone. One line per setting.
+Finished a writing? Tap it to keep going. Same page, same words.
 
-Write before you scroll. One switch blocks the apps that pull you away until you have written.
+Backspace is on by default. Turn it off in Settings if you want to write forward only.
 
-Anky Pro can now be monthly or yearly.
+Copy any writing, or copy it with a reflection prompt to paste into the AI you already use.
+
+Stats are simpler: you wrote that day or you didn't.
+
+Blocked apps now unlock as soon as you have written, and the shield's emergency unlock works again.

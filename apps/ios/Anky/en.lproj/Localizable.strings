@@ -719,3 +719,10 @@
 "Allow notifications" = "Allow notifications";
 "Needed to open Anky from a blocked app." = "Needed to open Anky from a blocked app.";
 "Notifications are off. Open Anky from your Home Screen." = "Notifications are off. Open Anky from your Home Screen.";
+
+/* Simplest writing app, 2026-10-16 */
+"Copy prompt + writing" = "Copy prompt + writing";
+"Delete All Data" = "Delete all data";
+"This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere." = "This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere.";
+"All writings deleted from this device and your Anky iCloud backup." = "All writings deleted from this device and your Anky iCloud backup.";
+"Writing time" = "Writing time";

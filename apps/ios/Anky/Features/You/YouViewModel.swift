@@ -220,9 +220,6 @@ final class YouViewModel: ObservableObject {
 
     func deleteAccountAndDataEverywhere() async {
         do {
-            let identity = try identityStore.loadOrCreate()
-            try await LevelSyncClient().deleteAccount(identity: identity)
-
             clearScreenTimeLocksBeforeIdentityWipe()
             try archive.clear()
             try reflectionStore.clear()
@@ -231,7 +228,6 @@ final class YouViewModel: ObservableObject {
             notifications.cancelDailyReminder()
             appOpenStore.clear()
             try? iCloudBackupStore.deleteRemoteBackupAndDisable()
-            try? WriterProfileStore().clear()
             try identityStore.resetForDevelopment(includeICloudBackup: true)
             clearDevelopmentDefaults()
             accountId = ""
@@ -241,10 +237,8 @@ final class YouViewModel: ObservableObject {
             formattedWritingExportURL = nil
             isICloudBackupEnabled = false
             iCloudBackupLastDate = nil
-            statusMessage = AnkyLocalization.ui("Account and data deleted from this device, Anky iCloud backup, and Anky server records.")
+            statusMessage = AnkyLocalization.ui("All writings deleted from this device and your Anky iCloud backup.")
             errorMessage = nil
-        } catch LevelSyncClient.LevelSyncError.server {
-            errorMessage = AnkyLocalization.ui("Could not delete server account data. Nothing was deleted from this device.")
         } catch {
             errorMessage = AnkyLocalization.ui("Could not delete all account data.")
         }
@@ -273,7 +267,7 @@ final class YouViewModel: ObservableObject {
 
     private func clearDevelopmentDefaults() {
         for key in defaults.dictionaryRepresentation().keys {
-            if key.hasPrefix("anky.") || key == MirrorConfiguration.userDefaultsKey {
+            if key.hasPrefix("anky.") {
                 defaults.removeObject(forKey: key)
             }
         }

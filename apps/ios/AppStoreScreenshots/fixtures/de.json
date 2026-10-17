@@ -8,11 +8,11 @@
     "de_DE@sw=QWERTZ-German;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "Schreib 8 Minuten.",
+    "ritual": "Schreib einfach.",
     "simplicity": "Die einfachste\nSchreib-App.",
-    "reflection": "Erhalte eine Reflexion\nzu deinem Text.",
-    "archive": "Dein Archiv,\ngeordnet.",
-    "recording": "Nimm dich beim\nLesen auf."
+    "finished": "Tippen und\nweiterschreiben.",
+    "timer": "Wähl deine\nMinuten.",
+    "archive": "Jede Seite bleibt\nauf deinem iPhone."
   },
   "ritual": {
     "elapsedMs": 38000,

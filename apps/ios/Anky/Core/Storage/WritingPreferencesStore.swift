@@ -116,7 +116,7 @@ struct WritingPreferences: Codable, Equatable {
     }
 
     static let ritualDefault = WritingPreferences(
-        backspaceAllowed: false,
+        backspaceAllowed: true,
         autocorrectEnabled: true,
         fontChoice: .default,
         textSize: .default,
@@ -139,10 +139,18 @@ struct WritingPreferencesStore {
         self.defaults = defaults
     }
 
+    /// Backspace became available by default (2026-10-16); writers who had
+    /// it off are switched on once, and settings can turn it off again.
+    static let backspaceOnMigrationKey = "anky.writingPreferences.backspaceOn.v1"
+
     func load() -> WritingPreferences {
         guard let data = defaults.data(forKey: Self.key),
-              let preferences = try? JSONDecoder().decode(WritingPreferences.self, from: data) else {
+              var preferences = try? JSONDecoder().decode(WritingPreferences.self, from: data) else {
             return .ritualDefault
+        }
+        if !defaults.bool(forKey: Self.backspaceOnMigrationKey) {
+            preferences.backspaceAllowed = true
+            save(preferences)
         }
         return preferences
     }
@@ -152,6 +160,7 @@ struct WritingPreferencesStore {
             return
         }
         defaults.set(data, forKey: Self.key)
+        defaults.set(true, forKey: Self.backspaceOnMigrationKey)
     }
 
     func update(_ mutate: (inout WritingPreferences) -> Void) {

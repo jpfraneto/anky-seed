@@ -676,7 +676,6 @@ struct VeiledFeature<Content: View>: View {
     var body: some View {
         Button {
             AnkyHaptics.light()
-            AnkyFunnel.report(AnkyFunnel.veilTapped, origin: surface)
             onTap()
         } label: {
             ZStack {

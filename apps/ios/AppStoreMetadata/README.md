@@ -26,61 +26,21 @@ en-US/  es-MX/  fr-FR/  de-DE/  hi/  zh-Hans/
 Limits are Unicode code points, which is what App Store Connect counts —
 `validate.rb` counts them the same way.
 
-## What changed from the live listing, and why
+## Version 2.2.0 — "the simplest writing app" (2026-10-16)
 
-**Name** — `Anky: Writing App` → `Anky: Daily Writing Journal`. The old name
-spent 17 of 30 characters and indexed only "writing" and "app". The new one
-keeps the brand first and adds "daily" and "journal", the two highest-volume
-terms this app can honestly claim. If you would rather not touch the name,
-revert `name.txt` and nothing else changes.
+The app went fully offline: no server, no AI reflections, no subscription.
+Everything in the listing that described those is gone.
 
-**Subtitle** — `The simplest app to write.` → `Freewrite 8 minutes a day`. Same
-reasoning: the old subtitle indexed nothing a person would search for. The new
-one carries "freewrite" and "minutes".
-
-**Keywords** — the field was invisible to me, so treat these as a proposal
-rather than a diff. Nothing here repeats a word already in the name or
-subtitle, because Apple indexes those separately and repeats are wasted
-characters.
-
-**Description** — the live one is a single 90-word paragraph. This version
-keeps its voice but adds the structure the App Store's "more" fold rewards,
-and says out loud what the app actually charges for. It also carries the
-auto-renewable subscription disclosure Apple expects on the product page:
-renewal terms, and links to the standard EULA and your privacy policy. That
-block is the kind of omission that gets a review rejection, and the live
-listing does not have it.
-
-**Promotional text** — new. It sits above the description, and unlike
-everything else here you can change it any time without shipping a build. Good
-place for a seasonal line later.
-
-**Release notes** — written for a polish release, honestly. If you have
-specific fixes worth naming, name them; people read these.
-
-## Before you paste — three things that need your eyes
-
-1. **The Pro claim.** The description says writing is free and reflections are
-   what you pay for, matching what the gate itself says in 2.0.0 ("Reflections
-   open with the subscription. Writing is still free."). Confirm that is still
-   true of the build you are shipping.
-2. **The privacy policy URL.** The description links `https://anky.app/privacy-policy`.
-   Confirm it resolves.
-3. **The consumables.** The store sells Reflection packs (3/11/33) and Credit
-   packs (22/99/421) that no document in this repo describes. The description
-   refers to buying reflections "in packs" without naming tiers, which is safe
-   either way, but the packs deserve their own written spec somewhere.
-
-## Stale documents, flagged
-
-Two files in this repo will mislead whoever reads them next:
-
-- `docs/app-store-subscription-resubmission.md` describes 1.3.0 — a 96-day
-  journey, painting levels after level 8, and an onboarding path
-  ("I know." → "How does it work?" → …) that no longer exists.
-- `apps/ios/Anky/Anky.storekit` lists `anky.monthly` at 9.99 and `anky.annual`
-  at 88.90. The store actually sells 8.99 and 49.99, plus six consumables the
-  file does not contain.
-
-Neither is load-bearing for this metadata, but both should be corrected or
-marked historical before they are trusted again.
+- **Subtitle:** "The simplest writing app" in every locale (was "Freewrite 8
+  minutes a day" — duration is now 1–8 minutes or ∞).
+- **Promotional text / description:** lead with the one page, the clock, the
+  8 second rule and "tap to keep writing"; say plainly that nothing leaves the
+  phone; drop Anky Pro, reflections, recording and the subscription legalese
+  (there are no purchases left to disclose). Privacy and Terms links point at
+  each locale's anky.app page.
+- **Name and keywords:** unchanged except en-US keywords: "stream,consciousness" became "freewrite,minimal,calm".
+- **Release notes:** what a 2.1 user will notice.
+- **review_notes.txt:** rewritten for 2.2.0 (67).
+- **App Privacy:** answer "Data Not Collected" — see `../NUTRITION_LABEL.md`.
+- **In-app purchases:** Anky Pro monthly/yearly must be removed from sale in
+  App Store Connect by hand; nothing in the app sells them anymore.

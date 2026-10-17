@@ -1,40 +1,36 @@
-Eine leere Seite, und nichts davor.
+Eine leere Seite. Nichts davor.
 
-Kein Feed. Keine Follower. Keine Einrichtung. Du öffnest Anky und schreibst bereits.
+Anky ist die einfachste Schreib-App, die wir bauen konnten. Du öffnest sie und schreibst schon. Kein Konto. Kein Feed. Keine Follower. Keine KI. Nichts einzurichten und nichts freizuschalten.
 
-WIE ES FUNKTIONIERT
+SO FUNKTIONIERT ES
 
-Acht Minuten sind die Voreinstellung. Und die Regel, die alles trägt: Hältst du acht Sekunden inne, endet die Sitzung. Es gibt keine Rücktaste. Du kannst den letzten Satz nicht zurückholen und glätten, also gehst du weiter und schreibst den nächsten.
+Tippe auf die Uhr und wähle, wie lange du schreiben willst, von einer bis acht Minuten, oder ∞ ohne Limit.
 
-Das ist der ganze Trick. Schreibblockade ist fast immer zu frühes Überarbeiten. Anky nimmt das Überarbeiten vom Tisch, bis du fertig bist.
+Die Sanduhr daneben ist die 8-Sekunden-Regel: Hörst du acht Sekunden auf zu tippen, endet das Schreiben. So schreibst du weiter, statt den letzten Satz zu überarbeiten. Schalte sie aus, und nur du entscheidest, wann du fertig bist.
 
-Jede Voreinstellung gehört dir: die Dauer, die Stille, die Rücktaste, die Schrift.
+Das ist die ganze App.
 
 WENN DU FERTIG BIST
 
-Dein Text wird in ein privates Archiv auf deinem Telefon versiegelt, mit Datum und durchsuchbar. Nichts wird veröffentlicht. Es gibt kein Publikum, und genau darum geht es.
+Deine Worte bleiben genau, wo sie sind. Tippe auf die Seite und schreib weiter, heute oder an jedem anderen Tag.
 
-Von dort kannst du Anky um eine Reflexion bitten: Anky liest, was du geschrieben hast, und sagt dir, was ihm aufgefallen ist. Die Sache unter der Sache. Die Frage, um die du acht Minuten gekreist bist, ohne sie zu beantworten.
+Jedes Schreiben wird auf deinem iPhone gespeichert, mit Datum und durchsuchbar, in einer Leiste, die von der Seite hereingleitet. Kopiere ein Schreiben mit einem Tipp, oder kopiere es zusammen mit einem Reflexions-Prompt, um es in die KI einzufügen, die du ohnehin nutzt, wenn du willst.
 
-Oder du nimmst dich auf, während du deine eigenen Worte laut liest, und behältst das Video.
+Deine Serie und ein Kalender der Tage, an denen du geschrieben hast, sind einen Tipp entfernt. Du hast heute geschrieben oder nicht.
 
-Deine Serie und ein Kalender der Tage, an denen du geschrieben hast, sind einen Fingertipp entfernt.
+DEINS, NUR DEINS
 
-SCHREIBEN VOR DEM SCROLLEN
+Anky verbindet sich mit keinem Server. Dein Schreiben wird nie hochgeladen, nie gelesen und nie für ein Training verwendet. Keine Analyse, keine Werbung. Wenn du ein Backup willst, aktiviere das verschlüsselte iCloud-Backup: Es landet in deiner eigenen iCloud.
 
-Anky kann sich zwischen dich und die Apps stellen, die du öffnest, ohne es entschieden zu haben. Schreib erst deine Minuten, dann öffnet sich der Rest des Tages.
+SCHREIB, BEVOR DU SCROLLST
 
-WAS ES KOSTET
+Wenn du willst, stellt sich Anky zwischen dich und die Apps, die du öffnest, ohne es zu wollen. Wähle sie in den Einstellungen. Greifst du nach einer, schreibst du zuerst. Ein fertiger Satz öffnet einen kurzen Pass, deine Minuten öffnen den Rest des Tages. Jederzeit abschaltbar.
 
-Schreiben ist kostenlos. Das bleibt so. Die leere Seite, der Timer, das Archiv, die Aufnahme: nichts davon liegt hinter einer Schranke.
+In den Einstellungen findest du den Rest: Rücktaste, Autokorrektur, wie lange die Stille dauert, Schrift und Größe.
 
-Reflexionen sind ebenfalls kostenlos, mit einem einfachen Modell. Anky Pro gibt dir Reflexionen vom stärksten verfügbaren Modell. Und wenn du gar nichts zahlen willst: Nutze „Prompt + Anky kopieren“ im Menü und nimm deinen Text mit zu dem KI-Werkzeug, das du ohnehin benutzt.
+Kostenlos. Kein Abo. Keine Käufe.
 
-ANKY PRO
+Datenschutzerklärung: https://anky.app/de/privacy-policy
+Nutzungsbedingungen: https://anky.app/de/terms
 
-Optionales, automatisch verlängerbares Abonnement, monatlich oder jährlich. Die Zahlung wird bei Kaufbestätigung deinem Apple-Konto belastet. Es verlängert sich automatisch, sofern die automatische Verlängerung nicht mindestens 24 Stunden vor Ende des laufenden Zeitraums deaktiviert wird; die Belastung erfolgt innerhalb von 24 Stunden vor Ende dieses Zeitraums. Verwalten oder kündigen kannst du jederzeit unter Einstellungen, Apple-Konto, Abonnements.
-
-Nutzungsbedingungen: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Datenschutzrichtlinie: https://anky.app/privacy-policy
-
-Acht Minuten. Eine Seite. Morgen fängst du wieder an.
+Öffnen. Schreiben. Schließen.

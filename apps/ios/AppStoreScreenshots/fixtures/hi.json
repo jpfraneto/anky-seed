@@ -9,11 +9,11 @@
     "en_US@sw=QWERTY;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "8 मिनट लिखिए।",
+    "ritual": "बस लिखें।",
     "simplicity": "सबसे सरल\nलेखन ऐप।",
-    "reflection": "अपने लेखन पर\nएक चिंतन पाइए।",
-    "archive": "आपका संग्रह,\nसहेजा हुआ।",
-    "recording": "खुद को पढ़ते\nहुए रिकॉर्ड करें।"
+    "finished": "टैप करें और\nलिखते रहें।",
+    "timer": "अपने मिनट\nचुनें।",
+    "archive": "हर पन्ना आपके\nफ़ोन पर रहता है।"
   },
   "ritual": {
     "elapsedMs": 38000,

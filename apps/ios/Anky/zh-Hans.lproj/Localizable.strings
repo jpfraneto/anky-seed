@@ -719,3 +719,10 @@
 "Allow notifications" = "允许通知";
 "Needed to open Anky from a blocked app." = "从被锁定的应用打开 Anky 时需要。";
 "Notifications are off. Open Anky from your Home Screen." = "通知已关闭。请从主屏幕打开 Anky。";
+
+/* Simplest writing app, 2026-10-16 */
+"Copy prompt + writing" = "复制提示词 + 书写";
+"Delete All Data" = "删除所有数据";
+"This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere." = "这会永久删除此设备上的所有书写以及你的 Anky iCloud 备份。Anky 没有服务器账户：除此之外，任何地方都没有别的数据。";
+"All writings deleted from this device and your Anky iCloud backup." = "已从此设备和你的 Anky iCloud 备份中删除所有书写。";
+"Writing time" = "书写时长";

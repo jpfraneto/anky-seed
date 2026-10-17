@@ -1,57 +1,26 @@
 //
 //  GeshtuWorldView.swift
-//  Anky — the Geshtu Redesign (spec §1, §11).
+//  Anky
 //
-//  The container of the vertical world: it renders whatever surface the
-//  current GeshtuState.Phase calls for, with the Anchor overlaid above the
-//  entire hierarchy at its fixed, eternal position. The registers switch here
-//  — warm lazure for the human world, electric indigo only during the vigil.
-//
-//  Phase 1 note: the per-phase surfaces below are lazure scaffolds. Real
-//  surfaces arrive in later phases — the strata (§2), the reveal keyboard-fall
-//  (§3), the electric vigil (§4), the reflection descent (§5). The state
-//  machine and the Anchor are permanent; only the surfaces get replaced.
+//  The whole app: one writing page, and a drawer of past writings beside it.
+//  The page is always the writing surface — a live writing, or a finished one
+//  standing exactly where it was written. Nothing here talks to a server.
 //
 
-import RevenueCat
 import SwiftUI
 
 struct GeshtuWorldView: View {
     @StateObject private var axis = GeshtuState()
-    /// The axis world owns one writing engine — the real WriteViewModel, with
-    /// its 62.5Hz ticker, per-keystroke atomic writes, and the stillness
-    /// sentinel. The axis only listens for the seal; it never reimplements
-    /// the mechanics.
+    /// The one writing engine. The world only listens for the seal and hands
+    /// it past writings to put on the page.
     @StateObject private var writeViewModel = WriteViewModel()
-    /// Owns the reflection request for the pending session.
-    @StateObject private var reflection = GeshtuReflectionCoordinator()
-    /// The one-time onboarding rehearsal (spec §9): the first session gets a
-    /// shortened sentinel so the crossroads is discovered quickly. Set true
-    /// once the first reflection lands.
-    @AppStorage("anky.axisRehearsalDone") private var rehearsalDone = false
-    @StateObject private var entitlements = EntitlementStore()
-    @State private var showsPaywall = false
-    // The seed (spec §7): identity, subscription, recovery phrase, account
-    // deletion, and the gate — the real settings, reached by scrolling to the
-    // base of the past.
     @StateObject private var youViewModel = YouViewModel()
     @StateObject private var gateViewModel = WriteBeforeScrollSpikeViewModel()
     @State private var showsGateSetup = false
+    /// One quiet line after the shield's emergency button opened the apps.
+    @State private var gateLine: String?
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showsDeleteConfirmation = false
-    // In-place recording (user decision, 2026-07-16): the record act summons
-    // a selfie bubble onto the current viewport; the record button starts and stops
-    // the capture; the same top-right button — now feeling active — dismisses
-    // the camera. No separate recording screen exists anymore.
-    @StateObject private var selfie = SelfieCameraController()
-    @StateObject private var screenRecorder = GeshtuScreenRecorder()
-    @State private var cameraActive = false
-    // The bubble is the writer's to place (user request, 2026-07-17): drag
-    // moves it, pinch resizes it — before or during a take. Committed values
-    // survive dismissal so the bubble returns where it was left.
-    @State private var bubbleOffset: CGSize = .zero
-    @GestureState private var bubbleDragDelta: CGSize = .zero
-    @State private var bubbleScale: CGFloat = 1
-    @GestureState private var bubblePinchDelta: CGFloat = 1
 
     /// The first-launch animatic. The world waits fully covered beneath it.
     @State private var showsOnboarding = OnboardingAnimaticLedger.needsOnboarding()
@@ -61,9 +30,6 @@ struct GeshtuWorldView: View {
         transaction.animation = GeshtuState.drawerSpring
     }) private var drawerDrag: CGFloat = 0
 
-    /// One surface with a drawer beside it (user decision, 2026-10-08): the
-    /// page — the writing, or one written session — is always in front, and
-    /// the history slides in from the leading edge, pushing the page aside.
     var body: some View {
         GeometryReader { geometry in
             let drawerWidth = min(geometry.size.width * 0.82, 340)
@@ -78,7 +44,7 @@ struct GeshtuWorldView: View {
                 if progress > 0 {
                     SessionDrawerView(
                         axis: axis,
-                        currentHash: axis.openedEntry?.hash ?? axis.pendingSession?.hash,
+                        currentHash: writeViewModel.completedArtifact?.hash,
                         onNewWriting: startNewWriting
                     )
                     .frame(width: drawerWidth)
@@ -110,9 +76,8 @@ struct GeshtuWorldView: View {
             }
         }
         .environmentObject(axis)
-        // Every warm Geshtu surface owns a parchment register and dark ink.
-        // Pinning its appearance keeps system materials, text fields, status
-        // chrome, and translucent meshes from inheriting device dark mode.
+        // The parchment register is pinned light so system materials never
+        // inherit device dark mode.
         .preferredColorScheme(.light)
         .onChange(of: axis.drawerIsOpen) { isOpen in
             if isOpen { dismissKeyboard() }
@@ -121,33 +86,31 @@ struct GeshtuWorldView: View {
             if dragging {
                 dismissKeyboard()
             } else {
-                // A pull that was let go short of opening: the page is the
-                // writing again, and its keyboard comes back.
+                // A pull let go short of opening: the keyboard comes back.
                 DispatchQueue.main.async {
-                    if !axis.drawerIsOpen, axis.phase == .writing {
+                    if !axis.drawerIsOpen, writeViewModel.canAcceptInput {
                         writeViewModel.focusWritingKeyboard()
                     }
                 }
             }
         }
+        .onChange(of: axis.entryRequest?.hash) { _ in
+            guard let entry = axis.consumeEntryRequest() else { return }
+            writeViewModel.showFinishedSession(entry)
+        }
     }
 
     /// The drawer can be pulled out from the leading edge whenever the menu
-    /// button would be offered — never across a live writing session.
+    /// button would be offered — never across a live writing.
     private var drawerAllowed: Bool {
         if showsOnboarding { return false }
-        if axis.phase == .writing {
-            return !writeViewModel.hasStarted && !writeViewModel.bottomSurfaceStands
-        }
-        return true
+        return !writeViewModel.hasStarted || writeViewModel.completedArtifact != nil
     }
 
     private func drawerOpenDrag(width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 12)
             .updating($drawerDrag) { value, state, _ in
                 guard !axis.drawerIsOpen, drawerAllowed, value.startLocation.x < 30 else { return }
-                // Engage only once the drag is clearly horizontal, so
-                // edge-adjacent scrolls stay scrolls.
                 guard state > 0 || value.translation.width > abs(value.translation.height) else { return }
                 state = max(0, value.translation.width)
             }
@@ -179,13 +142,13 @@ struct GeshtuWorldView: View {
             }
     }
 
-    /// The drawer's "new writing": a fresh page, unless the page already is
-    /// the writing.
+    /// A fresh page, unless the page already is a blank one.
     private func startNewWriting() {
-        if axis.phase != .writing {
-            axis.openWriting()
+        if writeViewModel.hasStarted || writeViewModel.completedArtifact != nil {
+            writeViewModel.beginBlankSessionFromWriteTab()
         }
         axis.closeDrawer()
+        writeViewModel.focusWritingKeyboard()
     }
 
     private func dismissKeyboard() {
@@ -195,89 +158,51 @@ struct GeshtuWorldView: View {
         )
     }
 
-    /// The page: the writing machine or one written session, with the fixed
-    /// controls that float over it.
     private var page: some View {
         ZStack {
-            register
+            LazureWall(mood: .dawn)
                 .ignoresSafeArea()
 
-            // The page itself. Which face it wears is the phase; there is no
-            // list underneath it and nothing is ever pushed over it.
-            deviceSurface
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .zIndex(10)
+            WriteView(
+                viewModel: writeViewModel,
+                shouldFocus: !showsOnboarding && !axis.drawerIsOpen,
+                onCompleted: { _ in grantWriteBeforeScrollUnlock() },
+                onOpenMenu: { axis.openDrawer() }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // The base of the page is empty except while the camera is up,
-            // when the record button stands there to start and stop the take.
-            if cameraActive {
-                RecordButton(
-                    isRecording: screenRecorder.isRecording,
-                    onToggle: { toggleRecording() }
+            if let finished = writeViewModel.completedArtifact {
+                FinishedWritingChrome(
+                    writing: finished.reconstructedText,
+                    onNewWriting: startNewWriting,
+                    onDelete: {
+                        AnkyHaptics.warning()
+                        showsDeleteConfirmation = true
+                    }
                 )
-                .zIndex(1000)
+                .transition(.opacity)
+                .zIndex(1500)
             }
 
-            // The selfie bubble on the current viewport — part of the screen,
-            // therefore part of the recording. The writer scrolls the archive
-            // freely around it, drags it anywhere, and pinches it smaller or
-            // bigger (user request, 2026-07-17); it starts bottom-leading and
-            // remembers where it was left.
-            if cameraActive {
-                VStack {
-                    Spacer()
-                    HStack {
-                        SelfieBubble(camera: selfie)
-                            .scaleEffect(bubbleScale * bubblePinchDelta)
-                            .offset(
-                                x: bubbleOffset.width + bubbleDragDelta.width,
-                                y: bubbleOffset.height + bubbleDragDelta.height
-                            )
-                            .gesture(bubbleGesture)
-                        Spacer()
-                    }
-                }
-                .padding(.leading, 18)
-                .padding(.bottom, 24)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .zIndex(1400)
-            }
-
-            // The take is already in the camera roll — this only says so.
-            if screenRecorder.justSaved {
-                VStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.ankySage)
-                        Text(AnkyLocalization.ui("saved to your camera roll"))
-                            .font(.fraunces(14, weight: .light, italic: true))
-                            .foregroundStyle(Color.ankyInkSoft)
-                    }
+            if let gateLine {
+                Text(gateLine)
+                    .font(.fraunces(14, weight: .light, italic: true))
+                    .foregroundStyle(Color.ankyInkSoft)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Capsule().fill(Color.ankyPaper.opacity(0.9)))
-                    .shadow(color: Color.ankyViolet.opacity(0.15), radius: 8, y: 2)
-                    .padding(.top, 14)
-                    Spacer()
-                }
-                .transition(.opacity)
-                .zIndex(1600)
+                    .ankyGlass(in: Capsule(), interactive: false)
+                    .padding(.top, 60)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+                    .zIndex(1600)
             }
 
-            // The fixed top-right chrome of the warm surfaces (product
-            // decision, 2026-07-15): share / record / settings hold the exact
-            // spot the timer holds during writing. Always there — never
-            // inline in the content, never below an opened day.
-            // The animatic owns the screen until it ends; when it fades, the
-            // writing surface is already waiting underneath.
             if showsOnboarding {
                 OnboardingAnimaticView {
                     withAnimation(.easeInOut(duration: 0.6)) {
                         showsOnboarding = false
                     }
-                    // The world opens on the writing page: summon its keyboard
-                    // now that the overlay has released the screen.
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
                         writeViewModel.focusWritingKeyboard()
                     }
@@ -285,474 +210,147 @@ struct GeshtuWorldView: View {
                 .zIndex(3000)
                 .transition(.opacity)
             }
-
-            if showsTopChrome {
-                GeshtuTopChrome(
-                    writing: chromeWritingText,
-                    offersPrompt: sessionOnPageIsFullAnky,
-                    cameraActive: cameraActive,
-                    onNewWriting: { axis.openWriting() },
-                    onToggleCamera: { toggleCamera() },
-                    onDelete: {
-                        AnkyHaptics.warning()
-                        showsDeleteConfirmation = true
-                    }
-                )
-                .opacity(topChromeIsVisible ? 1 : 0)
-                .offset(y: topChromeIsVisible ? 0 : -7)
-                .allowsHitTesting(topChromeIsVisible)
-                .animation(.easeInOut(duration: 0.24), value: topChromeIsVisible)
-                .zIndex(1500)
-                .transition(.opacity)
+        }
+        .animation(.easeInOut(duration: 0.4), value: writeViewModel.completedArtifact?.hash)
+        .animation(.easeInOut(duration: 0.4), value: gateLine)
+        .onAppear(perform: startWriteBeforeScroll)
+        .onReceive(NotificationCenter.default.publisher(for: .writeBeforeScrollNotificationTapped)) { _ in
+            routeFromShield()
+        }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .active:
+                gateViewModel.reconcileOnAppActive(hasCurrentVerifiedPro: true)
+                gateViewModel.handlePendingInterventionIfNeeded(showWrite: openWritingFromShield)
+                routeFromShield()
+            case .background:
+                // A Quick Pass's minutes belong to the app the writer was
+                // reaching for, so its window starts on the way out — and a
+                // pass earned mid-sentence seals the writing as they leave.
+                gateViewModel.startPendingQuickPassWindowIfNeeded()
+                writeViewModel.sealIfLeftInMotion()
+            default:
+                break
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: showsTopChrome)
         #if DEBUG
-        // Deterministic launch-driven seeding + navigation, so the addendum
-        // surfaces can be screenshot-verified without a tap tool. Env keys:
-        //   AXIS_DEBUG_SEED = showcase | bulk
-        //   AXIS_DEBUG_PHASE = landing | entry | reflection | ...
-        //   AXIS_DEBUG_OPEN_FIRST = 1   (open the newest strata entry)
-        .onAppear(perform: applyDebugLaunchEnv)
-        #endif
-        // The gate (user decision, 2026-07-17 — supersedes PaywallSheet and
-        // every trial): an unentitled hold makes the phone vibrate and anky
-        // says one thing — "skin in the game opens the gate" — over three
-        // quiet lines. Dismissing returns to the closed channel; the session
-        // settles unsent and is never lost.
-        .sheet(isPresented: $showsPaywall) {
-            GeshtuGateSheet(store: entitlements, offersPrompt: sessionOnPageIsFullAnky)
+        .onAppear {
+            if ScreenshotMode.isActive {
+                ScreenshotStage.apply(axis: axis, writeViewModel: writeViewModel)
+            }
         }
-        // Settings rise from the bottom (user decision, 2026-07-16): a sheet,
-        // so leaving it is the intuition it deserves — swipe down. Whatever
-        // was standing waits beneath. The gate setup stacks on top of it.
+        #endif
         .sheet(isPresented: $axis.settingsIsOpen) {
             AnkySettingsView(
                 viewModel: youViewModel,
                 onGateSetupRequested: { showsGateSetup = true }
             )
-            .environmentObject(entitlements)
             .presentationDragIndicator(.visible)
             .sheet(isPresented: $showsGateSetup) {
                 GateSetupView(viewModel: gateViewModel)
             }
         }
-        .alert(
-            AnkyLocalization.ui("Delete writing session?"),
-            isPresented: $showsDeleteConfirmation
-        ) {
-            Button(AnkyLocalization.ui("Delete"), role: .destructive) { deleteSessionOnPage() }
-            Button(AnkyLocalization.ui("Cancel"), role: .cancel) {}
-        } message: {
-            Text(AnkyLocalization.ui("This permanently deletes this writing session. This cannot be undone."))
-        }
         .sheet(isPresented: $axis.statsIsOpen) {
             WritingStatsView()
         }
         .alert(
-            AnkyLocalization.ui("Recording"),
-            isPresented: Binding(
-                get: { selfie.errorMessage != nil || screenRecorder.errorMessage != nil },
-                set: { if !$0 { selfie.errorMessage = nil; screenRecorder.errorMessage = nil } }
-            )
+            AnkyLocalization.ui("Delete writing session?"),
+            isPresented: $showsDeleteConfirmation
         ) {
-            Button(AnkyLocalization.ui("OK"), role: .cancel) {}
+            Button(AnkyLocalization.ui("Delete"), role: .destructive) { deleteFinishedWriting() }
+            Button(AnkyLocalization.ui("Cancel"), role: .cancel) {}
         } message: {
-            Text(selfie.errorMessage ?? screenRecorder.errorMessage ?? "")
+            Text(AnkyLocalization.ui("This permanently deletes this writing session. This cannot be undone."))
         }
-        // The state machine is born in `.writing`, and SwiftUI's onChange never
-        // observes an initial value — so the very first session (the rehearsal,
-        // where the fast sentinel matters most) would miss its writing-phase
-        // setup. Prime it once on first appearance.
-        .onAppear {
-            enterWritingPhase()
-            #if DEBUG
-            if ScreenshotMode.isActive {
-                if ScreenshotStage.stagesRecording {
-                    cameraActive = true
-                    screenRecorder.debugStandRecordingTake()
-                }
-                ScreenshotStage.apply(axis: axis, writeViewModel: writeViewModel)
-            }
-            #endif
+    }
+
+    // MARK: - Write before you scroll
+
+    /// The gate listens to the writing: a finished sentence from the shield
+    /// opens a Quick Pass, reaching the day's minutes opens the day. Both
+    /// apply the moment they are earned, with no button.
+    private func startWriteBeforeScroll() {
+        writeViewModel.bindWriteBeforeScrollUnlockAvailabilityHandler { _ in
+            gateViewModel.refresh()
         }
-        .onChange(of: axis.phase) { newPhase in
-            switch newPhase {
-            case .writing:
-                enterWritingPhase()
-            case .reflection:
-                // Entering is not sending. The weathered, incomplete Geshtu
-                // now holds the privacy seam until the three-second vigil.
-                AnkyHaptics.selection()
-            case .channelClosed:
-                // Prepare only — NO network call (outwards pivot §4.1). The
-                // writing leaves the device at the explicit outward gesture:
-                // the crossroads' reflection tap. Walking away from a closed
-                // channel means the words never traveled at all.
-                if let session = axis.pendingSession {
-                    reflection.prepare(for: session)
-                }
-            case .entryOpen:
-                // Another session took the page: drop any unsent in-flight
-                // result of the one that was standing.
-                reflection.discard()
+        writeViewModel.bindWriteBeforeScrollPassiveUnlockHandler { grant in
+            gateViewModel.applyUnlock(grant, startsCountingOnExit: grant.tier == .quick)
+            if writeViewModel.isGateOriginatedSession {
+                FirstGateStore().markFirstGateCompleted()
             }
         }
+        gateViewModel.reconcileOnAppActive(hasCurrentVerifiedPro: true)
+        gateViewModel.handlePendingInterventionIfNeeded(showWrite: openWritingFromShield)
+        routeFromShield()
     }
 
-    /// The gate rises (user decision, 2026-07-17): the phone vibrates — a
-    /// message from anky, not a store — and, before anything is asked, the
-    /// exact reflection prompt anky would send is placed on the clipboard.
-    /// The writing is portable: paste it into any tool and do the inference
-    /// anywhere. Never announced; learned over time.
-    private func presentGate() {
-        AnkyHaptics.warning()
-        if sessionOnPageIsFullAnky,
-           let writing = axis.pendingSession?.reconstructedText, !writing.isEmpty {
-            ClipboardClient().copy(AnkyReflectionPrompt.build(from: writing))
+    /// A sealed writing hands over whatever unlock it earned and was not
+    /// already applied mid-session.
+    private func grantWriteBeforeScrollUnlock() {
+        guard let grant = writeViewModel.consumeWriteBeforeScrollAvailableUnlockGrant() else { return }
+        if writeViewModel.isGateOriginatedSession {
+            FirstGateStore().markFirstGateCompleted()
         }
-        showsPaywall = true
+        if grant.tier == .quick, writeViewModel.hasAppliedPassiveQuickUnlock { return }
+        if grant.tier == .daily, writeViewModel.hasAppliedPassiveDailyUnlockUpgrade { return }
+        gateViewModel.applyUnlock(grant)
     }
 
-    /// The "keep writing" option: reopen the sealed session as a
-    /// continuation — same words, same day. The reseal replaces the artifact.
-    private func resumeSameSession() {
-        AnkyHaptics.light()
-        axis.resumeWriting()
-    }
-
-    /// "ask anky for reflection" is the ask (user decision, 2026-10-08): the
-    /// tap opens the session's document and sends the writing in the same
-    /// act. The words on the key are the consent; there is no second gesture.
-    private func requestReflection() {
-        guard axis.pendingSession != nil else { return }
-        AnkyHaptics.medium()
-        axis.openReflectionChannel()
-        beginReflectionRequest()
-    }
-
-    /// The archive is a separate list, but opening one of its sessions lands
-    /// on the same finished-session document. An unreflected archived session
-    /// can request its reflection directly from that document.
-    private func requestReflection(
-        for archivedSession: SavedAnky,
-        viewModel: RevealViewModel
-    ) {
-        beginArchivedReflection(archivedSession, viewModel: viewModel)
-    }
-
-    /// Archive reflections stream into the already-open document. The world
-    /// and its scroll position stay mounted; only the tail below the writing
-    /// changes from the full-width ask button to the listening/stream state.
-    private func beginArchivedReflection(
-        _ archivedSession: SavedAnky,
-        viewModel: RevealViewModel
-    ) {
-        guard viewModel.reflection == nil, !viewModel.isAskingAnky else { return }
-        AnkyHaptics.medium()
-        Task { await viewModel.askAnkyForSealedSession() }
-    }
-
-    private func beginReflectionRequest() {
-        guard axis.phase == .reflection, axis.pendingSession != nil else { return }
-        reflection.beginUpload()
-        if !rehearsalDone {
-            rehearsalDone = true
-            writeViewModel.terminalSilenceOverrideMs = nil
+    /// The shield's two buttons each leave a notification; tapping it lands
+    /// here. "Write" opens a blank page; "Emergency unlock" opens the apps
+    /// for the rest of the day, no writing asked.
+    private func routeFromShield() {
+        guard let route = WriteBeforeScrollAppRouteResolver().pendingRoute() else { return }
+        let bridge = WriteBeforeScrollLaunchBridgeStore()
+        switch route {
+        case .emergencyBreathFromShield(let intentID):
+            let now = Date()
+            let endOfDay = Calendar.current.date(
+                byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)
+            ) ?? now.addingTimeInterval(24 * 60 * 60)
+            gateViewModel.applyUnlock(
+                UnlockGrant(tier: .daily, unlockedUntil: endOfDay, grantedAt: now),
+                source: .emergency
+            )
+            bridge.markConsumed(intentID: intentID)
+            showGateLine(AnkyLocalization.ui("Your apps are unlocked."))
+        case .writeBeforeScrollFromShield(let intentID):
+            openWritingFromShield()
+            writeViewModel.markGateOriginatedSession(appDisplayName: bridge.lastAttemptedAppDisplayName())
+            bridge.markConsumed(intentID: intentID)
         }
     }
 
-    /// The front door opens: prime the writing engine. A "keep writing" from
-    /// the crossroads carries its sealed session across the phase change and
-    /// reopens it as a continuation; otherwise the page is fresh. The
-    /// rehearsal shortens the sentinel so the reveal is discoverable quickly
-    /// (spec §9); set it before the reset so the first session picks it up.
-    private func enterWritingPhase() {
-        guard axis.phase == .writing else { return }
-        writeViewModel.terminalSilenceOverrideMs = rehearsalDone ? nil : 4000
-        #if DEBUG
-        // A staged writing scene owns the engine; a blank session here would
-        // wipe the draft the screenshot is of.
-        if ScreenshotStage.stagesWritingSurface { return }
-        #endif
-        if let session = axis.consumeSessionToResume(),
-           writeViewModel.continueSession(from: session, allowCompleted: true) {
-            // The same words are back on the page; the next keystroke
-            // resumes the clock and the sentinel.
-        } else if writeViewModel.hasStarted, writeViewModel.completedArtifact == nil {
-            // A session the writer stepped out of (the menu) is still standing,
-            // frozen. Coming back finds it exactly as it was left.
-        } else {
+    /// The writer came from a blocked app: the page is in front, ready.
+    private func openWritingFromShield() {
+        axis.settingsIsOpen = false
+        axis.statsIsOpen = false
+        axis.closeDrawer()
+        if writeViewModel.completedArtifact != nil {
             writeViewModel.beginBlankSessionFromWriteTab()
         }
-        reflection.discard()
+        writeViewModel.openWritingPortal()
     }
 
-    #if DEBUG
-    private func applyDebugLaunchEnv() {
-        let env = ProcessInfo.processInfo.environment
-        switch env["AXIS_DEBUG_SEED"] {
-        case "showcase": GeshtuDebugSeed.seedShowcase()
-        case "bulk":     GeshtuDebugSeed.seedBulk(500)
-        default:         break
+    private func showGateLine(_ line: String) {
+        gateLine = line
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if gateLine == line { gateLine = nil }
         }
-        if env["AXIS_DEBUG_OPEN_FIRST"] == "1", let first = LocalAnkyArchive().list().first {
-            axis.openEntry(first)
+    }
+
+    /// Deleting leaves nothing to stand on: the page becomes a blank writing.
+    private func deleteFinishedWriting() {
+        guard let finished = writeViewModel.completedArtifact else { return }
+        do {
+            try LocalAnkyArchive().delete(finished)
+            try? ReflectionStore().delete(hash: finished.hash)
+            try? SessionIndexStore().delete(hash: finished.hash)
+        } catch {
             return
         }
-        if env["AXIS_DEBUG_OPEN_UNSENT"] == "1",
-           let unsent = LocalAnkyArchive().list().first(where: { ReflectionStore().load(hash: $0.hash) == nil }) {
-            axis.openEntry(unsent)
-            return
-        }
-        // Stand the lean gate ("skin in the game opens the gate") for
-        // screenshots without a tap tool. Prices need an Xcode-launched run
-        // (simctl bypasses .storekit injection).
-        if env["AXIS_DEBUG_GATE"] == "1" {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { presentGate() }
-        }
-        switch env["AXIS_DEBUG_PHASE"] {
-        case "landing":    axis.openDrawer()
-        case "entry":      axis.debugSetPhase(.entryOpen)
-        case "reflection": axis.debugSetPhase(.reflection)
-        case "closed":
-            // The closed channel is only itself with an offering standing on
-            // it — seed the newest archive entry as the pending session so
-            // the awaiting anchor (glow, sparks, filament) is verifiable.
-            axis.debugSetPendingSession(LocalAnkyArchive().list().first)
-            axis.debugSetPhase(.channelClosed)
-        case "seed":       axis.settingsIsOpen = true
-        case "stats":      axis.statsIsOpen = true
-        case "blocked":
-            // The blocked-apps sheet stands on top of settings.
-            axis.settingsIsOpen = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { showsGateSetup = true }
-        default:           break
-        }
-    }
-    #endif
-
-    // MARK: - Register (the ground the world is painted on)
-
-    private var register: some View {
-        LazureWall(mood: .dawn)
-    }
-
-    // MARK: - The fixed top chrome (share / record / settings)
-
-    /// The chrome lives on every warm surface after the keyboard has fallen.
-    /// The writing surface keeps its timer; the electric register stays bare.
-    private var showsTopChrome: Bool {
-        switch axis.phase {
-        case .channelClosed, .reflection, .entryOpen:
-            return true
-        case .writing:
-            return false
-        }
-    }
-
-    /// Reading controls briefly get out of the text's way while the reader
-    /// moves deeper, then return on the first deliberate move upward. Keep
-    /// the camera control reachable whenever its live preview is present.
-    private var topChromeIsVisible: Bool {
-        if cameraActive { return true }
-        switch axis.phase {
-        case .reflection, .entryOpen:
-            return axis.revealChromeIsVisible
-        default:
-            return true
-        }
-    }
-
-    /// The session standing on the page, whichever way it got there.
-    private var sessionOnPage: SavedAnky? {
-        switch axis.phase {
-        case .channelClosed, .reflection:
-            return axis.pendingSession
-        case .entryOpen:
-            return axis.openedEntry
-        case .writing:
-            return nil
-        }
-    }
-
-    /// Taking the reflection prompt elsewhere is offered only for a full
-    /// anky: eight minutes or more (user decision, 2026-10-08).
-    private var sessionOnPageIsFullAnky: Bool {
-        (sessionOnPage?.durationMs ?? 0) >= AnkyDuration.completeRitualMs
-    }
-
-    /// The writer's full writing of the session on the page — what the menu
-    /// copies, bare or wrapped in the reflection prompt for the writer's own
-    /// AI tool.
-    private var chromeWritingText: String? {
-        guard let text = sessionOnPage?.reconstructedText, !text.isEmpty else { return nil }
-        return text
-    }
-
-    /// Deleting leaves nothing to stand on: the page returns to the writing.
-    private func deleteSessionOnPage() {
-        guard let session = sessionOnPage else { return }
-        // A just-sealed session already has its reveal model prepared; one
-        // opened from the drawer is deleted through a model of its own.
-        let viewModel = (axis.phase == .entryOpen ? nil : reflection.viewModel)
-            ?? RevealViewModel(artifact: session)
-        viewModel.deleteSession()
-        guard viewModel.isDeleted else { return }
-        if cameraActive { toggleCamera() }
-        axis.openWriting()
-    }
-
-    /// Summon or dismiss the selfie camera — the top-right record button's
-    /// act. Dismissing while a take is running stops it first; the finished
-    /// clip still arrives.
-    private func toggleCamera() {
-        if cameraActive {
-            if screenRecorder.isRecording { screenRecorder.stop() }
-            selfie.stop()
-            withAnimation(.easeInOut(duration: 0.35)) { cameraActive = false }
-        } else {
-            selfie.start()
-            withAnimation(.easeInOut(duration: 0.35)) { cameraActive = true }
-        }
-    }
-
-    /// Drag to place, pinch to size — one simultaneous gesture on the bubble.
-    /// The scale is clamped so the face can neither vanish nor swallow the
-    /// screen; the offset is clamped so the bubble can never be lost offscreen.
-    private var bubbleGesture: some Gesture {
-        SimultaneousGesture(
-            DragGesture()
-                .updating($bubbleDragDelta) { value, state, _ in
-                    state = value.translation
-                }
-                .onEnded { value in
-                    // Clamp by the bubble's CENTER: its resting center is the
-                    // bottom-leading padding plus half the face, and scaling
-                    // happens around that center.
-                    let bounds = UIScreen.main.bounds
-                    let halfW = SelfieBubble.size.width / 2 * bubbleScale
-                    let halfH = SelfieBubble.size.height / 2 * bubbleScale
-                    let restCenter = CGPoint(
-                        x: 18 + SelfieBubble.size.width / 2,
-                        y: bounds.height - 24 - SelfieBubble.size.height / 2
-                    )
-                    let proposed = CGSize(
-                        width: bubbleOffset.width + value.translation.width,
-                        height: bubbleOffset.height + value.translation.height
-                    )
-                    bubbleOffset = CGSize(
-                        width: min(max(proposed.width, halfW - restCenter.x),
-                                   bounds.width - halfW - restCenter.x),
-                        height: min(max(proposed.height, 70 + halfH - restCenter.y),
-                                    bounds.height - 12 - halfH - restCenter.y)
-                    )
-                },
-            MagnificationGesture()
-                .updating($bubblePinchDelta) { value, state, _ in
-                    state = value
-                }
-                .onEnded { value in
-                    bubbleScale = min(2.0, max(0.55, bubbleScale * value))
-                }
-        )
-    }
-
-    /// The record button's act while the camera is up: start and stop the take.
-    private func toggleRecording() {
-        if screenRecorder.isRecording {
-            screenRecorder.stop()
-        } else {
-            screenRecorder.start()
-        }
-    }
-
-    // The writing page of the device (device split, 2026-07-22): no longer
-    // the top of any scroll. It mounts only while the channel is open; sealing
-    // swaps it for the canonical finished-session document.
-    private var writingSurface: some View {
-        WriteView(
-            viewModel: writeViewModel,
-            // Focus belongs to an open channel only; at the landing the page
-            // is scenery above the strata and must never summon a keyboard —
-            // and never while the onboarding animatic still owns the screen
-            // (the system keyboard would rise ABOVE the overlay).
-            shouldFocus: axis.phase == .writing && !showsOnboarding && !axis.drawerIsOpen,
-            axisMode: true,
-            onCompleted: { saved in
-                // Prepare the reflection view model before the phase flips —
-                // no network yet (outwards pivot §4.1). The surface itself
-                // does not change: the writing stays exactly where it is and
-                // the machine around it becomes the finished-writing machine.
-                reflection.prepare(for: saved)
-                axis.channelDidClose(session: saved)
-            },
-            // The menu: before the first keystroke, or once the writing has
-            // ended, it slides the drawer in beside the page.
-            onCloseToMap: { axis.openDrawer() },
-            onReflect: requestReflection,
-            onContinueWriting: resumeSameSession
-        )
-    }
-
-    // MARK: - The page
-
-    /// The live editor or the finished-session document. A session that was
-    /// just written and one opened from the drawer are the same document.
-    @ViewBuilder
-    private var deviceSurface: some View {
-        switch axis.phase {
-        case .writing, .channelClosed:
-            // The same surface, before and after the writing ends. Sealing is
-            // NOT a navigation (in-place completion, 2026-08-18): the words
-            // hold their exact place, the keyboard withdraws, and the controls
-            // around them change. Only asking Anky mounts another surface.
-            writingSurface
-        case .entryOpen:
-            if let entry = axis.openedEntry {
-                ArchivedFinishedSessionView(
-                    artifact: entry,
-                    axis: axis,
-                    onOpenMenu: { axis.openDrawer() },
-                    onLateOffer: ReflectionStore().load(hash: entry.hash) == nil
-                        ? { session, viewModel in requestReflection(for: session, viewModel: viewModel) }
-                        : nil
-                )
-                // Each session is its own document with its own reveal model.
-                .id(entry.hash)
-            }
-        case .reflection:
-            if let vm = reflection.viewModel,
-               let artifact = axis.pendingSession {
-                FinishedSessionView(
-                    viewModel: vm,
-                    axis: axis,
-                    artifact: artifact,
-                    // A sealed session and an archived session are the same
-                    // document. Do not retain a keyboard-specific layout for
-                    // one entrance and a natural document layout for another.
-                    keyboardTop: nil,
-                    stage: .conversation,
-                    onRequestReflection: requestReflection,
-                    onOpenMenu: { axis.openDrawer() },
-                    onNeedsGate: { presentGate() }
-                )
-            } else {
-                #if DEBUG
-                // Debug stepper reached this without a live request: preview the
-                // descent layout with a sample blessing.
-                ReflectionLinesView(lines: [
-                    "you stayed.",
-                    "and the room stayed with you.",
-                    "love is quieter than fear.",
-                    "take this warmth with you.",
-                    "begin again from here."
-                ])
-                #else
-                ScaffoldSurface(line: "the ear is listening", detail: "")
-                #endif
-            }
-        }
+        writeViewModel.beginBlankSessionFromWriteTab()
     }
 }
 
@@ -787,18 +385,12 @@ private struct LeadingCornerCutouts: Shape {
     }
 }
 
-/// The fixed top-right chrome of a written session (2026-10-08): one glass
-/// capsule holding "new writing" and a "more" menu, on the same spot the timer
-/// holds during writing. Everything a session can have done to it — record,
-/// copy, copy with the reflection prompt, delete — lives in that menu.
-private struct GeshtuTopChrome: View {
-    /// The whole writing of the session on the page.
-    let writing: String?
-    /// The prompt travels only with a full anky — eight minutes or more.
-    let offersPrompt: Bool
-    let cameraActive: Bool
+/// The top-right of a finished writing, where the clock stood: one glass
+/// capsule with "new writing" and a menu — copy the writing, copy it wrapped
+/// in the reflection prompt for any AI, or delete it.
+private struct FinishedWritingChrome: View {
+    let writing: String
     let onNewWriting: () -> Void
-    let onToggleCamera: () -> Void
     let onDelete: () -> Void
 
     @State private var didCopy = false
@@ -820,26 +412,14 @@ private struct GeshtuTopChrome: View {
 
             Menu {
                 Button {
-                    onToggleCamera()
+                    performCopy(writing)
                 } label: {
-                    Label(
-                        AnkyLocalization.ui(cameraActive ? "Dismiss camera" : "Record"),
-                        systemImage: cameraActive ? "video.slash" : "video"
-                    )
+                    Label(AnkyLocalization.ui("Copy writing"), systemImage: "doc.on.doc")
                 }
-                if let writing {
-                    Button {
-                        performCopy(writing)
-                    } label: {
-                        Label(AnkyLocalization.ui("Copy Anky"), systemImage: "doc.on.doc")
-                    }
-                }
-                if let writing, offersPrompt {
-                    Button {
-                        performCopy(AnkyReflectionPrompt.build(from: writing))
-                    } label: {
-                        Label(AnkyLocalization.ui("Copy Prompt + Anky"), systemImage: "text.badge.plus")
-                    }
+                Button {
+                    performCopy(AnkyReflectionPrompt.build(from: writing))
+                } label: {
+                    Label(AnkyLocalization.ui("Copy prompt + writing"), systemImage: "text.badge.plus")
                 }
                 Button(role: .destructive) {
                     onDelete()
@@ -873,162 +453,30 @@ private struct GeshtuTopChrome: View {
     }
 }
 
-/// The reflection gate says exactly what Pro does and offers the same two
-/// simple durations as the full paywall.
-private struct GeshtuGateSheet: View {
-    @ObservedObject var store: EntitlementStore
-    /// Whether "copy prompt + anky" is on the menu for the session this gate
-    /// rose over — the line below must not promise what is not there.
-    var offersPrompt = true
-    @Environment(\.dismiss) private var dismiss
+/// The reflection prompt the menu wraps a writing in, for any AI the writer
+/// chooses to take it to.
+enum AnkyReflectionPrompt {
+    static func build(from reconstructedText: String) -> String {
+        """
+        Take a look at this stream-of-consciousness journal entry.
 
-    @State private var purchasingPlan: AnkySubscriptionPlan?
+        Respond with deep insight that feels personal, casual, and alive, not clinical. Be a sharp mirror: part close friend, part mentor, part pattern-recognizer.
 
-    var body: some View {
-        ZStack {
-            LazureWall(mood: .dawn)
-                .ignoresSafeArea()
+        Help the writer see the emotional undercurrents, hidden loops, deeper meaning, contradictions, longings, and connections they might be missing.
 
-            VStack(spacing: 0) {
-                Text(AnkyLocalization.ui("skin in the game opens the gate"))
-                    .font(.fraunces(21, weight: .light, italic: true))
-                    .foregroundStyle(Color.ankyInk)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .padding(.top, 48)
+        Comfort what is real. Validate without flattering. Challenge gently where needed. Reframe the surface topic into what the writer may really be seeking underneath.
 
-                Text(AnkyLocalization.ui("Better reflections from Anky's strongest available model"))
-                    .font(.fraunces(15, weight: .light))
-                    .foregroundStyle(Color.ankyInkSoft)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .padding(.top, 12)
+        Do not force introspection for its own sake. Help the writer recognize something true about who they are and move toward a more honest, positive loop in life.
 
-                Spacer(minLength: 26)
+        Use vivid metaphors and powerful imagery when they reveal something real. Don't diagnose, don't sound like therapy, and don't give generic advice.
 
-                // The lines rest on a paper scrim: the wall's violet lower
-                // register sat directly beneath the ink and swallowed it
-                // (feedback 2026-07-18). Paper under ink, always.
-                VStack(spacing: 0) {
-                    gateLine(.annual)
-                    Rectangle()
-                        .fill(Color.ankyInk.opacity(0.10))
-                        .frame(height: 0.5)
-                    gateLine(.monthly)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.ankyPaper.opacity(0.88))
-                )
-                .padding(.horizontal, 30)
+        Write in the same language and vibe as the entry.
 
-                if let line = store.purchaseErrorLine ?? store.offeringsErrorLine {
-                    Text(AnkyLocalization.ui(line))
-                        .font(.fraunces(12, weight: .light))
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                        .padding(.top, 14)
-                        .transition(.opacity)
-                }
+        Reply with pure markdown, and use headings for different sections. At the top of the reply add a max 4 word title.
 
-                // The unpaid path, named plainly (user decision, 2026-07-24):
-                // the writing is portable — the menu's "copy prompt + anky"
-                // wraps it in the reflection prompt for any LLM. (It is already on
-                // the clipboard by the time this sheet rises.)
-                if offersPrompt {
-                    Text(AnkyLocalization.ui("don't want to pay? copy prompt + anky from the menu and take your writing to your favorite llm"))
-                        .font(.fraunces(13, weight: .light, italic: true))
-                        .foregroundStyle(Color.ankyInkSoft.opacity(0.85))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 36)
-                        .padding(.top, 18)
-                }
+        ---
 
-                Spacer(minLength: 30)
-            }
-        }
-        .presentationDetents([.height(440)])
-        .presentationDragIndicator(.hidden)
-        .task { await store.loadPackages() }
-        .onChange(of: store.isEntitledForGating) { entitled in
-            if entitled { dismiss() }
-        }
-    }
-
-    /// One plain line per duration, using StoreKit's localized price.
-    private func gateLine(_ plan: AnkySubscriptionPlan) -> some View {
-        let package = plan == .annual ? store.annualPackage : store.monthlyPackage
-        let availability = package?.localizedPriceString
-            ?? AnkyLocalization.ui(store.isLoadingPackages ? "Loading" : "Plan unavailable")
-        return Button {
-            guard let package else {
-                Task { await store.loadPackages() }
-                return
-            }
-            purchasingPlan = plan
-            Task {
-                let entitled = await store.purchase(package)
-                purchasingPlan = nil
-                if entitled { dismiss() }
-            }
-        } label: {
-            HStack {
-                Text(AnkyLocalization.ui(plan == .annual ? "yearly" : "monthly"))
-                    .font(.fraunces(16, weight: .light))
-                    .foregroundStyle(Color.ankyInk.opacity(0.85))
-                Spacer()
-                if purchasingPlan == plan || (store.isLoadingPackages && package == nil) {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.ankyInkSoft)
-                } else {
-                    Text(availability)
-                        .font(.fraunces(14, weight: .light))
-                        .foregroundStyle(Color.ankyInkSoft)
-                }
-            }
-            .padding(.vertical, 15)
-            .frame(minHeight: 50)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(purchasingPlan != nil || store.isPurchasing || (package == nil && store.isLoadingPackages))
-        .opacity(package == nil && !store.isLoadingPackages ? 0.62 : 1)
-        .accessibilityLabel(Text(AnkyLocalization.ui(plan == .annual ? "yearly" : "monthly")))
-        .accessibilityValue(Text(availability))
-        .accessibilityHint(Text(package == nil ? AnkyLocalization.ui("Try again") : ""))
+        \(reconstructedText)
+        """
     }
 }
-
-/// A quiet lazure (or electric) placeholder for a phase whose real surface
-/// arrives in a later phase. Deliberately spare — no chrome, in register.
-private struct ScaffoldSurface: View {
-    let line: String
-    var detail: String = ""
-    var electric: Bool = false
-
-    var body: some View {
-        VStack(spacing: 14) {
-            Text(line)
-                .font(.fraunces(24, weight: .regular, italic: true))
-                .foregroundStyle(electric ? Color(.displayP3, red: 0.70, green: 0.82, blue: 1.0) : Color.ankyInk)
-                .multilineTextAlignment(.center)
-            if !detail.isEmpty {
-                Text(detail)
-                    .font(.fraunces(14, weight: .light))
-                    .foregroundStyle((electric ? Color.white : Color.ankyInkSoft).opacity(0.7))
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .padding(.horizontal, 40)
-        .padding(.bottom, 160)
-    }
-}
-
-// The DEBUG phase stepper and seed/wipe buttons that floated at the top are
-// gone (user decision, 2026-07-16: noise, and they blocked real testing).
-// Deterministic debug entry remains via launch env (applyDebugLaunchEnv);
-// destructive seeding is env-only and never one tap away.

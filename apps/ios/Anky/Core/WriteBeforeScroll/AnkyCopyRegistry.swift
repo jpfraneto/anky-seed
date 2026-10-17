@@ -111,7 +111,7 @@ enum AnkyCopyRegistry {
 
     static let emergencyLink = "emergency? open without writing"
     static let emergencyNotificationTitle = "Emergency unlock"
-    static let emergencyNotificationBody = "Tap to take one slow breath. Everything opens after."
+    static let emergencyNotificationBody = "Tap to open your apps for the rest of the day."
 
     // MARK: Gate off-switch (2026-07-06)
     // One honest exit, one honest confirmation — no dark patterns in

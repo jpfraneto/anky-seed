@@ -3,9 +3,9 @@
   "scenes": [
     "ritual",
     "simplicity",
-    "reflection",
-    "archive",
-    "recording"
+    "finished",
+    "timer",
+    "archive"
   ],
   "locales": {
     "en": {
@@ -18,11 +18,11 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Write 8 minutes.",
+        "ritual": "Just write.",
         "simplicity": "The simplest\nwriting app.",
-        "reflection": "Get a reflection\non your writing.",
-        "archive": "Your archive,\norganized.",
-        "recording": "Record yourself\nreading."
+        "finished": "Tap to keep\nwriting.",
+        "timer": "Choose your\nminutes.",
+        "archive": "Every page stays\non your phone."
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -105,11 +105,11 @@
         "es_MX@sw=QWERTY-Spanish;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Escribe 8 minutos.",
+        "ritual": "Solo escribe.",
         "simplicity": "La app de escritura\nmás simple.",
-        "reflection": "Recibe una reflexión\nsobre lo que escribiste.",
-        "archive": "Tu archivo,\nen orden.",
-        "recording": "Grábate\nleyendo."
+        "finished": "Toca para seguir\nescribiendo.",
+        "timer": "Elige tus\nminutos.",
+        "archive": "Cada página se queda\nen tu teléfono."
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -192,11 +192,11 @@
         "fr_FR@sw=AZERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Écris 8 minutes.",
+        "ritual": "Écris, c'est tout.",
         "simplicity": "L'app d'écriture\nla plus simple.",
-        "reflection": "Reçois une réflexion\nsur ce que tu as écrit.",
-        "archive": "Tes archives,\nbien rangées.",
-        "recording": "Enregistre-toi\nen train de lire."
+        "finished": "Touche pour\ncontinuer.",
+        "timer": "Choisis tes\nminutes.",
+        "archive": "Chaque page reste\nsur ton téléphone."
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -279,11 +279,11 @@
         "de_DE@sw=QWERTZ-German;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "Schreib 8 Minuten.",
+        "ritual": "Schreib einfach.",
         "simplicity": "Die einfachste\nSchreib-App.",
-        "reflection": "Erhalte eine Reflexion\nzu deinem Text.",
-        "archive": "Dein Archiv,\ngeordnet.",
-        "recording": "Nimm dich beim\nLesen auf."
+        "finished": "Tippen und\nweiterschreiben.",
+        "timer": "Wähl deine\nMinuten.",
+        "archive": "Jede Seite bleibt\nauf deinem iPhone."
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -367,11 +367,11 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "8 मिनट लिखिए।",
+        "ritual": "बस लिखें।",
         "simplicity": "सबसे सरल\nलेखन ऐप।",
-        "reflection": "अपने लेखन पर\nएक चिंतन पाइए।",
-        "archive": "आपका संग्रह,\nसहेजा हुआ।",
-        "recording": "खुद को पढ़ते\nहुए रिकॉर्ड करें।"
+        "finished": "टैप करें और\nलिखते रहें।",
+        "timer": "अपने मिनट\nचुनें।",
+        "archive": "हर पन्ना आपके\nफ़ोन पर रहता है।"
       },
       "ritual": {
         "elapsedMs": 38000,
@@ -455,11 +455,11 @@
         "en_US@sw=QWERTY;hw=Automatic"
       ],
       "headlines": {
-        "ritual": "写 8 分钟。",
+        "ritual": "只管写。",
         "simplicity": "最简单的\n写作应用。",
-        "reflection": "为你写下的文字\n获得一份回响。",
-        "archive": "你的记录，\n都在这里。",
-        "recording": "录下自己\n朗读的声音。"
+        "finished": "点一下\n继续写。",
+        "timer": "选择你的\n分钟数。",
+        "archive": "每一页都留在\n你的手机上。"
       },
       "ritual": {
         "elapsedMs": 38000,

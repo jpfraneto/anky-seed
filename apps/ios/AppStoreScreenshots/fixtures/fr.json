@@ -8,11 +8,11 @@
     "fr_FR@sw=AZERTY;hw=Automatic"
   ],
   "headlines": {
-    "ritual": "Écris 8 minutes.",
+    "ritual": "Écris, c'est tout.",
     "simplicity": "L'app d'écriture\nla plus simple.",
-    "reflection": "Reçois une réflexion\nsur ce que tu as écrit.",
-    "archive": "Tes archives,\nbien rangées.",
-    "recording": "Enregistre-toi\nen train de lire."
+    "finished": "Touche pour\ncontinuer.",
+    "timer": "Choisis tes\nminutes.",
+    "archive": "Chaque page reste\nsur ton téléphone."
   },
   "ritual": {
     "elapsedMs": 38000,
