@@ -224,6 +224,7 @@ final class YouViewModel: ObservableObject {
             try archive.clear()
             try reflectionStore.clear()
             try? sessionIndexStore.clear()
+            try? ExpressionSessionStore().clear()
             ActiveDraftStore().clear()
             notifications.cancelDailyReminder()
             appOpenStore.clear()

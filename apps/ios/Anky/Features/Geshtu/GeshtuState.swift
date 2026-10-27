@@ -47,4 +47,16 @@ final class GeshtuState: ObservableObject {
         defer { entryRequest = nil }
         return entryRequest
     }
+
+    /// A past session the drawer asked to show as a memory.
+    @Published private(set) var sessionRequest: ExpressionSession?
+
+    func openSession(_ session: ExpressionSession) {
+        sessionRequest = session
+    }
+
+    func consumeSessionRequest() -> ExpressionSession? {
+        defer { sessionRequest = nil }
+        return sessionRequest
+    }
 }
