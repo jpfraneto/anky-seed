@@ -54,7 +54,7 @@ Nada más en Anky usa IA.
 
 Anky ofrece siete días gratis de su experiencia principal, a partir de tu primera sesión. No se piden datos de pago y no se cobra nada cuando terminan.
 
-La suscripción es mensual con renovación automática y la vende Apple a través del App Store. Apple se encarga del pago; Anky nunca recibe tu tarjeta ni tus datos de facturación. Anky usa **RevenueCat** para gestionar las suscripciones: RevenueCat recibe tu identificador de cuenta anónimo y tus registros de compras y suscripciones del App Store para poder decirle a la app si estás suscrito. Consulta la política de privacidad de RevenueCat en [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Cancela o administra tu suscripción en los ajustes de suscripciones de tu cuenta de Apple.
+La suscripción es mensual con renovación automática y la vende Apple a través del App Store. Apple se encarga del pago; Anky nunca recibe tu tarjeta ni tus datos de facturación. Anky usa **RevenueCat** para gestionar las suscripciones: RevenueCat recibe tu identificador de cuenta anónimo y tus registros de compras y suscripciones del App Store para poder decirle a la app si estás suscrito. Consulta la política de privacidad de RevenueCat en [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Cancela o administra tu suscripción en los ajustes de suscripciones de tu cuenta de Apple. Los reembolsos los gestiona Apple en [reportaproblem.apple.com](https://reportaproblem.apple.com).
 
 Si tus días gratis terminan y no te suscribes, todo lo que ya creaste sigue en tu iPhone, disponible para leer y exportar.
 

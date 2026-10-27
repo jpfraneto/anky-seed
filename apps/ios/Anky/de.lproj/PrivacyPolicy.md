@@ -19,7 +19,7 @@ Anky speichert Folgendes ausschließlich auf deinem iPhone:
 - Einen unfertigen Entwurf und den Index, mit dem deine früheren Sitzungen aufgelistet werden
 - Deine Einstellungen
 - Wenn du die Bildschirmzeit-Sperre nutzt: die gewählten Apps (als undurchsichtige Apple-Kennungen), den Zustand der Sperre und deine Freischaltungen
-- Eine zufällige, anonyme Kontokennung, gespeichert im iOS-Schlüsselbund (siehe Abschnitt 4)
+- Eine zufällige, anonyme Konto-Kennung, gespeichert im iOS-Schlüsselbund (siehe Abschnitt 4)
 
 Deine Texte, Sprachaufnahmen und Videos werden nicht an Anky gesendet. Wir können sie weder lesen noch hören noch ansehen, und wir haben keine Kopie davon.
 
@@ -31,7 +31,7 @@ Aufnahmen werden auf deinem iPhone gespeichert. Sie werden nie hochgeladen und n
 
 ## 4. Was Ankys Server erhält
 
-Es gibt kein Konto, das du anlegen musst. Beim ersten Start erzeugt die App auf deinem iPhone eine zufällige, anonyme Kontokennung. Sie ist weder dein Name noch deine E-Mail-Adresse, Telefonnummer oder Apple-ID und wird in der App nie angezeigt. Die App verwendet sie, um die wenigen Anfragen an Ankys Server zu authentifizieren:
+Es gibt kein Konto, das du anlegen musst. Beim ersten Start erzeugt die App auf deinem iPhone eine zufällige, anonyme Konto-Kennung. Sie ist weder dein Name noch deine E-Mail-Adresse, Telefonnummer oder Apple-ID und wird in der App nie angezeigt. Die App verwendet sie, um die wenigen Anfragen an Ankys Server zu authentifizieren:
 
 - **Prüfung der kostenlosen Tage und des Abos.** Wenn du Anky öffnest, fragt die App den Server, ob deine kostenlosen Tage oder dein Abo aktiv sind. Diese Anfrage enthält keine Texte, Aufnahmen oder Sitzungsinhalte.
 - **Eintrag zum kostenlosen Zugang.** Wenn du deine erste Sitzung beginnst, speichert der Server einen nicht umkehrbaren SHA-256-Hash deiner anonymen Kennung und den Zeitpunkt, zu dem deine sieben kostenlosen Tage begonnen haben. Dieser Eintrag enthält nichts, was du geschrieben, gesagt oder aufgenommen hast. **Er bleibt auch nach „Alle Daten löschen“ bestehen**, denn sein einziger Zweck ist, dass die sieben kostenlosen Tage pro Konto nur einmal beginnen und nicht neu gestartet werden können. Mit ihm lässt sich keiner deiner Inhalte wiederherstellen oder lesen.
@@ -54,7 +54,7 @@ Nichts sonst in Anky nutzt KI.
 
 Anky bietet sieben kostenlose Tage seines Kernangebots, ab deiner ersten Sitzung. Es werden keine Zahlungsdaten erfasst, und wenn sie enden, wird nichts abgebucht.
 
-Das Abo ist ein sich automatisch verlängerndes Monatsabo, das Apple über den App Store verkauft. Apple wickelt die Zahlung ab; Anky erhält nie deine Karten- oder Rechnungsdaten. Anky verwendet **RevenueCat** zur Verwaltung von Abos: RevenueCat erhält deine anonyme Kontokennung sowie deine App-Store-Kauf- und Abo-Datensätze, um der App sagen zu können, ob du ein Abo hast. Die Datenschutzerklärung von RevenueCat findest du unter [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Kündige oder verwalte dein Abo in den Abo-Einstellungen deines Apple Accounts.
+Das Abo ist ein sich automatisch verlängerndes Monatsabo, das Apple über den App Store verkauft. Apple wickelt die Zahlung ab; Anky erhält nie deine Karten- oder Rechnungsdaten. Anky verwendet **RevenueCat** zur Verwaltung von Abos: RevenueCat erhält deine anonyme Konto-Kennung sowie deine App-Store-Kauf- und Abo-Datensätze, um der App sagen zu können, ob du ein Abo hast. Die Datenschutzerklärung von RevenueCat findest du unter [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Kündige oder verwalte dein Abo in den Abo-Einstellungen deines Apple Accounts. Erstattungen wickelt Apple unter [reportaproblem.apple.com](https://reportaproblem.apple.com) ab.
 
 Wenn deine kostenlosen Tage enden und du kein Abo abschließt, bleibt alles, was du bereits erstellt hast, auf deinem iPhone – lesbar und exportierbar.
 

@@ -54,7 +54,7 @@ Anky 的其他部分都不使用 AI。
 
 Anky 提供七天免费的核心体验，从你的第一次会话开始计算。不收集任何付款信息，结束时也不会扣费。
 
-订阅是按月自动续期的订阅，由 Apple 通过 App Store 销售。付款由 Apple 处理；Anky 从不接收你的银行卡或账单信息。Anky 使用 **RevenueCat** 管理订阅：RevenueCat 会收到你的匿名账户标识以及你的 App Store 购买和订阅记录，以便告诉应用你是否已订阅。RevenueCat 的隐私政策见 [revenuecat.com/privacy](https://www.revenuecat.com/privacy)。你可以在 Apple 账户的订阅设置中取消或管理订阅。
+订阅是按月自动续期的订阅，由 Apple 通过 App Store 销售。付款由 Apple 处理；Anky 从不接收你的银行卡或账单信息。Anky 使用 **RevenueCat** 管理订阅：RevenueCat 会收到你的匿名账户标识以及你的 App Store 购买和订阅记录，以便告诉应用你是否已订阅。RevenueCat 的隐私政策见 [revenuecat.com/privacy](https://www.revenuecat.com/privacy)。你可以在 Apple 账户的订阅设置中取消或管理订阅。退款由 Apple 通过 [reportaproblem.apple.com](https://reportaproblem.apple.com) 处理。
 
 如果免费天数结束而你没有订阅，你已经创建的一切仍保留在你的 iPhone 上，可以继续阅读和导出。
 

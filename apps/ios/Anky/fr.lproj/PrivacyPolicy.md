@@ -54,7 +54,7 @@ Rien d’autre dans Anky n’utilise l’IA.
 
 Anky offre sept jours gratuits de son expérience principale, à partir de ta première session. Aucune information de paiement n’est demandée et rien n’est facturé à leur fin.
 
-L’abonnement est un abonnement mensuel à renouvellement automatique, vendu par Apple via l’App Store. Apple gère le paiement ; Anky ne reçoit jamais ta carte ni tes données de facturation. Anky utilise **RevenueCat** pour gérer les abonnements : RevenueCat reçoit ton identifiant de compte anonyme et tes historiques d’achats et d’abonnements App Store afin d’indiquer à l’app si tu es abonné. Consulte la politique de confidentialité de RevenueCat sur [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Annule ou gère ton abonnement dans les réglages d’abonnement de ton compte Apple.
+L’abonnement est un abonnement mensuel à renouvellement automatique, vendu par Apple via l’App Store. Apple gère le paiement ; Anky ne reçoit jamais ta carte ni tes données de facturation. Anky utilise **RevenueCat** pour gérer les abonnements : RevenueCat reçoit ton identifiant de compte anonyme et tes historiques d’achats et d’abonnements App Store afin d’indiquer à l’app si tu es abonné. Consulte la politique de confidentialité de RevenueCat sur [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Annule ou gère ton abonnement dans les réglages d’abonnement de ton compte Apple. Les remboursements sont gérés par Apple sur [reportaproblem.apple.com](https://reportaproblem.apple.com).
 
 Si tes jours offerts se terminent et que tu ne t’abonnes pas, tout ce que tu as déjà créé reste sur ton iPhone, lisible et exportable.
 

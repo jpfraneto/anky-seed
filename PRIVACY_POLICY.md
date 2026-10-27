@@ -54,7 +54,7 @@ Nothing else in Anky uses AI.
 
 Anky offers seven free days of its core experience, starting with your first session. No payment details are collected and nothing is charged when they end.
 
-The subscription is an auto-renewing monthly subscription sold by Apple through the App Store. Apple handles payment; Anky never receives your payment card or billing details. Anky uses **RevenueCat** to manage subscriptions: RevenueCat receives your anonymous account identifier and your App Store purchase and subscription records so it can tell the app whether you are subscribed. See RevenueCat's privacy policy at [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Cancel or manage your subscription in your Apple Account's subscription settings.
+The subscription is an auto-renewing monthly subscription sold by Apple through the App Store. Apple handles payment; Anky never receives your payment card or billing details. Anky uses **RevenueCat** to manage subscriptions: RevenueCat receives your anonymous account identifier and your App Store purchase and subscription records so it can tell the app whether you are subscribed. See RevenueCat's privacy policy at [revenuecat.com/privacy](https://www.revenuecat.com/privacy). Cancel or manage your subscription in your Apple Account's subscription settings. Refunds are handled by Apple at [reportaproblem.apple.com](https://reportaproblem.apple.com).
 
 If your free days end and you do not subscribe, everything you already created stays on your iPhone, readable and exportable.
 
