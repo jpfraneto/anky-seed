@@ -91,3 +91,7 @@ Missing, so "Go live" is **not shown**:
 3. **Device QA** on a real iPhone: camera, locked-screen voice, sandbox purchase, restore, cancel, interruption by a call.
 4. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. Listing text is in `AppStoreMetadata/`. New screenshots are still needed (the threshold, a session, a memory).
 5. Archive 2.3.0 (70), upload, TestFlight, then submit with `AppStoreMetadata/review_notes.txt`.
+6. Confirm the new Terms liability cap: the greater of USD 50 or what the person paid in the previous 12 months.
+7. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
+8. Run the wallet/crypto `strings` scan on the **Release archive** before submitting. The Debug build is clean.
+9. Landing: `apps/landing/test/legalRoutes.test.ts` still fails one redirects check that predates this work. The legal pages update on the next landing deploy.
