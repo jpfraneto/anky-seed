@@ -107,6 +107,11 @@ struct AnkyServerClient {
             .trimmingCharacters(in: .whitespacesAndNewlines), !markdown.isEmpty else {
             throw AnkyServerError.invalidResponse
         }
+        // Older servers answered "no provider reachable" with a 200 and a
+        // placeholder text. That is a failure, never a reflection to keep.
+        if Self.isPlaceholderReflection(markdown) {
+            throw AnkyServerError.server(status: 503, code: "REFLECTION_PROVIDER_UNAVAILABLE")
+        }
         let hash = response.value(forHTTPHeaderField: "X-Anky-Hash") ?? AnkyHasher.sha256Hex(ankyBytes)
         return ReflectionResult(hash: hash, markdown: markdown)
     }
@@ -215,6 +220,11 @@ struct AnkyServerClient {
         case (429, _): return .rateLimited
         default: return .server(status: status, code: code)
         }
+    }
+
+    static func isPlaceholderReflection(_ markdown: String) -> Bool {
+        markdown.lowercased().hasPrefix("# mirror unavailable")
+            || markdown.contains("could not safely reach a confirmed private reflection provider")
     }
 
     private static let offlineCodes: Set<URLError.Code> = [

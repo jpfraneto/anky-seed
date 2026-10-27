@@ -62,4 +62,11 @@ final class ServerSigningTests: XCTestCase {
         let signature = try identity.signDigest(digest)
         XCTAssertEqual(WriterIdentity.recoverAddress(digest: digest, signature: signature), identity.address)
     }
+
+    func testPlaceholderReflectionIsNeverAcceptedAsAReflection() {
+        XCTAssertTrue(AnkyServerClient.isPlaceholderReflection(
+            "# mirror unavailable\n\nhey, thanks for being who you are. my thoughts:\n\nAnky could not safely reach a confirmed private reflection provider right now."
+        ))
+        XCTAssertFalse(AnkyServerClient.isPlaceholderReflection("# Quiet Feet\n\nYou noticed the quiet."))
+    }
 }

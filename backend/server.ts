@@ -2658,6 +2658,12 @@ export async function handleAnkyReflection(
             requestIntent === "reflection" ? deps.reflectionChunk : undefined,
         });
         modelProvider = mirror.provider;
+        // The "default" provider is a placeholder text, not a reflection.
+        // A subscriber must get an honest failure (and can retry), never a
+        // 200 whose body the app would save as if Anky had answered.
+        if (mirror.provider === "default") {
+          throw new Error("REFLECTION_PROVIDER_UNAVAILABLE");
+        }
         await deps.progress?.({
           stage: "provider_finished",
           message: "Anky received the reflection.",

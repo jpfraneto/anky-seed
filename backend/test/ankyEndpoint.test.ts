@@ -1027,7 +1027,7 @@ describe("POST /anky", () => {
     expect(json.error.code).toBe("MISSING_SIGNATURE");
   });
 
-  test("returns the no-charge fallback when no provider is configured", async () => {
+  test("fails honestly (no placeholder reflection) when no provider is configured", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     const app = createApp({
       env: ankyWorld({ openrouterApiKey: "" }),
@@ -1042,10 +1042,10 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body),
       body,
     });
-    const text = await response.text();
+    const json = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(text).toContain("# mirror unavailable");
+    expect(response.status).toBe(500);
+    expect(json.error.code).toBe("MIRROR_FAILED");
   });
 
   test("full-tier endpoint keeps the previous prompt and model defaults", async () => {

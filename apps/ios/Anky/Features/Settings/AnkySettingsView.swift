@@ -249,7 +249,9 @@ struct AnkySettingsView: View {
             if let restoreLine {
                 caption(restoreLine)
             }
-            caption("Your first seven days are free and include everything except AI reflections. Nothing is charged when they end; a subscription starts only if you choose one.")
+            if !access.state.isSubscriber {
+                caption("Your first seven days are free and include everything except AI reflections. Nothing is charged when they end; a subscription starts only if you choose one.")
+            }
         }
     }
 
