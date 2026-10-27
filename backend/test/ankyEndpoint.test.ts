@@ -463,12 +463,12 @@ describe("POST /anky", () => {
     const cases = [
       {
         body: dotAnkyBytes("1770000000000 h"),
-        model: "google/gemini-2.5-flash-lite",
+        model: "anthropic/claude-haiku-4.5",
         maxTokens: 60,
       },
       {
         body: dotAnkyBytes("1770000000000 h\n88000 i"),
-        model: "google/gemini-2.5-flash-lite",
+        model: "anthropic/claude-haiku-4.5",
         maxTokens: 250,
       },
       {

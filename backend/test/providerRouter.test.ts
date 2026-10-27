@@ -53,7 +53,7 @@ describe("provider router", () => {
       },
     });
 
-    expect(body.model).toBe("google/gemini-2.5-flash-lite");
+    expect(body.model).toBe("anthropic/claude-haiku-4.5");
     expect(body.max_tokens).toBe(60);
     expect(body.provider).toEqual({ data_collection: "deny", zdr: true });
   });
@@ -120,7 +120,7 @@ describe("provider router", () => {
     });
 
     expect(body.stream).toBe(true);
-    expect(body.model).toBe("google/gemini-2.5-flash-lite");
+    expect(body.model).toBe("anthropic/claude-haiku-4.5");
     expect(body.max_tokens).toBe(250);
     expect(result.provider).toBe("openrouter");
     expect(result.reflection).toBe("# living thread\n\nbody");

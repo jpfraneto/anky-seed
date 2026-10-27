@@ -237,13 +237,17 @@ export const nudgeOpenRouterModel = "anthropic/claude-haiku-4.5";
 // for Sonnet) and then emitted real incremental chunks.
 export const nudgeBankrModel = "claude-haiku-4.5";
 
+// Short tiers run on Claude Haiku: privacyRequiresZdr is on, and as of
+// 2026-10-27 OpenRouter has no zero-data-retention endpoint for Gemini
+// Flash Lite (it answered 404 "No endpoints found matching your data
+// policy"), so short writings were failing to the placeholder.
 export const defaultReflectionModels = {
   sentence: {
-    model: "google/gemini-2.5-flash-lite",
+    model: nudgeOpenRouterModel,
     maxTokens: 60,
   },
   dip: {
-    model: "google/gemini-2.5-flash-lite",
+    model: nudgeOpenRouterModel,
     maxTokens: 250,
   },
   full: {
