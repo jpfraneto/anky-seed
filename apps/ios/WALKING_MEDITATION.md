@@ -101,6 +101,15 @@ Missing, so "Go live" is **not shown**:
 
 Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destination id=<device> -only-testing:AnkyUITests -allowProvisioningUpdates`. This needs Settings › Developer › Enable UI Automation and an unlocked phone.
 
+**Subscription on the device** (`AnkySandboxPurchaseUITests`, passing):
+- The account on the founder's phone already holds `pro`. Settings shows "Subscribed", and Restore purchases answers "Your subscription is restored." A fresh purchase sheet could not be exercised without resetting the identity, which was not done.
+- "Reflect with Anky" reached production as a verified subscriber (server log `statusCode=200`, `supported_reflection`). That exposed a **production blocker**: every AI credential on Railway is failing (Bankr 401, OpenRouter 401, Poiesis 530), so the server fell back to a placeholder text with HTTP 200, and the app saved it. Fixed in `5848f67` and deployed: the server now returns MIRROR_FAILED and the app refuses placeholders. On the device the person now sees "The reflection didn't come through. Nothing was saved or charged."
+- **The founder must replace or fund the AI provider keys** (`BANKR_LLM_GATEWAY_API_KEY`, `OPENROUTER_API_KEY`, `POIESIS_*`) on Railway before AI works for subscribers. Check with: `railway run bun <probe>`, or ask for a reflection.
+
+### Upload
+
+2.3.0 (70) was archived (the Release binary passes the wallet/crypto scan), exported and **uploaded to App Store Connect** on 2026-10-27 (delivery `9b549d68-caa1-48cb-af04-901a8f4da4c8`). It is not submitted for review.
+
 ### Still manual (needs a sandbox Apple ID)
 
 1. **Camera, by hand:** switch to the front camera and record. During a take, receive a call: the take should stop cleanly and appear in the memory.
@@ -114,8 +123,9 @@ Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destinati
 1. ~~Deploy backend~~ and ~~put monthly back on sale~~: done (§7).
 2. Optionally remove `anky.annual`'s 3-day free-trial offer so it can never surface.
 3. **Remaining device QA** (§8): sandbox purchase, restore, cancel, a real screen lock, a call during a take. Camera and background voice are verified.
-4. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. Listing text is in `AppStoreMetadata/`. New screenshots are still needed (the threshold, a session, a memory).
-5. Archive 2.3.0 (70), upload, TestFlight, then submit with `AppStoreMetadata/review_notes.txt`.
+4. **Fix the AI provider keys on Railway** (see §8). This blocks the subscriber AI feature, which the paywall and listing promise.
+5. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. That page can't be set through the API.
+6. Upload the listing text (`AppStoreMetadata/`, fastlane `listing` lane) and the screenshots in `AppStoreScreenshots/walking/en-US/`, attach build 70, then submit with `AppStoreMetadata/review_notes.txt`.
 6. ~~Terms liability cap~~: the founder kept the new cap. ~~Livestreaming~~: the founder deferred it (not now); §6 lists what it needs.
 7. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
 8. Run the wallet/crypto `strings` scan on the **Release archive** before submitting. The Debug build is clean.
