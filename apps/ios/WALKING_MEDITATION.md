@@ -126,7 +126,7 @@ Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destinati
 4. **Fix the AI provider keys on Railway** (see §8). This blocks the subscriber AI feature, which the paywall and listing promise.
 5. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. That page can't be set through the API.
 6. Upload the listing text (`AppStoreMetadata/`, fastlane `listing` lane) and the screenshots in `AppStoreScreenshots/walking/en-US/`, attach build 70, then submit with `AppStoreMetadata/review_notes.txt`.
-6. ~~Terms liability cap~~: the founder kept the new cap. ~~Livestreaming~~: the founder deferred it (not now); §6 lists what it needs.
-7. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
-8. Run the wallet/crypto `strings` scan on the **Release archive** before submitting. The Debug build is clean.
-9. Landing: `apps/landing/test/legalRoutes.test.ts` still fails one redirects check that predates this work. The legal pages update on the next landing deploy.
+7. ~~Terms liability cap~~: the founder kept the new cap. ~~Livestreaming~~: the founder deferred it (not now); §6 lists what it needs.
+8. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
+9. Run the wallet/crypto `strings` scan on the **Release archive** before submitting. The Debug build is clean.
+10. Landing: `apps/landing/test/legalRoutes.test.ts` still fails one redirects check that predates this work. The legal pages update on the next landing deploy.
