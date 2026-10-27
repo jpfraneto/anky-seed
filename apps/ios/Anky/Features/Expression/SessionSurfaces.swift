@@ -16,6 +16,9 @@ import UIKit
 /// Top chrome shared by every non-writing surface.
 struct SessionTopBar: View {
     @ObservedObject var expression: ExpressionController
+    /// Over a dark camera image the glass alone goes dark; paper keeps the
+    /// ink readable.
+    var paperBacked = false
     let allowsDrawer: Bool
     let onOpenDrawer: () -> Void
     let onEnd: () -> Void
@@ -33,6 +36,7 @@ struct SessionTopBar: View {
                 onChoose: { next in Task { await expression.switchTo(next) } },
                 onEnd: onEnd
             )
+            .background(Capsule().fill(Color.ankyPaper.opacity(paperBacked ? 0.78 : 0)))
             Spacer(minLength: 0)
             Color.clear.frame(width: 44, height: 44)
         }
@@ -272,6 +276,7 @@ struct CameraSurface: View {
             VStack(spacing: 0) {
                 SessionTopBar(
                     expression: expression,
+                    paperBacked: true,
                     allowsDrawer: !camera.isRecording,
                     onOpenDrawer: onOpenDrawer,
                     onEnd: onEnd
@@ -288,6 +293,7 @@ struct CameraSurface: View {
                         .foregroundStyle(Color.ankyInk)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.ankyPaper.opacity(0.78)))
                         .ankyGlass(in: Capsule(), interactive: false)
                     }
                     .padding(.top, 10)

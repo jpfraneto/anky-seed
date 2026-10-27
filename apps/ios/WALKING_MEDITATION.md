@@ -92,9 +92,18 @@ Missing, so "Go live" is **not shown**:
 - Release 2.3.0 (70), development-signed, is installed and launches on the founder's iPhone 15. The Release binary passes the wallet/crypto `strings` scan.
 - 6.9" screenshots are in `AppStoreScreenshots/walking/en-US/`.
 
-## 8. Device QA checklist (iPhone 15, needs a person)
+## 8. Device QA
 
-1. **Camera:** Record → allow camera and mic → record 20s → stop. Switch to the front camera and record again. End → memory → play both. During one recording, take a phone call or open Control Center: the take should stop cleanly and appear in the memory.
+**Verified on the founder's iPhone 15** (2026-10-27) with the XCUITest `AnkyUITests/AnkyDeviceUITests`, run three times, all passing:
+- Camera recording: permission, record, stop, then the memory shows "Video · 0:06" with a thumbnail and playback.
+- Voice in the background: record, Home, 25 s, back, stop, then the memory shows "Voice · 0:29". This is the audio background mode a locked phone uses. XCUITest cannot press the lock button, so the lock itself is part of the manual check below.
+- The test deletes its own session. After the runs, the Release build was reinstalled.
+
+Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destination id=<device> -only-testing:AnkyUITests -allowProvisioningUpdates`. This needs Settings › Developer › Enable UI Automation and an unlocked phone.
+
+### Still manual (needs a sandbox Apple ID)
+
+1. **Camera, by hand:** switch to the front camera and record. During a take, receive a call: the take should stop cleanly and appear in the memory.
 2. **Locked-screen voice:** Talk → record → lock the phone and walk for 2 minutes → unlock → stop. The memory's voice length should cover the whole time.
 3. **Purchase (sandbox):** Settings › Subscription › Subscribe. Sign in with a sandbox tester. The confirmed price should match. Settings should then show "Subscribed", and "Reflect with Anky" should return a reflection.
 4. **Restore:** delete and reinstall the app, then Restore purchases: the subscription should come back, and the free days should not restart.
@@ -104,10 +113,10 @@ Missing, so "Go live" is **not shown**:
 
 1. ~~Deploy backend~~ and ~~put monthly back on sale~~: done (§7).
 2. Optionally remove `anky.annual`'s 3-day free-trial offer so it can never surface.
-3. **Device QA** (§8) on a real iPhone: camera, locked-screen voice, sandbox purchase, restore, cancel, interruption by a call.
+3. **Remaining device QA** (§8): sandbox purchase, restore, cancel, a real screen lock, a call during a take. Camera and background voice are verified.
 4. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. Listing text is in `AppStoreMetadata/`. New screenshots are still needed (the threshold, a session, a memory).
 5. Archive 2.3.0 (70), upload, TestFlight, then submit with `AppStoreMetadata/review_notes.txt`.
-6. Confirm the new Terms liability cap: the greater of USD 50 or what the person paid in the previous 12 months.
+6. ~~Terms liability cap~~: the founder kept the new cap. ~~Livestreaming~~: the founder deferred it (not now); §6 lists what it needs.
 7. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
 8. Run the wallet/crypto `strings` scan on the **Release archive** before submitting. The Debug build is clean.
 9. Landing: `apps/landing/test/legalRoutes.test.ts` still fails one redirects check that predates this work. The legal pages update on the next landing deploy.

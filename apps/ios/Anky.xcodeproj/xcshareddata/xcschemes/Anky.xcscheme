@@ -54,6 +54,17 @@
                ReferencedContainer = "container:Anky.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8A0000E80000000000000001"
+               BuildableName = "AnkyUITests.xctest"
+               BlueprintName = "AnkyUITests"
+               ReferencedContainer = "container:Anky.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

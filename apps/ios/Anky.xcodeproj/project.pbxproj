@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E80000000000000003 /* AnkyDeviceUITests.swift */; };
 		8A0000E7BEF53848055AFE18 /* Features/Expression/SessionMemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */; };
 		8A0000E714D200A9B23F40B8 /* Features/Expression/ReflectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */; };
 		8A0000E7BA61547BFD5161A9 /* Features/Expression/SessionSurfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E75B94F30F9A94932F /* Features/Expression/SessionSurfaces.swift */; };
@@ -204,6 +205,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		8A0000E80000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A0000010000000000006001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A0000010000000000004001;
+			remoteInfo = Anky;
+		};
 		8A0000170000000000006001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8A0000010000000000006001 /* Project object */;
@@ -277,6 +285,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8A0000E80000000000000002 /* AnkyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A0000E80000000000000003 /* AnkyDeviceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyDeviceUITests.swift; sourceTree = "<group>"; };
 		8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/SessionMemoryView.swift; sourceTree = "<group>"; };
 		8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/ReflectionSheet.swift; sourceTree = "<group>"; };
 		8A0000E75B94F30F9A94932F /* Features/Expression/SessionSurfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/SessionSurfaces.swift; sourceTree = "<group>"; };
@@ -454,6 +464,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		8A0000E80000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A0000010000000000002001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -508,9 +525,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		8A0000E80000000000000013 /* AnkyUITests */ = {
+			isa = PBXGroup;
+			children = (
+				8A0000E80000000000000003 /* AnkyDeviceUITests.swift */,
+			);
+			path = AnkyUITests;
+			sourceTree = "<group>";
+		};
 		8A0000010000000000003001 = {
 			isa = PBXGroup;
 			children = (
+				8A0000E80000000000000013 /* AnkyUITests */,
 				8A0000010000000000003002 /* Anky */,
 				8A0000170000000000003001 /* AnkyWriteBeforeScrollShieldAction */,
 				8A0000180000000000003001 /* AnkyWriteBeforeScrollShieldConfiguration */,
@@ -575,6 +601,7 @@
 				8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */,
 				8A0000E50000000000001008 /* AnkyClip.app */,
 				8A0000E00000000000001003 /* AnkyTests.xctest */,
+				8A0000E80000000000000002 /* AnkyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -932,6 +959,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8A0000E80000000000000001 /* AnkyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A0000E80000000000000010 /* Build configuration list for PBXNativeTarget "AnkyUITests" */;
+			buildPhases = (
+				8A0000E80000000000000005 /* Sources */,
+				8A0000E80000000000000006 /* Frameworks */,
+				8A0000E80000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8A0000E80000000000000009 /* PBXTargetDependency */,
+			);
+			name = AnkyUITests;
+			productName = AnkyUITests;
+			productReference = 8A0000E80000000000000002 /* AnkyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		8A0000010000000000004001 /* Anky */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8A0000010000000000007002 /* Build configuration list for PBXNativeTarget "Anky" */;
@@ -1110,6 +1155,10 @@
 					8A0000E00000000000004001 = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					8A0000E80000000000000001 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 8A0000010000000000004001;
+					};
 					8A0000E50000000000004001 = {
 						CreatedOnToolsVersion = 16.2;
 						SystemCapabilities = {
@@ -1149,11 +1198,19 @@
 				8A0000D00000000000004001 /* AnkyGlanceWidgets */,
 				8A0000E50000000000004001 /* AnkyClip */,
 				8A0000E00000000000004001 /* AnkyTests */,
+				8A0000E80000000000000001 /* AnkyUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		8A0000E80000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A0000010000000000005002 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1254,6 +1311,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8A0000E80000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A0000010000000000005001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1472,6 +1537,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		8A0000E80000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A0000010000000000004001 /* Anky */;
+			targetProxy = 8A0000E80000000000000008 /* PBXContainerItemProxy */;
+		};
 		8A0000170000000000006002 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8A0000170000000000004001 /* AnkyWriteBeforeScrollShieldAction */;
@@ -1547,6 +1617,48 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		8A0000E80000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 70;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 2.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Anky;
+			};
+			name = Debug;
+		};
+		8A0000E80000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 70;
+				DEVELOPMENT_TEAM = 84V63LKV45;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 2.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Anky;
+			};
+			name = Release;
+		};
 		8A0000010000000000008001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2023,6 +2135,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8A0000E80000000000000010 /* Build configuration list for PBXNativeTarget "AnkyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A0000E80000000000000011 /* Debug */,
+				8A0000E80000000000000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		8A0000010000000000007001 /* Build configuration list for PBXProject "Anky" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
