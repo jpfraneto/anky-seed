@@ -84,11 +84,27 @@ Missing, so "Go live" is **not shown**:
 3. A viewer page with **Report** and **block** controls, plus moderation contact info, to meet App Review 1.2 for user-generated live content.
 4. A verified real broadcast from an iPhone to a viewer before the UI entry is enabled.
 
-## 7. Next human actions
+## 7. Done after founder approval (2026-10-27)
 
-1. **Review and deploy the backend.** The working tree mixes earlier uncommitted backend edits with this work, so it was left uncommitted. Commit it, then deploy to Railway **at the same time as or before** 2.3.0 reaches users. After deploy, older app builds lose AI for non-subscribers (402).
-2. **App Store Connect:** put `anky.monthly` back on sale (Availability → territories). Leave `anky.annual` off sale, or remove its 3-day free-trial offer before ever offering it.
-3. **Device QA** on a real iPhone: camera, locked-screen voice, sandbox purchase, restore, cancel, interruption by a call.
+- Backend committed (`f8b6049`) and **deployed** to Railway production. Health is OK, logs are clean, and the Swift contract tests pass **against production**: the ledger opens once and never moves, a non-subscriber gets 402 for AI, and live reports "not configured".
+- `anky.monthly` is **back on sale** (state APPROVED, all 175 territories plus new ones). `anky.annual` stays removed from sale. There will be no annual plan.
+- App Store **Billing Grace Period is on: 3 days, all renewals**, in production and sandbox. When a renewal fails, the person keeps access for 3 days while Apple retries. If payment recovers, the month still counts from the original renewal date, so those days are paid retroactively. RevenueCat keeps `pro` active during grace, and the paywall tells the person to update their payment method.
+- Release 2.3.0 (70), development-signed, is installed and launches on the founder's iPhone 15. The Release binary passes the wallet/crypto `strings` scan.
+- 6.9" screenshots are in `AppStoreScreenshots/walking/en-US/`.
+
+## 8. Device QA checklist (iPhone 15, needs a person)
+
+1. **Camera:** Record → allow camera and mic → record 20s → stop. Switch to the front camera and record again. End → memory → play both. During one recording, take a phone call or open Control Center: the take should stop cleanly and appear in the memory.
+2. **Locked-screen voice:** Talk → record → lock the phone and walk for 2 minutes → unlock → stop. The memory's voice length should cover the whole time.
+3. **Purchase (sandbox):** Settings › Subscription › Subscribe. Sign in with a sandbox tester. The confirmed price should match. Settings should then show "Subscribed", and "Reflect with Anky" should return a reflection.
+4. **Restore:** delete and reinstall the app, then Restore purchases: the subscription should come back, and the free days should not restart.
+5. **Cancel:** cancel in the sandbox subscription settings. After the accelerated period expires, new sessions should be locked and memories still open.
+
+## 9. Next human actions
+
+1. ~~Deploy backend~~ and ~~put monthly back on sale~~: done (§7).
+2. Optionally remove `anky.annual`'s 3-day free-trial offer so it can never surface.
+3. **Device QA** (§8) on a real iPhone: camera, locked-screen voice, sandbox purchase, restore, cancel, interruption by a call.
 4. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. Listing text is in `AppStoreMetadata/`. New screenshots are still needed (the threshold, a session, a memory).
 5. Archive 2.3.0 (70), upload, TestFlight, then submit with `AppStoreMetadata/review_notes.txt`.
 6. Confirm the new Terms liability cap: the greater of USD 50 or what the person paid in the previous 12 months.
