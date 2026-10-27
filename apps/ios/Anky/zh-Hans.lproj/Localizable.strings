@@ -852,3 +852,4 @@
 "This permanently deletes every session, writing, voice and video recording on this iPhone, and your Anky iCloud backup. Anky's server never stores your writing. It keeps only an anonymous record of when your seven free days began, so they can't restart. A subscription stays with Apple until you cancel it." = "这会永久删除这台 iPhone 上的所有记录、文字、语音和视频录制，以及你的 Anky iCloud 备份。Anky 的服务器从不保存你的文字。它只保留一条匿名记录，标明你的七天免费期何时开始，以免重新开始。订阅会一直保留在 Apple，直到你取消为止。";
 "Your first seven days are free and include everything except AI reflections. Nothing is charged when they end; a subscription starts only if you choose one." = "你的前七天免费，包含除 AI 回应以外的所有功能。结束时不会收取任何费用；只有在你选择订阅时，订阅才会开始。";
 "less than a minute" = "不到一分钟";
+"Anky's reflection" = "Anky 的回应";

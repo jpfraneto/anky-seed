@@ -140,16 +140,19 @@ struct ReflectionSheet: View {
         }
     }
 
-    /// The first markdown heading (the prompt asks for a short title on top).
+    /// The reflection's own heading when it has one (full reflections open
+    /// with a short title). Short ones are a single sentence with no
+    /// heading: they get a quiet label, never a truncated copy of themselves.
     static func title(from markdown: String) -> String {
         for line in markdown.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
             if trimmed.hasPrefix("#") {
                 return trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
             }
-            if !trimmed.isEmpty { return String(trimmed.prefix(48)) }
+            break
         }
-        return AnkyLocalization.ui("Reflection")
+        return AnkyLocalization.ui("Anky's reflection")
     }
 
     static func body(from markdown: String) -> String {
