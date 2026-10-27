@@ -735,7 +735,7 @@
 "Reflections are part of the subscription." = "回应功能包含在订阅中。";
 "Anky's core — writing, speaking, recording, your memories — never needs AI. Subscribers can ask for a reflection on any writing, whenever they choose." = "Anky 的核心——书写、说话、录制、你的回忆——从不需要 AI。订阅者可以随时为任何一篇文字请求回应。";
 "See the subscription" = "查看订阅";
-"Anky couldn't reach your account key on this iPhone." = "Anky 无法在这台 iPhone 上读取你的账户密钥。";
+"Anky couldn't prepare this request. Try again in a moment." = "Anky 无法准备这个请求，请稍后再试。";
 "Anky's server couldn't confirm your subscription yet. Try Restore purchases, then ask again." = "Anky 的服务器暂时无法确认你的订阅。请尝试“恢复购买”，然后再请求一次。";
 "You're offline. Your writing wasn't sent." = "你目前处于离线状态。你的文字没有发送。";
 "Anky has reflected a lot today. Try again later." = "Anky 今天已经写了很多回应。请稍后再试。";

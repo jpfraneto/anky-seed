@@ -1,15 +1,13 @@
-El Anky más simple hasta ahora.
+Anky ahora es Anky: Meditación al caminar.
 
-Anky ya no se conecta a ningún servidor. Sin reflexiones de IA, sin suscripción, sin cuenta. Tu escritura nunca sale de tu teléfono.
+Sal a caminar, o quédate justo donde estás, y expresa lo que surja: escribe, habla, graba un video o quédate en silencio. Pasa de una forma a otra dentro de una misma sesión.
 
-Toca el reloj para ver una sola línea: la regla de los 8 segundos, un control para tus minutos y ∞.
+La voz sigue grabando con la pantalla bloqueada, así el teléfono puede ir en tu bolsillo mientras caminas.
 
-¿Terminaste una escritura? Tócala para seguir. La misma página, las mismas palabras.
+Cada sesión se vuelve un recuerdo al que puedes volver, con su escritura, su voz y su video. Todo se queda en tu iPhone.
 
-El retroceso viene activado. Apágalo en Configuración si quieres escribir solo hacia adelante.
+Exportar mis recuerdos: un solo archivo con cada sesión, las grabaciones originales, tus escrituras y tus reflexiones.
 
-Copia cualquier escritura, o cópiala con un prompt de reflexión para pegarla en la IA que ya usas.
+Tus primeros siete días son gratis, sin datos de pago y sin ningún cobro cuando terminan. Después, una suscripción mensual mantiene Anky abierto para sesiones nuevas y añade Reflexionar con Anky. Tus recuerdos siguen siendo tuyos, con o sin ella.
 
-Las estadísticas son más simples: ese día escribiste o no.
-
-Las apps bloqueadas se desbloquean en cuanto escribes, y el desbloqueo de emergencia del escudo vuelve a funcionar.
+La página de escritura que conoces no cambia.

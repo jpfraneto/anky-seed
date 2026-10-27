@@ -1,15 +1,13 @@
-The simplest Anky yet.
+Anky is now Anky: Walking Meditation.
 
-Anky no longer connects to any server. No AI reflections, no subscription, no account. Your writing never leaves your phone.
+Go for a walk, or stay right where you are, and express what comes: write, talk, record a video, or stay silent. Move between them within one session.
 
-Tap the clock for one line: the 8 second rule, a slider for your minutes, and ∞.
+Voice keeps recording with the screen locked, so the phone can stay in your pocket while you walk.
 
-Finished a writing? Tap it to keep going. Same page, same words.
+Every session becomes a memory you can return to, with its writing, voice and video. Everything stays on your iPhone.
 
-Backspace is on by default. Turn it off in Settings if you want to write forward only.
+Export my memories: one file with every session, the original recordings, your writings and your reflections.
 
-Copy any writing, or copy it with a reflection prompt to paste into the AI you already use.
+Your first seven days are free, with no payment details and nothing charged when they end. After that, a monthly subscription keeps Anky open for new sessions and adds Reflect with Anky. Your past memories stay yours, with or without it.
 
-Stats are simpler: you wrote that day or you didn't.
-
-Blocked apps now unlock as soon as you have written, and the shield's emergency unlock works again.
+The writing page you know is unchanged.

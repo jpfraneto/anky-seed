@@ -1,26 +1,51 @@
-Anky 2.2.0 (69) — notes for review
+Anky: Walking Meditation 2.3.0 (70) — notes for review
 
-WHAT CHANGED IN THIS VERSION
-Anky is now a fully offline writing app. This version removes features; it adds no new capabilities or entitlements.
-- No server connection of any kind. AI reflections, the subscription (Anky Pro, RevenueCat) and all network code were removed. The app has no in-app purchases.
-- One writing page with a side drawer of past writings. A finished writing stays on the page; tapping it continues it.
-- Tapping the clock shows the 8 second rule, a minutes slider (1–8) and ∞ (no time limit).
-- The App Privacy answers are now "Data Not Collected".
+WHAT THIS VERSION IS
+Anky is a space for expression while walking or sitting still. A session starts with "Go for a walk. / Or stay right where you are." and the person can then Write, Talk (voice recording), Record (camera video) or simply stay silent, switching between them within one session. Ended sessions become memories that can be read, listened to and watched again. All writing, audio and video is stored on the device only.
 
-NO CRYPTOCURRENCY FUNCTIONALITY
-Anky has no wallet, no blockchain integration, no tokens and no payments. A random key is generated on the device and stored in the Keychain; its only use is to encrypt the optional iCloud backup of the user's writings. It is never shown to the user and never sent anywhere.
+No login or account is required. There is nothing to sign in to.
 
-HOW TO TEST (no account or login required)
-1. Launch the app and type on the page. By default a session ends after 8 seconds without typing.
-2. The writing stays on the page. Tap it to keep writing.
-3. On a finished writing, the "…" button (top right) offers Copy writing, Copy prompt + writing (puts the text on the clipboard with a reflection prompt) and Delete.
-4. Tap the menu button (top left) to open the drawer: past writings, Settings and Stats.
+HOW TO TEST
+1. Launch the app. On the threshold screen choose "Go for a walk." or "Or stay right where you are." (both lead to the same session).
+2. Tap Write and type. The writing page is forward-only; by default writing rests after 8 seconds without typing.
+3. Tap Talk to record your voice (microphone permission is requested at this point). You can lock the screen while it records.
+4. Tap Record to record camera video (camera and microphone permission are requested at this point).
+5. End the session. Open the menu (top left) to see past sessions; open one to read, play back and watch it.
+6. Settings › Export my memories produces a .zip with every session, the original audio and video files, writings and reflections.
+
+FREE ACCESS (APP-MANAGED, NOT AN APP STORE TRIAL)
+The first seven days of the core experience are free, counted from the person's first session. No payment details are collected, no purchase is started and nothing is charged when the seven days end. This is not an App Store introductory offer: the subscription product has no free trial, and the app never starts a purchase on its own.
+
+After the seven days, starting a new session requires the subscription. Everything already created stays readable and exportable without a subscription; the expiry screen offers Subscribe, Restore purchases, View my memories and Export my memories.
+
+We believe this complies with Guideline 3.1.1 and 3.1.2: the paid functionality is unlocked only through In-App Purchase (an auto-renewing subscription sold through StoreKit via RevenueCat), there is no external payment path or link, and free access before purchase is offered by the app itself with clear wording that the person will not be charged unless they choose to subscribe. Content the person created is never locked behind the subscription.
+
+Note for testing: a fresh install starts the seven free days at the first session, so the expiry screen will not appear during a normal review. The paywall can be opened at any time as described below.
+
+SUBSCRIPTION
+One auto-renewing monthly subscription, product ID anky.monthly. The price shown is the localized App Store price returned by StoreKit.
+- To see the paywall: open the menu (top left) › Settings › Subscription › Subscribe. It also appears from a writing's "Reflect with Anky" action when the person is not subscribed.
+- The paywall shows the price and billing period, states that the subscription renews automatically until cancelled, that payment is charged only when the person confirms the purchase, and how to cancel. It links to the Privacy Policy (https://anky.app/privacy-policy/) and Terms of Use (Apple's standard EULA).
+- Restore purchases and Manage subscription are in Settings › Subscription.
+- A sandbox account can complete a purchase normally.
+
+AI REFLECTIONS (OPTIONAL, SUBSCRIBERS ONLY)
+"Reflect with Anky" is available on a writing (from the "…" menu on a finished writing, or inside a past session). Before anything is sent, a sheet explains that the text of that one writing goes to Anky's server, an AI model writes a reflection, the server does not keep the writing, and the reflection is saved on the device. Nothing is sent until the person taps "Send and reflect". Voice and video are never sent and never transcribed. The server checks the subscription itself and refuses non-subscribers. No other part of the app uses AI.
+
+MICROPHONE, CAMERA AND BACKGROUND AUDIO
+- Microphone: used only while the person is recording their voice (Talk) or the sound of a video (Record).
+- Camera: used only while the person is recording video (Record).
+- Background audio (UIBackgroundModes: audio): lets a voice recording continue while the screen is locked, so a person can keep walking with the phone in a pocket. It is used only while the person is actively recording; when they stop, the recording audio session is deactivated. The only other audio is the person playing back one of their own recordings. The app has no music, ambient sound or streaming audio.
+- Recordings stay on the device. They are never uploaded and never transcribed.
+- The app does not use location.
+
+ACCOUNT AND SERVER
+There is no sign-in. On first launch the app creates a random anonymous identifier on the device. It is used to authenticate the app's few requests to Anky's server (checking free days and the subscription, and a reflection when the person asks for one) and as the RevenueCat customer ID. It is never shown to the person and is not linked to a name, email, phone number or Apple ID. The server keeps only an anonymous record of when free days began (so they cannot restart) and the subscription status. No analytics, advertising or tracking SDKs are included.
 
 SCREEN TIME (FamilyControls)
-Blocking is opt-in. Go to Settings → Blocked apps, turn on "Block until I write", grant Screen Time access and choose one or two apps. Please also allow notifications when asked.
+"Write Before You Scroll" is opt-in: Settings › Blocked apps › turn on, grant Screen Time access and choose apps. iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
+- "Write" opens Anky on a blank page; writing unlocks the chosen apps. If the free days have ended and the person has no subscription, "Write" unlocks the apps for the rest of the day instead, so nobody is trapped by a paywall.
+- "Emergency unlock" opens Anky and unlocks the apps for the rest of the day immediately, with no writing and no payment.
+The same switch in Settings › Blocked apps turns blocking off at any time. Only Anky's own shield is ever applied or removed.
 
-iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
-- "Write" opens Anky on a blank page. Finishing a sentence unlocks the chosen apps for 15 minutes (up to three times a day); writing the chosen number of minutes unlocks them for the rest of the day.
-- "Emergency unlock" opens Anky and unlocks the apps for the rest of the day immediately. No writing and no payment are required.
-
-Nobody can be locked out of their device: the same switch in Settings → Blocked apps turns blocking off at any time. Only Anky's own shield is ever applied or removed. The app does not change any other Screen Time setting.
+Contact: support@anky.app

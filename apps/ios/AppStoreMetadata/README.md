@@ -44,3 +44,26 @@ Everything in the listing that described those is gone.
 - **App Privacy:** answer "Data Not Collected" — see `../NUTRITION_LABEL.md`.
 - **In-app purchases:** Anky Pro monthly/yearly must be removed from sale in
   App Store Connect by hand; nothing in the app sells them anymore.
+
+## Version 2.3.0 — "Anky: Walking Meditation" (2026-10-27)
+
+Sessions are back with more than writing: Write, Talk, Record (camera) or
+silence, a server again (free-days ledger, subscription check, opt-in AI
+reflections) and a monthly subscription (`anky.monthly`).
+
+- **Name:** "Anky: Walking Meditation" (localized per locale). Confirm the
+  name is available in App Store Connect before submitting.
+- **Description:** must keep the seven free days with *no automatic charge*,
+  the auto-renewing monthly subscription and what it unlocks, AI as optional
+  and subscriber-only, local-first ownership and export, and the links to
+  https://anky.app/privacy-policy/ (localized per locale) and Apple's standard
+  EULA. Never hardcode a price; never mention livestreaming (not shipped).
+- **Never** use the words key, wallet, address, recovery phrase, blockchain,
+  crypto, Base or token in the listing or review notes (2.3.1(a) history).
+  No streaks, step counts, fitness or therapy claims.
+- **review_notes.txt:** rewritten for 2.3.0 (70).
+- **App Privacy:** see `../APP_PRIVACY_ANSWERS.md` (User ID + Purchase History,
+  linked, not tracking, App Functionality).
+- **Keywords:** `validate.rb` counts code points, as App Store Connect does.
+  Hindi and Chinese lists are over 100 *bytes* but under 100 characters, as
+  the live lists always were.

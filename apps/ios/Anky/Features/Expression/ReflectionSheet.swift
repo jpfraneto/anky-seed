@@ -110,7 +110,7 @@ struct ReflectionSheet: View {
         errorText = nil
         defer { isAsking = false }
         guard let identity = await access.signingIdentity() else {
-            errorText = AnkyLocalization.ui("Anky couldn't reach your account key on this iPhone.")
+            errorText = AnkyLocalization.ui("Anky couldn't prepare this request. Try again in a moment.")
             return
         }
         do {

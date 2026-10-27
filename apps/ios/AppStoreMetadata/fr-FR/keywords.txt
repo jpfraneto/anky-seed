@@ -1,1 +1,1 @@
-page,matinale,carnet,agenda,blocage,ecrivain,flux,conscience,minuteur,concentration,prive,notes
+journal,carnet,pleine,conscience,presence,voix,memo,video,notes,calme,reflexion,prive,nature,balade
