@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8A0000E8000000000000000F /* AnkySandboxPurchaseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */; };
 		8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E80000000000000003 /* AnkyDeviceUITests.swift */; };
 		8A0000E7BEF53848055AFE18 /* Features/Expression/SessionMemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */; };
 		8A0000E714D200A9B23F40B8 /* Features/Expression/ReflectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */; };
@@ -285,6 +286,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySandboxPurchaseUITests.swift; sourceTree = "<group>"; };
 		8A0000E80000000000000002 /* AnkyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A0000E80000000000000003 /* AnkyDeviceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyDeviceUITests.swift; sourceTree = "<group>"; };
 		8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/SessionMemoryView.swift; sourceTree = "<group>"; };
@@ -529,6 +531,7 @@
 			isa = PBXGroup;
 			children = (
 				8A0000E80000000000000003 /* AnkyDeviceUITests.swift */,
+				8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */,
 			);
 			path = AnkyUITests;
 			sourceTree = "<group>";
@@ -1316,6 +1319,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */,
+				8A0000E8000000000000000F /* AnkySandboxPurchaseUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
