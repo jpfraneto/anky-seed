@@ -27,7 +27,8 @@ platform :ios do
       app_identifier: APP_IDENTIFIER,
       app_version: options[:version] || get_version_number(xcodeproj: "Anky.xcodeproj", target: "Anky"),
       metadata_path: "./AppStoreMetadata",
-      screenshots_path: "./AppStoreScreenshots/final",
+      screenshots_path: options[:screenshots] || "./AppStoreScreenshots/final",
+      skip_metadata: options[:skip_metadata] == true,
       skip_binary_upload: true,
       skip_screenshots: options[:skip_screenshots] == true,
       # Adds the 6.9-inch set beside what is there; the iPad screenshot the
