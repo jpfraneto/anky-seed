@@ -143,6 +143,7 @@ struct DrawerButton: View {
 enum SessionClock {
     static func text(_ interval: TimeInterval) -> String {
         let minutes = Int(interval / 60)
+        if minutes == 0 { return AnkyLocalization.ui("less than a minute") }
         if minutes < 60 { return AnkyLocalization.ui("%d min", minutes) }
         return String(format: "%d h %02d", minutes / 60, minutes % 60)
     }
