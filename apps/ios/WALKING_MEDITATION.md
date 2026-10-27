@@ -104,7 +104,8 @@ Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destinati
 **Subscription on the device** (`AnkySandboxPurchaseUITests`, passing):
 - The account on the founder's phone already holds `pro`. Settings shows "Subscribed", and Restore purchases answers "Your subscription is restored." A fresh purchase sheet could not be exercised without resetting the identity, which was not done.
 - "Reflect with Anky" reached production as a verified subscriber (server log `statusCode=200`, `supported_reflection`). That exposed a **production blocker**: every AI credential on Railway is failing (Bankr 401, OpenRouter 401, Poiesis 530), so the server fell back to a placeholder text with HTTP 200, and the app saved it. Fixed in `5848f67` and deployed: the server now returns MIRROR_FAILED and the app refuses placeholders. On the device the person now sees "The reflection didn't come through. Nothing was saved or charged."
-- **The founder must replace or fund the AI provider keys** (`BANKR_LLM_GATEWAY_API_KEY`, `OPENROUTER_API_KEY`, `POIESIS_*`) on Railway before AI works for subscribers. Check with: `railway run bun <probe>`, or ask for a reflection.
+- **Resolved 2026-10-27:** the founder supplied an OpenRouter *management* key, which can't run models. With it I created a dedicated inference key, `anky-production` (OpenRouter, **$20/month cap**), and set it as `OPENROUTER_API_KEY` on Railway. The management key is not stored anywhere; it expires 2026-11-03, and the founder should rotate it since it appeared in chat. Short tiers moved from Gemini Flash Lite, which has no zero-retention endpoint, to Claude Haiku 4.5 (`ebd7158`). All tiers pass in production, and **a subscriber reflection came back on the founder's iPhone** ("You found the off switch is actually just a pair of shoes."). Bankr (401) and Poiesis (530) are still failing, so OpenRouter is the only working lane.
+- (Historical) The founder must replace or fund the AI provider keys (`BANKR_LLM_GATEWAY_API_KEY`, `OPENROUTER_API_KEY`, `POIESIS_*`) on Railway before AI works for subscribers. Check with: `railway run bun <probe>`, or ask for a reflection.
 
 ### Upload
 
@@ -123,9 +124,9 @@ Re-run it with: `xcodebuild test -project Anky.xcodeproj -scheme Anky -destinati
 1. ~~Deploy backend~~ and ~~put monthly back on sale~~: done (§7).
 2. Optionally remove `anky.annual`'s 3-day free-trial offer so it can never surface.
 3. **Remaining device QA** (§8): sandbox purchase, restore, cancel, a real screen lock, a call during a take. Camera and background voice are verified.
-4. **Fix the AI provider keys on Railway** (see §8). This blocks the subscriber AI feature, which the paywall and listing promise.
+4. ~~AI provider keys~~: fixed via OpenRouter (§8). Optionally repair or remove the Bankr and Poiesis lanes.
 5. App Privacy answers in App Store Connect: see `APP_PRIVACY_ANSWERS.md`. That page can't be set through the API.
-6. Upload the listing text (`AppStoreMetadata/`, fastlane `listing` lane) and the screenshots in `AppStoreScreenshots/walking/en-US/`, attach build 70, then submit with `AppStoreMetadata/review_notes.txt`.
+6. ~~Listing, screenshots, review notes, build~~: version 2.3.0 is prepared in App Store Connect (six-locale text, new en-US 6.9" screenshots, review notes, latest build attached). Remaining: enter App Privacy answers, then press **Submit for Review**.
 7. ~~Terms liability cap~~: the founder kept the new cap. ~~Livestreaming~~: the founder deferred it (not now); §6 lists what it needs.
 8. Decide whether to trim `PrivacyInfo.xcprivacy` collected data types to match `APP_PRIVACY_ANSWERS.md` (UserID and PurchaseHistory only).
 9. ~~Release-archive wallet/crypto scan~~: clean for build 70.
