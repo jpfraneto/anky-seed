@@ -17,23 +17,15 @@ import type { Context, Hono } from "hono";
 import type { Database } from "bun:sqlite";
 import { levelStatusFor, setLevelPhase } from "../level/db";
 import type { LevelAuthenticator, LevelIdentity, LevelAuthError } from "../level/routes";
-import { accountEntitlement } from "../subscription/store";
 import {
-  paintingConfig,
-  paintingPackageDir,
-  staticPaintingPackageDir,
-  PAINTING_PACKAGE_FILES,
-  FREE_LEVEL_MAX,
-  STATIC_LEVEL_MAX,
+    paintingConfig,
+    paintingPackageDir,
+    staticPaintingPackageDir,
+    PAINTING_PACKAGE_FILES,
+    STATIC_LEVEL_MAX,
 } from "./config";
 import { levelStateAllowsPrepare, runPaintingPipeline } from "./pipeline";
 import { BodyTooLargeError, clientIp, rateLimitedResponse, readLimitedBody } from "../security";
-
-// The free/paid line. Levels above it require a subscription — whether the art
-// is shared-static (9..STATIC_LEVEL_MAX) or dynamically generated (beyond it).
-// Assets already delivered stay downloadable forever — a lapse or refund gates
-// the next painting, never a delivered one.
-export const FREE_GENERATION_MAX_LEVEL = FREE_LEVEL_MAX;
 
 export type PaintingRouteContext = {
   getDb: () => Database | null;
@@ -42,12 +34,6 @@ export type PaintingRouteContext = {
   openrouterApiKey: string;
   maxBodyBytes: number;
   now?: () => number;
-  // Entitlement resolver (server.ts wires the RevenueCat REST fallback in);
-  // defaults to the local subscription table. May be sync or async.
-  entitlementFor?: (
-    account: string,
-    nowMs: number,
-  ) => { entitled: boolean } | Promise<{ entitled: boolean }>;
   checkPrepareIp?: (
     ip: string,
   ) => { allowed: true; remaining: number } | { allowed: false; retryAfterSeconds: number };
@@ -190,22 +176,10 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
     }
 
     // Levels ≤ STATIC_LEVEL_MAX are shared static defaults: no generation,
-    // no entitlement, no caps, no text required. Flip the phase so the
+    // no subscription, no caps, no text required. Flip the phase so the
     // client's normal download flow picks the package up from the shared
     // defaults dir (seeded once by scripts/seed-default-paintings.ts).
     if (level <= STATIC_LEVEL_MAX) {
-      // Shared static art, but the paid line still applies: levels above the
-      // free tier are a subscription feature even though they no longer
-      // generate. Gate before any state flips so an unpaid account can never
-      // pull the curated paintings.
-      if (level > FREE_LEVEL_MAX) {
-        const entitlement = ctx.entitlementFor
-          ? await ctx.entitlementFor(account, nowMs)
-          : accountEntitlement(db, account, nowMs);
-        if (!entitlement.entitled) {
-          return errorJson(c, 402, "ENTITLEMENT_REQUIRED");
-        }
-      }
       const staticGate = levelStateAllowsPrepare(db, account, level);
       if (!staticGate.allowed) {
         return c.json({ status: levelStatusFor(db, account), phase: staticGate.phase });
@@ -227,17 +201,6 @@ export function registerPaintingRoutes(app: Hono, ctx: PaintingRouteContext): vo
           typeof meta.thresholdSeconds === "number" ? meta.thresholdSeconds : 0,
       });
       return c.json({ status: levelStatusFor(db, account), phase }, 202);
-    }
-
-    // The entitlement gate sits before any pipeline state so an unpaid
-    // account can never trigger spend — not even a pre-generation re-trigger.
-    if (level > FREE_GENERATION_MAX_LEVEL) {
-      const entitlement = ctx.entitlementFor
-        ? await ctx.entitlementFor(account, nowMs)
-        : accountEntitlement(db, account, nowMs);
-      if (!entitlement.entitled) {
-        return errorJson(c, 402, "ENTITLEMENT_REQUIRED");
-      }
     }
 
     const gate = levelStateAllowsPrepare(db, account, level);

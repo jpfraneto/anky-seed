@@ -434,24 +434,15 @@ describe("entitlement gate on POST /anky", () => {
     reflection: "# Mirror\n\nA subscribed writer is always met.",
   });
 
-  test("a free account reflects through the zero-cost inference lane", async () => {
+  test("a non-entitled account is refused with 402 and no provider call", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let providerCalls = 0;
     // No accountEntitlement injection: the default resolver reads the (empty)
     // subscription table; the REST fallback is unconfigured and answers null.
     const { app } = appWith(openLevelDb(":memory:"), {}, {
-      routeReflection: async ({ env }) => {
+      routeReflection: async () => {
         providerCalls += 1;
-        expect(env.openrouterModel).toBe("openrouter/free");
-        expect(env.providerOrder).toEqual(["openrouter"]);
-        return {
-          provider: "openrouter",
-          model: "free/example-model",
-          costUsd: 0,
-          chargeable: false,
-          title: "Free mirror",
-          reflection: "# Free mirror\n\nA zero-cost answer.",
-        };
+        return mirrorRouter();
       },
     });
     const res = await app.request("/anky", {
@@ -462,10 +453,9 @@ describe("entitlement gate on POST /anky", () => {
       },
       body,
     });
-    expect(res.status).toBe(200);
-    expect(res.headers.get("X-Anky-Inference-Access")).toBe("free");
-    expect(res.headers.get("X-Anky-Inference-Cost-USD")).toBe("0.00000000");
-    expect(providerCalls).toBe(1);
+    expect(res.status).toBe(402);
+    expect((await res.json()).error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(providerCalls).toBe(0);
   });
 
   test("an entitled account reflects", async () => {
@@ -510,9 +500,9 @@ describe("entitlement gate on POST /anky", () => {
   });
 });
 
-// --- entitlement gate on POST /level/prepare -----------------------------------
+// --- painting access on POST /level/prepare ------------------------------------
 
-describe("entitlement gate on POST /level/prepare", () => {
+describe("painting access on POST /level/prepare", () => {
   async function preparedApp(entitled: boolean) {
     const db = openLevelDb(":memory:");
     const account = await fixtureAccountId();
@@ -544,11 +534,10 @@ describe("entitlement gate on POST /level/prepare", () => {
     });
   }
 
-  test("level 9 — the first generated level — requires entitlement", async () => {
+  test("level 9 does not require entitlement", async () => {
     const app = await preparedApp(false);
     const res = await prepare(app, 9);
-    expect(res.status).toBe(402);
-    expect((await res.json()).error).toBe("ENTITLEMENT_REQUIRED");
+    expect(res.status).not.toBe(402);
   });
 
   test("static levels never ask for entitlement", async () => {
@@ -560,7 +549,7 @@ describe("entitlement gate on POST /level/prepare", () => {
     expect((await res.json()).error).toBe("DEFAULT_PACKAGE_MISSING");
   });
 
-  test("an entitled account passes the level-9 gate", async () => {
+  test("an entitled account follows the same level-9 path", async () => {
     const app = await preparedApp(true);
     const res = await prepare(app, 9);
     expect(res.status).not.toBe(402);

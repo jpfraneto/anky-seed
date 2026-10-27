@@ -100,11 +100,6 @@ export function paintingPackageDir(
 }
 
 /**
- * Two independent boundaries — do not conflate them:
- *
- * FREE_LEVEL_MAX — the free/paid line. Levels at or below it are free; above
- * it a subscription is required. This is a product decision and stays at 8.
- *
  * STATIC_LEVEL_MAX — the static/dynamic line. Levels at or below it are shared
  * static defaults: the same painting for every writer, seeded once, zero
  * per-user generation. Level 1 is bundled in the app; levels 2..STATIC_LEVEL_MAX
@@ -112,14 +107,12 @@ export function paintingPackageDir(
  * are `base:0x…`, so no collision) and are served to everyone. Seed them with
  * `scripts/seed-default-paintings.ts`.
  *
- * The two used to be equal (both 8), which coupled "free" to "static." They are
- * now split: levels 9..STATIC_LEVEL_MAX are a curated set — shared static art
- * (instant, no generation) but still PAID (entitlement enforced in the prepare
- * route). Per-writer dynamic generation only ever applied above STATIC_LEVEL_MAX;
- * with the arc curated through 15 it is effectively retired, and beyond the
- * curated set the client simply holds the last painting.
+ * Levels 9..STATIC_LEVEL_MAX are a curated continuation of the shared static
+ * arc. Painting progression is part of free Anky; Pro changes reflection
+ * quality only. Per-writer dynamic generation only applies above
+ * STATIC_LEVEL_MAX; with the arc curated through 15 it is effectively retired,
+ * and beyond the curated set the client simply holds the last painting.
  */
-export const FREE_LEVEL_MAX = 8;
 export const STATIC_LEVEL_MAX = 15;
 
 export const STATIC_DEFAULTS_ACCOUNT = "_defaults";

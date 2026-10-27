@@ -3,6 +3,10 @@ import {
   anky,
   ankyWorld,
   bankrProvider,
+  freeOpenRouterModel,
+  nudgeBankrModel,
+  nudgeInferenceEnv,
+  nudgeOpenRouterModel,
   openRouterProvider,
   poiesisProvider,
   reflectionModelConfigForTier,
@@ -123,10 +127,11 @@ describe("provider router", () => {
     expect(chunks).toEqual(["# living ", "thread\n\nbody"]);
   });
 
-  test("default provider order tries Bankr before OpenRouter before Poiesis", async () => {
+  test("supported reflections use measured low-latency Bankr before OpenRouter", async () => {
     const providers = ankyWorld().providerOrder;
 
     expect(providers).toEqual(["bankr", "openrouter", "poiesis", "default"]);
+    expect(anky.bankrLlmModel).toBe("claude-sonnet-4.5");
   });
 
   test("falls back from exhausted OpenRouter quota to Bankr", async () => {
@@ -210,9 +215,60 @@ describe("provider router", () => {
     expect(calls[2].body.provider).toBeUndefined();
   });
 
+  test("never mixes a second provider into a stream that already emitted chunks", async () => {
+    const attempted: string[] = [];
+    const delivered: string[] = [];
+
+    await expect(
+      routeReflection({
+        env: ankyWorld({ requireZdr: false }),
+        prompt: "transient prompt",
+        providers: [
+          {
+            name: "first",
+            privacy: {
+              zeroDataRetentionConfirmed: true,
+              contentLoggingDisabled: true,
+              trainingDisabled: true,
+            },
+            reflect: async ({ onChunk }) => {
+              attempted.push("first");
+              await onChunk?.({ chunk: "partial", generatedCharacters: 7 });
+              throw new Error("PROVIDER_TIMEOUT");
+            },
+          },
+          {
+            name: "second",
+            privacy: {
+              zeroDataRetentionConfirmed: true,
+              contentLoggingDisabled: true,
+              trainingDisabled: true,
+            },
+            reflect: async () => {
+              attempted.push("second");
+              return {
+                provider: "second",
+                chargeable: true,
+                title: "Second answer",
+                reflection: "# Second answer\n\nThis must not be appended.",
+              };
+            },
+          },
+        ],
+        onChunk: async ({ chunk }) => {
+          delivered.push(chunk);
+        },
+      }),
+    ).rejects.toThrow("PROVIDER_STREAM_INTERRUPTED:first:PROVIDER_TIMEOUT");
+
+    expect(attempted).toEqual(["first"]);
+    expect(delivered).toEqual(["partial"]);
+  });
+
   test("Bankr can stream through the OpenAI-compatible gateway", async () => {
     let body: any;
     const chunks: string[] = [];
+    let firstChunkArrivedBeforeCompletion = false;
     const result = await bankrProvider.reflect({
       env: ankyWorld({
         bankrLlmGatewayUrl: "https://bankr.example",
@@ -224,16 +280,25 @@ describe("provider router", () => {
       prompt: "transient prompt",
       fetchImpl: async (_url, init) => {
         body = JSON.parse(String(init.body));
-        return new Response(
-          [
-            'data: {"choices":[{"delta":{"content":"one "}}]}',
-            "",
-            'data: {"choices":[{"delta":{"content":"sentence"}}]}',
-            "",
-            "data: [DONE]",
-            "",
-          ].join("\n"),
-        );
+        const encoder = new TextEncoder();
+        return new Response(new ReadableStream({
+          async start(controller) {
+            // Bankr uses CRLF-delimited SSE. The first token must be parsed
+            // before the upstream response finishes, not buffered until EOF.
+            controller.enqueue(encoder.encode(
+              'data: {"choices":[{"delta":{"content":"one "}}]}\r\n\r\n',
+            ));
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            firstChunkArrivedBeforeCompletion = chunks.length === 1;
+            controller.enqueue(encoder.encode([
+              'data: {"choices":[{"delta":{"content":"sentence"}}]}',
+              "",
+              "data: [DONE]",
+              "",
+            ].join("\r\n")));
+            controller.close();
+          },
+        }));
       },
       onChunk: async ({ chunk }) => {
         chunks.push(chunk);
@@ -246,6 +311,7 @@ describe("provider router", () => {
     expect(result.provider).toBe("bankr");
     expect(result.reflection).toBe("one sentence");
     expect(chunks).toEqual(["one ", "sentence"]);
+    expect(firstChunkArrivedBeforeCompletion).toBe(true);
   });
 
   test("Poiesis normalizes a base URL to chat completions", async () => {
@@ -278,5 +344,66 @@ describe("provider router", () => {
 
     expect(result.provider).toBe("default");
     expect(result.chargeable).toBe(false);
+  });
+
+  // There is no free lane any more (AI is subscriber-only). Subscriber nudges
+  // keep the fast lane: Bankr/Haiku leads, paid OpenRouter/Haiku is overflow.
+  test("a subscriber nudge reaches Bankr before the OpenRouter overflow", async () => {
+    const env = nudgeInferenceEnv(
+      ankyWorld({
+        openrouterApiKey: "key",
+        bankrLlmGatewayUrl: "https://bankr.example",
+        bankrLlmGatewayApiKey: "key",
+        bankrLlmModel: "bankr-reflection",
+        bankrZdrConfirmed: true,
+      }),
+    );
+    const attempted: string[] = [];
+
+    const result = await routeReflection({
+      env,
+      prompt: "transient prompt",
+      fetchImpl: async (url) => {
+        attempted.push(url);
+        return Response.json({
+          choices: [{ message: { content: "# still here\n\nthe writing was met." } }],
+        });
+      },
+    });
+
+    expect(env.providerOrder).toEqual(["bankr", "openrouter"]);
+    expect(env.bankrLlmModel).toBe(nudgeBankrModel);
+    expect(env.openrouterModel).toBe(nudgeOpenRouterModel);
+    expect(env.openrouterModel).not.toBe(freeOpenRouterModel);
+    expect(attempted[0]).toContain("bankr.example");
+    expect(attempted).toHaveLength(1);
+    expect(result.provider).toBe("bankr");
+    expect(result.reflection).toContain("the writing was met.");
+    // Bankr does not report cost; the receipt must not invent a zero.
+    expect(result.chargeable).toBe(true);
+    expect(result.costUsd).toBeUndefined();
+  });
+
+  // The canned apology is not a reflection. It must never stand in for one.
+  test("the nudge lane never falls through to the canned default", async () => {
+    const env = nudgeInferenceEnv(ankyWorld({ openrouterApiKey: "key" }));
+
+    expect(env.providerOrder).not.toContain("default");
+    await expect(
+      routeReflection({
+        env,
+        prompt: "transient prompt",
+        fetchImpl: async () =>
+          Response.json({ error: { message: "rate-limited" } }, { status: 429 }),
+      }),
+    ).rejects.toThrow(/PROVIDERS_FAILED/);
+  });
+
+  test("a nudge never reaches OpenRouter's shared free model", () => {
+    const env = nudgeInferenceEnv(ankyWorld());
+
+    expect(env.openrouterModel).toBe("anthropic/claude-haiku-4.5");
+    expect(env.reflectionModels.full.model).toBe("anthropic/claude-haiku-4.5");
+    expect(env.openrouterModel).not.toBe("openrouter/free");
   });
 });

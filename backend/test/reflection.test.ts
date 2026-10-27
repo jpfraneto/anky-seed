@@ -6,6 +6,7 @@ import {
   ageAttunementPrompt,
   fullPromptVariantForAnkyHash,
   parseDotAnky,
+  PROMPT_AXIS,
   PROMPT_DIP,
   PROMPT_FULL,
   PROMPT_FULL_ATTENTIVE,
@@ -139,6 +140,8 @@ describe("dotAnky reflection helpers", () => {
     );
     expect(prompt).toContain("Begin by simply confirming that you read it.");
     expect(prompt).toContain("End with a short three-line reflection");
+    expect(prompt).toContain("Reply with pure markdown.");
+    expect(prompt).toContain("maximum four-word title as a level-one heading");
     expect(prompt).not.toContain("[INSERT ANKY]");
   });
 
@@ -161,6 +164,18 @@ describe("dotAnky reflection helpers", () => {
     );
     expect(buildReflectPrompt("one dip", "dip", "attentive")).toBe(
       `${PROMPT_DIP}\n\n---\n\none dip`,
+    );
+  });
+
+  test("axis surface preserves the duration-derived treatment for short sessions", () => {
+    expect(buildReflectPrompt("one line", "sentence", "control", "axis")).toBe(
+      `${PROMPT_SENTENCE}\n\n---\n\none line`,
+    );
+    expect(buildReflectPrompt("one dip", "dip", "control", "axis")).toBe(
+      `${PROMPT_DIP}\n\n---\n\none dip`,
+    );
+    expect(buildReflectPrompt("the full thread", "full", "control", "axis")).toBe(
+      `${PROMPT_AXIS}\n\n---\n\nthe full thread`,
     );
   });
 });

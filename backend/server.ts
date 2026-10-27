@@ -67,6 +67,9 @@ import { registerPaintingRoutes } from "./painting/routes";
 import { registerDebugRoutes, type DebugRouteDeps } from "./debug/routes";
 import { registerEventRoutes } from "./events/routes";
 import { registerSubscriptionRoutes } from "./subscription/routes";
+import { registerAccessRoutes } from "./access/routes";
+import { purgeLiveForAccount, registerLiveRoutes } from "./live/routes";
+import type { LiveFetch, LiveRecordingMode } from "./live/cloudflare";
 import { registerAccountRoutes } from "./account/routes";
 import type { AccountEntitlement } from "./subscription/store";
 import {
@@ -119,7 +122,7 @@ export const clientCreationIndex = {
   sign: "Sign AnkyMirrorRequest with a Base EOA or embedded Ethereum wallet.",
   post: "Send exact bytes to POST /anky as text/plain; charset=utf-8.",
   intelligence:
-    "Every writer receives a reflection. Free accounts use zero-cost OpenRouter inference; supported accounts use the configured paid route.",
+    "AI is subscriber-only: reflections, nudges, and conversation require the `pro` entitlement (402 ENTITLEMENT_REQUIRED otherwise). Expression itself never needs AI.",
   keep: "Store the .anky and reflection locally. The server stores neither.",
 } as const;
 
@@ -212,6 +215,7 @@ const rateLimitConfig = {
   prepareIpPerMinute: 20,
   prepareAccountPerTenMinutes: 4,
   prepareAccountDaily: 6,
+  liveReportIpPerTenMinutes: 5,
 } as const;
 
 // -----------------------------------------------------------------------------
@@ -223,7 +227,15 @@ const rateLimitConfig = {
 // production. Tests may pass an override object, but the real server reads this.
 
 const productionOpenRouterModel = "anthropic/claude-sonnet-4.6";
+const productionBankrModel = "claude-sonnet-4.5";
+// OpenRouter's shared zero-cost router. No request is routed to it any more;
+// the constant remains only so a stray zero-cost receipt is not billed.
 export const freeOpenRouterModel = "openrouter/free";
+export const nudgeOpenRouterModel = "anthropic/claude-haiku-4.5";
+// Nudges favor time-to-first-text while keeping a Claude voice. A production
+// probe on the full fixture reached its first text in ~1.7s (versus ~7-10s
+// for Sonnet) and then emitted real incremental chunks.
+export const nudgeBankrModel = "claude-haiku-4.5";
 
 export const defaultReflectionModels = {
   sentence: {
@@ -246,17 +258,18 @@ export const anky = {
   maxBodyBytes: 1_048_576,
   requestTimeToleranceMs: 300_000,
   dataDir: "/data",
-  // Bankr LLM gateway is the primary lane: the inference of the company is
-  // paid for by the trading fees of $anky, routed through Bankr. OpenRouter is
-  // the overflow/fallback when Bankr is unconfigured, unconfirmed, or exhausted.
+  // Bankr remains the primary inference rail. Sonnet 4.5 is the supported
+  // reflection model because its measured Bankr stream starts in 2.4-5.4s;
+  // Bankr's Sonnet 4.6 route took 29-37s to emit visible content. OpenRouter is
+  // retained only as a pre-stream fallback.
   providerOrder: ["bankr", "openrouter", "poiesis", "default"] as const,
+  bankrLlmModel: productionBankrModel,
   openrouterModel: productionOpenRouterModel,
   openrouterTimeoutMs: 45_000,
   reflectionModels: defaultReflectionModels,
   privacyRequiresZdr: true,
-  // RevenueCat entitlement `pro` selects the supported inference lane and
-  // unlocks personalized paintings beyond static level 8. Free writers still
-  // receive reflections and nudges through OpenRouter's zero-cost router.
+  // RevenueCat entitlement `pro` is required for every AI request
+  // (reflection, nudge, conversation). Without it: 402 ENTITLEMENT_REQUIRED.
   revenueCatEntitlementId: "pro",
   freeGenerationMaxLevel: 8,
 } as const;
@@ -269,6 +282,7 @@ const privateKeys = {
   adminKey: process.env.ANKY_ADMIN_KEY ?? "",
   revenueCatSecretKey: process.env.REVENUECAT_SECRET_KEY ?? "",
   revenueCatWebhookAuth: process.env.REVENUECAT_WEBHOOK_AUTH ?? "",
+  cloudflareStreamApiToken: process.env.CLOUDFLARE_STREAM_API_TOKEN ?? "",
 } as const;
 
 // -----------------------------------------------------------------------------
@@ -297,6 +311,9 @@ export type AnkyRouteDeps = {
   revenueCatFetch?: RevenueCatFetch;
   progress?: AnkyProgressSink;
   reflectionChunk?: AnkyReflectionChunkSink;
+  /// Test seam for the SSE keep-alive cadence. Production stays short enough
+  /// to remain comfortably inside Railway's observed ~10 second idle cutoff.
+  heartbeatIntervalMs?: number;
   consumeDailyQuota?: (
     accountId: string,
     route: "anky",
@@ -338,6 +355,8 @@ export function createApp(
     diagnostics?: DiagnosticsSink;
     levelDb?: Database;
     debugDeps?: DebugRouteDeps;
+    // Test seam: every Cloudflare Stream call goes through this fetch.
+    liveFetch?: LiveFetch;
   } = {},
 ) {
   const env = input.env ?? ankyWorld();
@@ -369,6 +388,10 @@ export function createApp(
   );
   const prepareAccountBurstLimiter = new MemoryWindowRateLimiter(
     rateLimitConfig.prepareAccountPerTenMinutes,
+    10 * 60_000,
+  );
+  const liveReportIpLimiter = new MemoryWindowRateLimiter(
+    rateLimitConfig.liveReportIpPerTenMinutes,
     10 * 60_000,
   );
 
@@ -405,6 +428,9 @@ export function createApp(
   const defaultAccountEntitlement = (
     accountId: string,
   ): Promise<AccountEntitlement> => fallbackEntitlement(accountId, Date.now());
+  // The one entitlement question every gate asks (AI, live, access status).
+  const resolveEntitlement = async (accountId: string): Promise<AccountEntitlement> =>
+    (input.ankyRouteDeps?.accountEntitlement ?? defaultAccountEntitlement)(accountId);
 
   app.post("/anky", (c) => {
     const ipLimit = expensiveIpLimiter.check(`anky:${clientIp(c)}`);
@@ -462,10 +488,10 @@ export function createApp(
         return c.json({ error: { code: "INVALID_CONVERSATION", message: "The conversation request is not valid." } }, 400);
       }
 
-      const entitlement = await (
-        input.ankyRouteDeps?.accountEntitlement ?? defaultAccountEntitlement
-      )(identity.accountId);
-      const inferenceAccess: InferenceAccess = entitlement.entitled ? "supported" : "free";
+      // AI is subscriber-only: refuse before the quota, prompt, or provider.
+      const entitlement = await resolveEntitlement(identity.accountId);
+      if (!entitlement.entitled) return errorJson(c, "ENTITLEMENT_REQUIRED");
+      const inferenceAccess: InferenceAccess = "supported";
 
       const db = getLevelDb();
       if (db) {
@@ -487,18 +513,14 @@ export function createApp(
       };
       if (input.ankyRouteDeps?.conversationReply) {
         message = await input.ankyRouteDeps.conversationReply({
-          env: inferenceEnvForAccess(env, inferenceAccess),
+          env,
           prompt,
           fetchImpl: input.ankyRouteDeps.providerFetch,
         });
-        receipt = {
-          provider: "test",
-          model: inferenceAccess === "free" ? freeOpenRouterModel : env.openrouterModel,
-          ...(inferenceAccess === "free" ? { costUsd: 0 } : {}),
-        };
+        receipt = { provider: "test", model: env.openrouterModel };
       } else {
         const routed = await routeReflection({
-          env: inferenceEnvForAccess(env, inferenceAccess),
+          env,
           prompt,
           tier: "full",
           fetchImpl: input.ankyRouteDeps?.providerFetch,
@@ -508,11 +530,7 @@ export function createApp(
         receipt = {
           provider: routed.provider,
           ...(routed.model ? { model: routed.model } : {}),
-          ...(typeof routed.costUsd === "number"
-            ? { costUsd: routed.costUsd }
-            : inferenceAccess === "free"
-              ? { costUsd: 0 }
-              : {}),
+          ...(typeof routed.costUsd === "number" ? { costUsd: routed.costUsd } : {}),
         };
       }
       const answer = message.trim();
@@ -544,7 +562,6 @@ export function createApp(
     dataDir: env.dataDir,
     openrouterApiKey: env.openrouterApiKey,
     maxBodyBytes: env.maxBodyBytes,
-    entitlementFor: fallbackEntitlement,
     checkPrepareIp: (ip) => prepareIpLimiter.check(`prepare:${ip}`),
     checkPrepareBurst: (account) => prepareAccountBurstLimiter.check(`prepare:${account}`),
     consumePrepareDailyQuota: (account, nowMs) => {
@@ -600,10 +617,35 @@ export function createApp(
     revenueCatFetch: input.ankyRouteDeps?.revenueCatFetch,
     checkWebhookIp: (ip) => publicIpLimiter.check(`webhook:${ip}`),
   });
+  const cloudflareStream = {
+    accountId: env.cloudflareStreamAccountId,
+    apiToken: env.cloudflareStreamApiToken,
+    customerCode: env.cloudflareStreamCustomerCode,
+    recordingMode: env.cloudflareStreamRecordingMode,
+  };
+  registerAccessRoutes(app, {
+    getDb: getLevelDb,
+    authenticate,
+    maxBodyBytes: env.maxBodyBytes,
+    accountEntitlement: resolveEntitlement,
+  });
+  registerLiveRoutes(app, {
+    getDb: getLevelDb,
+    authenticate,
+    maxBodyBytes: env.maxBodyBytes,
+    cloudflare: cloudflareStream,
+    adminKey: env.adminKey,
+    accountEntitlement: resolveEntitlement,
+    checkPublicIp: (key) => publicIpLimiter.check(key),
+    checkReportIp: (key) => liveReportIpLimiter.check(key),
+    fetchImpl: input.liveFetch,
+  });
   registerAccountRoutes(app, {
     getDb: getLevelDb,
     authenticate,
     dataDir: env.dataDir,
+    purgeLive: (db, accountId) =>
+      purgeLiveForAccount(db, accountId, cloudflareStream, input.liveFetch),
   });
 
   return app;
@@ -745,7 +787,7 @@ const errorMessages: Record<ErrorCode, string> = {
   INVALID_SIGNATURE: "The request signature could not be verified.",
   BODY_TOO_LARGE: "This .anky file is too large for the mirror.",
   ENTITLEMENT_REQUIRED:
-    "Reflections open with an Anky subscription. Writing is still free, always.",
+    "Anky's AI opens with an Anky subscription. Everything you've expressed is still yours.",
   DUPLICATE_IN_PROGRESS: "This anky is already being reflected.",
   DUPLICATE_SUCCEEDED:
     "This anky has already been reflected for this Anky address.",
@@ -774,8 +816,6 @@ const errorStatuses: Record<
   RATE_LIMITED: 429,
   MIRROR_FAILED: 500,
 };
-
-const nudgeOpenRouterModel = "deepseek/deepseek-v4-flash";
 
 export function errorJson(c: Context, code: ErrorCode) {
   return c.json(
@@ -816,6 +856,12 @@ export type AnkyWorld = {
   requestTimeToleranceMs: number;
   dataDir: string;
   adminKey: string;
+  // Livestreaming is available only when all three are set.
+  cloudflareStreamAccountId: string;
+  cloudflareStreamApiToken: string;
+  cloudflareStreamCustomerCode: string;
+  // "off" (default, nothing recorded) or "automatic". See backend/README.md.
+  cloudflareStreamRecordingMode: LiveRecordingMode;
 };
 
 export type Env = AnkyWorld;
@@ -844,7 +890,7 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     providerOrder: [...anky.providerOrder],
     bankrLlmGatewayUrl: process.env.BANKR_LLM_GATEWAY_URL ?? "",
     bankrLlmGatewayApiKey: privateKeys.bankrLlmGatewayApiKey,
-    bankrLlmModel: process.env.BANKR_LLM_MODEL ?? anky.openrouterModel,
+    bankrLlmModel: process.env.BANKR_LLM_MODEL ?? anky.bankrLlmModel,
     bankrZdrConfirmed: booleanEnv(process.env.BANKR_ZDR_CONFIRMED),
     poiesisLlmUrl: process.env.POIESIS_LLM_URL ?? "",
     poiesisLlmApiKey: privateKeys.poiesisLlmApiKey,
@@ -856,6 +902,11 @@ export function ankyWorld(overrides: Partial<AnkyWorld> = {}): AnkyWorld {
     requestTimeToleranceMs: anky.requestTimeToleranceMs,
     dataDir: process.env.ANKY_DATA_DIR ?? anky.dataDir,
     adminKey: privateKeys.adminKey,
+    cloudflareStreamAccountId: process.env.CLOUDFLARE_STREAM_ACCOUNT_ID ?? "",
+    cloudflareStreamApiToken: privateKeys.cloudflareStreamApiToken,
+    cloudflareStreamCustomerCode: process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE ?? "",
+    cloudflareStreamRecordingMode:
+      process.env.CLOUDFLARE_STREAM_RECORDING_MODE === "automatic" ? "automatic" : "off",
     ...overrides,
   };
 }
@@ -1266,6 +1317,12 @@ export type IdempotencyBeginResult =
   | { acquired: true; record: IdempotencyRecord }
   | { acquired: false; record: IdempotencyRecord };
 
+// A process can disappear after reserving an artifact but before its finally
+// block marks the record failed. Never let that abandoned row strand a local
+// writing forever. This is comfortably longer than the provider timeout, so
+// it does not permit two ordinary in-flight reflections to overlap.
+const IDEMPOTENCY_PROCESSING_STALE_MS = 5 * 60 * 1000;
+
 export interface IdempotencyStore {
   begin(input: {
     key: string;
@@ -1304,7 +1361,10 @@ export class SqliteIdempotencyStore implements IdempotencyStore {
   }): Promise<IdempotencyBeginResult> {
     const now = input.now ?? Date.now();
     const existing = this.get(input.key);
-    if (existing?.status === "processing" || existing?.status === "succeeded") {
+    const processingIsLive =
+      existing?.status === "processing" &&
+      now - existing.updatedAt < IDEMPOTENCY_PROCESSING_STALE_MS;
+    if (processingIsLive || existing?.status === "succeeded") {
       return { acquired: false, record: existing };
     }
     const record: IdempotencyRecord = {
@@ -1334,13 +1394,38 @@ export class SqliteIdempotencyStore implements IdempotencyStore {
     ankyHash: string;
     now?: number;
   }): Promise<IdempotencyBeginResult> {
+    const now = input.now ?? Date.now();
     const existing = this.get(input.key);
     if (existing?.status !== "succeeded") {
       return existing
         ? { acquired: false, record: existing }
         : this.begin(input);
     }
-    return this.begin(input);
+
+    // Do not delegate this to begin(): begin intentionally rejects a
+    // succeeded row. A client that lost the one-shot SSE response must be
+    // allowed to regenerate it because the privacy contract keeps no server
+    // copy to fetch later.
+    const record: IdempotencyRecord = {
+      key: input.key,
+      status: "processing",
+      addressHash: input.addressHash,
+      ankyHash: input.ankyHash,
+      updatedAt: now,
+    };
+    this.db
+      .prepare(
+        `INSERT INTO request_idempotency
+           (key, account, intent, artifact_hash, status, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(key) DO UPDATE SET
+           account = excluded.account,
+           artifact_hash = excluded.artifact_hash,
+           status = excluded.status,
+           updated_at_ms = excluded.updated_at_ms`,
+      )
+      .run(input.key, input.accountId ?? input.addressHash, "mirror", input.ankyHash, "processing", now);
+    return { acquired: true, record };
   }
 
   async markSucceeded(key: string, now = Date.now()): Promise<void> {
@@ -1399,7 +1484,10 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
   }): Promise<IdempotencyBeginResult> {
     const now = input.now ?? Date.now();
     const existing = this.records.get(input.key);
-    if (existing?.status === "processing" || existing?.status === "succeeded") {
+    const processingIsLive =
+      existing?.status === "processing" &&
+      now - existing.updatedAt < IDEMPOTENCY_PROCESSING_STALE_MS;
+    if (processingIsLive || existing?.status === "succeeded") {
       return { acquired: false, record: existing };
     }
 
@@ -1497,25 +1585,25 @@ export type ReflectionProviderResult = MirrorResponse & {
   completionTokens?: number;
 };
 
-export type InferenceAccess = "free" | "supported";
+// There is no free inference lane any more: every AI request is made for a
+// verified `pro` subscriber (402 ENTITLEMENT_REQUIRED otherwise).
+export type InferenceAccess = "supported";
 
-export function inferenceEnvForAccess(
-  env: Env,
-  access: InferenceAccess,
-): Env {
-  if (access === "supported") return env;
+/** Subscriber nudges favor time-to-first-text: Bankr/Haiku first, paid
+ * OpenRouter/Haiku as outage overflow. The canned default response is never
+ * a fallback for a nudge: a sentence that did not come from a model must not
+ * imitate Anky. */
+export function nudgeInferenceEnv(env: Env): Env {
   return {
     ...env,
-    openrouterModel: freeOpenRouterModel,
+    bankrLlmModel: nudgeBankrModel,
+    openrouterModel: nudgeOpenRouterModel,
     reflectionModels: {
-      sentence: { model: freeOpenRouterModel, maxTokens: 60 },
-      dip: { model: freeOpenRouterModel, maxTokens: 250 },
-      full: { model: freeOpenRouterModel },
+      sentence: { model: nudgeOpenRouterModel, maxTokens: 60 },
+      dip: { model: nudgeOpenRouterModel, maxTokens: 250 },
+      full: { model: nudgeOpenRouterModel },
     },
-    // A free answer must actually be free AI. Paid company gateways and the
-    // canned default response are never fallbacks for this lane; if no private
-    // zero-cost model is available, fail honestly instead of imitating Anky.
-    providerOrder: ["openrouter"],
+    providerOrder: ["bankr", "openrouter"],
   };
 }
 
@@ -1548,16 +1636,33 @@ export async function routeReflection(input: {
       failures.push(`${provider.name}:ZDR_NOT_CONFIRMED`);
       continue;
     }
+    let emittedChunks = false;
+    const attemptChunk: AnkyReflectionChunkSink | undefined = input.onChunk
+      ? async (event) => {
+          emittedChunks = true;
+          await input.onChunk?.(event);
+        }
+      : undefined;
     try {
       return await provider.reflect({
         env: input.env,
         prompt: input.prompt,
         tier,
         fetchImpl: input.fetchImpl,
-        onChunk: input.onChunk,
+        onChunk: attemptChunk,
       });
     } catch (error) {
-      failures.push(`${provider.name}:${safeProviderFailure(error)}`);
+      const failure = safeProviderFailure(error);
+      failures.push(`${provider.name}:${failure}`);
+      // Once bytes from one model have reached the client, falling through to
+      // another provider would append a second, unrelated answer to the same
+      // SSE reflection. Fail this attempt honestly; the signed retry path can
+      // start a clean generation instead.
+      if (emittedChunks) {
+        throw new Error(
+          `PROVIDER_STREAM_INTERRUPTED:${provider.name}:${failure}`,
+        );
+      }
     }
   }
 
@@ -1853,7 +1958,10 @@ async function readOpenAiCompatibleStream(input: {
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    const blocks = buffer.split(/\n\n/);
+    // OpenAI-compatible gateways are allowed to delimit SSE events with CRLF.
+    // Splitting only on LF made Bankr's whole response look like one unfinished
+    // block, so every token reached the iOS client only when generation ended.
+    const blocks = buffer.split(/\r?\n\r?\n/);
     buffer = blocks.pop() ?? "";
 
     for (const block of blocks) {
@@ -2136,47 +2244,78 @@ function providerWithPrivacy(
 // subscription entitlement, reconstruct only in memory, ask a private
 // provider, return the reflection, and forget.
 
-export function handleAnkyReflectionStream(
+// The SSE response is held back until the subscription gate has answered, so
+// a non-subscriber receives a real HTTP 402 (not a 200 stream carrying an
+// error event) and no stream is opened for them. Events emitted before the
+// gate (stream_open, request/identity/protocol updates) are buffered and
+// replayed in order once the stream opens. Every other early error keeps its
+// historical shape: an SSE `error` event inside a 200 stream.
+export async function handleAnkyReflectionStream(
   c: Context,
   env: Env,
   logger: SafeLogger,
   deps: AnkyRouteDeps = {},
-): Response {
+): Promise<Response> {
   const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const pending: string[] = [];
+  let closed = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const enqueue = (value: string) => {
+    if (closed) return;
+    if (!controller) {
+      pending.push(value);
+      return;
+    }
+    try {
+      controller.enqueue(encoder.encode(value));
+    } catch {
+      closed = true;
+      if (heartbeat) clearInterval(heartbeat);
+    }
+  };
+  const send = (event: string, data: unknown) => {
+    enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+  const reflectionChunks = createReflectionChunkCoalescer((event) => {
+    send("reflection_chunk", event);
+  });
+
+  let openGate: () => void = () => {};
+  const gate = new Promise<"open">((resolve) => {
+    openGate = () => resolve("open");
+  });
+
+  send("update", {
+    stage: "stream_open",
+    message: "Anky opened a live reflection stream.",
+  });
+  const work: Promise<Response | null> = handleAnkyReflection(c, env, logger, {
+    ...deps,
+    progress: (event) => {
+      send("update", event);
+      if (event.stage === "entitlement_checked") openGate();
+    },
+    reflectionChunk: (event) => reflectionChunks.push(event),
+  }).catch(() => null);
+
+  const first = await Promise.race([gate, work]);
+  if (first !== "open" && first && first.status === 402) {
+    closed = true;
+    return first;
+  }
 
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let closed = false;
-      let heartbeat: ReturnType<typeof setInterval> | undefined;
-      const enqueue = (value: string) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(value));
-        } catch {
-          closed = true;
-          if (heartbeat) clearInterval(heartbeat);
-        }
-      };
-      const send = (event: string, data: unknown) => {
-        enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-      };
-      const reflectionChunks = createReflectionChunkCoalescer((event) => {
-        send("reflection_chunk", event);
-      });
+    async start(streamController) {
+      controller = streamController;
+      for (const value of pending.splice(0)) enqueue(value);
       heartbeat = setInterval(() => {
         enqueue(": keep-alive\n\n");
-      }, 15_000);
+      }, deps.heartbeatIntervalMs ?? 3_000);
 
       try {
-        send("update", {
-          stage: "stream_open",
-          message: "Anky opened a live reflection stream.",
-        });
-        const response = await handleAnkyReflection(c, env, logger, {
-          ...deps,
-          progress: (event) => send("update", event),
-          reflectionChunk: (event) => reflectionChunks.push(event),
-        });
+        const response = await work;
+        if (!response) throw new Error("MIRROR_FAILED");
         const body = await response.text();
         const headers = responseHeadersObject(response.headers);
         reflectionChunks.flush();
@@ -2210,7 +2349,7 @@ export function handleAnkyReflectionStream(
         clearInterval(heartbeat);
         closed = true;
         try {
-          controller.close();
+          streamController.close();
         } catch {
           // The client may have already cancelled the stream.
         }
@@ -2292,7 +2431,7 @@ export async function handleAnkyReflection(
   let appVersion: string | undefined;
   let durationMs: number | undefined;
   let entitlementResult: string | undefined;
-  let inferenceAccess: InferenceAccess = "free";
+  const inferenceAccess: InferenceAccess = "supported";
   let modelProvider = "none";
   let modelFailure: string | undefined;
   let idempotencyKey: string | undefined;
@@ -2419,6 +2558,23 @@ export async function handleAnkyReflection(
       durationMs,
     });
 
+    // AI is subscriber-only, and the server decides. Refuse before any
+    // duplicate lock, prompt, or provider call. A retry of a reflection that
+    // already succeeded is refused too once the subscription has lapsed.
+    const entitlement: AccountEntitlement = deps.accountEntitlement
+      ? await deps.accountEntitlement(accountId)
+      : { entitled: false };
+    if (!entitlement.entitled) {
+      statusCode = 402;
+      errorCode = "ENTITLEMENT_REQUIRED";
+      entitlementResult = `refused_${requestIntent}`;
+      return errorJson(c, "ENTITLEMENT_REQUIRED");
+    }
+    await deps.progress?.({
+      stage: "entitlement_checked",
+      message: "Anky confirmed the subscription and is opening inference.",
+    });
+
     billingHash =
       requestIntent === "nudge"
         ? await sha256Hex(`nudge:${ankyHash}:${requestTime}`)
@@ -2456,24 +2612,11 @@ export async function handleAnkyReflection(
     });
 
     try {
-      // Subscription is the only billing question. A retry of an already
-      // succeeded reflection is honored even if entitlement changed since.
-      const entitlement: AccountEntitlement = deps.accountEntitlement
-        ? await deps.accountEntitlement(accountId)
-        : { entitled: false };
-      inferenceAccess = entitlement.entitled ? "supported" : "free";
       entitlementResult = retryingSucceededReflection
         ? `${inferenceAccess}_duplicate_succeeded_retry`
         : requestIntent === "nudge"
           ? `${inferenceAccess}_nudge`
           : `${inferenceAccess}_reflection`;
-      await deps.progress?.({
-        stage: "entitlement_checked",
-        message:
-          inferenceAccess === "free"
-            ? "Anky is opening the zero-cost inference lane."
-            : "Anky is opening the supported inference lane.",
-      });
 
       const writing = reconstructProtocolText(validation.parsed);
       if (requestIntent === "reflection" && reflectionTier === "full") {
@@ -2507,12 +2650,7 @@ export async function handleAnkyReflection(
           message: "Anky is asking the reflection provider.",
         });
         mirror = await reflectionRouter({
-          env: inferenceEnvForAccess(
-            requestIntent === "nudge"
-              ? { ...env, openrouterModel: nudgeOpenRouterModel }
-              : env,
-            inferenceAccess,
-          ),
+          env: requestIntent === "nudge" ? nudgeInferenceEnv(env) : env,
           prompt,
           tier: requestIntent === "reflection" ? reflectionTier : undefined,
           fetchImpl: deps.providerFetch,
@@ -2541,11 +2679,11 @@ export async function handleAnkyReflection(
         ...(mirror.model
           ? { "X-Anky-Inference-Model": safeInferenceHeader(mirror.model) }
           : {}),
+        // The receipt states the real cost or says nothing: a gateway that
+        // does not report cost gets no line rather than an invented zero.
         ...(typeof mirror.costUsd === "number"
           ? { "X-Anky-Inference-Cost-USD": mirror.costUsd.toFixed(8) }
-          : inferenceAccess === "free"
-            ? { "X-Anky-Inference-Cost-USD": "0.00000000" }
-            : {}),
+          : {}),
         ...(requestIntent === "reflection"
           ? { "X-Anky-Tags": JSON.stringify(mirror.tags ?? []) }
           : {}),

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { Buffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -15,6 +16,7 @@ import {
   createSafeLogger,
   ankyWorld,
   buildConversationPrompt,
+  SqliteIdempotencyStore,
   normalizeMetadataValue,
   parseConversationRequest,
 } from "../server";
@@ -46,6 +48,43 @@ const smallSteadyThreadReflection = async () => ({
 beforeEach(() => {
   clearReplayMemoryForTests();
   clearInFlightForTests();
+});
+
+describe("persistent reflection idempotency", () => {
+  test("a succeeded SQLite reflection can be regenerated after its SSE response was lost", async () => {
+    const db = new Database(":memory:");
+    db.exec(`
+      CREATE TABLE request_idempotency (
+        key TEXT PRIMARY KEY,
+        account TEXT NOT NULL,
+        intent TEXT NOT NULL,
+        artifact_hash TEXT NOT NULL,
+        status TEXT NOT NULL,
+        updated_at_ms INTEGER NOT NULL
+      )
+    `);
+    const store = new SqliteIdempotencyStore(db);
+    const input = {
+      key: "account:artifact",
+      accountId: "0x1111111111111111111111111111111111111111",
+      addressHash: "safe-address-hash",
+      ankyHash: "a".repeat(64),
+      now: 1_000,
+    };
+
+    expect((await store.begin(input)).acquired).toBe(true);
+    await store.markSucceeded(input.key, 2_000);
+    expect((await store.begin({ ...input, now: 3_000 })).acquired).toBe(false);
+
+    const retry = await store.beginSucceededRetry({ ...input, now: 4_000 });
+    expect(retry.acquired).toBe(true);
+    expect(retry.record.status).toBe("processing");
+
+    const stranded = { ...input, key: "account:stranded-artifact", now: 10_000 };
+    expect((await store.begin(stranded)).acquired).toBe(true);
+    expect((await store.begin({ ...stranded, now: 310_001 })).acquired).toBe(true);
+    db.close();
+  });
 });
 
 describe("GET /health", () => {
@@ -98,6 +137,32 @@ describe("POST /conversation", () => {
     expect(capturedPrompt).toContain("writer is 16 years old");
     expect(capturedPrompt).toContain("trusted adult");
     expect(capturedPrompt).toContain("What do you notice in that?");
+  });
+
+  test("a non-subscriber conversation is refused with 402 before any provider", async () => {
+    const body = Buffer.from(JSON.stringify({
+      writing: "I keep circling the choice.",
+      reflection: "The circle may be asking for patience.",
+      messages: [{ role: "user", content: "What do you notice in that?" }],
+    }));
+    const headers = await signedHeaders(body, { "Content-Type": "application/json" });
+    let replies = 0;
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: () => ({ entitled: false }),
+        conversationReply: async () => {
+          replies += 1;
+          return "should never be produced";
+        },
+      },
+    });
+
+    const response = await app.request("/conversation", { method: "POST", headers, body });
+    expect(response.status).toBe(402);
+    expect((await response.json()).error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(replies).toBe(0);
   });
 
   test("rejects a transcript that does not end with the writer", () => {
@@ -331,6 +396,39 @@ describe("POST /anky", () => {
     expect(text.indexOf("event: reflection_chunk")).toBeLessThan(text.lastIndexOf("event: reflection"));
     expect(text).toContain("event: reflection");
     expect(text).toContain("# Live Mirror");
+  });
+
+  test("keeps a slow reflection stream alive before its first token", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: ankyWorld({ requestTimeToleranceMs: 300000 }),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        heartbeatIntervalMs: 5,
+        accountEntitlement: entitledAccount,
+        routeReflection: async () => {
+          await Bun.sleep(24);
+          return {
+            provider: "slow-test",
+            chargeable: false,
+            title: "Still here",
+            reflection: "# Still here\n\nThe channel stayed open.",
+          };
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { Accept: "text/event-stream" }),
+      body,
+    });
+    const text = await response.text();
+
+    expect(text).toContain(": keep-alive");
+    expect(text.indexOf(": keep-alive")).toBeLessThan(
+      text.indexOf("event: reflection"),
+    );
   });
 
   test("routes each tier through the same model config for text and SSE", async () => {
@@ -682,26 +780,25 @@ describe("POST /anky", () => {
     expect(JSON.parse(lines[0] ?? "{}").reflectionPromptVariant).toBeUndefined();
   });
 
-  test("a free account receives a zero-cost reflection with a receipt", async () => {
+  test("a non-subscriber reflection is refused with 402 before any provider", async () => {
     const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
     let providerCalls = 0;
+    let entitlementCalls = 0;
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        accountEntitlement: () => ({ entitled: false }),
-        routeReflection: async ({ env }) => {
+        accountEntitlement: () => {
+          entitlementCalls += 1;
+          return { entitled: false };
+        },
+        routeReflection: async () => {
           providerCalls += 1;
-          expect(env.openrouterModel).toBe("openrouter/free");
-          expect(env.providerOrder).toEqual(["openrouter"]);
-          return {
-            provider: "openrouter",
-            model: "free/example-model",
-            costUsd: 0,
-            chargeable: false,
-            title: "Free mirror",
-            reflection: "# Free mirror\n\nA zero-cost answer.",
-          };
+          return smallSteadyThreadReflection();
+        },
+        providerFetch: async () => {
+          providerCalls += 1;
+          return Response.json({});
         },
       },
     });
@@ -711,30 +808,52 @@ describe("POST /anky", () => {
       headers: await signedHeaders(body),
       body,
     });
-    expect(response.status).toBe(200);
-    expect(response.headers.get("X-Anky-Inference-Access")).toBe("free");
-    expect(response.headers.get("X-Anky-Inference-Model")).toBe("free/example-model");
-    expect(response.headers.get("X-Anky-Inference-Cost-USD")).toBe("0.00000000");
-    expect(providerCalls).toBe(1);
+    const json = await response.json();
+
+    expect(response.status).toBe(402);
+    expect(json.error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(entitlementCalls).toBe(1);
+    expect(providerCalls).toBe(0);
   });
 
-  test("a free nudge uses zero-cost inference", async () => {
-    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
+  test("a non-subscriber streaming reflection gets HTTP 402, not an event stream", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let providerCalls = 0;
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
         accountEntitlement: () => ({ entitled: false }),
-        routeReflection: async ({ env }) => {
-          expect(env.openrouterModel).toBe("openrouter/free");
-          return {
-            provider: "openrouter",
-            model: "free/nudge-model",
-            costUsd: 0,
-            chargeable: false,
-            title: "nudge",
-            reflection: "follow the live sentence.",
-          };
+        routeReflection: async () => {
+          providerCalls += 1;
+          return smallSteadyThreadReflection();
+        },
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, { Accept: "text/event-stream" }),
+      body,
+    });
+
+    expect(response.status).toBe(402);
+    expect(response.headers.get("content-type") ?? "").toContain("application/json");
+    expect((await response.json()).error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(providerCalls).toBe(0);
+  });
+
+  test("a non-subscriber nudge is refused with 402 before any provider", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
+    let providerCalls = 0;
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: () => ({ entitled: false }),
+        routeReflection: async () => {
+          providerCalls += 1;
+          return smallSteadyThreadReflection();
         },
       },
     });
@@ -745,25 +864,92 @@ describe("POST /anky", () => {
       body,
     });
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("X-Anky-Inference-Access")).toBe("free");
+    expect(response.status).toBe(402);
+    expect((await response.json()).error.code).toBe("ENTITLEMENT_REQUIRED");
+    expect(providerCalls).toBe(0);
   });
 
-  test("nudge intent accepts an unfinished .anky for an entitled account", async () => {
-    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
-    let promptText = "";
-    let routedModel = "";
+  test("a lapsed subscriber cannot regenerate a reflection that already succeeded", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    let entitled = true;
+    let providerCalls = 0;
     const app = createApp({
       env: ankyWorld(),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        accountEntitlement: () => ({ entitled: true, productId: "anky.annual" }),
+        accountEntitlement: () => ({ entitled }),
+        routeReflection: async () => {
+          providerCalls += 1;
+          return smallSteadyThreadReflection();
+        },
+      },
+    });
+
+    const first = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+    expect(first.status).toBe(200);
+
+    entitled = false;
+    const retry = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body, {}, String(Date.now() + 1)),
+      body,
+    });
+    expect(retry.status).toBe(402);
+    expect(providerCalls).toBe(1);
+  });
+
+  // The receipt says the real cost or says nothing — it never prints a zero
+  // the request did not earn.
+  test("a subscriber reflection carried by Bankr does not claim a zero cost", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-complete.anky"));
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: entitledAccount,
+        routeReflection: async () => ({
+          provider: "bankr",
+          model: "bankr-reflection",
+          chargeable: true,
+          title: "Carried",
+          reflection: "# Carried\n\nthe writing was met.",
+        }),
+      },
+    });
+
+    const response = await app.request("/anky", {
+      method: "POST",
+      headers: await signedHeaders(body),
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Anky-Inference-Access")).toBe("supported");
+    expect(response.headers.get("X-Anky-Inference-Provider")).toBe("bankr");
+    expect(response.headers.get("X-Anky-Inference-Cost-USD")).toBeNull();
+  });
+
+  test("a subscriber nudge uses the fast Haiku lane", async () => {
+    const body = await readFile(resolve(fixtureRoot, "valid-fragment.anky"));
+    let promptText = "";
+    let routedModel = "";
+    let routedOrder: string[] = [];
+    const app = createApp({
+      env: ankyWorld(),
+      logger: createSafeLogger({ log() {} }),
+      ankyRouteDeps: {
+        accountEntitlement: () => ({ entitled: true, productId: "anky.monthly" }),
         routeReflection: async ({ env, prompt }) => {
           promptText = prompt;
           routedModel = env.openrouterModel;
+          routedOrder = [...env.providerOrder];
           return {
             provider: "test",
-            chargeable: true,
+            chargeable: false,
             title: "nudge",
             reflection: "Follow the sentence that still feels warm.",
           };
@@ -792,7 +978,9 @@ describe("POST /anky", () => {
     expect(promptText).toContain("Do not mention how long they wrote");
     expect(promptText).not.toContain("They wrote for about");
     expect(promptText).toContain("one sentence");
-    expect(routedModel).toBe("deepseek/deepseek-v4-flash");
+    expect(response.headers.get("X-Anky-Inference-Access")).toBe("supported");
+    expect(routedModel).toBe("anthropic/claude-haiku-4.5");
+    expect(routedOrder).toEqual(["bankr", "openrouter"]);
   });
 
   test("rejects invalid ankys before entitlement or model", async () => {
@@ -904,17 +1092,19 @@ describe("POST /anky", () => {
     const gate = new Promise<void>((resolveGate) => {
       unblock = resolveGate;
     });
-    let entitlementCalls = 0;
+    let providerCalls = 0;
+    // The subscription gate runs before the duplicate lock, so the first
+    // request is held inside the provider instead.
     const app = createApp({
       env: ankyWorld({ requestTimeToleranceMs: 300000 }),
       logger: createSafeLogger({ log() {} }),
       ankyRouteDeps: {
-        accountEntitlement: async () => {
-          entitlementCalls += 1;
+        accountEntitlement: entitledAccount,
+        routeReflection: async () => {
+          providerCalls += 1;
           await gate;
-          return { entitled: true };
+          return smallSteadyThreadReflection();
         },
-        routeReflection: smallSteadyThreadReflection,
       },
     });
 
@@ -925,7 +1115,7 @@ describe("POST /anky", () => {
     await first;
 
     expect(duplicate.status).toBe(409);
-    expect(entitlementCalls).toBe(1);
+    expect(providerCalls).toBe(1);
   });
 
   test("duplicate succeeded reflects again", async () => {

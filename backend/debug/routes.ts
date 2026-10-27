@@ -37,7 +37,7 @@ export type DebugRouteContext = {
   pipelineImpl?: typeof runPaintingPipeline;
 };
 
-function bearerMatches(c: Context, adminKey: string): boolean {
+export function bearerMatches(c: Context, adminKey: string): boolean {
   if (!adminKey) return false;
   const header = c.req.header("authorization") ?? "";
   const provided = header.startsWith("Bearer ") ? header.slice(7) : "";

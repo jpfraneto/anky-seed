@@ -107,6 +107,19 @@ describe("DELETE /account", () => {
       `INSERT INTO account_daily_quota (route, account, day_utc, count, updated_at_ms)
        VALUES ('anky', ?1, '2026-07-09', 1, ?2)`,
     ).run(account, now);
+    const ledgerHash = createHash("sha256").update(account.toLowerCase()).digest("hex");
+    db.prepare(
+      `INSERT INTO free_access_ledger (account_hash, started_at_ms, created_at_ms)
+       VALUES (?1, ?2, ?2)`,
+    ).run(ledgerHash, now);
+    db.prepare(
+      `INSERT INTO live_broadcasts (live_id, account_hash, cf_uid, audience, started_at_ms, ended_at_ms)
+       VALUES (?1, ?2, 'cf-uid', 'link', ?3, ?3)`,
+    ).run("c".repeat(32), ledgerHash, now);
+    db.prepare(
+      `INSERT INTO live_reports (live_id, reporter_hash, reason, created_at_ms)
+       VALUES (?1, 'r', 'spam', ?2)`,
+    ).run("c".repeat(32), now);
 
     const first = await app.request("/account", {
       method: "DELETE",
@@ -124,8 +137,16 @@ describe("DELETE /account", () => {
       funnel_events: 1,
       request_idempotency: 1,
       account_daily_quota: 1,
+      live_broadcasts: 1,
+      live_reports: 1,
       painting_assets: 1,
     });
+    expect(firstJson.retained).toEqual(["free_access_ledger"]);
+    // The free-access ledger survives deletion so the trial cannot be reset.
+    const ledger = db
+      .prepare("SELECT started_at_ms FROM free_access_ledger WHERE account_hash = ?1")
+      .get(ledgerHash) as { started_at_ms: number } | null;
+    expect(ledger?.started_at_ms).toBe(now);
     expect(existsSync(paintingDirectory)).toBe(false);
 
     for (const table of [
@@ -149,7 +170,7 @@ describe("DELETE /account", () => {
     });
     expect(second.status).toBe(200);
     const secondJson = await second.json();
-    expect(Object.values(secondJson.counts)).toEqual(Array(9).fill(0));
+    expect(Object.values(secondJson.counts)).toEqual(Array(11).fill(0));
     rmSync(dataDir, { recursive: true, force: true });
   });
 });

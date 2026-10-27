@@ -15,6 +15,11 @@ export type AccountRouteContext = {
   authenticate: LevelAuthenticator;
   dataDir: string;
   now?: () => number;
+  /** Ends any active broadcast and drops this account's live rows. */
+  purgeLive?: (
+    db: Database,
+    accountId: string,
+  ) => Promise<{ live_broadcasts: number; live_reports: number }>;
 };
 
 const accountDeleteIpLimiter = new MemoryWindowRateLimiter(6, 60 * 60 * 1000);
@@ -84,16 +89,24 @@ export function registerAccountRoutes(app: Hono, ctx: AccountRouteContext): void
       return errorJson(c, 500, "ACCOUNT_ASSET_DELETION_FAILED");
     }
 
+    const liveCounts = ctx.purgeLive
+      ? await ctx.purgeLive(db, identity.accountId)
+      : { live_broadcasts: 0, live_reports: 0 };
     const accountHash = await hashedAccount(identity.accountId);
     const counts = deleteAccountScopedRows(db, identity.accountId, accountHash);
+    // NOTE (disclose in the privacy policy): free_access_ledger is NOT
+    // deleted here. It holds only SHA-256(account) + the free-access start
+    // time, no content, and survives so deleting the account cannot reset
+    // the seven-day free access.
     return c.json({
       ok: true,
       deleted: true,
       account: identity.accountId,
-      counts: { ...counts, painting_assets: paintingAssets },
+      counts: { ...counts, ...liveCounts, painting_assets: paintingAssets },
+      retained: ["free_access_ledger"],
       deletedAtMs: now(),
       note:
-        "RevenueCat/App Store subscription state is external. Future RevenueCat webhooks may recreate subscription_state only.",
+        "RevenueCat/App Store subscription state is external. Future RevenueCat webhooks may recreate subscription_state only. The free-access ledger (account hash + start time, no content) is retained so account deletion cannot reset the seven-day free access.",
     });
   });
 }

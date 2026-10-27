@@ -191,6 +191,8 @@ The voice should be intimate but not sentimental, perceptive but not clinical, p
 
 The reflection must feel specifically born from this exact piece of writing. It should not resemble generic encouragement or therapy language.
 
+Reply with pure markdown. Begin with a maximum four-word title as a level-one heading, and use headings to give the reflection a clear, readable structure.
+
 Here is the writing:`;
 
 // The Axis Redesign reflection (spec §6): not the long markdown reflection but
@@ -297,9 +299,13 @@ function promptForTier(
   fullVariant: FullPromptVariant,
   surface?: string,
 ): string {
-  // The axis send vigil always asks for the blessing descent, whatever the
-  // session length — a sealed vigil is a full offering (spec §6).
-  if (surface === "axis") {
+  // The blessing descent describes a completed full ritual. The iOS axis is
+  // also the surface used for sentence and dip reflections, so the surface
+  // header must not erase the duration-derived tier. Doing that asks a model
+  // for 4–6 full-ritual lines from a one-character/one-sentence entry; some
+  // providers correctly return no visible answer for that contradictory
+  // request. Shorter sessions keep their deliberately bounded treatments.
+  if (surface === "axis" && tier === "full") {
     return PROMPT_AXIS;
   }
   switch (tier) {
@@ -376,7 +382,7 @@ export async function* streamOpenRouterChatCompletion(input: {
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    const blocks = buffer.split(/\n\n/);
+    const blocks = buffer.split(/\r?\n\r?\n/);
     buffer = blocks.pop() ?? "";
 
     for (const block of blocks) {

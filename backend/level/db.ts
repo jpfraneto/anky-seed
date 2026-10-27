@@ -182,6 +182,40 @@ const SCHEMA_MIGRATIONS: Array<{ version: string; sql: string }> = [
       );
     `,
   },
+  {
+    // Walking Meditation: the seven-day free-access ledger and the
+    // livestream bookkeeping. No content: hashes, timestamps, Cloudflare
+    // input ids. free_access_ledger deliberately SURVIVES DELETE /account
+    // (anti-abuse; otherwise deleting the account would reset the trial).
+    version: "20261027_free_access_ledger_and_live",
+    sql: `
+      CREATE TABLE IF NOT EXISTS free_access_ledger (
+        account_hash TEXT PRIMARY KEY,
+        started_at_ms INTEGER NOT NULL,
+        created_at_ms INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS live_broadcasts (
+        live_id TEXT PRIMARY KEY,
+        account_hash TEXT NOT NULL,
+        cf_uid TEXT NOT NULL,
+        audience TEXT NOT NULL,
+        started_at_ms INTEGER NOT NULL,
+        ended_at_ms INTEGER,
+        ended_reason TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_live_broadcasts_account_active
+        ON live_broadcasts (account_hash, ended_at_ms);
+
+      CREATE TABLE IF NOT EXISTS live_reports (
+        live_id TEXT NOT NULL,
+        reporter_hash TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at_ms INTEGER NOT NULL,
+        PRIMARY KEY (live_id, reporter_hash)
+      );
+    `,
+  },
 ];
 
 function runSchemaMigrations(db: Database): void {
