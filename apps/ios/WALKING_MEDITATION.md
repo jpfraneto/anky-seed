@@ -1,4 +1,11 @@
-# ANKY: Walking Meditation — 2.3.0 (70)
+# ANKY: Walking Meditation — 2.3.0 (71)
+
+> **Where we are (2026-10-28):** the founder is doing QA on 2.3.0 and will bring feedback to a new session. **Do not submit for review.**
+> - App Store Connect: version 2.3.0 is prepared (text, screenshots, review notes, build 71 attached). `anky.monthly` is on sale with a 3-day billing grace period.
+> - Backend: deployed (latest `ebd7158`). AI runs on the OpenRouter key `anky-production` ($20/mo cap). Bankr and Poiesis are still failing.
+> - The founder's iPhone 15 has Release build 71.
+> - On-device tests: `AnkyUITests` (needs Settings › Developer › Enable UI Automation).
+> - Everything is committed on `main`, **not pushed**.
 
 Handoff for the evolution described in `EVOLUTIONARY_PROMPT.md`. Written 2026-10-27.
 
