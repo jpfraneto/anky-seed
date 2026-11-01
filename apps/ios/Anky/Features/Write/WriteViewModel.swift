@@ -26,9 +26,6 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var isErrorMessageVisible = false
     @Published private(set) var completedArtifact: SavedAnky?
-    /// The artifact the latest seal replaced (a reopened writing, resealed),
-    /// so a walking session can follow the passage to its new hash.
-    private(set) var lastSealReplacedHash: String?
     /// The writing chamber's switches, held here so the surface and the
     /// engine always read the same truth (the in-place decisions write them).
     @Published private(set) var preferences: WritingPreferences
@@ -1064,7 +1061,6 @@ final class WriteViewModel: ObservableObject {
 
     private func persistSealedSession(protocolText: String, inputStats: WritingInputStats) throws -> SavedAnky {
         let saved = try archive.save(protocolText, inputStats: inputStats)
-        lastSealReplacedHash = continuedArtifactToReplace.flatMap { $0.hash == saved.hash ? nil : $0.hash }
         if let continuedArtifactToReplace,
            continuedArtifactToReplace.hash != saved.hash {
             try? archive.delete(continuedArtifactToReplace)

@@ -15,13 +15,7 @@ struct SessionDrawerView: View {
     @ObservedObject var axis: GeshtuState
     /// The session standing on the page, if the page is a session.
     let currentHash: String?
-    /// The walking session still open, if any — listed by the page, not here.
-    let activeSessionID: UUID?
     let onNewWriting: () -> Void
-
-    /// Sessions (newest first) and the writings that belong to none.
-    @State private var sessions: [ExpressionSession] = []
-    @State private var sessionTexts: [UUID: String] = [:]
 
     /// The sessions, newest first. Loaded from the local archive — the same
     /// store the writing session seals into.
@@ -54,34 +48,22 @@ struct SessionDrawerView: View {
                             .padding(.bottom, 8)
                     }
 
-                    if recents.isEmpty {
-                        Text(AnkyLocalization.ui(entries.isEmpty && sessions.isEmpty ? "nothing here yet" : "nothing found"))
+                    if filteredEntries.isEmpty {
+                        Text(AnkyLocalization.ui(entries.isEmpty ? "nothing here yet" : "nothing found"))
                             .font(.fraunces(15, weight: .light, italic: true))
                             .foregroundStyle(Color.ankyInkSoft)
                             .padding(.horizontal, 24)
                             .padding(.top, 10)
                     }
 
-                    ForEach(recents) { item in
-                        switch item {
-                        case .writing(let entry):
-                            SessionDrawerRow(
-                                title: titles[entry.hash] ?? Self.firstLine(of: entry),
-                                date: entry.createdAt,
-                                isCurrent: entry.hash == currentHash
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(entry) }
-                        case .session(let session):
-                            SessionDrawerRow(
-                                title: Self.title(of: session),
-                                date: session.startedAt,
-                                isCurrent: false,
-                                kinds: session.expressedKinds
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(session) }
-                        }
+                    ForEach(filteredEntries) { entry in
+                        SessionDrawerRow(
+                            title: titles[entry.hash] ?? Self.firstLine(of: entry),
+                            date: entry.createdAt,
+                            isCurrent: entry.hash == currentHash
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { open(entry) }
                     }
 
                     // Clearance so the last session never hides behind the
@@ -207,11 +189,9 @@ struct SessionDrawerView: View {
             onNewWriting()
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: activeSessionID == nil ? "plus" : "arrow.uturn.backward")
+                Image(systemName: "plus")
                     .font(.system(size: 15, weight: .medium))
-                Text(activeSessionID == nil
-                     ? AnkyLocalization.ui("New session")
-                     : AnkyLocalization.ui("Back to the session"))
+                Text(AnkyLocalization.ui("New writing"))
                     .font(.fraunces(16, weight: .regular))
             }
             .foregroundStyle(Color.ankyInk)
@@ -224,64 +204,13 @@ struct SessionDrawerView: View {
 
     // MARK: - Data
 
-    private enum RecentItem: Identifiable {
-        case writing(SavedAnky)
-        case session(ExpressionSession)
-
-        var id: String {
-            switch self {
-            case .writing(let entry): return "w-" + entry.hash
-            case .session(let session): return "s-" + session.id.uuidString
-            }
-        }
-
-        var date: Date {
-            switch self {
-            case .writing(let entry): return entry.createdAt
-            case .session(let session): return session.startedAt
-            }
-        }
-    }
-
-    private var recents: [RecentItem] {
+    private var filteredEntries: [SavedAnky] {
         let needle = searchText.trimmingCharacters(in: .whitespaces)
-        let writings = entries
-            .filter { entry in
-                needle.isEmpty
-                    || entry.reconstructedText.localizedCaseInsensitiveContains(needle)
-                    || (titles[entry.hash]?.localizedCaseInsensitiveContains(needle) ?? false)
-            }
-            .map(RecentItem.writing)
-        let pastSessions = sessions
-            .filter { needle.isEmpty || (sessionTexts[$0.id]?.localizedCaseInsensitiveContains(needle) ?? false) }
-            .map(RecentItem.session)
-        return (writings + pastSessions).sorted { $0.date > $1.date }
-    }
-
-    private func open(_ session: ExpressionSession) {
-        AnkyHaptics.light()
-        axis.openSession(session)
-        axis.closeDrawer()
-    }
-
-    private static func title(of session: ExpressionSession) -> String {
-        let kinds = session.expressedKinds.compactMap { kind -> String? in
-            switch kind {
-            case .writing: return AnkyLocalization.ui("writing")
-            case .voice: return AnkyLocalization.ui("voice")
-            case .video: return AnkyLocalization.ui("video")
-            case .live: return AnkyLocalization.ui("live")
-            case .silence: return AnkyLocalization.ui("silence")
-            case .unknown: return nil
-            }
-        }.joined(separator: ", ")
-        let lead: String
-        switch session.setting {
-        case .walking: lead = AnkyLocalization.ui("A walk")
-        case .still: lead = AnkyLocalization.ui("Staying")
-        case nil: lead = AnkyLocalization.ui("A session")
+        guard !needle.isEmpty else { return entries }
+        return entries.filter {
+            $0.reconstructedText.localizedCaseInsensitiveContains(needle)
+                || (titles[$0.hash]?.localizedCaseInsensitiveContains(needle) ?? false)
         }
-        return kinds.isEmpty ? lead : "\(lead) · \(kinds)"
     }
 
     private func open(_ entry: SavedAnky) {
@@ -299,18 +228,7 @@ struct SessionDrawerView: View {
     }
 
     private func reload() {
-        let store = ExpressionSessionStore()
-        let allSessions = store.list().filter { $0.id != activeSessionID && !$0.segments.isEmpty }
-        let inSessions = Set(store.list().flatMap(\.writingHashes))
-        let archive = LocalAnkyArchive()
-        let allWritings = archive.list()
-        let byHash = Dictionary(allWritings.map { ($0.hash, $0) }, uniquingKeysWith: { first, _ in first })
-        sessions = allSessions
-        sessionTexts = allSessions.reduce(into: [:]) { result, session in
-            result[session.id] = session.writingHashes.compactMap { byHash[$0]?.reconstructedText }.joined(separator: "\n")
-        }
-        // A writing that belongs to a session is listed with its session.
-        entries = allWritings.filter { !inSessions.contains($0.hash) }
+        entries = LocalAnkyArchive().list()
         titles = SessionIndexStore().load().reduce(into: [:]) { result, summary in
             if let title = summary.reflectionTitle, !title.isEmpty {
                 result[summary.hash] = title
@@ -334,7 +252,6 @@ private struct SessionDrawerRow: View {
     let title: String
     let date: Date
     let isCurrent: Bool
-    var kinds: [ExpressionKind] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -343,15 +260,9 @@ private struct SessionDrawerRow: View {
                 .foregroundStyle(Color.ankyInk)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            HStack(spacing: 6) {
-                Text(Self.dateFormatter.string(from: date))
-                    .font(.fraunces(12, weight: .light))
-                ForEach(kinds.filter { $0 != .writing && $0 != .unknown }, id: \.self) { kind in
-                    Image(systemName: kind == .voice ? "waveform" : kind == .video ? "video" : kind == .live ? "dot.radiowaves.left.and.right" : "leaf")
-                        .font(.system(size: 10))
-                }
-            }
-            .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
+            Text(Self.dateFormatter.string(from: date))
+                .font(.fraunces(12, weight: .light))
+                .foregroundStyle(Color.ankyInkSoft.opacity(0.8))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
@@ -379,7 +290,7 @@ private struct SessionDrawerRow: View {
 /// What the archive adds up to. Everything here is counted on the device from
 /// the sealed sessions themselves — nothing is fetched.
 ///
-/// Read top to bottom: the month and the days that held writing, then
+/// Read top to bottom: the streak standing now, the month it stands in, then
 /// the totals.
 struct WritingStatsView: View {
     @State private var stats = WritingStats.empty
@@ -392,8 +303,12 @@ struct WritingStatsView: View {
                     .foregroundStyle(Color.ankyInk)
                     .padding(.top, 34)
 
-                // No streaks: Anky is not a challenge to keep up. The calendar
-                // only remembers which days held writing.
+                HStack(alignment: .lastTextBaseline) {
+                    figure("\(stats.currentStreak)", "day streak", size: 76)
+                    Spacer(minLength: 16)
+                    figure("\(stats.longestStreak)", "longest streak", size: 26, alignment: .trailing)
+                }
+
                 WritingCalendar(writtenDays: stats.writtenDays)
 
                 VStack(spacing: 0) {

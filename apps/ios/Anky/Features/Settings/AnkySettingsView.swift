@@ -22,12 +22,6 @@ struct AnkySettingsView: View {
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
     @State private var showsDeleteAccountSheet = false
-    @ObservedObject private var access = AccessController.shared
-    @State private var showsPaywall = false
-    @State private var exportURL: URL?
-    @State private var isExporting = false
-    @State private var exportFailed = false
-    @State private var restoreLine: String?
     @State private var deleteConfirmationText = ""
     @State private var isDeletingAccount = false
 
@@ -43,10 +37,8 @@ struct AnkySettingsView: View {
                     .padding(.top, 34)
                     .padding(.horizontal, 4)
 
-                subscriptionGroup
                 writingGroup
                 typefaceGroup
-                memoriesGroup
                 protectionGroup
                 supportGroup
                 legalGroup
@@ -85,12 +77,6 @@ struct AnkySettingsView: View {
                 .presentationDetents([.fraction(0.8)])
                 .presentationDragIndicator(.visible)
                 .ankySheetBackground(PrivacySheetPalette.ink)
-        }
-        .sheet(isPresented: $showsPaywall) {
-            PaywallView()
-        }
-        .sheet(item: $exportURL) { url in
-            ActivityShareSheet(items: [url])
         }
         .sheet(isPresented: $showsDeleteAccountSheet) {
             deleteAccountSheet
@@ -211,87 +197,6 @@ struct AnkySettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    // MARK: Subscription
-
-    private var subscriptionGroup: some View {
-        group(title: "Subscription") {
-            row(icon: "leaf", title: "Anky") {
-                value(accessSummary)
-            }
-            rowDivider
-            Button {
-                AnkyHaptics.light()
-                showsPaywall = true
-            } label: {
-                row(icon: "heart", title: access.state.isSubscriber ? "Manage subscription" : "Subscribe") { chevron }
-            }
-            .buttonStyle(.plain)
-            rowDivider
-            Button {
-                AnkyHaptics.light()
-                Task {
-                    switch await access.restore() {
-                    case .activated: restoreLine = AnkyLocalization.ui("Your subscription is restored.")
-                    case .nothingToRestore: restoreLine = AnkyLocalization.ui("No active Anky subscription was found for this Apple ID.")
-                    case .failed(let text): restoreLine = text
-                    case .cancelled, .pending: restoreLine = nil
-                    }
-                }
-            } label: {
-                row(icon: "arrow.clockwise", title: "Restore purchases") {
-                    if access.isTransacting { ProgressView() } else { EmptyView() }
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(access.isTransacting)
-            if let restoreLine {
-                caption(restoreLine)
-            }
-            if !access.state.isSubscriber {
-                caption("Your first seven days are free and include everything except AI reflections. Nothing is charged when they end; a subscription starts only if you choose one.")
-            }
-        }
-    }
-
-    private var accessSummary: String {
-        switch access.state {
-        case .subscriber: return AnkyLocalization.ui("Subscribed")
-        case .freeNotStarted: return AnkyLocalization.ui("7 free days")
-        case .freeActive(let endsAt): return AnkyLocalization.ui("Free until %@", endsAt.formatted(date: .abbreviated, time: .omitted))
-        case .freeExpired: return AnkyLocalization.ui("Free days complete")
-        case .unverified: return AnkyLocalization.ui("Not confirmed")
-        }
-    }
-
-    // MARK: Memories
-
-    private var memoriesGroup: some View {
-        group(title: "Your memories") {
-            Button {
-                AnkyHaptics.light()
-                Task {
-                    isExporting = true
-                    exportFailed = false
-                    defer { isExporting = false }
-                    do {
-                        exportURL = try await MemoryExporter.makeArchive(.everything)
-                    } catch {
-                        exportFailed = true
-                    }
-                }
-            } label: {
-                row(icon: "square.and.arrow.up.on.square", title: "Export my memories") {
-                    if isExporting { ProgressView() } else { EmptyView() }
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(isExporting)
-            caption(exportFailed
-                ? "The export couldn't be prepared. Nothing was changed."
-                : "Every session, writing, voice and video recording, as one .zip with the original files. Always available, subscribed or not.")
-        }
     }
 
     // MARK: Protection
@@ -525,7 +430,7 @@ struct AnkySettingsView: View {
                         .font(.ankyTitle)
                         .foregroundStyle(Color.ankyMadder)
 
-                    Text(AnkyLocalization.ui("This permanently deletes every session, writing, voice and video recording on this iPhone, and your Anky iCloud backup. Anky's server never stores your writing. It keeps only an anonymous record of when your seven free days began, so they can't restart. A subscription stays with Apple until you cancel it."))
+                    Text(AnkyLocalization.ui("This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere."))
                         .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(Color.ankyPaper)
                         .lineSpacing(5)

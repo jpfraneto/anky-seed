@@ -1,45 +1,36 @@
-Go for a walk. Or stay right where you are.
+A blank page. Nothing in front of it.
 
-Anky is a quiet place to express what comes while you move through your day: through your neighborhood, along a beach, in a forest, or from a chair by the window. Nothing to achieve, nothing to count. Just you, paying attention.
+Anky is the simplest writing app we could make. You open it and you are already writing. No account. No feed. No followers. No AI. Nothing to set up and nothing to unlock.
 
-HOW A SESSION WORKS
+HOW IT WORKS
 
-Begin a session and choose how to express yourself:
+Tap the clock to choose how long you want to write, from one to eight minutes, or ∞ for no limit.
 
-• Write. The page moves only forward. Stop typing for eight seconds and the writing rests, or turn that off and decide for yourself. Choose a length, or no limit at all.
-• Talk. Speak out loud and Anky records your voice. Lock the screen, put the phone in your pocket and keep walking; it keeps recording until you stop.
-• Record. Film what is in front of you, or yourself.
-• Or simply be silent.
+The hourglass next to it is the 8 second rule: stop typing for eight seconds and the writing ends. It keeps you moving forward instead of going back over the last sentence. Turn it off and only you decide when you are done.
 
-Move between them within the same session. When you are done, the session becomes a memory you can return to: read the writing, listen to the voice, watch the video.
+That is the whole app.
 
-YOURS, ON YOUR IPHONE
+WHEN YOU FINISH
 
-Every writing, voice recording and video is saved on your iPhone. Recordings are never uploaded and never transcribed. There is no feed, no followers, no ads, no analytics and no tracking. Anky does not use your location.
+Your words stay exactly where they are. Tap the page and keep going, today or any other day.
 
-Export everything, whenever you like: one file with every session, the original audio and video, your writings and your reflections. Delete it all from Settings at any time.
+Every writing is saved on your phone, dated and searchable, in a drawer that slides in from the side. Copy a writing out with one tap, or copy it wrapped in a reflection prompt to paste into whatever AI you already use, if you want to.
 
-SEVEN DAYS FREE
+Your streak, and a calendar of the days you wrote, are one tap away. You wrote today or you didn't.
 
-Your first seven days with Anky are free, starting with your first session. No payment details are needed, and nothing is charged when the seven days end.
+YOURS, AND ONLY YOURS
 
-After that, starting new sessions needs a subscription. Everything you have already expressed stays readable and exportable, with or without one. Your memories are never held back.
-
-THE SUBSCRIPTION
-
-Anky is sustained by its subscribers, not by advertising. One auto-renewing monthly subscription keeps Anky open for new sessions and adds Reflect with Anky.
-
-The price is shown in the app, from the App Store, in your currency. Payment is charged to your Apple Account only when you confirm the purchase. The subscription renews automatically each month unless you cancel at least 24 hours before the end of the current period. Manage or cancel it in your Apple Account's subscription settings. Restore purchases from Settings.
-
-REFLECT WITH ANKY (OPTIONAL)
-
-Subscribers can ask Anky to reflect on a single writing. It happens only when you tap it, and Anky tells you first what will be sent: the text of that one writing goes to Anky's server, an AI model writes a reflection, and the server does not keep your writing. The reflection is saved on your iPhone. Voice and video are never sent. Nothing else in Anky needs AI.
+Anky does not connect to any server. Your writing is never uploaded, never read and never used to train anything. There are no analytics and no ads. If you want a backup, turn on encrypted iCloud backup and it goes to your own iCloud.
 
 WRITE BEFORE YOU SCROLL
 
-If you want, Anky can stand between you and the apps you open without deciding to. Choose them in Settings; when you reach for one, write first. Turn it off any time.
+If you want, Anky can stand between you and the apps you open without deciding to. Choose them in Settings. When you reach for one, write first. A finished sentence opens a short pass, and writing your minutes opens the rest of the day. Turn it off any time.
 
-Anky is not a medical or therapy service.
+Settings has the rest: backspace, autocorrect, how long the stillness lasts, the font and its size.
 
-Privacy Policy: https://anky.app/privacy-policy/
-Terms of Use (Apple's standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Free. No subscription. No purchases.
+
+Privacy Policy: https://anky.app/privacy-policy
+Terms of Use: https://anky.app/terms
+
+Open it. Write. Close it.

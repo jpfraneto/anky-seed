@@ -1,13 +1,15 @@
-Anky devient Anky : Méditation en marchant.
+L'Anky le plus simple à ce jour.
 
-Va marcher, ou reste là où tu es, et exprime ce qui vient : écris, parle, filme une vidéo ou reste en silence. Passe de l'un à l'autre dans une même session.
+Anky ne se connecte plus à aucun serveur. Pas de réflexions d'IA, pas d'abonnement, pas de compte. Ton écriture ne quitte jamais ton téléphone.
 
-La voix continue de s'enregistrer écran verrouillé : le téléphone peut rester dans ta poche pendant que tu marches.
+Touche l'horloge pour une seule ligne : la règle des 8 secondes, un curseur pour tes minutes, et ∞.
 
-Chaque session devient un souvenir auquel tu peux revenir, avec son écriture, sa voix et sa vidéo. Tout reste sur ton iPhone.
+Tu as fini une écriture ? Touche-la pour continuer. La même page, les mêmes mots.
 
-Exporter mes souvenirs : un seul fichier avec chaque session, les enregistrements d'origine, tes écritures et tes réflexions.
+Le retour arrière est activé par défaut. Désactive-le dans Réglages si tu veux écrire seulement vers l'avant.
 
-Tes sept premiers jours sont gratuits, sans information de paiement et sans aucun prélèvement à la fin. Ensuite, un abonnement mensuel garde Anky ouvert pour de nouvelles sessions et ajoute Réfléchir avec Anky. Tes souvenirs restent à toi, avec ou sans abonnement.
+Copie n'importe quelle écriture, ou copie-la avec un prompt de réflexion pour la coller dans l'IA que tu utilises déjà.
 
-La page d'écriture que tu connais ne change pas.
+Les statistiques sont plus simples : ce jour-là, tu as écrit ou pas.
+
+Les apps bloquées se débloquent dès que tu as écrit, et le déblocage d'urgence du bouclier fonctionne à nouveau.

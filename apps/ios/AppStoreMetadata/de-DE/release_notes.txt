@@ -1,13 +1,15 @@
-Anky heißt jetzt Anky: Gehmeditation.
+Das einfachste Anky bisher.
 
-Geh spazieren oder bleib genau dort, wo du bist, und drück aus, was kommt: schreiben, sprechen, ein Video aufnehmen oder still sein. Wechsle innerhalb einer Sitzung zwischen ihnen.
+Anky verbindet sich mit keinem Server mehr. Keine KI-Reflexionen, kein Abo, kein Konto. Dein Schreiben verlässt nie dein iPhone.
 
-Die Sprachaufnahme läuft auch bei gesperrtem Bildschirm weiter, so kann das iPhone beim Gehen in der Tasche bleiben.
+Tippe auf die Uhr für eine einzige Zeile: die 8-Sekunden-Regel, ein Regler für deine Minuten und ∞.
 
-Jede Sitzung wird zu einer Erinnerung, zu der du zurückkehren kannst – mit ihrem Text, ihrer Stimme und ihrem Video. Alles bleibt auf deinem iPhone.
+Ein Schreiben beendet? Tippe darauf und schreib weiter. Dieselbe Seite, dieselben Worte.
 
-Meine Erinnerungen exportieren: eine Datei mit jeder Sitzung, den Originalaufnahmen, deinen Texten und deinen Reflexionen.
+Die Rücktaste ist standardmäßig an. Schalte sie in den Einstellungen aus, wenn du nur vorwärts schreiben willst.
 
-Deine ersten sieben Tage sind kostenlos, ohne Zahlungsdaten und ohne Abbuchung am Ende. Danach hält ein Monatsabo Anky für neue Sitzungen offen und ergänzt „Mit Anky reflektieren“. Deine Erinnerungen bleiben deine, mit oder ohne Abo.
+Kopiere jedes Schreiben, oder kopiere es mit einem Reflexions-Prompt für die KI, die du schon nutzt.
 
-Die Schreibseite, die du kennst, bleibt unverändert.
+Die Statistik ist einfacher: An diesem Tag hast du geschrieben oder nicht.
+
+Blockierte Apps werden freigegeben, sobald du geschrieben hast, und die Notfall-Entsperrung des Schutzschilds funktioniert wieder.

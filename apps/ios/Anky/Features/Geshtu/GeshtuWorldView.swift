@@ -2,13 +2,9 @@
 //  GeshtuWorldView.swift
 //  Anky
 //
-//  The whole app: one page, and a drawer of memories beside it.
-//
-//  With no session open, the page is the threshold — an invitation to walk
-//  or stay, and to express. During a session it is whichever medium the
-//  person is in: the writing page (unchanged), voice, camera, or presence.
-//  A past writing chosen from the drawer stands on the writing page exactly
-//  as it was written.
+//  The whole app: one writing page, and a drawer of past writings beside it.
+//  The page is always the writing surface — a live writing, or a finished one
+//  standing exactly where it was written. Nothing here talks to a server.
 //
 
 import SwiftUI
@@ -20,18 +16,6 @@ struct GeshtuWorldView: View {
     @StateObject private var writeViewModel = WriteViewModel()
     @StateObject private var youViewModel = YouViewModel()
     @StateObject private var gateViewModel = WriteBeforeScrollSpikeViewModel()
-    /// The open session, its mediums and recorders.
-    @StateObject private var expression = ExpressionController()
-    @ObservedObject private var access = AccessController.shared
-    @State private var showsPaywall = false
-    @State private var memorySheet: ExpressionSession?
-    /// A past writing chosen from the drawer while a session is open: read in
-    /// a sheet, so the session's page is never replaced.
-    @State private var readingWriting: SavedAnky?
-    @State private var reflectionFor: SavedAnky?
-    @State private var exportURL: URL?
-    @State private var isExportingAll = false
-    @State private var confirmsEnd = false
     @State private var showsGateSetup = false
     /// One quiet line after the shield's emergency button opened the apps.
     @State private var gateLine: String?
@@ -61,8 +45,7 @@ struct GeshtuWorldView: View {
                     SessionDrawerView(
                         axis: axis,
                         currentHash: writeViewModel.completedArtifact?.hash,
-                        activeSessionID: expression.session?.id,
-                        onNewWriting: returnToPageFromDrawer
+                        onNewWriting: startNewWriting
                     )
                     .frame(width: drawerWidth)
                     .offset(x: (progress - 1) * 44)
@@ -113,21 +96,7 @@ struct GeshtuWorldView: View {
         }
         .onChange(of: axis.entryRequest?.hash) { _ in
             guard let entry = axis.consumeEntryRequest() else { return }
-            if expression.isActive {
-                readingWriting = entry
-            } else {
-                writeViewModel.showFinishedSession(entry)
-            }
-        }
-        .onChange(of: axis.sessionRequest?.id) { _ in
-            guard let past = axis.consumeSessionRequest() else { return }
-            memorySheet = past
-        }
-        .onChange(of: expression.memoryToShow?.id) { _ in
-            if let memory = expression.memoryToShow {
-                memorySheet = memory
-                expression.memoryToShow = nil
-            }
+            writeViewModel.showFinishedSession(entry)
         }
     }
 
@@ -135,9 +104,6 @@ struct GeshtuWorldView: View {
     /// button would be offered — never across a live writing.
     private var drawerAllowed: Bool {
         if showsOnboarding { return false }
-        if expression.isActive, expression.medium != .write {
-            return !expression.isCapturing
-        }
         return !writeViewModel.hasStarted || writeViewModel.completedArtifact != nil
     }
 
@@ -176,63 +142,13 @@ struct GeshtuWorldView: View {
             }
     }
 
-    /// A fresh writing inside the session (a new passage), or — outside a
-    /// session — back to the threshold.
+    /// A fresh page, unless the page already is a blank one.
     private func startNewWriting() {
-        if expression.isActive {
-            guard expression.canContinueWriting() else { return }
-            writeViewModel.beginBlankSessionFromWriteTab()
-            writeViewModel.focusWritingKeyboard()
-        } else {
+        if writeViewModel.hasStarted || writeViewModel.completedArtifact != nil {
             writeViewModel.beginBlankSessionFromWriteTab()
         }
         axis.closeDrawer()
-    }
-
-    /// The drawer's floating button: back to the open session, or to the
-    /// threshold to begin one.
-    private func returnToPageFromDrawer() {
-        if !expression.isActive, writeViewModel.completedArtifact != nil {
-            writeViewModel.beginBlankSessionFromWriteTab()
-        }
-        axis.closeDrawer()
-        if expression.isActive, expression.medium == .write, writeViewModel.canAcceptInput {
-            writeViewModel.focusWritingKeyboard()
-        }
-    }
-
-    private func endSession() {
-        Task {
-            await expression.end()
-            writeViewModel.beginBlankSessionFromWriteTab()
-            dismissKeyboard()
-        }
-    }
-
-    private func connectWritingToSessions() {
-        expression.enterWriting = { [weak writeViewModel] in
-            guard let writeViewModel else { return }
-            if writeViewModel.hasStarted || writeViewModel.completedArtifact != nil {
-                writeViewModel.beginBlankSessionFromWriteTab()
-            }
-            DispatchQueue.main.async { writeViewModel.focusWritingKeyboard() }
-        }
-        expression.leaveWriting = { [weak writeViewModel] in
-            writeViewModel?.endWriting()
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-        expression.restoreOnLaunch(
-            writingInProgress: writeViewModel.hasStarted && writeViewModel.completedArtifact == nil
-        )
-    }
-
-    private func exportEverything() {
-        guard !isExportingAll else { return }
-        isExportingAll = true
-        Task {
-            defer { isExportingAll = false }
-            exportURL = try? await MemoryExporter.makeArchive(.everything)
-        }
+        writeViewModel.focusWritingKeyboard()
     }
 
     private func dismissKeyboard() {
@@ -242,61 +158,30 @@ struct GeshtuWorldView: View {
         )
     }
 
-    /// What the page shows right now.
-    private enum PageMode: Equatable {
-        case threshold
-        case writing
-        case voice
-        case video
-        case presence
-    }
-
-    private var pageMode: PageMode {
-        if expression.isActive {
-            switch expression.medium {
-            case .write: return .writing
-            case .voice: return .voice
-            case .video: return .video
-            case .rest, .silence: return .presence
-            }
-        }
-        if writeViewModel.completedArtifact != nil || writeViewModel.hasStarted {
-            return .writing
-        }
-        return .threshold
-    }
-
     private var page: some View {
         ZStack {
             LazureWall(mood: .dawn)
                 .ignoresSafeArea()
 
-            switch pageMode {
-            case .threshold:
-                ThresholdView(
-                    expression: expression,
-                    access: access,
-                    onOpenDrawer: { axis.openDrawer() },
-                    onSubscribe: { showsPaywall = true },
-                    onExport: exportEverything
+            WriteView(
+                viewModel: writeViewModel,
+                shouldFocus: !showsOnboarding && !axis.drawerIsOpen,
+                onCompleted: { _ in grantWriteBeforeScrollUnlock() },
+                onOpenMenu: { axis.openDrawer() }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if let finished = writeViewModel.completedArtifact {
+                FinishedWritingChrome(
+                    writing: finished.reconstructedText,
+                    onNewWriting: startNewWriting,
+                    onDelete: {
+                        AnkyHaptics.warning()
+                        showsDeleteConfirmation = true
+                    }
                 )
                 .transition(.opacity)
-            case .writing:
-                writingPage
-            case .voice:
-                VoiceSurface(expression: expression, onOpenDrawer: { axis.openDrawer() }, onEnd: { confirmsEnd = true })
-                    .transition(.opacity)
-            case .video:
-                CameraSurface(expression: expression, onOpenDrawer: { axis.openDrawer() }, onEnd: { confirmsEnd = true })
-                    .transition(.opacity)
-            case .presence:
-                PresenceSurface(expression: expression, onOpenDrawer: { axis.openDrawer() }, onEnd: { confirmsEnd = true })
-                    .transition(.opacity)
-            }
-
-            if let refusal = expression.refusal, expression.isActive {
-                refusalBanner(refusal)
-                    .zIndex(1700)
+                .zIndex(1500)
             }
 
             if let gateLine {
@@ -328,8 +213,6 @@ struct GeshtuWorldView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: writeViewModel.completedArtifact?.hash)
         .animation(.easeInOut(duration: 0.4), value: gateLine)
-        .animation(.easeInOut(duration: 0.35), value: pageMode)
-        .onAppear(perform: connectWritingToSessions)
         .onAppear(perform: startWriteBeforeScroll)
         .onReceive(NotificationCenter.default.publisher(for: .writeBeforeScrollNotificationTapped)) { _ in
             routeFromShield()
@@ -337,12 +220,10 @@ struct GeshtuWorldView: View {
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
-                Task { await access.refresh() }
                 gateViewModel.reconcileOnAppActive(hasCurrentVerifiedPro: true)
                 gateViewModel.handlePendingInterventionIfNeeded(showWrite: openWritingFromShield)
                 routeFromShield()
             case .background:
-                expression.persistOnBackground()
                 // A Quick Pass's minutes belong to the app the writer was
                 // reaching for, so its window starts on the way out — and a
                 // pass earned mid-sentence seals the writing as they leave.
@@ -371,34 +252,6 @@ struct GeshtuWorldView: View {
         }
         .sheet(isPresented: $axis.statsIsOpen) {
             WritingStatsView()
-        }
-        .sheet(isPresented: $showsPaywall) {
-            PaywallView()
-        }
-        .sheet(item: $memorySheet) { memory in
-            SessionMemoryView(
-                session: memory,
-                onDelete: { expression.delete($0) },
-                onSubscribe: { showsPaywall = true }
-            )
-        }
-        .sheet(item: $readingWriting) { writing in
-            PastWritingSheet(writing: writing, onReflect: {
-                readingWriting = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { reflectionFor = writing }
-            })
-        }
-        .sheet(item: $reflectionFor) { writing in
-            ReflectionSheet(writing: writing, onSubscribe: { showsPaywall = true })
-        }
-        .sheet(item: $exportURL) { url in
-            ActivityShareSheet(items: [url])
-        }
-        .alert(AnkyLocalization.ui("End this session?"), isPresented: $confirmsEnd) {
-            Button(AnkyLocalization.ui("End session")) { endSession() }
-            Button(AnkyLocalization.ui("Not yet"), role: .cancel) {}
-        } message: {
-            Text(AnkyLocalization.ui("Everything you expressed is saved on this iPhone."))
         }
         .alert(
             AnkyLocalization.ui("Delete writing session?"),
@@ -462,117 +315,21 @@ struct GeshtuWorldView: View {
             bridge.markConsumed(intentID: intentID)
             showGateLine(AnkyLocalization.ui("Your apps are unlocked."))
         case .writeBeforeScrollFromShield(let intentID):
-            guard expression.isActive || access.can(.startSession) else {
-                // Writing to unlock needs access now. The gate never traps
-                // anyone behind a subscription: the apps open for the day.
-                let now = Date()
-                let endOfDay = Calendar.current.date(
-                    byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)
-                ) ?? now.addingTimeInterval(24 * 60 * 60)
-                gateViewModel.applyUnlock(
-                    UnlockGrant(tier: .daily, unlockedUntil: endOfDay, grantedAt: now),
-                    source: .emergency
-                )
-                bridge.markConsumed(intentID: intentID)
-                openWritingFromShield()
-                showGateLine(AnkyLocalization.ui("Your apps are open for today."))
-                return
-            }
             openWritingFromShield()
             writeViewModel.markGateOriginatedSession(appDisplayName: bridge.lastAttemptedAppDisplayName())
             bridge.markConsumed(intentID: intentID)
         }
     }
 
-    /// The writer came from a blocked app: the page is in front, ready —
-    /// inside the open session, or a new one that begins with writing.
+    /// The writer came from a blocked app: the page is in front, ready.
     private func openWritingFromShield() {
         axis.settingsIsOpen = false
         axis.statsIsOpen = false
         axis.closeDrawer()
-        guard expression.isActive || access.can(.startSession) else { return }
-        Task {
-            if expression.isActive {
-                if expression.isCapturing { return }
-                await expression.switchTo(.write)
-            } else {
-                await expression.begin(setting: nil, medium: .write)
-            }
-            if writeViewModel.completedArtifact != nil {
-                writeViewModel.beginBlankSessionFromWriteTab()
-            }
-            writeViewModel.openWritingPortal()
+        if writeViewModel.completedArtifact != nil {
+            writeViewModel.beginBlankSessionFromWriteTab()
         }
-    }
-
-    // MARK: - The writing page
-
-    private var writingPage: some View {
-        ZStack {
-            WriteView(
-                viewModel: writeViewModel,
-                shouldFocus: !showsOnboarding && !axis.drawerIsOpen && pageMode == .writing,
-                onCompleted: { artifact in
-                    grantWriteBeforeScrollUnlock()
-                    expression.recordWriting(artifact, replacing: writeViewModel.lastSealReplacedHash)
-                },
-                onOpenMenu: { axis.openDrawer() },
-                canReopen: {
-                    if expression.canContinueWriting() { return true }
-                    // Outside a session there is no banner to explain it.
-                    if !expression.isActive { showsPaywall = true }
-                    return false
-                },
-                topCenter: expression.isActive
-                    ? AnyView(SessionRibbon(
-                        medium: expression.medium,
-                        onChoose: { next in Task { await expression.switchTo(next) } },
-                        onEnd: { confirmsEnd = true }
-                    ))
-                    : nil
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if let finished = writeViewModel.completedArtifact {
-                FinishedWritingChrome(
-                    writing: finished.reconstructedText,
-                    inSession: expression.isActive,
-                    onNewWriting: startNewWriting,
-                    onReflect: { reflectionFor = finished },
-                    onDelete: {
-                        AnkyHaptics.warning()
-                        showsDeleteConfirmation = true
-                    }
-                )
-                .transition(.opacity)
-                .zIndex(1500)
-            }
-        }
-    }
-
-    private func refusalBanner(_ refusal: AccessDenial) -> some View {
-        VStack(spacing: 10) {
-            Text(refusal == .needsVerification
-                 ? AnkyLocalization.ui("Anky couldn't confirm your access. Connect to the internet to keep creating. Everything so far is saved.")
-                 : AnkyLocalization.ui("Your free days ended during this session. Everything so far is saved. Subscribe to keep creating."))
-                .font(.fraunces(15, weight: .light, italic: true))
-                .foregroundStyle(Color.ankyInk)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 18) {
-                Button(AnkyLocalization.ui("Subscribe")) { showsPaywall = true }
-                Button(AnkyLocalization.ui("End session")) { confirmsEnd = true }
-                Button(AnkyLocalization.ui("Dismiss")) { expression.refusal = nil }
-            }
-            .font(.fraunces(15, weight: .regular))
-            .foregroundStyle(Color.ankyInk)
-        }
-        .padding(16)
-        .ankyGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous), interactive: false)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 30)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .transition(.opacity)
+        writeViewModel.openWritingPortal()
     }
 
     private func showGateLine(_ line: String) {
@@ -590,7 +347,6 @@ struct GeshtuWorldView: View {
             try LocalAnkyArchive().delete(finished)
             try? ReflectionStore().delete(hash: finished.hash)
             try? SessionIndexStore().delete(hash: finished.hash)
-            expression.forgetWriting(hash: finished.hash)
         } catch {
             return
         }
@@ -634,9 +390,7 @@ private struct LeadingCornerCutouts: Shape {
 /// in the reflection prompt for any AI, or delete it.
 private struct FinishedWritingChrome: View {
     let writing: String
-    let inSession: Bool
     let onNewWriting: () -> Void
-    let onReflect: () -> Void
     let onDelete: () -> Void
 
     @State private var didCopy = false
@@ -647,25 +401,20 @@ private struct FinishedWritingChrome: View {
                 AnkyHaptics.light()
                 onNewWriting()
             } label: {
-                Image(systemName: inSession ? "square.and.pencil" : "xmark")
+                Image(systemName: "square.and.pencil")
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Color.ankyInkSoft)
                     .frame(width: 48, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(inSession ? AnkyLocalization.ui("New writing") : AnkyLocalization.ui("Close"))
+            .accessibilityLabel(AnkyLocalization.ui("New writing"))
 
             Menu {
                 Button {
                     performCopy(writing)
                 } label: {
                     Label(AnkyLocalization.ui("Copy writing"), systemImage: "doc.on.doc")
-                }
-                Button {
-                    onReflect()
-                } label: {
-                    Label(AnkyLocalization.ui("Reflect with Anky"), systemImage: "sparkles")
                 }
                 Button {
                     performCopy(AnkyReflectionPrompt.build(from: writing))
@@ -729,48 +478,5 @@ enum AnkyReflectionPrompt {
 
         \(reconstructedText)
         """
-    }
-}
-
-/// A past writing, read while a session is open (so the session's page is
-/// never replaced).
-private struct PastWritingSheet: View {
-    let writing: SavedAnky
-    let onReflect: () -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(writing.createdAt.formatted(date: .complete, time: .shortened))
-                        .font(.fraunces(15, weight: .regular))
-                        .foregroundStyle(Color.ankyInkSoft)
-                    Text(writing.reconstructedText)
-                        .font(.fraunces(19, weight: .light))
-                        .foregroundStyle(Color.ankyInk)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button(action: onReflect) {
-                        Label(AnkyLocalization.ui("Reflect with Anky"), systemImage: "sparkles")
-                            .font(.fraunces(15, weight: .regular))
-                            .foregroundStyle(Color.ankyInkSoft)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(24)
-                .frame(maxWidth: 620, alignment: .leading)
-                .frame(maxWidth: .infinity)
-            }
-            .background(Color.ankyPaper.ignoresSafeArea())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(AnkyLocalization.ui("Done")) { dismiss() }
-                        .foregroundStyle(Color.ankyInk)
-                }
-            }
-        }
-        .preferredColorScheme(.light)
     }
 }

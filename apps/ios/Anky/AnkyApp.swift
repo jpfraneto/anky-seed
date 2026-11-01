@@ -36,11 +36,6 @@ final class AnkyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         if ClipSessionImporter().claimPendingClipSession() != nil {
             UserDefaults.standard.set(true, forKey: ClipSessionImporter.pendingWelcomeDefaultsKey)
         }
-        // Access: identity → RevenueCat → the server's free-access ledger.
-        // Off the first frame; offline, the cached answers stand.
-        Task { @MainActor in
-            await AccessController.shared.refresh()
-        }
         return true
     }
 

@@ -15,14 +15,6 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>NSCameraUsageDescription</key>
-	<string>Anky records video only when you press record. Videos stay on this iPhone unless you export them.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Anky records your voice, and the sound of your videos, only when you press record. Recordings stay on this iPhone; nothing is uploaded or transcribed.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

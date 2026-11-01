@@ -1,45 +1,36 @@
-Va marcher. Ou reste là où tu es.
+Une page blanche. Rien devant elle.
 
-Anky est un endroit calme pour exprimer ce qui vient pendant que tu traverses ta journée : dans ton quartier, au bord de la mer, en forêt, ou depuis une chaise près de la fenêtre. Rien à accomplir, rien à compter. Juste toi, et ton attention.
+Anky est l'app d'écriture la plus simple que nous ayons pu faire. Tu l'ouvres et tu écris déjà. Pas de compte. Pas de fil d'actualité. Pas d'abonnés. Pas d'IA. Rien à configurer, rien à débloquer.
 
-COMMENT SE DÉROULE UNE SESSION
+COMMENT ÇA MARCHE
 
-Commence une session et choisis comment t'exprimer :
+Touche l'horloge pour choisir combien de temps tu veux écrire, d'une à huit minutes, ou ∞ pour ne pas avoir de limite.
 
-• Écrire. La page ne fait qu'avancer. Arrête de taper pendant huit secondes et l'écriture se pose, ou désactive cette règle et décide toi-même. Choisis une durée, ou aucune limite.
-• Parler. Parle à voix haute et Anky enregistre ta voix. Verrouille l'écran, glisse le téléphone dans ta poche et continue de marcher ; l'enregistrement continue jusqu'à ce que tu l'arrêtes.
-• Enregistrer. Filme ce qui est devant toi, ou toi-même.
-• Ou reste simplement en silence.
+Le sablier à côté, c'est la règle des 8 secondes : si tu arrêtes de taper pendant huit secondes, l'écriture se termine. Elle te fait avancer au lieu de revenir sur la dernière phrase. Désactive-la et toi seul décides quand tu as fini.
 
-Passe de l'un à l'autre dans la même session. Quand tu as fini, la session devient un souvenir auquel tu peux revenir : relire l'écriture, écouter la voix, regarder la vidéo.
+C'est toute l'app.
 
-À TOI, SUR TON IPHONE
+QUAND TU AS FINI
 
-Chaque écriture, enregistrement vocal et vidéo est conservé sur ton iPhone. Les enregistrements ne sont jamais envoyés en ligne ni transcrits. Pas de fil, pas d'abonnés, pas de publicité, pas de statistiques d'usage, pas de pistage. Anky n'utilise pas ta localisation.
+Tes mots restent exactement où ils sont. Touche la page et continue, aujourd'hui ou n'importe quel autre jour.
 
-Exporte tout, quand tu veux : un seul fichier avec chaque session, l'audio et la vidéo d'origine, tes écritures et tes réflexions. Supprime tout depuis les Réglages à tout moment.
+Chaque écriture est enregistrée sur ton téléphone, datée et consultable, dans un tiroir qui glisse depuis le côté. Copie une écriture d'un geste, ou copie-la avec un prompt de réflexion pour la coller dans l'IA que tu utilises déjà, si tu le souhaites.
 
-SEPT JOURS OFFERTS
+Ta série de jours et un calendrier des jours où tu as écrit sont à un geste. Tu as écrit aujourd'hui, ou pas.
 
-Tes sept premiers jours avec Anky sont gratuits, à partir de ta première session. Aucune information de paiement n'est demandée, et rien n'est facturé à la fin des sept jours.
+À TOI, ET À TOI SEUL
 
-Ensuite, commencer de nouvelles sessions nécessite un abonnement. Tout ce que tu as déjà exprimé reste lisible et exportable, avec ou sans abonnement. Tes souvenirs ne sont jamais retenus.
+Anky ne se connecte à aucun serveur. Ton écriture n'est jamais envoyée, jamais lue et jamais utilisée pour entraîner quoi que ce soit. Pas d'analytics, pas de publicité. Si tu veux une sauvegarde, active la sauvegarde iCloud chiffrée : elle va dans ton propre iCloud.
 
-L'ABONNEMENT
+ÉCRIS AVANT DE SCROLLER
 
-Anky vit grâce à ses abonnés, pas grâce à la publicité. Un seul abonnement mensuel à renouvellement automatique garde Anky ouvert pour de nouvelles sessions et ajoute Réfléchir avec Anky.
+Si tu le veux, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans Réglages. Quand tu en ouvres une, écris d'abord. Une phrase terminée ouvre un court passage, et écrire tes minutes ouvre le reste de la journée. Désactive-le quand tu veux.
 
-Le prix est affiché dans l'app, depuis l'App Store, dans ta devise. Le paiement est débité de ton compte Apple uniquement lorsque tu confirmes l'achat. L'abonnement se renouvelle automatiquement chaque mois, sauf si tu l'annules au moins 24 heures avant la fin de la période en cours. Gère-le ou annule-le dans les réglages d'abonnement de ton compte Apple. Restaure tes achats depuis les Réglages.
+Réglages contient le reste : retour arrière, correction automatique, la durée du silence, la police et sa taille.
 
-RÉFLÉCHIR AVEC ANKY (FACULTATIF)
+Gratuit. Sans abonnement. Sans achat.
 
-Les abonnés peuvent demander à Anky une réflexion sur une écriture. Cela ne se produit que lorsque tu le touches, et Anky t'indique d'abord ce qui sera envoyé : le texte de cette seule écriture part vers le serveur d'Anky, un modèle d'IA écrit une réflexion, et le serveur ne garde pas ton écriture. La réflexion est enregistrée sur ton iPhone. La voix et la vidéo ne sont jamais envoyées. Rien d'autre dans Anky n'a besoin d'IA.
+Politique de confidentialité : https://anky.app/fr/privacy-policy
+Conditions d'utilisation : https://anky.app/fr/terms
 
-ÉCRIRE AVANT DE SCROLLER
-
-Si tu le souhaites, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans les Réglages ; quand tu en ouvres une, écris d'abord. Désactive-le quand tu veux.
-
-Anky n'est pas un service médical ni thérapeutique.
-
-Politique de confidentialité : https://anky.app/fr/privacy-policy/
-Conditions d'utilisation (CLUF standard d'Apple) : https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Ouvre-la. Écris. Ferme-la.

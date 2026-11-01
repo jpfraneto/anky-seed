@@ -92,4 +92,20 @@ final class DraftRecoveryTests: XCTestCase {
 
         XCTAssertNil(store.loadRecoverableDraft())
     }
+
+    func testReflectionMarkdownKeepsHeadingAndBodyAsSeparateBlocks() {
+        let blocks = ReflectionMarkdownBlock.parse("""
+        # The App Is You
+
+        You said it yourself and then kept going.
+
+        **Worldview.** This remains part of the body.
+        """)
+
+        XCTAssertEqual(blocks, [
+            ReflectionMarkdownBlock(kind: .heading(level: 1), text: "The App Is You"),
+            ReflectionMarkdownBlock(kind: .paragraph, text: "You said it yourself and then kept going."),
+            ReflectionMarkdownBlock(kind: .paragraph, text: "**Worldview.** This remains part of the body.")
+        ])
+    }
 }

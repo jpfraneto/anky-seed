@@ -7,27 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8A0000E8000000000000000F /* AnkySandboxPurchaseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */; };
-		8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E80000000000000003 /* AnkyDeviceUITests.swift */; };
-		8A0000E7BEF53848055AFE18 /* Features/Expression/SessionMemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */; };
-		8A0000E714D200A9B23F40B8 /* Features/Expression/ReflectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */; };
-		8A0000E7BA61547BFD5161A9 /* Features/Expression/SessionSurfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E75B94F30F9A94932F /* Features/Expression/SessionSurfaces.swift */; };
-		8A0000E7B3DB0BF4A33B95BB /* Features/Expression/ThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E70F6CC68EF7074F88 /* Features/Expression/ThresholdView.swift */; };
-		8A0000E71368DC855FF821F9 /* Features/Expression/ExpressionComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7A94B12E04DE418C5 /* Features/Expression/ExpressionComponents.swift */; };
-		8A0000E7593B79EE5F4CBE6A /* Features/Expression/ExpressionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E79BBDDE7F7DA4E5A2 /* Features/Expression/ExpressionController.swift */; };
-		8A0000E746077E9DBB2AFDE2 /* Features/Expression/CameraRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7C46002315D6DF397 /* Features/Expression/CameraRecorder.swift */; };
-		8A0000E7F55B4597592DB967 /* Features/Expression/VoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7DF21DA05EDDCF8D1 /* Features/Expression/VoiceRecorder.swift */; };
-		8A0000E76CF45AEA9465D7C4 /* Features/Access/PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E769C5473691FB6298 /* Features/Access/PaywallView.swift */; };
-		8A0000E7AD42507B914265A8 /* Features/Access/AccessController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7B98AF9F70D5D3CB1 /* Features/Access/AccessController.swift */; };
-		8A0000E7A7CFF654FE68474E /* Purchases/SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7413560F4C9DF3FBE /* Purchases/SubscriptionService.swift */; };
-		8A0000E725A29E6337CC2EC6 /* Core/Server/AnkyServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E764F1A78075832712 /* Core/Server/AnkyServerClient.swift */; };
-		8A0000E75B5FAB08AF4AF0F5 /* Core/Server/AnkyPostSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E78BE81C28D0035412 /* Core/Server/AnkyPostSigner.swift */; };
-		8A0000E7932120C9DD8F3AD6 /* Core/Session/MemoryExportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7CE22EED8B9AA23FC /* Core/Session/MemoryExportBuilder.swift */; };
-		8A0000E7C085ABDB0678315A /* Core/Session/ExpressionSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7369CD38765840211 /* Core/Session/ExpressionSessionStore.swift */; };
-		8A0000E742BED7D8B96CAF90 /* Core/Session/ExpressionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E73FCDCFA1957F2D8B /* Core/Session/ExpressionSession.swift */; };
-		8A0000E7407F409026BF0511 /* Core/Access/TrustedClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7D26D4EA58784A706 /* Core/Access/TrustedClock.swift */; };
-		8A0000E78C660A4629352E6B /* Core/Access/AccessPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E782ABDDE4C7FE89B2 /* Core/Access/AccessPolicy.swift */; };
-		8A0000060000000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 8A0000060000000000009002 /* RevenueCat */; };
 		8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */; };
 		8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */; };
 		8AF100000000000000000003 /* Screenshot/ScreenshotStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001003 /* Screenshot/ScreenshotStage.swift */; };
@@ -206,13 +185,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		8A0000E80000000000000008 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8A0000010000000000006001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8A0000010000000000004001;
-			remoteInfo = Anky;
-		};
 		8A0000170000000000006001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8A0000010000000000006001 /* Project object */;
@@ -286,27 +258,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkySandboxPurchaseUITests.swift; sourceTree = "<group>"; };
-		8A0000E80000000000000002 /* AnkyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8A0000E80000000000000003 /* AnkyDeviceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyDeviceUITests.swift; sourceTree = "<group>"; };
-		8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/SessionMemoryView.swift; sourceTree = "<group>"; };
-		8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/ReflectionSheet.swift; sourceTree = "<group>"; };
-		8A0000E75B94F30F9A94932F /* Features/Expression/SessionSurfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/SessionSurfaces.swift; sourceTree = "<group>"; };
-		8A0000E70F6CC68EF7074F88 /* Features/Expression/ThresholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/ThresholdView.swift; sourceTree = "<group>"; };
-		8A0000E7A94B12E04DE418C5 /* Features/Expression/ExpressionComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/ExpressionComponents.swift; sourceTree = "<group>"; };
-		8A0000E79BBDDE7F7DA4E5A2 /* Features/Expression/ExpressionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/ExpressionController.swift; sourceTree = "<group>"; };
-		8A0000E7C46002315D6DF397 /* Features/Expression/CameraRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/CameraRecorder.swift; sourceTree = "<group>"; };
-		8A0000E7DF21DA05EDDCF8D1 /* Features/Expression/VoiceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Expression/VoiceRecorder.swift; sourceTree = "<group>"; };
-		8A0000E769C5473691FB6298 /* Features/Access/PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Access/PaywallView.swift; sourceTree = "<group>"; };
-		8A0000E7B98AF9F70D5D3CB1 /* Features/Access/AccessController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Access/AccessController.swift; sourceTree = "<group>"; };
-		8A0000E7413560F4C9DF3FBE /* Purchases/SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Purchases/SubscriptionService.swift; sourceTree = "<group>"; };
-		8A0000E764F1A78075832712 /* Core/Server/AnkyServerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Server/AnkyServerClient.swift; sourceTree = "<group>"; };
-		8A0000E78BE81C28D0035412 /* Core/Server/AnkyPostSigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Server/AnkyPostSigner.swift; sourceTree = "<group>"; };
-		8A0000E7CE22EED8B9AA23FC /* Core/Session/MemoryExportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Session/MemoryExportBuilder.swift; sourceTree = "<group>"; };
-		8A0000E7369CD38765840211 /* Core/Session/ExpressionSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Session/ExpressionSessionStore.swift; sourceTree = "<group>"; };
-		8A0000E73FCDCFA1957F2D8B /* Core/Session/ExpressionSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Session/ExpressionSession.swift; sourceTree = "<group>"; };
-		8A0000E7D26D4EA58784A706 /* Core/Access/TrustedClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Access/TrustedClock.swift; sourceTree = "<group>"; };
-		8A0000E782ABDDE4C7FE89B2 /* Core/Access/AccessPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Access/AccessPolicy.swift; sourceTree = "<group>"; };
 		8A0000010000000000001001 /* AnkyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyApp.swift; sourceTree = "<group>"; };
 		8A0000010000000000001002 /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
 		8A0000010000000000001003 /* WriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteView.swift; sourceTree = "<group>"; };
@@ -466,19 +417,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		8A0000E80000000000000006 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8A0000010000000000002001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				8A0000080000000000000001 /* secp256k1 in Frameworks */,
-				8A0000060000000000000002 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -527,19 +470,9 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		8A0000E80000000000000013 /* AnkyUITests */ = {
-			isa = PBXGroup;
-			children = (
-				8A0000E80000000000000003 /* AnkyDeviceUITests.swift */,
-				8A0000E8000000000000000E /* AnkySandboxPurchaseUITests.swift */,
-			);
-			path = AnkyUITests;
-			sourceTree = "<group>";
-		};
 		8A0000010000000000003001 = {
 			isa = PBXGroup;
 			children = (
-				8A0000E80000000000000013 /* AnkyUITests */,
 				8A0000010000000000003002 /* Anky */,
 				8A0000170000000000003001 /* AnkyWriteBeforeScrollShieldAction */,
 				8A0000180000000000003001 /* AnkyWriteBeforeScrollShieldConfiguration */,
@@ -555,24 +488,6 @@
 		8A0000010000000000003002 /* Anky */ = {
 			isa = PBXGroup;
 			children = (
-				8A0000E7850AA21E938E0DBC /* Features/Expression/SessionMemoryView.swift */,
-				8A0000E7CDA7520CD8EB30A2 /* Features/Expression/ReflectionSheet.swift */,
-				8A0000E75B94F30F9A94932F /* Features/Expression/SessionSurfaces.swift */,
-				8A0000E70F6CC68EF7074F88 /* Features/Expression/ThresholdView.swift */,
-				8A0000E7A94B12E04DE418C5 /* Features/Expression/ExpressionComponents.swift */,
-				8A0000E79BBDDE7F7DA4E5A2 /* Features/Expression/ExpressionController.swift */,
-				8A0000E7C46002315D6DF397 /* Features/Expression/CameraRecorder.swift */,
-				8A0000E7DF21DA05EDDCF8D1 /* Features/Expression/VoiceRecorder.swift */,
-				8A0000E769C5473691FB6298 /* Features/Access/PaywallView.swift */,
-				8A0000E7B98AF9F70D5D3CB1 /* Features/Access/AccessController.swift */,
-				8A0000E7413560F4C9DF3FBE /* Purchases/SubscriptionService.swift */,
-				8A0000E764F1A78075832712 /* Core/Server/AnkyServerClient.swift */,
-				8A0000E78BE81C28D0035412 /* Core/Server/AnkyPostSigner.swift */,
-				8A0000E7CE22EED8B9AA23FC /* Core/Session/MemoryExportBuilder.swift */,
-				8A0000E7369CD38765840211 /* Core/Session/ExpressionSessionStore.swift */,
-				8A0000E73FCDCFA1957F2D8B /* Core/Session/ExpressionSession.swift */,
-				8A0000E7D26D4EA58784A706 /* Core/Access/TrustedClock.swift */,
-				8A0000E782ABDDE4C7FE89B2 /* Core/Access/AccessPolicy.swift */,
 				8A0000040000000000001001 /* Assets.xcassets */,
 				8A0000FF0000000000001001 /* Fonts */,
 				8A0000B0000000000000100A /* StarterPainting */,
@@ -604,7 +519,6 @@
 				8A0000D00000000000001003 /* AnkyGlanceWidgets.appex */,
 				8A0000E50000000000001008 /* AnkyClip.app */,
 				8A0000E00000000000001003 /* AnkyTests.xctest */,
-				8A0000E80000000000000002 /* AnkyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -962,24 +876,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		8A0000E80000000000000001 /* AnkyUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 8A0000E80000000000000010 /* Build configuration list for PBXNativeTarget "AnkyUITests" */;
-			buildPhases = (
-				8A0000E80000000000000005 /* Sources */,
-				8A0000E80000000000000006 /* Frameworks */,
-				8A0000E80000000000000007 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				8A0000E80000000000000009 /* PBXTargetDependency */,
-			);
-			name = AnkyUITests;
-			productName = AnkyUITests;
-			productReference = 8A0000E80000000000000002 /* AnkyUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		8A0000010000000000004001 /* Anky */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8A0000010000000000007002 /* Build configuration list for PBXNativeTarget "Anky" */;
@@ -1001,7 +897,6 @@
 			name = Anky;
 			packageProductDependencies = (
 				8A0000080000000000009002 /* secp256k1 */,
-				8A0000060000000000009002 /* RevenueCat */,
 			);
 			productName = Anky;
 			productReference = 8A0000010000000000001011 /* Anky.app */;
@@ -1158,10 +1053,6 @@
 					8A0000E00000000000004001 = {
 						CreatedOnToolsVersion = 16.2;
 					};
-					8A0000E80000000000000001 = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = 8A0000010000000000004001;
-					};
 					8A0000E50000000000004001 = {
 						CreatedOnToolsVersion = 16.2;
 						SystemCapabilities = {
@@ -1188,7 +1079,6 @@
 			mainGroup = 8A0000010000000000003001;
 			packageReferences = (
 				8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
-				8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			productRefGroup = 8A0000010000000000003003 /* Products */;
 			projectDirPath = "";
@@ -1201,19 +1091,11 @@
 				8A0000D00000000000004001 /* AnkyGlanceWidgets */,
 				8A0000E50000000000004001 /* AnkyClip */,
 				8A0000E00000000000004001 /* AnkyTests */,
-				8A0000E80000000000000001 /* AnkyUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		8A0000E80000000000000007 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8A0000010000000000005002 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1314,37 +1196,10 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		8A0000E80000000000000005 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				8A0000E80000000000000004 /* AnkyDeviceUITests.swift in Sources */,
-				8A0000E8000000000000000F /* AnkySandboxPurchaseUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8A0000010000000000005001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8A0000E7BEF53848055AFE18 /* Features/Expression/SessionMemoryView.swift in Sources */,
-				8A0000E714D200A9B23F40B8 /* Features/Expression/ReflectionSheet.swift in Sources */,
-				8A0000E7BA61547BFD5161A9 /* Features/Expression/SessionSurfaces.swift in Sources */,
-				8A0000E7B3DB0BF4A33B95BB /* Features/Expression/ThresholdView.swift in Sources */,
-				8A0000E71368DC855FF821F9 /* Features/Expression/ExpressionComponents.swift in Sources */,
-				8A0000E7593B79EE5F4CBE6A /* Features/Expression/ExpressionController.swift in Sources */,
-				8A0000E746077E9DBB2AFDE2 /* Features/Expression/CameraRecorder.swift in Sources */,
-				8A0000E7F55B4597592DB967 /* Features/Expression/VoiceRecorder.swift in Sources */,
-				8A0000E76CF45AEA9465D7C4 /* Features/Access/PaywallView.swift in Sources */,
-				8A0000E7AD42507B914265A8 /* Features/Access/AccessController.swift in Sources */,
-				8A0000E7A7CFF654FE68474E /* Purchases/SubscriptionService.swift in Sources */,
-				8A0000E725A29E6337CC2EC6 /* Core/Server/AnkyServerClient.swift in Sources */,
-				8A0000E75B5FAB08AF4AF0F5 /* Core/Server/AnkyPostSigner.swift in Sources */,
-				8A0000E7932120C9DD8F3AD6 /* Core/Session/MemoryExportBuilder.swift in Sources */,
-				8A0000E7C085ABDB0678315A /* Core/Session/ExpressionSessionStore.swift in Sources */,
-				8A0000E742BED7D8B96CAF90 /* Core/Session/ExpressionSession.swift in Sources */,
-				8A0000E7407F409026BF0511 /* Core/Access/TrustedClock.swift in Sources */,
-				8A0000E78C660A4629352E6B /* Core/Access/AccessPolicy.swift in Sources */,
 				8A0000010000000000000001 /* AnkyApp.swift in Sources */,
 				8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */,
 				8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */,
@@ -1541,11 +1396,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		8A0000E80000000000000009 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8A0000010000000000004001 /* Anky */;
-			targetProxy = 8A0000E80000000000000008 /* PBXContainerItemProxy */;
-		};
 		8A0000170000000000006002 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8A0000170000000000004001 /* AnkyWriteBeforeScrollShieldAction */;
@@ -1621,48 +1471,6 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		8A0000E80000000000000011 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
-				DEVELOPMENT_TEAM = 84V63LKV45;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Anky;
-			};
-			name = Debug;
-		};
-		8A0000E80000000000000012 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
-				DEVELOPMENT_TEAM = 84V63LKV45;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Anky;
-			};
-			name = Release;
-		};
 		8A0000010000000000008001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1786,7 +1594,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1802,7 +1610,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1821,7 +1629,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1837,7 +1645,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1855,12 +1663,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1878,12 +1686,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1901,12 +1709,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1924,12 +1732,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1947,12 +1755,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1970,12 +1778,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1993,12 +1801,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2016,12 +1824,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2038,11 +1846,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2059,11 +1867,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2081,7 +1889,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2093,7 +1901,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2112,7 +1920,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 71;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -2124,7 +1932,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2139,15 +1947,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		8A0000E80000000000000010 /* Build configuration list for PBXNativeTarget "AnkyUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				8A0000E80000000000000011 /* Debug */,
-				8A0000E80000000000000012 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		8A0000010000000000007001 /* Build configuration list for PBXProject "Anky" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -2223,14 +2022,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
-			};
-		};
 		8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
@@ -2242,11 +2033,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		8A0000060000000000009002 /* RevenueCat */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8A0000060000000000009001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
-			productName = RevenueCat;
-		};
 		8A0000080000000000009002 /* secp256k1 */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8A0000080000000000009001 /* XCRemoteSwiftPackageReference "secp256k1.swift" */;

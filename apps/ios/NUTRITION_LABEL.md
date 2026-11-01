@@ -1,7 +1,5 @@
 # Anky App Privacy Nutrition Label
 
-> **Superseded for 2.3.0 by [`APP_PRIVACY_ANSWERS.md`](APP_PRIVACY_ANSWERS.md).** The answers below were true for 2.2.0 only.
-
 Repository source of truth, revised October 16, 2026 for version 2.2.0. Use these answers in App Store Connect → App Privacy.
 
 ## Answer: Data Not Collected

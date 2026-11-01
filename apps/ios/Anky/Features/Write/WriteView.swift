@@ -19,27 +19,17 @@ struct WriteView: View {
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onOpenMenu: () -> Void
-    /// Asked before a finished writing reopens; false keeps it read-only
-    /// (for example, when access to continue writing has ended).
-    private let canReopen: () -> Bool
-    /// Shown in the middle of the top bar whenever the menu is (the session
-    /// ribbon during a walk). Hidden while the 8 second rule holds a writing.
-    private let topCenter: AnyView?
 
     init(
         viewModel: WriteViewModel,
         shouldFocus: Bool,
         onCompleted: @escaping (SavedAnky) -> Void,
-        onOpenMenu: @escaping () -> Void,
-        canReopen: @escaping () -> Bool = { true },
-        topCenter: AnyView? = nil
+        onOpenMenu: @escaping () -> Void
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFocus = shouldFocus
         self.onCompleted = onCompleted
         self.onOpenMenu = onOpenMenu
-        self.canReopen = canReopen
-        self.topCenter = topCenter
     }
 
     var body: some View {
@@ -151,7 +141,6 @@ struct WriteView: View {
                     durationIsInfinite: viewModel.durationIsInfinite,
                     eightSecondRuleEnabled: viewModel.preferences.eightSecondRuleEnabled,
                     showsTargetPicker: $showsTargetPicker,
-                    topCenter: topCenter,
                     onSetEightSecondRuleEnabled: { enabled in
                         AnkyHaptics.selection()
                         viewModel.setEightSecondRuleEnabled(enabled)
@@ -267,7 +256,7 @@ struct WriteView: View {
 
     /// Keep writing: the finished words become the live writing again.
     private func reopenFinishedWriting() {
-        guard isFinished, canReopen(), viewModel.reopenFinishedSession() else { return }
+        guard isFinished, viewModel.reopenFinishedSession() else { return }
         AnkyHaptics.light()
         viewModel.focusWritingKeyboard()
     }
@@ -392,7 +381,6 @@ private struct AxisWritingTopBar: View {
     let durationIsInfinite: Bool
     let eightSecondRuleEnabled: Bool
     @Binding var showsTargetPicker: Bool
-    let topCenter: AnyView?
     let onSetEightSecondRuleEnabled: (Bool) -> Void
     let onChooseTarget: (Int) -> Void
     let onChooseInfinite: () -> Void
@@ -415,16 +403,6 @@ private struct AxisWritingTopBar: View {
                 }
 
                 Spacer(minLength: 0)
-
-                if showsMenu, let topCenter {
-                    topCenter
-                        .transition(.opacity)
-                    Spacer(minLength: 0)
-                    if isCompleted {
-                        // The finished writing's own capsule stands here.
-                        Color.clear.frame(width: 100, height: 44)
-                    }
-                }
 
                 if !isCompleted {
                     Button {

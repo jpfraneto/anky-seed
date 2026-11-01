@@ -1,34 +1,26 @@
-Anky: Walking Meditation 2.3.0 (70)
+Anky 2.2.0 (69) — notes for review
 
-WHAT IT IS
-A space for expression while walking or staying still. A session begins with "Go for a walk. / Or stay right where you are."; the person can Write, Talk (voice), Record (camera video) or stay silent, switching within one session. Ended sessions become memories to read, play and watch. All writing, audio and video stays on the device. No login or account.
+WHAT CHANGED IN THIS VERSION
+Anky is now a fully offline writing app. This version removes features; it adds no new capabilities or entitlements.
+- No server connection of any kind. AI reflections, the subscription (Anky Pro, RevenueCat) and all network code were removed. The app has no in-app purchases.
+- One writing page with a side drawer of past writings. A finished writing stays on the page; tapping it continues it.
+- Tapping the clock shows the 8 second rule, a minutes slider (1–8) and ∞ (no time limit).
+- The App Privacy answers are now "Data Not Collected".
 
-HOW TO TEST
-1. Choose Write, Talk or Record (or "begin in silence").
-2. Write: forward-only page; a passage rests after 8 seconds without typing.
-3. Talk: voice recording (microphone asked here); it keeps recording with the screen locked.
-4. Record: camera video (camera and microphone asked here).
-5. End the session. The menu (top left) lists past sessions; open one to read, play and watch.
-6. Settings › Export my memories creates a .zip of everything, with the original files.
+NO CRYPTOCURRENCY FUNCTIONALITY
+Anky has no wallet, no blockchain integration, no tokens and no payments. A random key is generated on the device and stored in the Keychain; its only use is to encrypt the optional iCloud backup of the user's writings. It is never shown to the user and never sent anywhere.
 
-FREE ACCESS (APP-MANAGED, NOT AN APP STORE TRIAL)
-The first seven days of the core experience are free from the first session. No payment details, no purchase started, nothing charged when they end. anky.monthly has no introductory offer. After seven days, new sessions need the subscription; everything already created stays readable and exportable, and the expiry screen offers Subscribe, Restore purchases, View my memories and Export my memories. Paid functionality is unlocked only through In-App Purchase (Guidelines 3.1.1/3.1.2); there is no external payment path. A fresh install will not reach the expiry screen during review; the paywall can be opened at any time (below).
+HOW TO TEST (no account or login required)
+1. Launch the app and type on the page. By default a session ends after 8 seconds without typing.
+2. The writing stays on the page. Tap it to keep writing.
+3. On a finished writing, the "…" button (top right) offers Copy writing, Copy prompt + writing (puts the text on the clipboard with a reflection prompt) and Delete.
+4. Tap the menu button (top left) to open the drawer: past writings, Settings and Stats.
 
-SUBSCRIPTION
-One auto-renewing monthly subscription, anky.monthly, sold with StoreKit via RevenueCat, localized price from StoreKit.
-- Paywall: menu › Settings › Subscription › Subscribe (also from "Reflect with Anky" when not subscribed). It shows price and period, automatic renewal until cancelled, charge only on confirmation, how to cancel, and links to the Privacy Policy (https://anky.app/privacy-policy/) and Terms of Use (Apple standard EULA).
-- Restore purchases and Manage subscription: Settings › Subscription. A sandbox account can purchase normally.
+SCREEN TIME (FamilyControls)
+Blocking is opt-in. Go to Settings → Blocked apps, turn on "Block until I write", grant Screen Time access and choose one or two apps. Please also allow notifications when asked.
 
-AI REFLECTIONS (OPTIONAL, SUBSCRIBERS ONLY)
-"Reflect with Anky" on a writing ("…" on a finished writing, or inside a past session). A sheet first explains that the text of that one writing goes to Anky's server, an AI model writes a reflection, the server does not keep the writing, and the reflection is saved on the device. Nothing is sent until "Send and reflect". Voice and video are never sent or transcribed. The server verifies the subscription itself. Nothing else in the app uses AI.
+iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
+- "Write" opens Anky on a blank page. Finishing a sentence unlocks the chosen apps for 15 minutes (up to three times a day); writing the chosen number of minutes unlocks them for the rest of the day.
+- "Emergency unlock" opens Anky and unlocks the apps for the rest of the day immediately. No writing and no payment are required.
 
-MICROPHONE, CAMERA, BACKGROUND AUDIO
-Microphone and camera are used only while the person records. Background audio (UIBackgroundModes: audio) lets a voice recording continue with the screen locked while walking; it is active only during recording. Recordings are never uploaded. The app does not use location.
-
-ACCOUNT AND SERVER
-No sign-in. The app creates a random anonymous identifier on the device, used to authenticate its few requests (free days, subscription status, a reflection when asked) and as the RevenueCat customer ID. It is never shown and not linked to name, email, phone or Apple ID. The server keeps only an anonymous record of when free days began and the subscription status. No analytics, ads or tracking.
-
-SCREEN TIME (FamilyControls), OPT-IN
-Settings › Blocked apps. iOS does not let a shield open another app, so the shield's buttons post a local notification that opens Anky. "Write" opens a blank page and writing unlocks the chosen apps; if free days have ended without a subscription, it unlocks the apps for the day instead, so nobody is trapped by a paywall. "Emergency unlock" unlocks for the day immediately, with no writing or payment. Blocking can be turned off any time.
-
-Contact: support@anky.app
+Nobody can be locked out of their device: the same switch in Settings → Blocked apps turns blocking off at any time. Only Anky's own shield is ever applied or removed. The app does not change any other Screen Time setting.
