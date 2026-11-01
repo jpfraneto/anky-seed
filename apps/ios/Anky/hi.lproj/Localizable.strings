@@ -125,7 +125,7 @@
 "Open email" = "email खोलें";
 "Encrypted iCloud backup on" = "एन्क्रिप्टेड iCloud बैकअप चालू";
 "Export writings or enable iCloud" = "writings export करें या iCloud enable करें";
-"0 ankys" = "0 एन्किस";
+"0 ankys" = "0 ankys";
 "Anky created a private local profile for this device." = "Anky ने इस device के लिए एक निजी local profile बनाया।";
 "Your writing and access stay here unless you choose to export or recover them elsewhere." = "आपकी writing और access यहीं रहते हैं, जब तक आप उन्हें export या कहीं और recover न करें।";
 "These words restore your Anky access. Never share them. Anky cannot recover them for you." = "ये words आपका Anky access restore करते हैं। इन्हें कभी share न करें। Anky इन्हें आपके लिए recover नहीं कर सकता।";
@@ -726,3 +726,36 @@
 "This permanently deletes every writing on this device and your Anky iCloud backup. Anky has no server account: nothing else exists anywhere." = "यह इस डिवाइस पर हर लिखाई और आपका Anky iCloud बैकअप हमेशा के लिए हटा देता है। Anky का कोई सर्वर खाता नहीं है: इसके अलावा कहीं कुछ भी मौजूद नहीं है।";
 "All writings deleted from this device and your Anky iCloud backup." = "इस डिवाइस और आपके Anky iCloud बैकअप से सारी लिखाई हटा दी गई।";
 "Writing time" = "लिखने का समय";
+
+/* The loom: welcome and Anky Pro (2026-11-01) */
+"this is a loom." = "यह एक करघा है।";
+"here you weave yourself into being,\neight minutes at a time." = "यहाँ आप ख़ुद को बुनते हैं,\nहर बार आठ मिनट।";
+"begin" = "शुरू करें";
+"loom: skip" = "छोड़ें";
+"write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends." = "जो भी आए, लिखते रहें। रुकें नहीं।\nअगर आप आठ सेकंड ठहर गए, तो धागा ख़त्म हो जाता है।";
+"Your first thread" = "आपका पहला धागा";
+"the loom is strung." = "करघे पर ताना चढ़ गया है।";
+"you wove this." = "यह आपने बुना।";
+"then you rested, and the thread ended." = "फिर आप ठहर गए, और धागा ख़त्म हो गया।";
+"an anky is eight minutes of this." = "एक anky इसी के आठ मिनट हैं।";
+"what you write stays on this iPhone.\nno one reads it. not even anky." = "आप जो लिखते हैं, वह इसी iPhone पर रहता है।\nकोई उसे नहीं पढ़ता। anky भी नहीं।";
+"continue" = "जारी रखें";
+"keep weaving." = "बुनते रहें।";
+"a quiet place to write an anky, every day.\nyour writing never leaves this iPhone." = "हर दिन एक anky लिखने की एक शांत जगह।\nआपकी लिखाई कभी इस iPhone से बाहर नहीं जाती।";
+"start my %d free days" = "मेरे %d मुफ़्त दिन शुरू करें";
+"subscribe" = "सदस्यता लें";
+"Nothing is charged today. Cancel anytime in Settings before the trial ends." = "आज कोई शुल्क नहीं लिया जाएगा। परीक्षण ख़त्म होने से पहले सेटिंग्स में कभी भी रद्द करें।";
+"Renews monthly. Cancel anytime in Settings." = "हर महीने नवीनीकृत होती है। सेटिंग्स में कभी भी रद्द करें।";
+"Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky Pro हर महीने %@ पर अपने-आप नवीनीकृत होता है, जब तक कि मौजूदा अवधि ख़त्म होने से कम से कम 24 घंटे पहले उसे रद्द न किया जाए। भुगतान आपके Apple ID से लिया जाता है। अपनी App Store खाता सेटिंग्स में इसे प्रबंधित या रद्द करें।";
+"%d days free, then %@ a month" = "%d दिन मुफ़्त, फिर %@ प्रति माह";
+"%@ a month" = "%@ प्रति माह";
+"Restore" = "पुनर्स्थापित करें";
+"Terms" = "शर्तें";
+"take your writings with you" = "अपनी लिखाई साथ ले जाएँ";
+"Waiting for the purchase to be approved. The loom opens the moment it is." = "खरीदारी की मंज़ूरी का इंतज़ार है। मंज़ूरी मिलते ही करघा खुल जाएगा।";
+"welcome to the loom." = "करघे में आपका स्वागत है।";
+"The App Store isn't answering. Check your connection and try again." = "App Store जवाब नहीं दे रहा। अपना कनेक्शन जाँचें और फिर कोशिश करें।";
+"Apple couldn't verify this purchase. Nothing was charged." = "Apple इस खरीदारी की पुष्टि नहीं कर सका। कोई शुल्क नहीं लिया गया।";
+"The purchase didn't go through. Nothing was charged." = "खरीदारी पूरी नहीं हुई। कोई शुल्क नहीं लिया गया।";
+"No Anky Pro subscription was found for this Apple ID." = "इस Apple ID पर कोई Anky Pro सदस्यता नहीं मिली।";
+"Manage subscription" = "सदस्यता प्रबंधित करें";

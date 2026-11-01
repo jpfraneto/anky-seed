@@ -1,6 +1,6 @@
 # Política de privacidad de Anky
 
-Vigente y revisada: 16 de octubre de 2026
+Vigente y revisada: 1 de noviembre de 2026
 
 Anky es una app de escritura que guarda lo que escribes en tu teléfono. A partir de la versión 2.2, la app de Anky no se conecta a ningún servidor de Anky. No hay cuenta, ni inicio de sesión, ni analíticas, ni publicidad.
 
@@ -30,6 +30,7 @@ Nada de esto se envía a Anky. No podemos leer lo que escribes y no tenemos ning
 
 ## 4. Servicios de Apple que puedes elegir usar
 
+- **Anky Pro:** la suscripción se compra a través de Apple. Apple procesa el pago, y la app verifica la suscripción con Apple en el dispositivo. Anky no recibe tu nombre, tu correo electrónico ni tus datos de pago.
 - **Copia de seguridad en iCloud:** si la activas, Anky cifra tus escrituras con AES-GCM y guarda el archivo cifrado en tu propio iCloud Drive. La clave puede guardarse en tu Llavero de iCloud para restaurar en un teléfono nuevo. Apple opera iCloud; Anky nunca ve la copia.
 - **Tiempo en pantalla:** si activas el bloqueo, los frameworks de Tiempo en pantalla de Apple manejan el permiso y la selección de apps. Tu lista de apps se queda en el dispositivo.
 - **Notificaciones:** los recordatorios y las notificaciones del bloqueo los programa iOS de forma local.
