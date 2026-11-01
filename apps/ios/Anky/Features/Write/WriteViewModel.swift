@@ -91,15 +91,9 @@ final class WriteViewModel: ObservableObject {
         !isPausedOnDraft && completedArtifact == nil
     }
 
-    /// True while stillness may end the writing on screen. An ∞ session and a
-    /// retired rule both leave the writer as the only one who can end it.
-    var eightSecondRuleActive: Bool {
-        preferences.eightSecondRuleEnabled && !preferences.durationIsInfinite
-    }
-
-    var durationIsInfinite: Bool {
-        preferences.durationIsInfinite
-    }
+    /// An anky is eight minutes, and eight seconds of stillness ends it.
+    /// Neither is a setting.
+    var eightSecondRuleActive: Bool { true }
 
     var backspaceEnabled: Bool {
         preferences.backspaceAllowed
@@ -147,7 +141,7 @@ final class WriteViewModel: ObservableObject {
     /// (spec §9). Nil everywhere else — the normal stillness applies.
     var terminalSilenceOverrideMs: Int64?
     private var terminalSilenceMs: Int64 {
-        terminalSilenceOverrideMs ?? preferences.effectiveTerminalSilenceMs
+        terminalSilenceOverrideMs ?? AnkyDuration.defaultTerminalSilenceMs
     }
 
     init(
@@ -174,7 +168,7 @@ final class WriteViewModel: ObservableObject {
         let loadedPreferences = preferencesStore.load()
         self.preferencesStore = preferencesStore
         self.preferences = loadedPreferences
-        self.silenceRemainingMs = loadedPreferences.effectiveTerminalSilenceMs
+        self.silenceRemainingMs = AnkyDuration.defaultTerminalSilenceMs
         refreshTodayCount()
         // Adopt pre-level-system history exactly once, before any new seal.
         levelProgressStore.backfillIfNeeded(from: sessionIndexStore.load())
@@ -316,45 +310,10 @@ final class WriteViewModel: ObservableObject {
         rejectedInputPulseID = UUID()
     }
 
-    /// Chooses the duration in force. Minutes keep the existing daily target
-    /// (the whole unlock ladder reads it); ∞ is a preference of its own, so no
-    /// other system has to learn a new number.
-    func chooseDuration(minutes: Int) {
-        DailyTargetStore().applyImmediateTarget(minutes)
-        updatePreferences { $0.durationIsInfinite = false }
-    }
-
-    func chooseInfiniteDuration() {
-        updatePreferences { $0.durationIsInfinite = true }
-    }
-
     /// The clock's compact controls edit the same durable writing rules as
     /// Settings, but without asking the writer to leave the page.
     func setBackspaceAllowed(_ allowed: Bool) {
         updatePreferences { $0.backspaceAllowed = allowed }
-    }
-
-    func setEightSecondRuleEnabled(_ enabled: Bool) {
-        updatePreferences { $0.eightSecondRuleEnabled = enabled }
-        silenceTask?.cancel()
-        silenceElapsedMs = 0
-        silenceRemainingMs = terminalSilenceMs
-        updateLatestGlyphColorProgress(silenceElapsedMs: 0)
-
-        guard enabled,
-              !preferences.durationIsInfinite,
-              sessionEngine.isStarted,
-              !sessionEngine.isClosed,
-              completedArtifact == nil else {
-            return
-        }
-
-        // Choosing a rule is outside the writing itself. Give the newly
-        // enabled rule a fresh eight seconds instead of letting an older
-        // pause close the page the instant the control is touched.
-        sessionEngine.prepareToResume(at: Self.nowMs())
-        startTicker()
-        scheduleSilenceClose(afterMs: terminalSilenceMs)
     }
 
     /// Re-reads the switches (settings may have moved them while the writer
@@ -716,7 +675,7 @@ final class WriteViewModel: ObservableObject {
                 tierRawValue: writeBeforeScrollSessionMetrics.finalTierRawValue,
                 metadata: ["durationMs": "\(persisted.durationMs)"]
             )
-            let dailyTargetMs = DailyTargetStore().effectiveTargetMs(now: sealedAt)
+            let dailyTargetMs = AnkyDuration.completeRitualMs
             if persisted.durationMs > dailyTargetMs {
                 writeBeforeScrollEventLog.append(
                     .sessionOvershoot,
@@ -785,7 +744,7 @@ final class WriteViewModel: ObservableObject {
 
     private func recordWriteBeforeScrollProgress(acceptedCharacterCount: Int, now epochMs: Int64) {
         let now = Date(timeIntervalSince1970: TimeInterval(epochMs) / 1000)
-        let dailyTargetMs = DailyTargetStore().effectiveTargetMs(now: now)
+        let dailyTargetMs = AnkyDuration.completeRitualMs
         let passesRemaining = QuickPassStore().remainingPasses(now: now)
         writeBeforeScrollQuickPassesRemaining = passesRemaining
 

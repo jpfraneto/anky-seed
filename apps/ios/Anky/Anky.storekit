@@ -12,44 +12,48 @@
   {
    "id": "A4000000",
    "localizations": [],
-   "name": "Anky",
+   "name": "Anky Pro",
    "subscriptions": [
     {
      "adHocOffers": [],
      "codeOffers": [],
-     "displayPrice": "9.99",
+     "displayPrice": "8.99",
      "familyShareable": false,
      "groupNumber": 1,
      "internalID": "A4000002",
-     "introductoryOffer": null,
+     "introductoryOffer": {
+      "internalID": "A4000003",
+      "paymentMode": "free",
+      "subscriptionPeriod": "P3D"
+     },
      "localizations": [
       {
-       "description": "Better AI reflections",
+       "description": "A place to write an anky, every day",
        "displayName": "Anky Pro Monthly",
        "locale": "en_US"
       },
       {
-       "description": "Mejores reflexiones con IA",
+       "description": "Un lugar para escribir un anky, cada día",
        "displayName": "Anky Pro Mensual",
        "locale": "es_ES"
       },
       {
-       "description": "De meilleures réflexions par IA",
+       "description": "Un lieu pour écrire un anky, chaque jour",
        "displayName": "Anky Pro mensuel",
        "locale": "fr_FR"
       },
       {
-       "description": "Bessere KI-Reflexionen",
+       "description": "Ein Ort, um jeden Tag ein Anky zu schreiben",
        "displayName": "Anky Pro monatlich",
        "locale": "de_DE"
       },
       {
-       "description": "更好的 AI 反思",
+       "description": "每天写一篇 anky 的地方",
        "displayName": "Anky Pro 月度订阅",
        "locale": "zh_Hans"
       },
       {
-       "description": "बेहतर AI reflections",
+       "description": "हर दिन एक anky लिखने की जगह",
        "displayName": "Anky Pro मासिक",
        "locale": "hi_IN"
       }
@@ -57,52 +61,6 @@
      "productID": "anky.monthly",
      "recurringSubscriptionPeriod": "P1M",
      "referenceName": "Anky Pro Monthly",
-     "subscriptionGroupID": "A4000000",
-     "type": "RecurringSubscription"
-    },
-    {
-     "adHocOffers": [],
-     "codeOffers": [],
-     "displayPrice": "88.90",
-     "familyShareable": false,
-     "groupNumber": 1,
-     "internalID": "A4000001",
-     "introductoryOffer": null,
-     "localizations": [
-      {
-       "description": "Better AI reflections",
-       "displayName": "Anky Pro Annual",
-       "locale": "en_US"
-      },
-      {
-       "description": "Mejores reflexiones con IA",
-       "displayName": "Anky Pro Anual",
-       "locale": "es_ES"
-      },
-      {
-       "description": "De meilleures réflexions par IA",
-       "displayName": "Anky Pro annuel",
-       "locale": "fr_FR"
-      },
-      {
-       "description": "Bessere KI-Reflexionen",
-       "displayName": "Anky Pro Jährlich",
-       "locale": "de_DE"
-      },
-      {
-       "description": "更好的 AI 反思",
-       "displayName": "Anky Pro 年度订阅",
-       "locale": "zh_Hans"
-      },
-      {
-       "description": "बेहतर AI reflections",
-       "displayName": "Anky Pro वार्षिक",
-       "locale": "hi_IN"
-      }
-     ],
-     "productID": "anky.annual",
-     "recurringSubscriptionPeriod": "P1Y",
-     "referenceName": "Anky Pro Annual",
      "subscriptionGroupID": "A4000000",
      "type": "RecurringSubscription"
     }

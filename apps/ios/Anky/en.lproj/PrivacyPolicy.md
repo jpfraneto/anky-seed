@@ -1,6 +1,6 @@
 # Anky Privacy Policy
 
-Effective and revised: October 16, 2026
+Effective and revised: November 1, 2026
 
 Anky is a writing app that keeps your writing on your phone. Starting with version 2.2, the Anky app does not connect to any Anky server. There is no account, no login, no analytics and no advertising.
 
@@ -30,6 +30,7 @@ None of this is sent to Anky. We cannot read your writing, and we have no copy o
 
 ## 4. Apple services you can choose to use
 
+- **Anky Pro:** the subscription is bought through Apple. Apple processes the payment, and the app checks the subscription with Apple on the device. Anky does not receive your name, email address or payment details.
 - **iCloud backup:** if you turn it on, Anky encrypts your writings with AES-GCM and stores the encrypted file in your own iCloud Drive. The key can be saved to your iCloud Keychain so you can restore on a new phone. Apple runs iCloud; Anky never sees the backup.
 - **Screen Time:** if you turn on the gate, Apple's Screen Time frameworks handle permission and app selection. Your list of apps stays on the device.
 - **Notifications:** reminders and the gate's notifications are scheduled locally by iOS.

@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 #if canImport(UIKit)
@@ -16,9 +17,7 @@ struct AnkySettingsView: View {
 
 
     @State private var writingPreferences = WritingPreferencesStore().load()
-    /// D3 — the silence that closes the channel, in seconds (bounds 3…30).
-    @State private var silenceSeconds: Double =
-        Double(WritingPreferencesStore().load().effectiveTerminalSilenceMs) / 1000
+    @State private var showsManageSubscription = false
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
     @State private var showsDeleteAccountSheet = false
@@ -39,6 +38,7 @@ struct AnkySettingsView: View {
 
                 writingGroup
                 typefaceGroup
+                proGroup
                 protectionGroup
                 supportGroup
                 legalGroup
@@ -64,8 +64,8 @@ struct AnkySettingsView: View {
             // pays for the account-key derivation.
             viewModel.refresh()
             writingPreferences = WritingPreferencesStore().load()
-            silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
         }
+        .manageSubscriptionsSheet(isPresented: $showsManageSubscription)
         .sheet(isPresented: $showsPrivacyPolicy) {
             PrivacyPolicyReflectionSheet()
                 .presentationDetents([.fraction(0.8)])
@@ -95,29 +95,6 @@ struct AnkySettingsView: View {
             rowDivider
 
             toggleRow(icon: "keyboard", title: "Autocorrect & suggestions", isOn: preferenceBinding(\.autocorrectEnabled))
-
-            rowDivider
-
-            toggleRow(icon: "hourglass", title: "8 second rule", isOn: preferenceBinding(\.eightSecondRuleEnabled))
-
-            // The stillness the rule waits for. One dial, in the model's own
-            // bounds, and only while the rule is in force.
-            if writingPreferences.eightSecondRuleEnabled {
-                HStack(spacing: 12) {
-                    Slider(value: $silenceSeconds, in: silenceSecondsRange, step: 1) { isEditing in
-                        if !isEditing {
-                            commitSilenceDuration()
-                        }
-                    }
-                    .tint(Color.ankyInk)
-
-                    value(AnkyLocalization.ui("%d seconds", Int(silenceSeconds)))
-                        .frame(minWidth: 86, alignment: .trailing)
-                }
-                .padding(.leading, 54)
-                .padding(.trailing, 16)
-                .padding(.bottom, 12)
-            }
         }
     }
 
@@ -197,6 +174,20 @@ struct AnkySettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    // MARK: Anky Pro
+
+    private var proGroup: some View {
+        group(title: "Anky Pro") {
+            Button {
+                AnkyHaptics.light()
+                showsManageSubscription = true
+            } label: {
+                row(icon: "circle.hexagongrid", title: "Manage subscription") { chevron }
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: Protection
@@ -406,20 +397,6 @@ struct AnkySettingsView: View {
             return nil
         }
         return AnkyLocalization.ui("Encrypted last backup format", date.formatted(date: .abbreviated, time: .shortened))
-    }
-
-    private var silenceSecondsRange: ClosedRange<Double> {
-        let lower = Double(AnkyDuration.minTerminalSilenceMs / 1000)
-        let upper = Double(AnkyDuration.maxTerminalSilenceMs / 1000)
-        return lower...upper
-    }
-
-    private func commitSilenceDuration() {
-        AnkyHaptics.selection()
-        let ms = Int64((silenceSeconds * 1000).rounded())
-        WritingPreferencesStore().update { $0.terminalSilenceMs = ms }
-        writingPreferences = WritingPreferencesStore().load()
-        silenceSeconds = Double(writingPreferences.effectiveTerminalSilenceMs) / 1000
     }
 
     private var deleteAccountSheet: some View {

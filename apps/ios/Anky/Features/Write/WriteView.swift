@@ -13,9 +13,8 @@ struct WriteView: View {
     /// The keyboard's last global top edge, held past dismissal so a finished
     /// writing keeps the identical bottom inset and the words never move.
     @State private var lastObservedKeyboardMinY: CGFloat?
-    @State private var dailyTargetMs = DailyTargetStore().effectiveTargetMs()
-    /// The writer tapped the clock: the duration slider unfolds under it.
-    @State private var showsTargetPicker = false
+    /// An anky is eight minutes. Always.
+    private let dailyTargetMs = AnkyDuration.completeRitualMs
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onOpenMenu: () -> Void
@@ -73,7 +72,6 @@ struct WriteView: View {
                     preferences: viewModel.preferences,
                     onText: acceptWritingInput,
                     onReplaceTail: { prefixCount, replacementText in
-                        dismissSessionSettingsForWriting()
                         viewModel.replaceForwardTail(
                             keepingPrefixCharacterCount: prefixCount,
                             with: replacementText
@@ -135,39 +133,12 @@ struct WriteView: View {
                     timeText: timerText,
                     silenceProgress: silenceProgress,
                     isCompleted: isFinished,
-                    settingsEnabled: !viewModel.hasStarted,
                     showsMenu: showsMenuButton,
-                    targetMinutes: Int(dailyTargetMs / 60_000),
-                    durationIsInfinite: viewModel.durationIsInfinite,
-                    eightSecondRuleEnabled: viewModel.preferences.eightSecondRuleEnabled,
-                    showsTargetPicker: $showsTargetPicker,
-                    onSetEightSecondRuleEnabled: { enabled in
-                        AnkyHaptics.selection()
-                        viewModel.setEightSecondRuleEnabled(enabled)
-                    },
-                    onChooseTarget: { minutes in
-                        AnkyHaptics.selection()
-                        // Applies to the session on screen AND is what the
-                        // next one starts at.
-                        viewModel.chooseDuration(minutes: minutes)
-                        dailyTargetMs = DailyTargetStore().effectiveTargetMs()
-                    },
-                    onChooseInfinite: {
-                        AnkyHaptics.selection()
-                        viewModel.chooseInfiniteDuration()
-                    },
                     onOpenWritings: handleMenuTap
                 )
                 .padding(.horizontal, 16)
-                .frame(
-                    width: geometry.size.width,
-                    height: showsTargetPicker ? 110 : 44,
-                    alignment: .top
-                )
-                .position(
-                    x: geometry.size.width / 2,
-                    y: 6 + (showsTargetPicker ? 55 : 22)
-                )
+                .frame(width: geometry.size.width, height: 44, alignment: .top)
+                .position(x: geometry.size.width / 2, y: 6 + 22)
                 .zIndex(20)
 
                 // The sealing silence made visible: one bar resting on the
@@ -204,10 +175,6 @@ struct WriteView: View {
         }
         .onAppear {
             viewModel.refreshPreferences()
-            dailyTargetMs = DailyTargetStore().effectiveTargetMs()
-            #if DEBUG
-            if ScreenshotStage.opensDurationLine { showsTargetPicker = true }
-            #endif
             viewModel.bindCompletion(onCompleted)
             if shouldFocus {
                 viewModel.prepareForWritingScene()
@@ -217,7 +184,6 @@ struct WriteView: View {
         .onChange(of: shouldFocus) { isFocused in
             if isFocused {
                 viewModel.prepareForWritingScene()
-                dailyTargetMs = DailyTargetStore().effectiveTargetMs()
             }
         }
         .onChange(of: isFinished) { finished in
@@ -238,20 +204,8 @@ struct WriteView: View {
         viewModel.completedArtifact != nil
     }
 
-    /// The clock's controls belong to the moment before writing. The first
-    /// forward input returns the page to bare paper.
     private func acceptWritingInput(_ text: String) {
-        if !text.isEmpty {
-            dismissSessionSettingsForWriting()
-        }
         viewModel.accept(text)
-    }
-
-    private func dismissSessionSettingsForWriting() {
-        guard showsTargetPicker else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            showsTargetPicker = false
-        }
     }
 
     /// Keep writing: the finished words become the live writing again.
@@ -298,12 +252,9 @@ struct WriteView: View {
         return min(1, max(0, Double(completedMinutes) / Double(ritualMinutes)))
     }
 
-    /// One continuous clock: it counts down to the chosen duration, then
-    /// keeps reading the total time written. ∞ counts up from 0:00.
+    /// One continuous clock: it counts down the eight minutes, then keeps
+    /// reading the total time written.
     private var timerText: String {
-        guard !viewModel.durationIsInfinite else {
-            return AnkyDuration.clock(viewModel.elapsedMs)
-        }
         let remaining = dailyTargetMs - viewModel.elapsedMs
         if remaining > 0 {
             return AnkyDuration.clock(remaining)
@@ -315,7 +266,7 @@ struct WriteView: View {
         guard viewModel.eightSecondRuleActive else {
             return 0
         }
-        return min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(viewModel.preferences.effectiveTerminalSilenceMs)))
+        return min(1, max(0, Double(viewModel.silenceElapsedMs) / Double(AnkyDuration.defaultTerminalSilenceMs)))
     }
 
     /// The line earns its place only once the writer has paused three
@@ -366,85 +317,46 @@ struct WriteView: View {
 }
 
 /// The writing page's chrome: the menu on the left, the clock on the right.
-/// Tapping the clock unfolds one line beneath it — the 8 second rule, a
-/// duration slider, and a quiet ∞.
+/// The clock only tells time; an anky is always eight minutes.
 private struct AxisWritingTopBar: View {
     let timeText: String
     let silenceProgress: Double
     /// The writing has ended: the clock steps aside and the top-right belongs
     /// to the finished writing's own controls.
     let isCompleted: Bool
-    /// The duration is chosen before the first character.
-    let settingsEnabled: Bool
     let showsMenu: Bool
-    let targetMinutes: Int
-    let durationIsInfinite: Bool
-    let eightSecondRuleEnabled: Bool
-    @Binding var showsTargetPicker: Bool
-    let onSetEightSecondRuleEnabled: (Bool) -> Void
-    let onChooseTarget: (Int) -> Void
-    let onChooseInfinite: () -> Void
     let onOpenWritings: () -> Void
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 10) {
-            HStack(spacing: 0) {
-                if showsMenu {
-                    Button(action: onOpenWritings) {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .frame(width: 44, height: 44)
-                            .ankyGlass(in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(AnkyLocalization.ui("Your writings"))
-                    .transition(.opacity)
+        HStack(spacing: 0) {
+            if showsMenu {
+                Button(action: onOpenWritings) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .frame(width: 44, height: 44)
+                        .ankyGlass(in: Circle())
                 }
-
-                Spacer(minLength: 0)
-
-                if !isCompleted {
-                    Button {
-                        guard settingsEnabled else { return }
-                        AnkyHaptics.light()
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            showsTargetPicker.toggle()
-                        }
-                    } label: {
-                        Text(timeText)
-                            .font(.system(size: 17, design: .serif))
-                            .monospacedDigit()
-                            .foregroundStyle(Color.ankyInkSoft)
-                            .contentTransition(.numericText())
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
-                            .ankyGlass(in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!settingsEnabled)
-                    .accessibilityLabel(AnkyLocalization.ui("Writing time %@", timeText))
-                    .accessibilityHint(
-                        settingsEnabled
-                            ? AnkyLocalization.ui("Choose how long you mean to write")
-                            : AnkyLocalization.ui("The writing session has already started")
-                    )
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(AnkyLocalization.ui("Your writings"))
+                .transition(.opacity)
             }
-            .frame(minHeight: 44)
 
-            if showsTargetPicker && !isCompleted {
-                DurationLine(
-                    targetMinutes: targetMinutes,
-                    durationIsInfinite: durationIsInfinite,
-                    eightSecondRuleEnabled: eightSecondRuleEnabled,
-                    onSetEightSecondRuleEnabled: onSetEightSecondRuleEnabled,
-                    onChooseTarget: onChooseTarget,
-                    onChooseInfinite: onChooseInfinite
-                )
-                .transition(.opacity.combined(with: .offset(y: -6)))
+            Spacer(minLength: 0)
+
+            if !isCompleted {
+                Text(timeText)
+                    .font(.system(size: 17, design: .serif))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.ankyInkSoft)
+                    .contentTransition(.numericText())
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .ankyGlass(in: Capsule())
+                    .accessibilityLabel(AnkyLocalization.ui("Writing time %@", timeText))
             }
         }
+        .frame(minHeight: 44)
         // Finished, the bar returns to full presence; live, it recedes as
         // the silence gathers.
         .opacity(isCompleted ? 1 : chromeOpacity)
@@ -455,80 +367,6 @@ private struct AxisWritingTopBar: View {
 
     private var chromeOpacity: Double {
         max(0.28, 1 - min(1, max(0, silenceProgress)) * 0.72)
-    }
-}
-
-/// [hourglass] ——slider—— [∞]. The hourglass is the 8 second rule; the
-/// slider picks the minutes; ∞ is no time limit, deliberately faint.
-private struct DurationLine: View {
-    let targetMinutes: Int
-    let durationIsInfinite: Bool
-    let eightSecondRuleEnabled: Bool
-    let onSetEightSecondRuleEnabled: (Bool) -> Void
-    let onChooseTarget: (Int) -> Void
-    let onChooseInfinite: () -> Void
-
-    @State private var sliderValue: Double = 8
-    @State private var isEditing = false
-
-    private var range: ClosedRange<Double> {
-        Double(DailyTargetStore.minutesRange.lowerBound)...Double(DailyTargetStore.minutesRange.upperBound)
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Button {
-                onSetEightSecondRuleEnabled(!eightSecondRuleEnabled)
-            } label: {
-                Image(systemName: "hourglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(eightSecondRuleEnabled ? Color.ankyInk : Color.ankyInkSoft.opacity(0.32))
-                    .frame(width: 36, height: 36)
-                    .background {
-                        if eightSecondRuleEnabled {
-                            Circle().fill(Color.ankyPaperDeep.opacity(0.8))
-                        }
-                    }
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(AnkyLocalization.ui("8 second rule"))
-            .accessibilityValue(AnkyLocalization.ui(eightSecondRuleEnabled ? "On" : "Off"))
-
-            Slider(value: $sliderValue, in: range, step: 1) { editing in
-                isEditing = editing
-                if !editing { commitSlider() }
-            }
-            .tint(durationIsInfinite ? Color.ankyInkSoft.opacity(0.25) : Color.ankyInkSoft)
-            .onChange(of: sliderValue) { _ in
-                if isEditing { commitSlider() }
-            }
-            .accessibilityLabel(AnkyLocalization.ui("Writing time"))
-            .accessibilityValue(AnkyLocalization.ui("minute count format", Int(sliderValue)))
-
-            Button(action: onChooseInfinite) {
-                Text("∞")
-                    .font(.system(size: 17, design: .serif))
-                    .foregroundStyle(durationIsInfinite ? Color.ankyInk : Color.ankyInkSoft.opacity(0.3))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(AnkyLocalization.ui("No time limit"))
-            .accessibilityAddTraits(durationIsInfinite ? [.isButton, .isSelected] : .isButton)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 50)
-        .ankyGlass(in: Capsule(), interactive: false)
-        .onAppear { sliderValue = Double(targetMinutes) }
-    }
-
-    /// Every step lands at once — the clock above reads the new duration as
-    /// the thumb moves — and touching the slider leaves ∞.
-    private func commitSlider() {
-        let minutes = Int(sliderValue.rounded())
-        guard durationIsInfinite || minutes != targetMinutes else { return }
-        onChooseTarget(minutes)
     }
 }
 

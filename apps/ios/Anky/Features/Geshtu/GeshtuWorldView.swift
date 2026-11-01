@@ -22,8 +22,13 @@ struct GeshtuWorldView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsDeleteConfirmation = false
 
-    /// The first-launch animatic. The world waits fully covered beneath it.
-    @State private var showsOnboarding = OnboardingAnimaticLedger.needsOnboarding()
+    /// Anky Pro: the loom opens with a trial or a subscription.
+    @ObservedObject private var pro = AnkyPro.shared
+    /// The welcome is still owed (first launch only).
+    @State private var needsWelcome = LoomLedger.needsWelcome()
+    /// The welcome and the door to Anky Pro stand over the page until the
+    /// writer is in. The world waits fully covered beneath.
+    @State private var gateIsUp = LoomLedger.needsWelcome() || AnkyPro.shared.access != .active
 
     /// The drawer follows the finger; released, it springs open or shut.
     @GestureState(reset: { _, transaction in
@@ -78,7 +83,7 @@ struct GeshtuWorldView: View {
         .environmentObject(axis)
         // The parchment register is pinned light so system materials never
         // inherit device dark mode.
-        .preferredColorScheme(.light)
+        .preferredColorScheme(gateIsUp ? .dark : .light)
         .onChange(of: axis.drawerIsOpen) { isOpen in
             if isOpen { dismissKeyboard() }
         }
@@ -103,7 +108,7 @@ struct GeshtuWorldView: View {
     /// The drawer can be pulled out from the leading edge whenever the menu
     /// button would be offered — never across a live writing.
     private var drawerAllowed: Bool {
-        if showsOnboarding { return false }
+        if gateIsUp { return false }
         return !writeViewModel.hasStarted || writeViewModel.completedArtifact != nil
     }
 
@@ -165,7 +170,7 @@ struct GeshtuWorldView: View {
 
             WriteView(
                 viewModel: writeViewModel,
-                shouldFocus: !showsOnboarding && !axis.drawerIsOpen,
+                shouldFocus: !gateIsUp && !axis.drawerIsOpen,
                 onCompleted: { _ in grantWriteBeforeScrollUnlock() },
                 onOpenMenu: { axis.openDrawer() }
             )
@@ -198,15 +203,23 @@ struct GeshtuWorldView: View {
                     .zIndex(1600)
             }
 
-            if showsOnboarding {
-                OnboardingAnimaticView {
-                    withAnimation(.easeInOut(duration: 0.6)) {
-                        showsOnboarding = false
+            if gateIsUp {
+                LoomGateView(
+                    pro: pro,
+                    needsWelcome: needsWelcome,
+                    onWelcomed: {
+                        LoomLedger.markDone()
+                        needsWelcome = false
+                    },
+                    onEnter: {
+                        withAnimation(.easeInOut(duration: 1.2)) {
+                            gateIsUp = false
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) {
+                            writeViewModel.focusWritingKeyboard()
+                        }
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
-                        writeViewModel.focusWritingKeyboard()
-                    }
-                }
+                )
                 .zIndex(3000)
                 .transition(.opacity)
             }
@@ -214,12 +227,24 @@ struct GeshtuWorldView: View {
         .animation(.easeInOut(duration: 0.4), value: writeViewModel.completedArtifact?.hash)
         .animation(.easeInOut(duration: 0.4), value: gateLine)
         .onAppear(perform: startWriteBeforeScroll)
+        .onChange(of: pro.access) { access in
+            // The trial or subscription ended while the app was open: the
+            // writing in progress is sealed and the door closes over it.
+            if access == .inactive, !gateIsUp {
+                if writeViewModel.hasStarted, writeViewModel.completedArtifact == nil {
+                    writeViewModel.endWriting()
+                }
+                dismissKeyboard()
+                withAnimation(.easeInOut(duration: 0.8)) { gateIsUp = true }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .writeBeforeScrollNotificationTapped)) { _ in
             routeFromShield()
         }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
+                Task { await pro.refresh() }
                 gateViewModel.reconcileOnAppActive(hasCurrentVerifiedPro: true)
                 gateViewModel.handlePendingInterventionIfNeeded(showWrite: openWritingFromShield)
                 routeFromShield()
@@ -315,6 +340,20 @@ struct GeshtuWorldView: View {
             bridge.markConsumed(intentID: intentID)
             showGateLine(AnkyLocalization.ui("Your apps are unlocked."))
         case .writeBeforeScrollFromShield(let intentID):
+            guard pro.access == .active else {
+                // No loom to write on: the shield never traps anyone behind
+                // the subscription. The apps open for the rest of the day.
+                let now = Date()
+                let endOfDay = Calendar.current.date(
+                    byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)
+                ) ?? now.addingTimeInterval(24 * 60 * 60)
+                gateViewModel.applyUnlock(
+                    UnlockGrant(tier: .daily, unlockedUntil: endOfDay, grantedAt: now),
+                    source: .emergency
+                )
+                bridge.markConsumed(intentID: intentID)
+                return
+            }
             openWritingFromShield()
             writeViewModel.markGateOriginatedSession(appDisplayName: bridge.lastAttemptedAppDisplayName())
             bridge.markConsumed(intentID: intentID)

@@ -146,9 +146,9 @@ enum FreshInstallGuard {
         // The newborn's eyes: a debug install also forgets who it was. This
         // deletes the writer identity INCLUDING its iCloud keychain backup —
         // export the recovery phrase first if the identity on this device
-        // matters to you. The onboarding animatic replays too.
+        // matters to you. The welcome replays too.
         try? WriterIdentityStore().resetForDevelopment(includeICloudBackup: true)
-        OnboardingAnimaticLedger.reset()
+        LoomLedger.reset()
         #endif
 
         try? fileManager.createDirectory(

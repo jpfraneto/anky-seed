@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8A0000E7AAFC79D4A93AF440 /* Features/Loom/LoomGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */; };
+		8A0000E717A2658CB92DF5C9 /* Features/Loom/LoomSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */; };
+		8A0000E753FCEE19AEE1FF9D /* Features/Loom/LoomCarpet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */; };
+		8A0000E7F605C5395441AA32 /* Purchases/AnkyPro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */; };
 		8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */; };
 		8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */; };
 		8AF100000000000000000003 /* Screenshot/ScreenshotStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001003 /* Screenshot/ScreenshotStage.swift */; };
@@ -176,11 +180,6 @@
 		8A0000E5000000000000001B /* UnlockStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001004 /* UnlockStateStore.swift */; };
 		8A0000E5000000000000001C /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000150000000000001001 /* AppGroupStorage.swift */; };
 		8A0000E5000000000000001D /* ClipShims.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E5000000000000100D /* ClipShims.swift */; };
-		8A0000E60000000000000001 /* OnboardingAnimaticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001001 /* OnboardingAnimaticView.swift */; };
-		8A0000E60000000000000002 /* AnimaticStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001002 /* AnimaticStage.swift */; };
-		8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001003 /* AnimaticTimeline.swift */; };
-		8A0000E60000000000000004 /* CarveRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001004 /* CarveRevealView.swift */; };
-		8A0000E60000000000000006 /* TIMELINE.json in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000E60000000000001006 /* TIMELINE.json */; };
 		8A0000FF0000000000000001 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 8A0000FF0000000000001001 /* Fonts */; };
 /* End PBXBuildFile section */
 
@@ -258,6 +257,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomGateView.swift; sourceTree = "<group>"; };
+		8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomSound.swift; sourceTree = "<group>"; };
+		8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomCarpet.swift; sourceTree = "<group>"; };
+		8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Purchases/AnkyPro.swift; sourceTree = "<group>"; };
 		8A0000010000000000001001 /* AnkyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyApp.swift; sourceTree = "<group>"; };
 		8A0000010000000000001002 /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
 		8A0000010000000000001003 /* WriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteView.swift; sourceTree = "<group>"; };
@@ -408,11 +411,6 @@
 		8A0000E5000000000000100A /* ClipSessionImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipSessionImporter.swift; sourceTree = "<group>"; };
 		8A0000E5000000000000100B /* WritingRhythmDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingRhythmDisplay.swift; sourceTree = "<group>"; };
 		8A0000E5000000000000100D /* ClipShims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipShims.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001001 /* OnboardingAnimaticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAnimaticView.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001002 /* AnimaticStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticStage.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001003 /* AnimaticTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimaticTimeline.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001004 /* CarveRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarveRevealView.swift; sourceTree = "<group>"; };
-		8A0000E60000000000001006 /* TIMELINE.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = TIMELINE.json; sourceTree = "<group>"; };
 		8A0000FF0000000000001001 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -488,6 +486,10 @@
 		8A0000010000000000003002 /* Anky */ = {
 			isa = PBXGroup;
 			children = (
+				8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */,
+				8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */,
+				8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */,
+				8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */,
 				8A0000040000000000001001 /* Assets.xcassets */,
 				8A0000FF0000000000001001 /* Fonts */,
 				8A0000B0000000000000100A /* StarterPainting */,
@@ -698,11 +700,6 @@
 			isa = PBXGroup;
 			children = (
 				8A0000A10000000000001003 /* GateSetupView.swift */,
-				8A0000E60000000000001001 /* OnboardingAnimaticView.swift */,
-				8A0000E60000000000001002 /* AnimaticStage.swift */,
-				8A0000E60000000000001003 /* AnimaticTimeline.swift */,
-				8A0000E60000000000001004 /* CarveRevealView.swift */,
-				8A0000E60000000000001006 /* TIMELINE.json */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -1105,7 +1102,6 @@
 				8A0000B0000000000000000A /* StarterPainting in Resources */,
 				8A0000B00000000000000017 /* JourneyKingdoms in Resources */,
 				8A0000100000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
-				8A0000E60000000000000006 /* TIMELINE.json in Resources */,
 				8AF100000000000000000004 /* ScreenshotFixtures.json in Resources */,
 				8A00000F0000000000000001 /* Localizable.strings in Resources */,
 				8A0000110000000000000001 /* PrivacyPolicy.md in Resources */,
@@ -1200,6 +1196,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A0000E7AAFC79D4A93AF440 /* Features/Loom/LoomGateView.swift in Sources */,
+				8A0000E717A2658CB92DF5C9 /* Features/Loom/LoomSound.swift in Sources */,
+				8A0000E753FCEE19AEE1FF9D /* Features/Loom/LoomCarpet.swift in Sources */,
+				8A0000E7F605C5395441AA32 /* Purchases/AnkyPro.swift in Sources */,
 				8A0000010000000000000001 /* AnkyApp.swift in Sources */,
 				8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */,
 				8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */,
@@ -1241,10 +1241,6 @@
 				8A000002000000000000000A /* ReflectionStore.swift in Sources */,
 				8A000002000000000000000D /* LegalSheets.swift in Sources */,
 				8A000002000000000000000E /* YouViewModel.swift in Sources */,
-				8A0000E60000000000000001 /* OnboardingAnimaticView.swift in Sources */,
-				8A0000E60000000000000002 /* AnimaticStage.swift in Sources */,
-				8A0000E60000000000000003 /* AnimaticTimeline.swift in Sources */,
-				8A0000E60000000000000004 /* CarveRevealView.swift in Sources */,
 				8A0000030000000000000001 /* SessionIndexStore.swift in Sources */,
 				8A0000030000000000000002 /* AppOpenStore.swift in Sources */,
 				8A0000030000000000000003 /* AnkyverseCalendar.swift in Sources */,
@@ -1594,7 +1590,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1610,7 +1606,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1629,7 +1625,7 @@
 				CODE_SIGN_ENTITLEMENTS = Anky/Anky.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
@@ -1645,7 +1641,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1663,12 +1659,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1686,12 +1682,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldAction/AnkyWriteBeforeScrollShieldAction.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldAction/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldAction;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1709,12 +1705,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1732,12 +1728,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollShieldConfiguration/AnkyWriteBeforeScrollShieldConfiguration.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollShieldConfiguration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollShieldConfiguration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1755,12 +1751,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1778,12 +1774,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyWriteBeforeScrollMonitor/AnkyWriteBeforeScrollMonitor.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyWriteBeforeScrollMonitor/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.WriteBeforeScrollMonitor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1801,12 +1797,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1824,12 +1820,12 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyGlanceWidgets/AnkyGlanceWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AnkyGlanceWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.GlanceWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1846,11 +1842,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1867,11 +1863,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.AnkyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1889,7 +1885,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1901,7 +1897,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1920,7 +1916,7 @@
 				CODE_SIGN_ENTITLEMENTS = AnkyClip/AnkyClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 72;
 				DEVELOPMENT_TEAM = 84V63LKV45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1932,7 +1928,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 2.2.0;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jpfraneto.Anky.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
