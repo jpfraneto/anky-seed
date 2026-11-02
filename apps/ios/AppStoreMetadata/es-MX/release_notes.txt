@@ -1,6 +1,6 @@
 Una nueva bienvenida.
 
-La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Luego escribes tu primera línea y, si quieres, un recordatorio suave al día.
+La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Si quieres, un recordatorio suave al día.
 
 Un anky siempre dura ocho minutos. Deja de teclear ocho segundos y queda sellado.
 

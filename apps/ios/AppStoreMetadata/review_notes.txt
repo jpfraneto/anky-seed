@@ -1,14 +1,14 @@
 Anky 2.3.0 (73) — notes for review
 
 WHAT CHANGED IN THIS VERSION
-- A first-launch welcome: three short lines on what Anky is for, then the user sets up the page (day or night, font, size, whether backspace is allowed), writes one line, and may opt in to one daily local reminder notification.
+- A first-launch welcome: three short lines on what Anky is for, then the user sets up the page (day or night, font, size, whether backspace is allowed) and may opt in to one daily local reminder notification.
 - Anky Pro, an auto-renewable monthly subscription (anky.monthly) with a 3-day free trial for new subscribers, is now required to use the writing page. Purchases use StoreKit 2 directly; there is no server and no account.
 - A writing is always 8 minutes; it ends after 8 seconds without typing.
 - Settings: ten fonts, eight ink colors, a day/night toggle.
 The app still makes no network connections of its own. App Privacy: Data Not Collected.
 
 HOW TO TEST (no account or login required)
-1. On first launch, tap "continue" through three lines, tap one option on each setup step, write one line and tap "continue", then choose "remind me at …" (asks for notification permission) or "not now".
+1. On first launch, tap "continue" through three lines, tap one option on each setup step, then choose "remind me at …" (asks for notification permission) or "not now".
 2. The paywall shows the price, the trial, Restore, Terms and Privacy, and the auto-renewal terms. Subscribe with a Sandbox Apple ID.
 3. Type on the page. The clock counts down 8:00. Stop typing for 8 seconds and the writing ends; it stays on the page.
 4. On a finished writing the "…" list (top right) is open: Copy prompt + writing, Copy writing, Delete. Tap the page to keep writing.

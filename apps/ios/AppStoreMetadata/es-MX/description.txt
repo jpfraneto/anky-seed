@@ -4,7 +4,7 @@ Anky es una página y un reloj. Escribes durante ocho minutos, y si dejas de tec
 
 CÓMO FUNCIONA
 
-La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Luego escribes tu primera línea, tal como se verá tu página. Si quieres, Anky te manda un recordatorio suave al día.
+La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Si quieres, Anky te manda un recordatorio suave al día.
 
 Después, siempre es igual: abres la app y ya estás escribiendo.
 

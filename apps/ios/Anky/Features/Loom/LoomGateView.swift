@@ -10,7 +10,6 @@
 //      choose your font.                     (a grid, no scrolling)
 //      how large?                            (− and +, with a live line)
 //      when you make a typo:                 (erase, or keep going)
-//      write one line.                       (a plain page, as it will be)
 //      anky works when it's daily.           (an optional daily reminder)
 //      Anky Pro                              (3 days free, then monthly)
 //
@@ -67,7 +66,6 @@ struct LoomGateView: View {
     private enum Step: Int, CaseIterable {
         case why1, why2, why3
         case appearance, typeface, size, erase
-        case firstLine
         case practice
     }
 
@@ -89,10 +87,6 @@ struct LoomGateView: View {
     @State private var splitChoice: AnkyAppearance?
     /// Lines arrive a breath after their screen does.
     @State private var lineShown = false
-
-    // The first line
-    @State private var firstLine = ""
-    @FocusState private var writing: Bool
 
     // The practice
     @State private var reminderTime = Date()
@@ -212,9 +206,6 @@ struct LoomGateView: View {
                 withAnimation(.easeInOut(duration: 0.9)) { lineShown = true }
             }
         }
-        if step == .firstLine {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { writing = true }
-        }
         if step == .practice {
             reminderTime = Date()
         }
@@ -222,7 +213,6 @@ struct LoomGateView: View {
 
     private func next() {
         guard case .welcome(let step) = phase else { return }
-        writing = false
         if let following = Step(rawValue: step.rawValue + 1) {
             phase = .welcome(following)
         } else {
@@ -232,7 +222,6 @@ struct LoomGateView: View {
 
     private func back() {
         AnkyHaptics.light()
-        writing = false
         switch phase {
         case .welcome(let step):
             if let previous = Step(rawValue: step.rawValue - 1) {
@@ -271,7 +260,7 @@ struct LoomGateView: View {
             // The secondary line: always there, so the button never moves.
             Group {
                 switch step {
-                case .firstLine:
+                case .why3:
                     Text(welcomeText("what you write never leaves this iPhone."))
                         .font(.fraunces(15, weight: .light, italic: true))
                         .foregroundStyle(LoomPalette.threadSoft)
@@ -301,11 +290,7 @@ struct LoomGateView: View {
                     Task { await scheduleReminder() }
                 }
             } else {
-                let enabled = step != .firstLine || hasFirstLine
                 ThreadButton(title: welcomeText("continue"), tint: tint) { advance() }
-                    .opacity(enabled ? 1 : 0.35)
-                    .allowsHitTesting(enabled)
-                    .animation(.easeInOut(duration: 0.3), value: enabled)
             }
 
             ProgressDots(count: Step.allCases.count, current: step.rawValue, onNight: onNight)
@@ -334,8 +319,6 @@ struct LoomGateView: View {
             settingScreen("how large?") { sizeControl }
         case .erase:
             settingScreen("when you make a typo:") { eraseChoice }
-        case .firstLine:
-            firstLinePage
         case .practice:
             practice
         }
@@ -556,36 +539,7 @@ struct LoomGateView: View {
         next()
     }
 
-    // MARK: - 2. The first line
-
-    /// The page as it will be: the writer's paper or night, font and size.
-    private var firstLinePage: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            TextField(
-                "",
-                text: $firstLine,
-                prompt: Text(welcomeText("write one line.")).foregroundColor(LoomPalette.threadFaint),
-                axis: .vertical
-            )
-            .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
-            .foregroundStyle(preferences.inkChoice.color)
-            .tint(preferences.inkChoice.color)
-            .lineSpacing(preferences.textSize.pointSize * 0.42)
-            .focused($writing)
-            .submitLabel(.done)
-            .onSubmit { if hasFirstLine { advance() } }
-            .padding(.horizontal, 24)
-            .padding(.top, 80)
-
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var hasFirstLine: Bool {
-        firstLine.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
-    }
-
-    // MARK: - 3. The practice
+    // MARK: - 2. The practice
 
     private var practice: some View {
         VStack(spacing: 0) {

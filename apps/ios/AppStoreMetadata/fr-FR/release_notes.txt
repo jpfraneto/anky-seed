@@ -1,6 +1,6 @@
 Un nouvel accueil.
 
-La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Puis tu écris ta première ligne et, si tu veux, un doux rappel par jour.
+La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Si tu veux, un doux rappel par jour.
 
 Un anky dure toujours huit minutes. Arrête de taper huit secondes et il est scellé.
 
