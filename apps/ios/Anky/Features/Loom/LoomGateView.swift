@@ -575,7 +575,13 @@ struct LoomGateView: View {
 
     private func leaveWelcome() {
         onWelcomed()
-        if pro.access == .active {
+        var subscribed = pro.access == .active
+        #if DEBUG
+        // A replayed welcome always ends at the door, so it can be reviewed
+        // on a phone that is already subscribed.
+        if ProcessInfo.processInfo.arguments.contains("-loomReplay") { subscribed = false }
+        #endif
+        if subscribed {
             enter(celebrating: false)
         } else {
             sound.settle()
