@@ -3,15 +3,9 @@ import SwiftUI
 import UIKit
 import AudioToolbox
 
-struct WritingGlyph: Equatable {
-    let character: Character
-    var silenceProgress: Double
-}
-
 @MainActor
 final class WriteViewModel: ObservableObject {
     @Published private(set) var displayedText: String = ""
-    @Published private(set) var displayedGlyphs: [WritingGlyph] = []
     @Published private(set) var protocolText: String = ""
     @Published private(set) var elapsedMs: Int64 = 0
     @Published private(set) var silenceElapsedMs: Int64 = 0
@@ -26,6 +20,9 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var isErrorMessageVisible = false
     @Published private(set) var completedArtifact: SavedAnky?
+    /// True when the finished writing on the page was sealed a moment ago
+    /// (not opened from the list): its menu opens on its own.
+    @Published private(set) var finishedJustNow = false
     /// The writing chamber's switches, held here so the surface and the
     /// engine always read the same truth (the in-place decisions write them).
     @Published private(set) var preferences: WritingPreferences
@@ -109,6 +106,7 @@ final class WriteViewModel: ObservableObject {
     private let userDefaults: UserDefaults
     private var silenceTask: Task<Void, Never>?
     private var tickerTask: Task<Void, Never>?
+    private var lastDraftSaveMs: Int64 = 0
     private var quickPassUnlockLineTask: Task<Void, Never>?
     private var completion: ((SavedAnky) -> Void)?
     private var writeBeforeScrollUnlockAvailabilityHandler: ((UnlockGrant) -> Void)?
@@ -232,7 +230,6 @@ final class WriteViewModel: ObservableObject {
 
     func accept(_ text: String) {
         let now = Self.nowMs()
-        freezeLatestGlyph(now: now)
         resumeIfFrozen(now: now)
 
         let acceptedCharacters = sessionEngine.accept(text, at: now)
@@ -249,10 +246,7 @@ final class WriteViewModel: ObservableObject {
         keyHaptic.impactOccurred(intensity: 0.75)
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
-        for character in acceptedCharacters {
-            displayedText.append(character)
-            displayedGlyphs.append(WritingGlyph(character: character, silenceProgress: 0))
-        }
+        displayedText.append(contentsOf: acceptedCharacters)
         updateLiveState(now: now)
         recordWriteBeforeScrollProgress(acceptedCharacterCount: acceptedCharacters.count, now: now)
         startTicker()
@@ -261,7 +255,6 @@ final class WriteViewModel: ObservableObject {
 
     func replaceForwardTail(keepingPrefixCharacterCount prefixCount: Int, with replacementText: String) {
         let now = Self.nowMs()
-        freezeLatestGlyph(now: now)
         resumeIfFrozen(now: now)
 
         let acceptedCharacters = sessionEngine.replaceSuffix(
@@ -276,7 +269,6 @@ final class WriteViewModel: ObservableObject {
             return
         }
 
-        let clampedPrefixCount = min(max(0, prefixCount), displayedGlyphs.count)
         lastCharacter = acceptedCharacters.last
         lastCharacterPulseID = UUID()
         keySelectionHaptic.selectionChanged()
@@ -284,8 +276,6 @@ final class WriteViewModel: ObservableObject {
         keySelectionHaptic.prepare()
         keyHaptic.prepare()
         displayedText = sessionEngine.reconstructedText
-        displayedGlyphs = Array(displayedGlyphs.prefix(clampedPrefixCount))
-        displayedGlyphs.append(contentsOf: acceptedCharacters.map { WritingGlyph(character: $0, silenceProgress: 0) })
         updateLiveState(now: now)
         recordWriteBeforeScrollProgress(acceptedCharacterCount: acceptedCharacters.count, now: now)
         startTicker()
@@ -388,13 +378,9 @@ final class WriteViewModel: ObservableObject {
     }
 
     #if DEBUG
-    /// Screenshot mode only. Draft recovery restores every glyph at full
-    /// silence progress — the madder tone the sentinel wears a breath before
-    /// it closes the channel. Correct for a resumed draft; wrong for a
-    /// marketing frame of someone mid-sentence, where the writing is ink.
-    func debugPaintGlyphsAsInkForScreenshot() {
-        displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 0) }
-    }
+    /// Screenshot mode only. The writing is one ink now, so there is nothing
+    /// left to repaint; kept so the screenshot stage still compiles.
+    func debugPaintGlyphsAsInkForScreenshot() {}
     #endif
 
     func beginBlankSessionFromWriteTab() {
@@ -417,7 +403,6 @@ final class WriteViewModel: ObservableObject {
             completedArtifact = nil
             protocolText = sessionEngine.protocolText
             displayedText = sessionEngine.reconstructedText
-            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
             lastCharacter = nil
             elapsedMs = sessionEngine.elapsedMs
             silenceElapsedMs = 0
@@ -447,9 +432,9 @@ final class WriteViewModel: ObservableObject {
         resetForNextSession()
         clearErrorMessage()
         let text = artifact.reconstructedText
+        finishedJustNow = false
         completedArtifact = artifact
         displayedText = text
-        displayedGlyphs = text.map { WritingGlyph(character: $0, silenceProgress: 0) }
         protocolText = artifact.text
         elapsedMs = artifact.durationMs
         isFrozen = true
@@ -492,7 +477,6 @@ final class WriteViewModel: ObservableObject {
             completedArtifact = nil
             protocolText = sessionEngine.protocolText
             displayedText = sessionEngine.reconstructedText
-            displayedGlyphs = displayedText.map { WritingGlyph(character: $0, silenceProgress: 1) }
             lastCharacter = nil
             elapsedMs = sessionEngine.elapsedMs
             silenceElapsedMs = 0
@@ -590,7 +574,13 @@ final class WriteViewModel: ObservableObject {
 
     private func persistDraftAndScheduleSilence() {
         protocolText = sessionEngine.protocolText
-        draftStore.save(protocolText)
+        // Once a second is enough for crash recovery; backgrounding and
+        // navigation still save immediately.
+        let now = Self.nowMs()
+        if now - lastDraftSaveMs >= 1000 {
+            draftStore.save(protocolText)
+            lastDraftSaveMs = now
+        }
         guard eightSecondRuleActive else {
             // No rule, no sentinel: the writing simply keeps its place until
             // the writer ends it.
@@ -687,6 +677,7 @@ final class WriteViewModel: ObservableObject {
                     ]
                 )
             }
+            finishedJustNow = true
             completedArtifact = persisted
             isFrozen = true
             elapsedMs = persisted.durationMs
@@ -711,7 +702,6 @@ final class WriteViewModel: ObservableObject {
         sessionEngine.reset()
         completedArtifact = nil
         displayedText = ""
-        displayedGlyphs = []
         protocolText = ""
         elapsedMs = 0
         silenceElapsedMs = 0
@@ -936,7 +926,8 @@ final class WriteViewModel: ObservableObject {
         tickerTask?.cancel()
         tickerTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 16_000_000)
+                // Ten ticks a second is plenty for a clock and a silence bar.
+                try? await Task.sleep(nanoseconds: 100_000_000)
                 guard !Task.isCancelled else {
                     return
                 }
@@ -959,7 +950,6 @@ final class WriteViewModel: ObservableObject {
 
             silenceElapsedMs = min(currentSilenceElapsedMs, silenceLimitMs)
             silenceRemainingMs = max(0, silenceLimitMs - silenceElapsedMs)
-            updateLatestGlyphColorProgress(silenceElapsedMs: silenceElapsedMs)
             if silenceElapsedMs < 1000 {
                 lastAlarmHapticSecond = 0
             }
@@ -986,21 +976,6 @@ final class WriteViewModel: ObservableObject {
             }
             lastMinuteHaptic = minute
         }
-    }
-
-    private func freezeLatestGlyph(now: Int64) {
-        guard sessionEngine.lastAcceptedMs != nil else {
-            return
-        }
-        updateLatestGlyphColorProgress(silenceElapsedMs: max(0, now - (sessionEngine.lastAcceptedMs ?? now)))
-    }
-
-    private func updateLatestGlyphColorProgress(silenceElapsedMs: Int64) {
-        guard !displayedGlyphs.isEmpty else {
-            return
-        }
-        let progress = min(1, max(0, Double(silenceElapsedMs) / Double(terminalSilenceMs)))
-        displayedGlyphs[displayedGlyphs.count - 1].silenceProgress = progress
     }
 
     /// The stillness ran out: with the rule in force the writing ends here.

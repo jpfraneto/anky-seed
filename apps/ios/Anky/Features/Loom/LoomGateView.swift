@@ -223,16 +223,19 @@ struct LoomGateView: View {
                 }
             }
         case .typeface:
-            VStack(spacing: 10) {
-                ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
-                    choiceChip(isSelected: preferences.fontChoice == choice, height: 54) {
-                        Text(AnkyLocalization.ui(choice.displayName)).font(choice.font(size: 21))
-                    } choose: {
-                        preferences.fontChoice = choice
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 8) {
+                    ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
+                        choiceChip(isSelected: preferences.fontChoice == choice, height: 46) {
+                            Text(AnkyLocalization.ui(choice.displayName)).font(choice.font(size: 21))
+                        } choose: {
+                            preferences.fontChoice = choice
+                        }
                     }
                 }
             }
-            .frame(maxWidth: 280)
+            .frame(maxWidth: 280, maxHeight: 440)
+            .fixedSize(horizontal: false, vertical: true)
         case .size:
             HStack(spacing: 8) {
                 ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in

@@ -882,47 +882,99 @@ struct InteractiveBackSwipeContainer<Content: View>: View {
 extension AnkyWritingFontChoice {
     var displayName: String {
         switch self {
-        case .quill:      return "Quill"        // New York serif — the default hand
-        case .georgia:    return "Georgia"      // rounder, old-friend serif
-        case .round:      return "Round"        // soft rounded sans
-        case .plain:      return "Plain"        // quiet system sans
-        case .typewriter: return "Typewriter"   // American Typewriter
+        case .quill:       return "Quill"        // New York serif — the default hand
+        case .georgia:     return "Georgia"
+        case .baskerville: return "Baskerville"
+        case .palatino:    return "Palatino"
+        case .iowan:       return "Iowan"
+        case .avenir:      return "Avenir"
+        case .round:       return "Round"        // soft rounded sans
+        case .plain:       return "Plain"        // quiet system sans
+        case .typewriter:  return "Typewriter"   // American Typewriter
+        case .noteworthy:  return "Noteworthy"   // a hand, almost
+        }
+    }
+
+    /// The installed font name, for the faces that are not system designs.
+    private var fontName: String? {
+        switch self {
+        case .georgia:     return "Georgia"
+        case .baskerville: return "Baskerville"
+        case .palatino:    return "Palatino-Roman"
+        case .iowan:       return "IowanOldStyle-Roman"
+        case .avenir:      return "AvenirNext-Regular"
+        case .typewriter:  return "AmericanTypewriter"
+        case .noteworthy:  return "Noteworthy-Light"
+        case .quill, .round, .plain: return nil
         }
     }
 
     /// UIFont for the UITextView writing surface.
     func uiFont(size: CGFloat) -> UIFont {
-        switch self {
-        case .quill:
-            let base = UIFont.systemFont(ofSize: size, weight: .regular)
-            if let descriptor = base.fontDescriptor.withDesign(.serif) {
-                return UIFont(descriptor: descriptor, size: size)
-            }
-            return base
-        case .georgia:
-            return UIFont(name: "Georgia", size: size) ?? UIFont.systemFont(ofSize: size)
-        case .round:
-            let base = UIFont.systemFont(ofSize: size, weight: .regular)
-            if let descriptor = base.fontDescriptor.withDesign(.rounded) {
-                return UIFont(descriptor: descriptor, size: size)
-            }
-            return base
-        case .plain:
-            return UIFont.systemFont(ofSize: size, weight: .regular)
-        case .typewriter:
-            return UIFont(name: "AmericanTypewriter", size: size) ?? UIFont.systemFont(ofSize: size)
+        if let fontName {
+            return UIFont(name: fontName, size: size) ?? UIFont.systemFont(ofSize: size)
         }
+        let base = UIFont.systemFont(ofSize: size, weight: .regular)
+        let design: UIFontDescriptor.SystemDesign? = switch self {
+        case .quill: .serif
+        case .round: .rounded
+        default: nil
+        }
+        if let design, let descriptor = base.fontDescriptor.withDesign(design) {
+            return UIFont(descriptor: descriptor, size: size)
+        }
+        return base
     }
 
     /// SwiftUI Font for previews and reflective text.
     func font(size: CGFloat) -> Font {
-        switch self {
-        case .quill:      return .system(size: size, design: .serif)
-        case .georgia:    return .custom("Georgia", size: size)
-        case .round:      return .system(size: size, design: .rounded)
-        case .plain:      return .system(size: size)
-        case .typewriter: return .custom("AmericanTypewriter", size: size)
+        if let fontName {
+            return .custom(fontName, size: size)
         }
+        switch self {
+        case .quill: return .system(size: size, design: .serif)
+        case .round: return .system(size: size, design: .rounded)
+        default:     return .system(size: size)
+        }
+    }
+}
+
+extension AnkyInkChoice {
+    var displayName: String {
+        switch self {
+        case .umber:    return "Umber"
+        case .graphite: return "Graphite"
+        case .indigo:   return "Indigo"
+        case .violet:   return "Violet"
+        case .sea:      return "Sea"
+        case .forest:   return "Forest"
+        case .madder:   return "Madder"
+        case .ochre:    return "Ochre"
+        }
+    }
+
+    /// (paper, night): dark enough on cream, light enough on the night page.
+    private var values: (paper: (Double, Double, Double), night: (Double, Double, Double)) {
+        switch self {
+        case .umber:    return ((0.310, 0.243, 0.180), (0.925, 0.855, 0.757))
+        case .graphite: return ((0.200, 0.200, 0.220), (0.880, 0.880, 0.900))
+        case .indigo:   return ((0.200, 0.250, 0.520), (0.700, 0.760, 0.980))
+        case .violet:   return ((0.400, 0.250, 0.560), (0.820, 0.720, 0.960))
+        case .sea:      return ((0.060, 0.370, 0.440), (0.600, 0.860, 0.890))
+        case .forest:   return ((0.170, 0.360, 0.250), (0.660, 0.860, 0.720))
+        case .madder:   return ((0.620, 0.220, 0.200), (0.980, 0.680, 0.620))
+        case .ochre:    return ((0.540, 0.390, 0.090), (0.950, 0.820, 0.520))
+        }
+    }
+
+    func uiColor(colorScheme: ColorScheme, alpha: Double = 1) -> UIColor {
+        let value = colorScheme == .dark ? values.night : values.paper
+        return UIColor(displayP3Red: value.0, green: value.1, blue: value.2, alpha: alpha)
+    }
+
+    /// Follows the appearance on its own.
+    var color: Color {
+        Color.ankyPigment(light: values.paper, night: values.night)
     }
 }
 

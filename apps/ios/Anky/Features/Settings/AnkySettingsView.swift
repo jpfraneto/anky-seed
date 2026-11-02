@@ -89,12 +89,17 @@ struct AnkySettingsView: View {
 
     private var writingGroup: some View {
         group(title: "Writing") {
-            HStack(spacing: 8) {
-                ForEach(AnkyAppearance.allCases, id: \.self) { choice in
-                    appearanceChip(choice)
-                }
+            row(icon: appearance == .night ? "moon" : "sun.max", title: appearance == .night ? "Night" : "Day") {
+                SunMoonToggle(isNight: Binding(
+                    get: { appearance == .night },
+                    set: { isNight in
+                        AnkyHaptics.selection()
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            appearance = isNight ? .night : .paper
+                        }
+                    }
+                ))
             }
-            .padding(14)
 
             rowDivider
 
@@ -104,22 +109,6 @@ struct AnkySettingsView: View {
 
             toggleRow(icon: "keyboard", title: "Autocorrect & suggestions", isOn: preferenceBinding(\.autocorrectEnabled))
         }
-    }
-
-    private func appearanceChip(_ choice: AnkyAppearance) -> some View {
-        let isSelected = appearance == choice
-        return Button {
-            AnkyHaptics.selection()
-            appearance = choice
-        } label: {
-            Text(AnkyLocalization.ui(choice == .paper ? "Paper" : "Night"))
-                .font(.fraunces(15, weight: .regular))
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .modifier(ChipStyle(isSelected: isSelected, cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func preferenceBinding(_ keyPath: WritableKeyPath<WritingPreferences, Bool>) -> Binding<Bool> {
@@ -133,60 +122,110 @@ struct AnkySettingsView: View {
         )
     }
 
-    // MARK: Typeface
+    private func setPreference(_ mutate: (inout WritingPreferences) -> Void) {
+        AnkyHaptics.selection()
+        mutate(&writingPreferences)
+        WritingPreferencesStore().save(writingPreferences)
+    }
+
+    // MARK: Look of the writing
 
     private var typefaceGroup: some View {
-        group(title: "Font & size") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
-                        fontChip(choice)
-                    }
+        VStack(alignment: .leading, spacing: 28) {
+            group(title: "Font") {
+                ForEach(Array(AnkyWritingFontChoice.allCases.enumerated()), id: \.element) { index, choice in
+                    if index > 0 { listDivider }
+                    fontRow(choice)
                 }
-
-                HStack(spacing: 8) {
-                    ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in
-                        sizeChip(size)
-                    }
-                }
-
-                Text(AnkyLocalization.ui("One that stays. One that listens."))
-                    .font(writingPreferences.fontChoice.font(size: writingPreferences.textSize.pointSize))
-                    .foregroundStyle(Color.ankyInk)
-                    .lineSpacing(writingPreferences.textSize.pointSize * 0.42)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
-                    .padding(.horizontal, 2)
-                    .animation(.easeInOut(duration: 0.2), value: writingPreferences)
             }
-            .padding(14)
+
+            group(title: "Ink") {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 14) {
+                    ForEach(AnkyInkChoice.allCases, id: \.self) { ink in
+                        inkSwatch(ink)
+                    }
+                }
+                .padding(14)
+            }
+
+            group(title: "Size") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in
+                            sizeChip(size)
+                        }
+                    }
+
+                    Text(AnkyLocalization.ui("One that stays. One that listens."))
+                        .font(writingPreferences.fontChoice.font(size: writingPreferences.textSize.pointSize))
+                        .foregroundStyle(writingPreferences.inkChoice.color)
+                        .lineSpacing(writingPreferences.textSize.pointSize * 0.42)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 2)
+                        .animation(.easeInOut(duration: 0.2), value: writingPreferences)
+                }
+                .padding(14)
+            }
         }
     }
 
-    private func fontChip(_ choice: AnkyWritingFontChoice) -> some View {
+    /// Each font's name, written in that font.
+    private func fontRow(_ choice: AnkyWritingFontChoice) -> some View {
         let isSelected = writingPreferences.fontChoice == choice
         return Button {
-            AnkyHaptics.selection()
-            writingPreferences.fontChoice = choice
-            WritingPreferencesStore().save(writingPreferences)
+            setPreference { $0.fontChoice = choice }
         } label: {
-            Text("Aa")
-                .font(choice.font(size: 20))
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .modifier(ChipStyle(isSelected: isSelected, cornerRadius: 12))
+            HStack {
+                Text(AnkyLocalization.ui(choice.displayName))
+                    .font(choice.font(size: 20))
+                    .foregroundStyle(isSelected ? writingPreferences.inkChoice.color : Color.ankyInk)
+                Spacer(minLength: 8)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(writingPreferences.inkChoice.color)
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 50)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(AnkyLocalization.ui(choice.displayName)))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func inkSwatch(_ ink: AnkyInkChoice) -> some View {
+        let isSelected = writingPreferences.inkChoice == ink
+        return Button {
+            setPreference { $0.inkChoice = ink }
+        } label: {
+            VStack(spacing: 6) {
+                Circle()
+                    .fill(ink.color)
+                    .frame(width: 34, height: 34)
+                    .padding(4)
+                    .overlay(
+                        Circle().strokeBorder(ink.color, lineWidth: isSelected ? 2 : 0)
+                    )
+                Text(AnkyLocalization.ui(ink.displayName))
+                    .font(.fraunces(13, weight: .regular))
+                    .foregroundStyle(isSelected ? Color.ankyInk : Color.ankyInkSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(AnkyLocalization.ui(ink.displayName)))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func sizeChip(_ size: AnkyWritingTextSize) -> some View {
         let isSelected = writingPreferences.textSize == size
         return Button {
-            AnkyHaptics.selection()
-            writingPreferences.textSize = size
-            WritingPreferencesStore().save(writingPreferences)
+            setPreference { $0.textSize = size }
         } label: {
             Text(AnkyLocalization.ui(size.displayName))
                 .font(.fraunces(14, weight: .regular))
@@ -198,6 +237,13 @@ struct AnkySettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var listDivider: some View {
+        Rectangle()
+            .fill(Color.ankyInk.opacity(0.08))
+            .frame(height: 0.5)
+            .padding(.leading, 16)
     }
 
     // MARK: Anky Pro
@@ -528,4 +574,43 @@ private struct ChipStyle: ViewModifier {
             .overlay(shape.strokeBorder(Color.ankyInk.opacity(isSelected ? 0 : 0.10), lineWidth: 0.5))
             .contentShape(shape)
     }
+}
+
+/// Day or night: a sun and a moon in one capsule; the knob rests on the
+/// one in force. A tap anywhere flips it.
+private struct SunMoonToggle: View {
+    @Binding var isNight: Bool
+
+    var body: some View {
+        Button {
+            isNight.toggle()
+        } label: {
+            ZStack(alignment: isNight ? .trailing : .leading) {
+                Capsule()
+                    .fill(Color.ankyInk.opacity(0.10))
+                Circle()
+                    .fill(Color.ankyPaper)
+                    .shadow(color: Color.ankyInk.opacity(0.18), radius: 2, y: 1)
+                    .padding(3)
+                HStack(spacing: 0) {
+                    Image(systemName: "sun.max.fill")
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(isNight ? Color.ankyInkSoft.opacity(0.6) : Color.ankyOchreGlyph)
+                    Image(systemName: "moon.fill")
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(isNight ? Color.ankyInk : Color.ankyInkSoft.opacity(0.6))
+                }
+                .font(.system(size: 14, weight: .medium))
+            }
+            .frame(width: 72, height: 36)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(AnkyLocalization.ui(isNight ? "Night" : "Day")))
+        .accessibilityHint(Text(AnkyLocalization.ui("Switches between day and night")))
+    }
+}
+
+private extension Color {
+    static let ankyOchreGlyph = Color(.displayP3, red: 0.85, green: 0.58, blue: 0.12)
 }

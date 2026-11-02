@@ -58,7 +58,7 @@ struct WriteView: View {
                 let acceptsWritingInput = shouldFocus && viewModel.canAcceptInput
 
                 ForwardOnlyTextView(
-                    glyphs: viewModel.displayedGlyphs,
+                    text: viewModel.displayedText,
                     focusID: viewModel.keyboardFocusID,
                     shouldFocus: acceptsWritingInput,
                     // The same view, finished: no input, free to scroll and
@@ -67,7 +67,6 @@ struct WriteView: View {
                     innerScrollEnabled: viewModel.hasStarted,
                     bottomInset: textBottomInset,
                     rightInset: 24,
-                    textOpacity: 1,
                     colorScheme: colorScheme,
                     preferences: viewModel.preferences,
                     onText: acceptWritingInput,
@@ -362,7 +361,7 @@ private struct AxisWritingTopBar: View {
         .opacity(isCompleted ? 1 : chromeOpacity)
         .animation(.easeInOut(duration: 0.4), value: isCompleted)
         .animation(.easeInOut(duration: 0.3), value: showsMenu)
-        .animation(.linear(duration: 0.16), value: silenceProgress)
+        .animation(.linear(duration: 0.1), value: silenceProgress)
     }
 
     private var chromeOpacity: Double {
@@ -370,16 +369,17 @@ private struct AxisWritingTopBar: View {
     }
 }
 
-/// Writing is violet ink; as the eight seconds of sealing silence pass,
-/// each glyph warms toward madder — pigment drying into the page.
+/// What the page refuses: going back, new lines, pasting.
 enum RejectedWritingInput {
     case backspace
     case enter
     case paste
 }
 
+/// A plain text view: one font, one ink, the writing in it as-is. It only
+/// refuses what the ritual refuses (going back, pasting, new lines).
 private struct ForwardOnlyTextView: UIViewRepresentable {
-    let glyphs: [WritingGlyph]
+    let text: String
     let focusID: UUID
     let shouldFocus: Bool
     /// The writing has ended: the same view, now unwritable and free to
@@ -391,7 +391,6 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     let innerScrollEnabled: Bool
     let bottomInset: CGFloat
     let rightInset: CGFloat
-    let textOpacity: Double
     let colorScheme: ColorScheme
     let preferences: WritingPreferences
     let onText: (String) -> Void
@@ -400,17 +399,11 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     /// A tap on a finished writing: keep writing.
     let onTapWhileReadOnly: () -> Void
 
-    private var writingFont: UIFont {
-        preferences.fontChoice.uiFont(size: preferences.textSize.pointSize)
-    }
-
     func makeUIView(context: Context) -> UITextView {
-        let textView = BottomRightAnchoredTextView()
+        let textView = UITextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
-        textView.font = writingFont
         textView.adjustsFontForContentSizeCategory = false
-        textView.textColor = WritingRhythmColor.uiColor(progress: 0, alpha: textOpacity, colorScheme: colorScheme)
         textView.tintColor = UIColor(Color.ankyUmber)
         textView.keyboardAppearance = colorScheme == .dark ? .dark : .light
         textView.textAlignment = .left
@@ -427,17 +420,17 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.smartInsertDeleteType = .no
         textView.textContainer.lineFragmentPadding = 0
         textView.contentInsetAdjustmentBehavior = .never
-        textView.textContainerInset = UIEdgeInsets(top: BottomRightAnchoredTextView.minimumTopInset, left: 24, bottom: bottomInset, right: rightInset)
-        textView.contentInset = .zero
+        textView.textContainerInset = UIEdgeInsets(top: Self.topInset, left: 24, bottom: 0, right: rightInset)
+        textView.contentInset.bottom = bottomInset
         textView.verticalScrollIndicatorInsets.bottom = bottomInset
         textView.isScrollEnabled = innerScrollEnabled || isReadOnly
         // Interactive dismissal needs the pan to engage even while the page
-        // is shorter than the screen — the bounce is what carries the finger
-        // over the keyboard.
+        // is shorter than the screen.
         textView.alwaysBounceVertical = true
         textView.showsVerticalScrollIndicator = false
-        textView.measurementLineSpacing = preferences.textSize.pointSize * 0.42
-        textView.updateAnchorInsets(bottom: bottomInset, right: rightInset)
+        Self.applyStyle(to: textView, text: text, preferences: preferences, colorScheme: colorScheme)
+        context.coordinator.lastSyncedText = text
+        context.coordinator.renderedPreferences = preferences
 
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
@@ -456,9 +449,11 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         return textView
     }
 
+    /// The first line starts below the top bar and its melt.
+    static let topInset: CGFloat = 80
+
     func updateUIView(_ uiView: UITextView, context: Context) {
-        // A finished writing is always free to scroll — that is the only
-        // interaction it still has.
+        let coordinator = context.coordinator
         let scrollEnabled = innerScrollEnabled || isReadOnly
         if uiView.isScrollEnabled != scrollEnabled {
             uiView.isScrollEnabled = scrollEnabled
@@ -466,194 +461,105 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         if uiView.isEditable == isReadOnly {
             uiView.isEditable = !isReadOnly
         }
-        context.coordinator.isReadOnly = isReadOnly
-        context.coordinator.onTapWhileReadOnly = onTapWhileReadOnly
-        let currentGlyphs = glyphs
-        let currentPreferences = preferences
-        let currentColorScheme = colorScheme
+        coordinator.isReadOnly = isReadOnly
+        coordinator.onTapWhileReadOnly = onTapWhileReadOnly
+        coordinator.backspaceAllowed = preferences.backspaceAllowed
+        coordinator.acceptsInput = shouldFocus
+
         let keyboardAppearance: UIKeyboardAppearance = colorScheme == .dark ? .dark : .light
         if uiView.keyboardAppearance != keyboardAppearance {
             uiView.keyboardAppearance = keyboardAppearance
             if uiView.isFirstResponder { uiView.reloadInputViews() }
         }
-        let currentTextOpacity = textOpacity
-        let currentShouldFocus = shouldFocus
-        let currentBottomInset = bottomInset
-        let currentRightInset = rightInset
-        let currentFocusID = focusID
-        let lineSpacing = currentPreferences.textSize.pointSize * 0.42
-        let renderedText = String(currentGlyphs.map(\.character))
-        let font = currentPreferences.fontChoice.uiFont(size: currentPreferences.textSize.pointSize)
-        let paragraph = Self.paragraphStyle(lineSpacing: lineSpacing)
-        let typingForegroundColor = WritingRhythmColor.uiColor(progress: 0, alpha: 0.96, colorScheme: currentColorScheme)
-        let paletteChanged = context.coordinator.colorScheme != colorScheme
-            || context.coordinator.textOpacity != currentTextOpacity
-        let preferencesChanged = context.coordinator.renderedPreferences != currentPreferences
-
-        context.coordinator.isApplyingProgrammaticUpdate = true
-        defer {
-            context.coordinator.isApplyingProgrammaticUpdate = false
-        }
-
-        // The system keyboard applies valid edits natively (that is what
-        // keeps autocorrect alive), so most updates find the text already
-        // in place and only need the glyph pigments refreshed. A full
-        // attributedText reset cancels the keyboard's autocorrect context —
-        // it is reserved for genuine divergence (restore, rejected input).
-        //
-        // While the keyboard is mid-composition (inline prediction, QuickPath,
-        // dictation, CJK) the view legitimately holds marked text the engine
-        // has not seen — this pass runs on every ticker tick, and rewriting
-        // the field then makes the keyboard re-commit its pending candidate
-        // (the stray-short-word glitch). Leave the text alone; the diff sync
-        // reconciles when the composition commits.
-        let isComposing = uiView.markedTextRange != nil
-        if isComposing {
-            // Trait/inset upkeep below is still safe; text is not.
-        } else if uiView.text != renderedText || preferencesChanged {
-            uiView.font = font
-            uiView.attributedText = makeAttributedText(
-                glyphs: currentGlyphs,
-                font: font,
-                paragraph: paragraph,
-                textOpacity: currentTextOpacity,
-                colorScheme: currentColorScheme
-            )
-        } else if context.coordinator.renderedGlyphs != currentGlyphs || paletteChanged {
-            applyGlyphAttributes(
-                to: uiView,
-                coordinator: context.coordinator,
-                glyphs: currentGlyphs,
-                font: font,
-                paragraph: paragraph,
-                textOpacity: currentTextOpacity,
-                colorScheme: currentColorScheme,
-                forceAll: paletteChanged
-            )
-        }
-        context.coordinator.renderedGlyphs = currentGlyphs
-        context.coordinator.colorScheme = currentColorScheme
-        context.coordinator.textOpacity = currentTextOpacity
-        context.coordinator.renderedPreferences = currentPreferences
-        context.coordinator.lastSyncedText = renderedText
-        context.coordinator.backspaceAllowed = currentPreferences.backspaceAllowed
-        context.coordinator.acceptsInput = currentShouldFocus
-
-        let autocorrection: UITextAutocorrectionType = currentPreferences.autocorrectEnabled ? .yes : .no
+        let autocorrection: UITextAutocorrectionType = preferences.autocorrectEnabled ? .yes : .no
         if uiView.autocorrectionType != autocorrection {
             uiView.autocorrectionType = autocorrection
         }
-        if uiView.spellCheckingType != .no {
-            uiView.spellCheckingType = .no
-        }
-        uiView.typingAttributes = [
-            .font: font,
-            .foregroundColor: typingForegroundColor,
-            .paragraphStyle: paragraph
-        ]
-        if let anchoredTextView = uiView as? BottomRightAnchoredTextView {
-            anchoredTextView.measurementLineSpacing = lineSpacing
-            anchoredTextView.updateAnchorInsets(bottom: currentBottomInset, right: currentRightInset)
-        } else {
-            uiView.textContainerInset.bottom = currentBottomInset
-            uiView.textContainerInset.right = currentRightInset
-        }
-        uiView.verticalScrollIndicatorInsets.bottom = currentBottomInset
-        uiView.contentInset = .zero
 
-        if context.coordinator.focusID != currentFocusID {
-            context.coordinator.focusID = currentFocusID
-            if currentShouldFocus {
+        // The keyboard types straight into the view, so most updates find the
+        // text already there and do nothing. The view is only rewritten when
+        // the engine disagrees (a refused key, a restore, a new page) or the
+        // look changed. Never mid-composition (dictation, QuickPath, CJK).
+        let isComposing = uiView.markedTextRange != nil
+        let styleChanged = coordinator.renderedPreferences != preferences
+            || coordinator.colorScheme != colorScheme
+        if !isComposing, styleChanged || text != coordinator.lastSyncedText {
+            coordinator.isApplyingProgrammaticUpdate = true
+            Self.applyStyle(to: uiView, text: text, preferences: preferences, colorScheme: colorScheme)
+            coordinator.isApplyingProgrammaticUpdate = false
+            coordinator.lastSyncedText = text
+            coordinator.renderedPreferences = preferences
+            coordinator.colorScheme = colorScheme
+            if !isReadOnly {
+                coordinator.forceSelectionToEnd(of: uiView)
+                coordinator.scrollToCaret(uiView)
+            }
+        }
+
+        if uiView.textContainerInset.right != rightInset {
+            uiView.textContainerInset.right = rightInset
+        }
+        if uiView.contentInset.bottom != bottomInset {
+            uiView.contentInset.bottom = bottomInset
+            uiView.verticalScrollIndicatorInsets.bottom = bottomInset
+            if !isReadOnly { coordinator.scrollToCaret(uiView) }
+        }
+
+        if coordinator.focusID != focusID {
+            coordinator.focusID = focusID
+            if shouldFocus {
                 // An explicit summons (tap the pill, a fresh scene) always
                 // outranks a prior push-away.
-                context.coordinator.keyboardPushedAway = false
+                coordinator.keyboardPushedAway = false
                 DispatchQueue.main.async {
                     uiView.becomeFirstResponder()
                 }
             }
         }
-        if currentShouldFocus, !uiView.isFirstResponder, !context.coordinator.keyboardPushedAway {
+        if shouldFocus, !uiView.isFirstResponder, !coordinator.keyboardPushedAway {
             DispatchQueue.main.async {
                 uiView.becomeFirstResponder()
             }
-        } else if !currentShouldFocus, uiView.isFirstResponder {
+        } else if !shouldFocus, uiView.isFirstResponder {
             DispatchQueue.main.async {
                 uiView.resignFirstResponder()
             }
         }
-
-        // A finished writing keeps whatever the writer is looking at: no
-        // forced caret, no jump to either end (spec §13).
-        if !isComposing, !isReadOnly {
-            context.coordinator.forceSelectionToEnd(of: uiView)
-            if let anchoredTextView = uiView as? BottomRightAnchoredTextView {
-                anchoredTextView.scrollToEndRespectingAnchor()
-            } else {
-                uiView.scrollRangeToVisible(NSRange(location: (uiView.text as NSString).length, length: 0))
-            }
-        }
     }
 
-    /// Refreshes glyph pigments in place through the text storage — an
-    /// attribute-only pass that never disturbs the keyboard's autocorrect
-    /// state. Only glyphs whose color actually moved (plus the last two,
-    /// whose "latest" emphasis shifts on every keystroke) are touched.
-    private func applyGlyphAttributes(
-        to uiView: UITextView,
-        coordinator: Coordinator,
-        glyphs: [WritingGlyph],
-        font: UIFont,
-        paragraph: NSParagraphStyle,
-        textOpacity: Double,
-        colorScheme: ColorScheme,
-        forceAll: Bool
-    ) {
-        let storage = uiView.textStorage
-        let latestIndex = glyphs.indices.last
-        var utf16Location = 0
-
-        storage.beginEditing()
-        for index in glyphs.indices {
-            let glyph = glyphs[index]
-            let length = String(glyph.character).utf16.count
-            defer { utf16Location += length }
-
-            let previous = index < coordinator.renderedGlyphs.count ? coordinator.renderedGlyphs[index] : nil
-            let nearEnd = index >= glyphs.count - 2
-            guard forceAll || nearEnd || previous != glyph else {
-                continue
-            }
-            guard utf16Location + length <= storage.length else {
-                break
-            }
-
-            let isLatest = index == latestIndex
-            let alpha = isLatest ? 0.96 : max(0.28, textOpacity * 0.82)
-            storage.setAttributes(
-                [
-                    .font: font,
-                    .foregroundColor: WritingRhythmColor.uiColor(progress: glyph.silenceProgress, alpha: alpha, colorScheme: colorScheme),
-                    .paragraphStyle: paragraph
-                ],
-                range: NSRange(location: utf16Location, length: length)
-            )
-        }
-        storage.endEditing()
-    }
-
-    private static func paragraphStyle(lineSpacing: CGFloat) -> NSMutableParagraphStyle {
+    /// One font, one ink, one line spacing for the whole writing.
+    private static func attributes(
+        preferences: WritingPreferences,
+        colorScheme: ColorScheme
+    ) -> [NSAttributedString.Key: Any] {
+        let size = preferences.textSize.pointSize
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .left
         paragraph.lineBreakMode = .byWordWrapping
-        paragraph.lineSpacing = lineSpacing
-        return paragraph
+        paragraph.lineSpacing = size * 0.42
+        return [
+            .font: preferences.fontChoice.uiFont(size: size),
+            .foregroundColor: preferences.inkChoice.uiColor(colorScheme: colorScheme, alpha: 0.96),
+            .paragraphStyle: paragraph
+        ]
+    }
+
+    private static func applyStyle(
+        to textView: UITextView,
+        text: String,
+        preferences: WritingPreferences,
+        colorScheme: ColorScheme
+    ) {
+        let attributes = attributes(preferences: preferences, colorScheme: colorScheme)
+        textView.attributedText = NSAttributedString(string: text, attributes: attributes)
+        textView.typingAttributes = attributes
+        textView.tintColor = preferences.inkChoice.uiColor(colorScheme: colorScheme)
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             focusID: focusID,
             colorScheme: colorScheme,
-            textOpacity: textOpacity,
             backspaceAllowed: preferences.backspaceAllowed,
             onText: onText,
             onReplaceTail: onReplaceTail,
@@ -661,41 +567,10 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         )
     }
 
-    private func makeAttributedText(
-        glyphs: [WritingGlyph],
-        font: UIFont,
-        paragraph: NSParagraphStyle,
-        textOpacity: Double,
-        colorScheme: ColorScheme
-    ) -> NSAttributedString {
-        let attributed = NSMutableAttributedString()
-        let latestIndex = glyphs.indices.last
-
-        for index in glyphs.indices {
-            let glyph = glyphs[index]
-            let isLatest = index == latestIndex
-            let alpha = isLatest ? 0.96 : max(0.28, textOpacity * 0.82)
-            attributed.append(
-                NSAttributedString(
-                    string: String(glyph.character),
-                    attributes: [
-                        .font: font,
-                        .foregroundColor: WritingRhythmColor.uiColor(progress: glyph.silenceProgress, alpha: alpha, colorScheme: colorScheme),
-                        .paragraphStyle: paragraph
-                    ]
-                )
-            )
-        }
-
-        return attributed
-    }
-
     final class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
         var focusID: UUID
         var colorScheme: ColorScheme
-        var textOpacity: Double
         var backspaceAllowed: Bool
-        var renderedGlyphs: [WritingGlyph] = []
         var renderedPreferences: WritingPreferences?
         /// Engine-truth text as of the last sync — the diff base for edits
         /// the system keyboard applies natively (typing, autocorrect).
@@ -718,7 +593,6 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         init(
             focusID: UUID,
             colorScheme: ColorScheme,
-            textOpacity: Double,
             backspaceAllowed: Bool,
             onText: @escaping (String) -> Void,
             onReplaceTail: @escaping (Int, String) -> Void,
@@ -726,7 +600,6 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         ) {
             self.focusID = focusID
             self.colorScheme = colorScheme
-            self.textOpacity = textOpacity
             self.backspaceAllowed = backspaceAllowed
             self.onText = onText
             self.onReplaceTail = onReplaceTail
@@ -751,29 +624,6 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             keyboardPushedAway = false
-        }
-
-        /// The page never scrolls by hand — the drag belongs to the keyboard,
-        /// not the text. Pinning the offset while the finger is down keeps
-        /// the words perfectly still; the pan keeps travelling underneath,
-        /// and once it reaches the keyboard the system slides it away,
-        /// unveiling the reserved footprint beneath.
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            // A finished writing scrolls like any document — the anchoring
-            // that pins a live page would make it immovable.
-            guard !isReadOnly,
-                  scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating,
-                  let textView = scrollView as? BottomRightAnchoredTextView else { return }
-            textView.pinToAnchoredOffset()
-            // A decisive downward flick doesn't wait for the finger to reach
-            // the keyboard — it snaps it away at once. A slow drag keeps the
-            // physical, finger-tracking dismissal.
-            if scrollView.isTracking,
-               textView.isFirstResponder,
-               scrollView.panGestureRecognizer.velocity(in: scrollView).y > 900 {
-                keyboardPushedAway = true
-                textView.resignFirstResponder()
-            }
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
@@ -855,6 +705,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
                 return
             }
             lastSyncedText = newText
+            scrollToCaret(textView)
 
             if newText.hasPrefix(oldText) {
                 onText(String(newText.dropFirst(oldText.count)))
@@ -890,6 +741,12 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
                 return
             }
             forceSelectionToEnd(of: textView)
+        }
+
+        /// Keeps the end of the writing above the keyboard.
+        func scrollToCaret(_ textView: UITextView) {
+            guard !textView.isTracking, !textView.isDragging, !textView.isDecelerating else { return }
+            textView.scrollRangeToVisible(textView.selectedRange)
         }
 
         func forceSelectionToEnd(of textView: UITextView) {
@@ -962,105 +819,5 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
             }
             return count
         }
-    }
-}
-
-private final class BottomRightAnchoredTextView: UITextView {
-    /// The first line never starts under the top bar or its melt: the bar
-    /// ends 50pt below the safe area and the melt fades out 28pt after.
-    static let minimumTopInset: CGFloat = 80
-    private let leftInset: CGFloat = 24
-    private var anchoredBottomInset: CGFloat = 24
-    private var anchoredRightInset: CGFloat = 24
-    var measurementLineSpacing: CGFloat = 0
-
-    func updateAnchorInsets(bottom: CGFloat, right: CGFloat) {
-        anchoredBottomInset = bottom
-        anchoredRightInset = right
-        updateTextContainerInsets()
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateTextContainerInsets()
-    }
-
-    private func updateTextContainerInsets() {
-        guard bounds.width > 0, bounds.height > 0 else {
-            return
-        }
-
-        let availableWidth = max(1, bounds.width - leftInset - anchoredRightInset)
-        let textHeight = measuredTextHeight(width: availableWidth)
-        let topInset = max(Self.minimumTopInset, bounds.height - anchoredBottomInset - textHeight)
-        let nextInsets = UIEdgeInsets(
-            top: topInset,
-            left: leftInset,
-            bottom: anchoredBottomInset,
-            right: anchoredRightInset
-        )
-
-        guard textContainerInset != nextInsets else {
-            return
-        }
-        textContainerInset = nextInsets
-    }
-
-    /// Holds the content at its bottom-anchored resting offset, cancelling
-    /// any user-driven scroll or bounce without ending the pan gesture.
-    func pinToAnchoredOffset() {
-        let bottomOffset = max(
-            -adjustedContentInset.top,
-            contentSize.height - bounds.height + adjustedContentInset.bottom
-        )
-        if abs(contentOffset.y - bottomOffset) > 0.01 {
-            contentOffset = CGPoint(x: contentOffset.x, y: bottomOffset)
-        }
-    }
-
-    func scrollToEndRespectingAnchor() {
-        // Never snap the offset out from under the writer's finger — the
-        // ticker runs this every tick, and fighting a live drag is what kept
-        // the interactive keyboard dismissal from ever tracking.
-        guard !isTracking, !isDragging, !isDecelerating else {
-            return
-        }
-        layoutManager.ensureLayout(for: textContainer)
-        layoutIfNeeded()
-        updateTextContainerInsets()
-        layoutManager.ensureLayout(for: textContainer)
-        layoutIfNeeded()
-
-        let bottomOffset = max(
-            -adjustedContentInset.top,
-            contentSize.height - bounds.height + adjustedContentInset.bottom
-        )
-        if abs(contentOffset.y - bottomOffset) > 0.5 {
-            setContentOffset(CGPoint(x: contentOffset.x, y: bottomOffset), animated: false)
-        }
-    }
-
-    private func measuredTextHeight(width: CGFloat) -> CGFloat {
-        guard let font else {
-            return 0
-        }
-        guard !text.isEmpty else {
-            return font.lineHeight
-        }
-
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .left
-        paragraph.lineBreakMode = .byWordWrapping
-        paragraph.lineSpacing = measurementLineSpacing
-        let rect = (text as NSString).boundingRect(
-            with: CGSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [
-                .font: font,
-                .paragraphStyle: paragraph
-            ],
-            context: nil
-        )
-        return ceil(rect.height)
     }
 }
