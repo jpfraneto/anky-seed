@@ -17,6 +17,7 @@ struct AnkySettingsView: View {
 
 
     @State private var writingPreferences = WritingPreferencesStore().load()
+    @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
     @State private var showsManageSubscription = false
     @State private var showsPrivacyPolicy = false
     @State private var showsTermsAndConditions = false
@@ -52,9 +53,7 @@ struct AnkySettingsView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color.ankyPaper.ignoresSafeArea())
-        // The page is paper in either appearance; keep the system controls
-        // (switches, sliders, the server field) drawn for it.
-        .environment(\.colorScheme, .light)
+        .environment(\.colorScheme, appearance.colorScheme)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -90,12 +89,37 @@ struct AnkySettingsView: View {
 
     private var writingGroup: some View {
         group(title: "Writing") {
+            HStack(spacing: 8) {
+                ForEach(AnkyAppearance.allCases, id: \.self) { choice in
+                    appearanceChip(choice)
+                }
+            }
+            .padding(14)
+
+            rowDivider
+
             toggleRow(icon: "delete.backward", title: "Backspace", isOn: preferenceBinding(\.backspaceAllowed))
 
             rowDivider
 
             toggleRow(icon: "keyboard", title: "Autocorrect & suggestions", isOn: preferenceBinding(\.autocorrectEnabled))
         }
+    }
+
+    private func appearanceChip(_ choice: AnkyAppearance) -> some View {
+        let isSelected = appearance == choice
+        return Button {
+            AnkyHaptics.selection()
+            appearance = choice
+        } label: {
+            Text(AnkyLocalization.ui(choice == .paper ? "Paper" : "Night"))
+                .font(.fraunces(15, weight: .regular))
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .modifier(ChipStyle(isSelected: isSelected, cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func preferenceBinding(_ keyPath: WritableKeyPath<WritingPreferences, Bool>) -> Binding<Bool> {

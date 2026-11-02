@@ -13,12 +13,16 @@ import SwiftUI
 import UIKit
 
 enum LoomPalette {
-    /// The night the carpets were stitched on.
-    static let night = Color(.displayP3, red: 0.035, green: 0.043, blue: 0.118)
-    static let nightDeep = Color(.displayP3, red: 0.020, green: 0.024, blue: 0.075)
-    static let thread = Color(.displayP3, red: 0.953, green: 0.757, blue: 0.431)
-    static let threadSoft = Color(.displayP3, red: 0.953, green: 0.757, blue: 0.431).opacity(0.62)
-    static let threadFaint = Color(.displayP3, red: 0.953, green: 0.757, blue: 0.431).opacity(0.34)
+    /// The ground of the welcome: the writer's paper, or their night.
+    static let ground = Color.ankyPaper
+    static let groundDeep = Color.ankyPaperDeep
+    /// The welcome's voice: umber on paper, gold on night.
+    static let thread = Color.ankyPigment(light: (0.310, 0.243, 0.180), night: (0.953, 0.757, 0.431))
+    static let threadSoft = thread.opacity(0.62)
+    static let threadFaint = thread.opacity(0.38)
+    /// The carpet itself is always gold stitched on night, whatever the ground.
+    static let gold = Color(.displayP3, red: 0.953, green: 0.757, blue: 0.431)
+    static let cloth = Color(.displayP3, red: 0.027, green: 0.031, blue: 0.090)
 }
 
 /// The pattern, rendered once as stitched cloth.
@@ -146,6 +150,10 @@ struct LoomCarpetView: View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
             ZStack {
+                RoundedRectangle(cornerRadius: side * 0.02, style: .continuous)
+                    .fill(LoomPalette.cloth)
+                    .padding(-side * 0.025)
+
                 warp(side: side)
 
                 if let cloth {
@@ -159,9 +167,9 @@ struct LoomCarpetView: View {
                 if weaving, woven > 0, woven < Double(LoomPattern.stitchCount) {
                     let point = LoomPattern.shuttle(after: woven)
                     Circle()
-                        .fill(LoomPalette.thread)
+                        .fill(LoomPalette.gold)
                         .frame(width: 5, height: 5)
-                        .shadow(color: LoomPalette.thread.opacity(0.9), radius: 6)
+                        .shadow(color: LoomPalette.gold.opacity(0.9), radius: 6)
                         .position(x: point.x * side, y: point.y * side)
                         .animation(.easeOut(duration: 0.3), value: woven)
                         .allowsHitTesting(false)
@@ -204,7 +212,7 @@ struct LoomCarpetView: View {
                 path.move(to: CGPoint(x: x, y: 0))
                 path.addLine(to: CGPoint(x: x, y: size.height * local))
             }
-            context.stroke(path, with: .color(LoomPalette.thread.opacity(0.2)), lineWidth: 0.6)
+            context.stroke(path, with: .color(LoomPalette.gold.opacity(0.2)), lineWidth: 0.6)
         }
         .frame(width: side, height: side)
     }

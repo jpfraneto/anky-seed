@@ -728,6 +728,16 @@
 "Writing time" = "Durée d'écriture";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
+"paper or night?" = "papier ou nuit ?";
+"paper" = "papier";
+"night" = "nuit";
+"choose your hand." = "choisis ton écriture.";
+"how large?" = "quelle taille ?";
+"erase, or only forward?" = "effacer, ou seulement avancer ?";
+"only forward" = "seulement avancer";
+"erase" = "effacer";
+"Paper" = "Papier";
+"Night" = "Nuit";
 "loom: skip" = "passer";
 "loom: write" = "écris";
 "what you write never leaves this iPhone." = "ce que tu écris ne quitte jamais cet iPhone.";

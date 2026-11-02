@@ -29,22 +29,22 @@ import UIKit
 extension Color {
 
     // The paper itself. Never use .white anywhere in the app.
-    static let ankyPaper      = Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894) // warm ivory
-    static let ankyPaperDeep  = Color(.displayP3, red: 0.929, green: 0.882, blue: 0.835) // where washes pool
+    static let ankyPaper      = Color.ankyPigment(light: (0.965, 0.937, 0.894), night: (0.082, 0.075, 0.114)) // warm ivory
+    static let ankyPaperDeep  = Color.ankyPigment(light: (0.929, 0.882, 0.835), night: (0.051, 0.047, 0.078)) // where washes pool
 
     // The ink. Never use .black anywhere in the app.
-    static let ankyInk        = Color(.displayP3, red: 0.239, green: 0.216, blue: 0.310) // deep violet-slate
-    static let ankyInkSoft    = Color(.displayP3, red: 0.396, green: 0.369, blue: 0.475) // secondary text
+    static let ankyInk        = Color.ankyPigment(light: (0.239, 0.216, 0.310), night: (0.925, 0.898, 0.855)) // deep violet-slate
+    static let ankyInkSoft    = Color.ankyPigment(light: (0.396, 0.369, 0.475), night: (0.690, 0.660, 0.722)) // secondary text
 
     // Two voices at rest within the lazure register (addendum A4). Ore is the
     // writer's own words — sediment: grayer, rawer, desaturated. Glaze is Anky's
     // reflection — deeper, more luminous, richer violet. Typography (see the
     // ore/glaze voice tokens) carries the distinction; the ink pair anchors it.
-    static let ankyOre        = Color(.displayP3, red: 0.322, green: 0.306, blue: 0.353) // sediment, grayed
-    static let ankyGlaze      = Color(.displayP3, red: 0.227, green: 0.184, blue: 0.353) // luminous violet-ink
+    static let ankyOre        = Color.ankyPigment(light: (0.322, 0.306, 0.353), night: (0.820, 0.800, 0.840)) // sediment, grayed
+    static let ankyGlaze      = Color.ankyPigment(light: (0.227, 0.184, 0.353), night: (0.840, 0.800, 0.950)) // luminous violet-ink
 
     // The writing ink — warm umber, sepia on parchment (phase-2 §7 sepia pass).
-    static let ankyUmber      = Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
+    static let ankyUmber      = Color.ankyPigment(light: (0.310, 0.243, 0.180), night: (0.925, 0.855, 0.757))
 
     // The share-card quote ink — deep violet-umber (#3D2E4F), never pure black.
     static let ankyQuoteInk   = Color(.displayP3, red: 0.239, green: 0.180, blue: 0.310)
@@ -68,6 +68,33 @@ extension Color {
 
     // The one warning pigment — madder, never firetruck red.
     static let ankyMadder     = Color(.displayP3, red: 0.702, green: 0.325, blue: 0.302)
+}
+
+// MARK: - Paper or night
+
+/// The writer's one appearance choice, made in the welcome and kept in
+/// Settings. Paper is the default; night inverts the page's pigments.
+enum AnkyAppearance: String, CaseIterable {
+    case paper
+    case night
+
+    static let storageKey = "anky.appearance.v1"
+
+    var colorScheme: ColorScheme { self == .night ? .dark : .light }
+}
+
+extension Color {
+    /// A pigment with a paper and a night value; it follows the color scheme
+    /// the root sets from the writer's appearance choice.
+    static func ankyPigment(
+        light: (Double, Double, Double),
+        night: (Double, Double, Double)
+    ) -> Color {
+        Color(uiColor: UIColor { traits in
+            let value = traits.userInterfaceStyle == .dark ? night : light
+            return UIColor(displayP3Red: value.0, green: value.1, blue: value.2, alpha: 1)
+        })
+    }
 }
 
 // MARK: - 2. Breath (motion constants)

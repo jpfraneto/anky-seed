@@ -6,17 +6,20 @@ import UIKit
 enum WritingRhythmColor {
     // Umber on parchment (phase-2 §7 sepia pass) — matches Color.ankyUmber.
     private static let ink = (red: 0.310, green: 0.243, blue: 0.180)
+    // Parchment on night: the same umber, lifted.
+    private static let nightInk = (red: 0.925, green: 0.855, blue: 0.757)
     private static let madder = (red: 0.702, green: 0.325, blue: 0.302)
 
-    static func color(progress: Double, colorScheme: ColorScheme = .dark) -> Color {
+    static func color(progress: Double, colorScheme: ColorScheme = .light) -> Color {
         let clamped = min(1, max(0, progress))
+        let ink = colorScheme == .dark ? nightInk : ink
         let red = ink.red + (madder.red - ink.red) * clamped
         let green = ink.green + (madder.green - ink.green) * clamped
         let blue = ink.blue + (madder.blue - ink.blue) * clamped
         return Color(.displayP3, red: red, green: green, blue: blue)
     }
 
-    static func uiColor(progress: Double, alpha: Double = 1, colorScheme: ColorScheme = .dark) -> UIColor {
+    static func uiColor(progress: Double, alpha: Double = 1, colorScheme: ColorScheme = .light) -> UIColor {
         UIColor(color(progress: progress, colorScheme: colorScheme)).withAlphaComponent(alpha)
     }
 }

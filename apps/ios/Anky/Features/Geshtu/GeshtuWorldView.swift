@@ -29,6 +29,7 @@ struct GeshtuWorldView: View {
     /// The welcome and the door to Anky Pro stand over the page until the
     /// writer is in. The world waits fully covered beneath.
     @State private var gateIsUp = LoomLedger.needsWelcome() || AnkyPro.shared.access != .active
+    @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
 
     /// The drawer follows the finger; released, it springs open or shut.
     @GestureState(reset: { _, transaction in
@@ -81,9 +82,8 @@ struct GeshtuWorldView: View {
             }
         }
         .environmentObject(axis)
-        // The parchment register is pinned light so system materials never
-        // inherit device dark mode.
-        .preferredColorScheme(gateIsUp ? .dark : .light)
+        // Paper or night is the writer's choice, never the device's.
+        .preferredColorScheme(appearance.colorScheme)
         .onChange(of: axis.drawerIsOpen) { isOpen in
             if isOpen { dismissKeyboard() }
         }
@@ -212,6 +212,8 @@ struct GeshtuWorldView: View {
                         needsWelcome = false
                     },
                     onEnter: {
+                        // The welcome may have just set the writing up.
+                        writeViewModel.refreshPreferences()
                         withAnimation(.easeInOut(duration: 1.2)) {
                             gateIsUp = false
                         }

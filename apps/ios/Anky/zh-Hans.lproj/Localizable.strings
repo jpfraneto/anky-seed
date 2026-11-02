@@ -728,6 +728,16 @@
 "Writing time" = "书写时长";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
+"paper or night?" = "纸，还是夜？";
+"paper" = "纸";
+"night" = "夜";
+"choose your hand." = "选你的字。";
+"how large?" = "多大？";
+"erase, or only forward?" = "可以删除，还是只向前？";
+"only forward" = "只向前";
+"erase" = "可以删除";
+"Paper" = "纸";
+"Night" = "夜";
 "loom: skip" = "跳过";
 "loom: write" = "写";
 "what you write never leaves this iPhone." = "你写下的，永远不会离开这台 iPhone。";

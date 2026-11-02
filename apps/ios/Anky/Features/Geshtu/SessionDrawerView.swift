@@ -293,6 +293,7 @@ private struct SessionDrawerRow: View {
 /// Read top to bottom: the streak standing now, the month it stands in, then
 /// the totals.
 struct WritingStatsView: View {
+    @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
     @State private var stats = WritingStats.empty
 
     var body: some View {
@@ -339,7 +340,7 @@ struct WritingStatsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.ankyPaper.ignoresSafeArea())
         .presentationDragIndicator(.visible)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(appearance.colorScheme)
         .onAppear { stats = WritingStats(sessions: LocalAnkyArchive().list()) }
     }
 

@@ -728,6 +728,16 @@
 "Writing time" = "Writing time";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
+"paper or night?" = "paper or night?";
+"paper" = "paper";
+"night" = "night";
+"choose your hand." = "choose your hand.";
+"how large?" = "how large?";
+"erase, or only forward?" = "erase, or only forward?";
+"only forward" = "only forward";
+"erase" = "erase";
+"Paper" = "Paper";
+"Night" = "Night";
 "loom: skip" = "skip";
 "loom: write" = "write";
 "what you write never leaves this iPhone." = "what you write never leaves this iPhone.";

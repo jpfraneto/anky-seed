@@ -22,6 +22,7 @@ struct GateSetupView: View {
     /// notifications denied that button can do nothing, so say so here.
     @State private var notificationsDenied = false
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
 
     /// On means the chosen apps are gated by writing — including the hours
     /// they stand open because today's writing already earned them.
@@ -129,7 +130,7 @@ struct GateSetupView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.ankyPaper.ignoresSafeArea())
-        .environment(\.colorScheme, .light)
+        .environment(\.colorScheme, appearance.colorScheme)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .onAppear {

@@ -412,7 +412,7 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         textView.adjustsFontForContentSizeCategory = false
         textView.textColor = WritingRhythmColor.uiColor(progress: 0, alpha: textOpacity, colorScheme: colorScheme)
         textView.tintColor = UIColor(Color.ankyUmber)
-        textView.keyboardAppearance = .light
+        textView.keyboardAppearance = colorScheme == .dark ? .dark : .light
         textView.textAlignment = .left
         textView.isEditable = !isReadOnly
         textView.isUserInteractionEnabled = true
@@ -471,6 +471,11 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
         let currentGlyphs = glyphs
         let currentPreferences = preferences
         let currentColorScheme = colorScheme
+        let keyboardAppearance: UIKeyboardAppearance = colorScheme == .dark ? .dark : .light
+        if uiView.keyboardAppearance != keyboardAppearance {
+            uiView.keyboardAppearance = keyboardAppearance
+            if uiView.isFirstResponder { uiView.reloadInputViews() }
+        }
         let currentTextOpacity = textOpacity
         let currentShouldFocus = shouldFocus
         let currentBottomInset = bottomInset

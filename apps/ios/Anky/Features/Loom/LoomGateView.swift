@@ -3,8 +3,12 @@
 //  Anky
 //
 //  The way into Anky, and the only door. The writer is here to write, not
-//  to read, so the welcome is almost wordless:
+//  to read, so the welcome is a line at a time, each one a setting:
 //
+//      paper or night?                       (the page appears as chosen)
+//      choose your hand.                     (the typeface)
+//      how large?                            (the text size)
+//      erase, or only forward?               (backspace)
 //      the loom, the keyboard up             (every character lays stitches)
 //      what you write never leaves this iPhone.
 //      Anky Pro                              (3 days free, then monthly)
@@ -48,6 +52,7 @@ struct LoomGateView: View {
     let onEnter: () -> Void
 
     private enum Phase: Equatable {
+        case setting(Int)
         case weaving
         case cloth
         case door
@@ -58,6 +63,14 @@ struct LoomGateView: View {
     @State private var sound = LoomSound()
 
     @State private var warpStrung: Double = 0
+
+    // Setting up the page
+    private enum Setting: Int, CaseIterable {
+        case appearance, typeface, size, erase
+    }
+    @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
+    @State private var preferences = WritingPreferencesStore().load()
+    @State private var advancing = false
 
     // Weaving
     @State private var text = ""
@@ -87,7 +100,7 @@ struct LoomGateView: View {
         self.pro = pro
         self.onWelcomed = onWelcomed
         self.onEnter = onEnter
-        _phase = State(initialValue: needsWelcome ? .weaving : .door)
+        _phase = State(initialValue: needsWelcome ? .setting(0) : .door)
         _warpStrung = State(initialValue: needsWelcome ? 0 : 1)
         // A returning writer meets the finished cloth.
         _charactersWoven = State(initialValue: needsWelcome ? 0 : Self.charactersForFullCarpet)
@@ -108,6 +121,10 @@ struct LoomGateView: View {
                 night
 
                 switch phase {
+                case .setting(let index):
+                    settingStep(Setting(rawValue: index) ?? .appearance)
+                        .id(index)
+                        .transition(.opacity)
                 case .weaving:
                     weaving(in: geometry.size)
                         .transition(.opacity)
@@ -123,7 +140,6 @@ struct LoomGateView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.9), value: phase)
         .onAppear(perform: appear)
         .onDisappear {
@@ -152,9 +168,9 @@ struct LoomGateView: View {
 
     private var night: some View {
         ZStack {
-            LoomPalette.nightDeep
+            LoomPalette.groundDeep
             RadialGradient(
-                colors: [LoomPalette.night.opacity(1), LoomPalette.nightDeep.opacity(0)],
+                colors: [LoomPalette.ground.opacity(1), LoomPalette.groundDeep.opacity(0)],
                 center: .center, startRadius: 10, endRadius: 520
             )
         }
@@ -162,22 +178,168 @@ struct LoomGateView: View {
     }
 
     private func appear() {
-        if phase == .weaving {
-            // Straight to the page: the warp strings itself while the
-            // keyboard rises.
+        if case .setting = phase {
             sound.start()
-            if reduceMotion {
-                warpStrung = 1
-            } else {
-                withAnimation(.easeInOut(duration: 2.4)) { warpStrung = 1 }
-            }
-            beginWeaving()
         } else if phase == .door, pro.access == .active {
             enter(celebrating: false)
         }
     }
 
-    // MARK: - 1. The first thread
+    // MARK: - 1. The page, set up one line at a time
+
+    private func settingStep(_ setting: Setting) -> some View {
+        VStack(spacing: 40) {
+            Spacer()
+            Text(AnkyLocalization.ui(line(for: setting)))
+                .font(.fraunces(27, weight: .light, relativeTo: .title))
+                .foregroundStyle(LoomPalette.thread)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            control(for: setting)
+            Spacer()
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func line(for setting: Setting) -> String {
+        switch setting {
+        case .appearance: return "paper or night?"
+        case .typeface: return "choose your hand."
+        case .size: return "how large?"
+        case .erase: return "erase, or only forward?"
+        }
+    }
+
+    @ViewBuilder
+    private func control(for setting: Setting) -> some View {
+        switch setting {
+        case .appearance:
+            HStack(spacing: 16) {
+                ForEach(AnkyAppearance.allCases, id: \.self) { choice in
+                    appearanceSwatch(choice)
+                }
+            }
+        case .typeface:
+            HStack(spacing: 8) {
+                ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
+                    choiceChip(isSelected: preferences.fontChoice == choice, height: 64) {
+                        Text("Aa").font(choice.font(size: 24))
+                    } choose: {
+                        preferences.fontChoice = choice
+                    }
+                    .accessibilityLabel(Text(AnkyLocalization.ui(choice.displayName)))
+                }
+            }
+        case .size:
+            HStack(spacing: 8) {
+                ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in
+                    choiceChip(isSelected: preferences.textSize == size, height: 72) {
+                        Text("Aa").font(preferences.fontChoice.font(size: size.pointSize))
+                    } choose: {
+                        preferences.textSize = size
+                    }
+                    .accessibilityLabel(Text(AnkyLocalization.ui(size.displayName)))
+                }
+            }
+        case .erase:
+            VStack(spacing: 10) {
+                choiceChip(isSelected: !preferences.backspaceAllowed, height: 54) {
+                    Text(AnkyLocalization.ui("only forward")).font(.fraunces(18, weight: .light))
+                } choose: {
+                    preferences.backspaceAllowed = false
+                }
+                choiceChip(isSelected: preferences.backspaceAllowed, height: 54) {
+                    Text(AnkyLocalization.ui("erase")).font(.fraunces(18, weight: .light))
+                } choose: {
+                    preferences.backspaceAllowed = true
+                }
+            }
+            .frame(maxWidth: 280)
+        }
+    }
+
+    /// A small page in each appearance; tapping one turns the whole app to it.
+    private func appearanceSwatch(_ choice: AnkyAppearance) -> some View {
+        let isSelected = appearance == choice
+        let paper = choice == .paper
+        let ground = paper
+            ? Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894)
+            : Color(.displayP3, red: 0.082, green: 0.075, blue: 0.114)
+        let ink = paper
+            ? Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
+            : Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757)
+        return Button {
+            choose { appearance = choice }
+        } label: {
+            VStack(spacing: 10) {
+                Text("Aa")
+                    .font(preferences.fontChoice.font(size: 30))
+                    .foregroundStyle(ink)
+                    .frame(width: 120, height: 150)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(ground)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(isSelected ? LoomPalette.thread : LoomPalette.threadFaint.opacity(0.5),
+                                    lineWidth: isSelected ? 1.5 : 0.75)
+                    )
+                Text(AnkyLocalization.ui(paper ? "paper" : "night"))
+                    .font(.fraunces(16, weight: .light))
+                    .foregroundStyle(isSelected ? LoomPalette.thread : LoomPalette.threadSoft)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func choiceChip<Label: View>(
+        isSelected: Bool,
+        height: CGFloat,
+        @ViewBuilder label: () -> Label,
+        choose apply: @escaping () -> Void
+    ) -> some View {
+        Button {
+            choose(apply)
+        } label: {
+            label()
+                .foregroundStyle(isSelected ? LoomPalette.thread : LoomPalette.threadSoft)
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isSelected ? LoomPalette.thread : LoomPalette.threadFaint.opacity(0.6),
+                                lineWidth: isSelected ? 1.5 : 0.75)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// One tap sets it and moves on; everything stays changeable in Settings.
+    private func choose(_ apply: @escaping () -> Void) {
+        guard !advancing, case .setting(let index) = phase else { return }
+        advancing = true
+        AnkyHaptics.selection()
+        sound.pluck()
+        withAnimation(.easeInOut(duration: 0.5)) { apply() }
+        WritingPreferencesStore().save(preferences)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            advancing = false
+            if index + 1 < Setting.allCases.count {
+                phase = .setting(index + 1)
+            } else {
+                beginWeaving()
+            }
+        }
+    }
+
+    // MARK: - 2. The first thread
 
     private func weaving(in size: CGSize) -> some View {
         VStack(spacing: 0) {
@@ -215,7 +377,7 @@ struct LoomGateView: View {
                 .animation(.linear(duration: 0.12), value: silence)
 
             TextField("", text: $text, prompt: Text(AnkyLocalization.ui("loom: write")).foregroundColor(LoomPalette.threadFaint), axis: .vertical)
-                .font(.fraunces(18, weight: .light))
+                .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
                 .foregroundStyle(LoomPalette.thread)
                 .tint(LoomPalette.thread)
                 .lineLimit(1...3)
@@ -235,6 +397,12 @@ struct LoomGateView: View {
 
     private func beginWeaving() {
         phase = .weaving
+        // The warp strings itself while the keyboard rises.
+        if reduceMotion {
+            warpStrung = 1
+        } else {
+            withAnimation(.easeInOut(duration: 2.4)) { warpStrung = 1 }
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { writing = true }
         stillnessWatch?.cancel()
         stillnessWatch = Task { @MainActor in
@@ -277,7 +445,7 @@ struct LoomGateView: View {
         }
     }
 
-    // MARK: - 2. The cloth
+    // MARK: - 3. The cloth
 
     private func cloth(in size: CGSize) -> some View {
         let side = min(size.width - 56, size.height * 0.5)
@@ -321,7 +489,7 @@ struct LoomGateView: View {
         }
     }
 
-    // MARK: - 3. The door
+    // MARK: - 4. The door
 
     @ViewBuilder
     private func door(in size: CGSize) -> some View {
@@ -472,7 +640,7 @@ struct LoomGateView: View {
         }.value
     }
 
-    // MARK: - 4. In
+    // MARK: - 5. In
 
     private var entering: some View {
         Color.clear
@@ -517,10 +685,10 @@ private struct ThreadButton: View {
                     .opacity(isWorking ? 0 : 1)
                 if isWorking {
                     ProgressView()
-                        .tint(filled ? LoomPalette.nightDeep : LoomPalette.thread)
+                        .tint(filled ? LoomPalette.groundDeep : LoomPalette.thread)
                 }
             }
-            .foregroundStyle(filled ? LoomPalette.nightDeep : LoomPalette.thread)
+            .foregroundStyle(filled ? LoomPalette.groundDeep : LoomPalette.thread)
             .frame(minWidth: 220, minHeight: 54)
             .padding(.horizontal, 24)
             .background {
