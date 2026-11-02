@@ -1,15 +1,13 @@
-L'Anky le plus simple à ce jour.
+Le métier à tisser.
 
-Anky ne se connecte plus à aucun serveur. Pas de réflexions d'IA, pas d'abonnement, pas de compte. Ton écriture ne quitte jamais ton téléphone.
+La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Puis tes premières lignes tissent un tapis.
 
-Touche l'horloge pour une seule ligne : la règle des 8 secondes, un curseur pour tes minutes, et ∞.
+Un anky dure toujours huit minutes. Arrête de taper huit secondes et il est scellé.
 
-Tu as fini une écriture ? Touche-la pour continuer. La même page, les mêmes mots.
+La page est plus légère et plus rapide, même au bout d'une longue écriture.
 
-Le retour arrière est activé par défaut. Désactive-le dans Réglages si tu veux écrire seulement vers l'avant.
+Quand tu as fini, le menu est déjà ouvert : copie ton écriture avec une consigne de réflexion en une touche.
 
-Copie n'importe quelle écriture, ou copie-la avec un prompt de réflexion pour la coller dans l'IA que tu utilises déjà.
+Dix polices et huit couleurs d'encre. Jour ou nuit, c'est un soleil et une lune dans Réglages.
 
-Les statistiques sont plus simples : ce jour-là, tu as écrit ou pas.
-
-Les apps bloquées se débloquent dès que tu as écrit, et le déblocage d'urgence du bouclier fonctionne à nouveau.
+Anky Pro : 3 jours gratuits, puis mensuel.

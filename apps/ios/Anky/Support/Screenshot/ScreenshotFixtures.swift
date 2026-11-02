@@ -47,6 +47,7 @@ struct ScreenshotLocaleFixture: Decodable {
     let keyboards: [String]
     let headlines: [String: String]
     let ritual: Writing
+    let ink: Writing
     let simplicity: Writing
     let feature: Feature
     let archive: [ArchiveEntry]

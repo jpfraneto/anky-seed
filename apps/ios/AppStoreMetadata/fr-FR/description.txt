@@ -1,36 +1,36 @@
-Une page blanche. Rien devant elle.
+Écris huit minutes. Ne t'arrête pas.
 
-Anky est l'app d'écriture la plus simple que nous ayons pu faire. Tu l'ouvres et tu écris déjà. Pas de compte. Pas de fil d'actualité. Pas d'abonnés. Pas d'IA. Rien à configurer, rien à débloquer.
+Anky, c'est une page et une horloge. Tu écris pendant huit minutes, et si tu arrêtes de taper huit secondes, l'écriture se termine. Pas de retour sur la dernière phrase, pas de retouches. Juste ce qui est là.
 
 COMMENT ÇA MARCHE
 
-Touche l'horloge pour choisir combien de temps tu veux écrire, d'une à huit minutes, ou ∞ pour ne pas avoir de limite.
+La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Puis tu écris tes premières lignes sur un métier à tisser, et chaque lettre tisse un fil d'un tapis.
 
-Le sablier à côté, c'est la règle des 8 secondes : si tu arrêtes de taper pendant huit secondes, l'écriture se termine. Elle te fait avancer au lieu de revenir sur la dernière phrase. Désactive-la et toi seul décides quand tu as fini.
-
-C'est toute l'app.
+Ensuite, c'est toujours pareil : tu ouvres l'app et tu écris déjà.
 
 QUAND TU AS FINI
 
-Tes mots restent exactement où ils sont. Touche la page et continue, aujourd'hui ou n'importe quel autre jour.
+Tes mots restent où ils sont. Copie-les d'une touche, ou copie-les dans une consigne de réflexion à coller dans l'IA que tu utilises déjà, si tu veux. Touche la page pour continuer à écrire.
 
-Chaque écriture est enregistrée sur ton téléphone, datée et consultable, dans un tiroir qui glisse depuis le côté. Copie une écriture d'un geste, ou copie-la avec un prompt de réflexion pour la coller dans l'IA que tu utilises déjà, si tu le souhaites.
+Chaque écriture est rangée dans un tiroir qui glisse depuis le côté, datée et consultable. Statistiques montre ta série et les jours où tu as écrit.
 
-Ta série de jours et un calendrier des jours où tu as écrit sont à un geste. Tu as écrit aujourd'hui, ou pas.
+FAIS-LA TIENNE
 
-À TOI, ET À TOI SEUL
+Dix polices. Huit encres. Quatre tailles. Jour ou nuit. Effacement et correction automatique, activés ou non.
 
-Anky ne se connecte à aucun serveur. Ton écriture n'est jamais envoyée, jamais lue et jamais utilisée pour entraîner quoi que ce soit. Pas d'analytics, pas de publicité. Si tu veux une sauvegarde, active la sauvegarde iCloud chiffrée : elle va dans ton propre iCloud.
+À TOI, ET SEULEMENT À TOI
+
+Anky n'a ni serveur ni compte. Ce que tu écris ne quitte jamais ton iPhone : jamais envoyé, jamais lu, jamais utilisé pour entraîner quoi que ce soit. Pas d'analyses, pas de publicités. Si tu veux une sauvegarde, active la sauvegarde iCloud chiffrée : elle va dans ton propre iCloud.
 
 ÉCRIS AVANT DE SCROLLER
 
-Si tu le veux, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans Réglages. Quand tu en ouvres une, écris d'abord. Une phrase terminée ouvre un court passage, et écrire tes minutes ouvre le reste de la journée. Désactive-le quand tu veux.
+Si tu veux, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans Réglages. Quand tu en ouvres une, écris d'abord.
 
-Réglages contient le reste : retour arrière, correction automatique, la durée du silence, la police et sa taille.
+ANKY PRO
 
-Gratuit. Sans abonnement. Sans achat.
+Anky est un abonnement mensuel. Les nouveaux abonnés commencent avec 3 jours gratuits ; le prix est affiché dans l'app avant de t'abonner. Il se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période en cours. Gère ou annule à tout moment dans les réglages de ton compte App Store. Tes écrits sont toujours à toi : tu peux les emporter, abonné ou non.
 
-Politique de confidentialité : https://anky.app/fr/privacy-policy
-Conditions d'utilisation : https://anky.app/fr/terms
+Politique de confidentialité : https://anky.app/privacy-policy
+Conditions d'utilisation : https://anky.app/terms
 
-Ouvre-la. Écris. Ferme-la.
+Huit minutes. Ne t'arrête pas.

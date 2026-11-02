@@ -5,7 +5,7 @@
 //  The way into Anky, and the only door. The writer is here to write, not
 //  to read, so the welcome is a line at a time, each one a setting:
 //
-//      paper or night?                       (the page appears as chosen)
+//      day above, night below                (tap the half you write in)
 //      choose your font.                     (the typeface)
 //      how large?                            (the text size)
 //      erase, or only forward?               (backspace)
@@ -31,6 +31,7 @@ enum LoomLedger {
         #if DEBUG
         // Replay the welcome without wiping anything: `-loomReplay`.
         if ProcessInfo.processInfo.arguments.contains("-loomReplay") { return true }
+        if ScreenshotMode.isActive { return false }
         #endif
         return ((try? KeychainClient().data(for: account)) ?? nil) == nil
     }
@@ -71,6 +72,8 @@ struct LoomGateView: View {
     @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
     @State private var preferences = WritingPreferencesStore().load()
     @State private var advancing = false
+    /// The half of the day/night split the writer tapped.
+    @State private var splitChoice: AnkyAppearance?
 
     // Weaving
     @State private var text = ""
@@ -187,7 +190,16 @@ struct LoomGateView: View {
 
     // MARK: - 1. The page, set up one line at a time
 
+    @ViewBuilder
     private func settingStep(_ setting: Setting) -> some View {
+        if setting == .appearance {
+            dayAndNight
+        } else {
+            settingLine(setting)
+        }
+    }
+
+    private func settingLine(_ setting: Setting) -> some View {
         VStack(spacing: 40) {
             Spacer()
             Text(AnkyLocalization.ui(line(for: setting)))
@@ -217,11 +229,7 @@ struct LoomGateView: View {
     private func control(for setting: Setting) -> some View {
         switch setting {
         case .appearance:
-            HStack(spacing: 16) {
-                ForEach(AnkyAppearance.allCases, id: \.self) { choice in
-                    appearanceSwatch(choice)
-                }
-            }
+            EmptyView() // drawn as the full-screen day/night split
         case .typeface:
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 8) {
@@ -264,40 +272,49 @@ struct LoomGateView: View {
         }
     }
 
-    /// A small page in each appearance; tapping one turns the whole app to it.
-    private func appearanceSwatch(_ choice: AnkyAppearance) -> some View {
-        let isSelected = appearance == choice
-        let paper = choice == .paper
-        let ground = paper
+    /// Day above, night below, like yin and yang: each half is a page
+    /// with a line already written on it. Tap one and it fills the screen.
+    private var dayAndNight: some View {
+        GeometryReader { geometry in
+            let height = geometry.size.height
+            VStack(spacing: 0) {
+                half(.paper, height: splitChoice == .paper ? height : splitChoice == .night ? 0 : height / 2)
+                half(.night, height: splitChoice == .night ? height : splitChoice == .paper ? 0 : height / 2)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private func half(_ choice: AnkyAppearance, height: CGFloat) -> some View {
+        let isDay = choice == .paper
+        let ground = isDay
             ? Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894)
             : Color(.displayP3, red: 0.082, green: 0.075, blue: 0.114)
-        let ink = paper
+        let ink = isDay
             ? Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
             : Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757)
         return Button {
-            choose { appearance = choice }
+            choose {
+                splitChoice = choice
+                appearance = choice
+            }
         } label: {
-            VStack(spacing: 10) {
-                Text("Aa")
+            ZStack {
+                ground
+                Text(AnkyLocalization.ui(isDay ? "my words, by day." : "my words, by night."))
                     .font(preferences.fontChoice.font(size: 30))
                     .foregroundStyle(ink)
-                    .frame(width: 120, height: 150)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(ground)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(isSelected ? LoomPalette.thread : LoomPalette.threadFaint.opacity(0.5),
-                                    lineWidth: isSelected ? 1.5 : 0.75)
-                    )
-                Text(AnkyLocalization.ui(paper ? "paper" : "night"))
-                    .font(.fraunces(16, weight: .light))
-                    .foregroundStyle(isSelected ? LoomPalette.thread : LoomPalette.threadSoft)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .opacity(splitChoice == nil || splitChoice == choice ? 1 : 0)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .clipped()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel(Text(AnkyLocalization.ui(isDay ? "Day" : "Night")))
     }
 
     private func choiceChip<Label: View>(

@@ -1,36 +1,36 @@
-A blank page. Nothing in front of it.
+Write for eight minutes. Don't stop.
 
-Anky is the simplest writing app we could make. You open it and you are already writing. No account. No feed. No followers. No AI. Nothing to set up and nothing to unlock.
+Anky is a page and a clock. You write for eight minutes, and if you stop typing for eight seconds, the writing ends. No going back over the last sentence, no polishing. Just what is there.
 
 HOW IT WORKS
 
-Tap the clock to choose how long you want to write, from one to eight minutes, or ∞ for no limit.
+The first time you open Anky, you set up your page with a few taps: day or night, your font, its size, and whether you can erase. Then you write your first lines on a loom, and every letter weaves a thread into a carpet.
 
-The hourglass next to it is the 8 second rule: stop typing for eight seconds and the writing ends. It keeps you moving forward instead of going back over the last sentence. Turn it off and only you decide when you are done.
-
-That is the whole app.
+After that it is always the same: open the app and you are already writing.
 
 WHEN YOU FINISH
 
-Your words stay exactly where they are. Tap the page and keep going, today or any other day.
+Your words stay where they are. Copy them with one tap, or copy them inside a reflection prompt to paste into whatever AI you already use, if you want to. Tap the page to keep writing.
 
-Every writing is saved on your phone, dated and searchable, in a drawer that slides in from the side. Copy a writing out with one tap, or copy it wrapped in a reflection prompt to paste into whatever AI you already use, if you want to.
+Every writing is kept in a drawer that slides in from the side, dated and searchable. Stats shows your streak and the days you wrote.
 
-Your streak, and a calendar of the days you wrote, are one tap away. You wrote today or you didn't.
+MAKE IT YOURS
+
+Ten fonts. Eight inks. Four sizes. Day or night. Backspace and autocorrect, on or off.
 
 YOURS, AND ONLY YOURS
 
-Anky does not connect to any server. Your writing is never uploaded, never read and never used to train anything. There are no analytics and no ads. If you want a backup, turn on encrypted iCloud backup and it goes to your own iCloud.
+Anky has no server and no account. What you write never leaves your iPhone: it is never uploaded, never read and never used to train anything. No analytics, no ads. If you want a backup, turn on encrypted iCloud backup and it goes to your own iCloud.
 
 WRITE BEFORE YOU SCROLL
 
-If you want, Anky can stand between you and the apps you open without deciding to. Choose them in Settings. When you reach for one, write first. A finished sentence opens a short pass, and writing your minutes opens the rest of the day. Turn it off any time.
+If you want, Anky can stand between you and the apps you reach for without deciding to. Choose them in Settings. When you open one, write first.
 
-Settings has the rest: backspace, autocorrect, how long the stillness lasts, the font and its size.
+ANKY PRO
 
-Free. No subscription. No purchases.
+Anky is a monthly subscription. New subscribers start with 3 days free; the price is shown in the app before you subscribe. It renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in your App Store account settings. Your writings are always yours: you can take them with you whether or not you subscribe.
 
 Privacy Policy: https://anky.app/privacy-policy
 Terms of Use: https://anky.app/terms
 
-Open it. Write. Close it.
+Eight minutes. Don't stop.

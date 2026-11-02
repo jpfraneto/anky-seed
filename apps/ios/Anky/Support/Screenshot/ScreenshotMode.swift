@@ -31,7 +31,7 @@ enum ScreenshotMode {
         case ritual
         case simplicity
         case finished
-        case timer
+        case ink
         case archive
 
         /// Zero-padded so the App Store ordering is obvious on disk.

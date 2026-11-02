@@ -49,6 +49,11 @@ final class AnkyPro: ObservableObject {
     private init() {
         let cached = UserDefaults.standard.object(forKey: Self.cachedExpiryKey) as? Date
         access = (cached.map { $0 > Date() } ?? false) ? .active : .checking
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ankyProActive") || ScreenshotMode.isActive {
+            access = .active
+        }
+        #endif
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
                 if case .verified(let transaction) = update {
@@ -64,7 +69,8 @@ final class AnkyPro: ObservableObject {
     func refresh() async {
         #if DEBUG
         // Simulator QA without a purchase: `-ankyProActive`.
-        if ProcessInfo.processInfo.arguments.contains("-ankyProActive") {
+        // Screenshot scenes stage the page itself: the door stays open.
+        if ProcessInfo.processInfo.arguments.contains("-ankyProActive") || ScreenshotMode.isActive {
             access = .active
             return
         }

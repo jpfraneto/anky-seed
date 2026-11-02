@@ -14,10 +14,10 @@ FIXTURES = File.join(ROOT, "AppStoreScreenshots", "fixtures")
 BUNDLED = File.join(ROOT, "Anky", "Support", "Screenshot", "ScreenshotFixtures.json")
 MANIFEST = File.join(ROOT, "AppStoreScreenshots", "locales.json")
 
-SCENES = %w[ritual simplicity finished timer archive].freeze
+SCENES = %w[ritual simplicity finished ink archive].freeze
 ORDER = %w[en es fr de hi zh-Hans].freeze
 REQUIRED = %w[appLocale appStoreLocale languageName simulatorLanguage simulatorLocale
-              keyboards headlines ritual simplicity feature archive].freeze
+              keyboards headlines ritual ink simplicity feature archive].freeze
 
 errors = []
 locales = {}

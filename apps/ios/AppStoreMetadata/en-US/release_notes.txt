@@ -1,15 +1,13 @@
-The simplest Anky yet.
+The loom.
 
-Anky no longer connects to any server. No AI reflections, no subscription, no account. Your writing never leaves your phone.
+The first time you open Anky, you set up your page in a few taps: day or night, your font, its size, and whether you can erase. Then your first lines weave a carpet.
 
-Tap the clock for one line: the 8 second rule, a slider for your minutes, and ∞.
+An anky is always eight minutes. Stop typing for eight seconds and it is sealed.
 
-Finished a writing? Tap it to keep going. Same page, same words.
+The page is lighter and faster, even deep into a long writing.
 
-Backspace is on by default. Turn it off in Settings if you want to write forward only.
+When you finish, the menu is already open: copy your writing with a reflection prompt in one tap.
 
-Copy any writing, or copy it with a reflection prompt to paste into the AI you already use.
+Ten fonts and eight ink colors. Day or night is a sun and a moon in Settings.
 
-Stats are simpler: you wrote that day or you didn't.
-
-Blocked apps now unlock as soon as you have written, and the shield's emergency unlock works again.
+Anky Pro: start with 3 days free, then monthly.

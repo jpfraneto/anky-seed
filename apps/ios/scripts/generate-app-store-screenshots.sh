@@ -26,7 +26,7 @@ PROJECT="Anky.xcodeproj"
 BUNDLE_ID="com.jpfraneto.Anky"
 DEVICE_NAME="${ANKY_SCREENSHOT_DEVICE_NAME:-iPhone 16 Pro Max}"
 HEADLINE_FONT="${ANKY_HEADLINE_FONT:-Fraunces72pt-Regular}"
-SCENES=(ritual simplicity finished timer archive)
+SCENES=(ritual simplicity finished ink archive)
 SIGNAL="anky-screenshot-signal.json"
 READY_TIMEOUT=45
 

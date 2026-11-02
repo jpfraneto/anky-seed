@@ -11,7 +11,7 @@
     "ritual": "Just write.",
     "simplicity": "The simplest\nwriting app.",
     "finished": "Tap to keep\nwriting.",
-    "timer": "Choose your\nminutes.",
+    "ink": "Your font.\nYour ink.",
     "archive": "Every page stays\non your phone."
   },
   "ritual": {
@@ -83,5 +83,9 @@
       "text": "Begin again. I am always beginning again. Maybe that is the whole thing, the beginning, over and over, until it is a life.",
       "reflected": true
     }
-  ]
+  ],
+  "ink": {
+    "elapsedMs": 52000,
+    "text": "Tonight the words come slower, and that is fine. I am not here to be fast. I am here to stay with it."
+  }
 }

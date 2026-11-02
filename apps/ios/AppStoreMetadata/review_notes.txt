@@ -1,26 +1,25 @@
-Anky 2.2.0 (69) — notes for review
+Anky 2.3.0 (73) — notes for review
 
 WHAT CHANGED IN THIS VERSION
-Anky is now a fully offline writing app. This version removes features; it adds no new capabilities or entitlements.
-- No server connection of any kind. AI reflections, the subscription (Anky Pro, RevenueCat) and all network code were removed. The app has no in-app purchases.
-- One writing page with a side drawer of past writings. A finished writing stays on the page; tapping it continues it.
-- Tapping the clock shows the 8 second rule, a minutes slider (1–8) and ∞ (no time limit).
-- The App Privacy answers are now "Data Not Collected".
-
-NO CRYPTOCURRENCY FUNCTIONALITY
-Anky has no wallet, no blockchain integration, no tokens and no payments. A random key is generated on the device and stored in the Keychain; its only use is to encrypt the optional iCloud backup of the user's writings. It is never shown to the user and never sent anywhere.
+- A first-launch welcome: the user sets up the page (day or night, font, size, whether backspace is allowed), then types a few lines that weave a carpet on screen.
+- Anky Pro, an auto-renewable monthly subscription (anky.monthly) with a 3-day free trial for new subscribers, is now required to use the writing page. Purchases use StoreKit 2 directly; there is no server and no account.
+- A writing is always 8 minutes; it ends after 8 seconds without typing.
+- Settings: ten fonts, eight ink colors, a day/night toggle.
+The app still makes no network connections of its own. App Privacy: Data Not Collected.
 
 HOW TO TEST (no account or login required)
-1. Launch the app and type on the page. By default a session ends after 8 seconds without typing.
-2. The writing stays on the page. Tap it to keep writing.
-3. On a finished writing, the "…" button (top right) offers Copy writing, Copy prompt + writing (puts the text on the clipboard with a reflection prompt) and Delete.
-4. Tap the menu button (top left) to open the drawer: past writings, Settings and Stats.
+1. On first launch, tap one option on each setup line, type a few words to weave the carpet, then tap "continue".
+2. The paywall shows the price, the trial, Restore, Terms and Privacy, and the auto-renewal terms. Subscribe with a Sandbox Apple ID.
+3. Type on the page. The clock counts down 8:00. Stop typing for 8 seconds and the writing ends; it stays on the page.
+4. On a finished writing the "…" list (top right) is open: Copy prompt + writing, Copy writing, Delete. Tap the page to keep writing.
+5. The menu button (top left) opens the drawer: past writings, Settings and Stats.
+If the user has writings and no subscription, the paywall always offers "take your writings with you" (a plain text export), so nobody loses their writing.
+
+NO CRYPTOCURRENCY FUNCTIONALITY
+Anky has no wallet, no blockchain integration and no tokens. A random key is generated on the device and stored in the Keychain; its only use is to encrypt the optional iCloud backup of the user's writings. It is never shown to the user and never sent anywhere.
 
 SCREEN TIME (FamilyControls)
-Blocking is opt-in. Go to Settings → Blocked apps, turn on "Block until I write", grant Screen Time access and choose one or two apps. Please also allow notifications when asked.
-
-iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
-- "Write" opens Anky on a blank page. Finishing a sentence unlocks the chosen apps for 15 minutes (up to three times a day); writing the chosen number of minutes unlocks them for the rest of the day.
-- "Emergency unlock" opens Anky and unlocks the apps for the rest of the day immediately. No writing and no payment are required.
-
-Nobody can be locked out of their device: the same switch in Settings → Blocked apps turns blocking off at any time. Only Anky's own shield is ever applied or removed. The app does not change any other Screen Time setting.
+Blocking is opt-in: Settings → Blocked apps, turn on "Block until I write", grant Screen Time access and choose apps. Please also allow notifications when asked. iOS does not let a shield open another app, so the shield's buttons post a local notification; tapping it opens Anky.
+- "Write" opens Anky on a blank page. Finishing a sentence unlocks the chosen apps for 15 minutes (up to three times a day); writing the full minutes unlocks them for the rest of the day. Without a subscription, "Write" unlocks the apps for the rest of the day.
+- "Emergency unlock" unlocks the apps for the rest of the day immediately. No writing and no payment are required.
+The same switch in Settings → Blocked apps turns blocking off at any time. Only Anky's own shield is applied or removed.

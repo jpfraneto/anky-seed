@@ -41,14 +41,9 @@ enum ScreenshotStage {
     static var stagesWritingSurface: Bool {
         guard ScreenshotMode.isActive else { return false }
         switch ScreenshotMode.scene {
-        case .ritual, .simplicity: return true
+        case .ritual, .simplicity, .ink: return true
         default: return false
         }
-    }
-
-    /// The timer scene shows the clock's duration line unfolded.
-    static var opensDurationLine: Bool {
-        ScreenshotMode.isActive && ScreenshotMode.scene == .timer
     }
 
     /// Scenes 01 and 02 are worthless without a keyboard, and a simulator
@@ -134,6 +129,15 @@ enum ScreenshotStage {
             $0.durationIsInfinite = false
             $0.eightSecondRuleEnabled = true
             $0.terminalSilenceMs = AnkyDuration.defaultTerminalSilenceMs
+        }
+
+        // The ink scene shows the page made your own: night, another hand,
+        // another ink. Every other scene is the default page.
+        let isInk = ScreenshotMode.scene == .ink
+        defaults.set((isInk ? AnkyAppearance.night : .paper).rawValue, forKey: AnkyAppearance.storageKey)
+        WritingPreferencesStore().update {
+            $0.fontChoice = isInk ? .iowan : .default
+            $0.inkChoice = isInk ? .sea : .default
         }
 
         seedArchive(fixture)
@@ -227,8 +231,8 @@ enum ScreenshotStage {
                 return
             }
             axis.openEntry(entry)
-        case .timer:
-            break
+        case .ink:
+            guard stageWriting(fixture.ink, into: writeViewModel) else { return }
         case .archive:
             axis.openDrawer()
         }
@@ -280,7 +284,7 @@ enum ScreenshotStage {
     /// and the archive's first lazy rows. The keyboard gets longer, because it
     /// is the one thing here that depends on how the simulator was booted.
     private static func confirmReady(scene: ScreenshotMode.Scene, fixture: ScreenshotLocaleFixture) {
-        let needsKeyboard = scene == .ritual || scene == .simplicity || scene == .timer
+        let needsKeyboard = scene == .ritual || scene == .simplicity || scene == .ink
         DispatchQueue.main.async {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
                 awaitKeyboard(scene: scene, fixture: fixture, required: needsKeyboard, attempt: 0)

@@ -1,36 +1,36 @@
-Eine leere Seite. Nichts davor.
+Schreib acht Minuten. Hör nicht auf.
 
-Anky ist die einfachste Schreib-App, die wir bauen konnten. Du öffnest sie und schreibst schon. Kein Konto. Kein Feed. Keine Follower. Keine KI. Nichts einzurichten und nichts freizuschalten.
+Anky ist eine Seite und eine Uhr. Du schreibst acht Minuten lang, und wenn du acht Sekunden nicht tippst, endet das Schreiben. Kein Zurück zum letzten Satz, kein Feilen. Nur das, was da ist.
 
 SO FUNKTIONIERT ES
 
-Tippe auf die Uhr und wähle, wie lange du schreiben willst, von einer bis acht Minuten, oder ∞ ohne Limit.
+Beim ersten Öffnen richtest du deine Seite mit ein paar Tipps ein: Tag oder Nacht, deine Schrift, ihre Größe und ob du löschen darfst. Dann schreibst du deine ersten Zeilen auf einem Webstuhl, und jeder Buchstabe webt einen Faden in einen Teppich.
 
-Die Sanduhr daneben ist die 8-Sekunden-Regel: Hörst du acht Sekunden auf zu tippen, endet das Schreiben. So schreibst du weiter, statt den letzten Satz zu überarbeiten. Schalte sie aus, und nur du entscheidest, wann du fertig bist.
-
-Das ist die ganze App.
+Danach ist es immer gleich: Du öffnest die App und schreibst schon.
 
 WENN DU FERTIG BIST
 
-Deine Worte bleiben genau, wo sie sind. Tippe auf die Seite und schreib weiter, heute oder an jedem anderen Tag.
+Deine Worte bleiben, wo sie sind. Kopiere sie mit einem Tipp, oder kopiere sie in einer Reflexions-Anweisung, um sie in die KI einzufügen, die du schon nutzt, wenn du willst. Tippe auf die Seite, um weiterzuschreiben.
 
-Jedes Schreiben wird auf deinem iPhone gespeichert, mit Datum und durchsuchbar, in einer Leiste, die von der Seite hereingleitet. Kopiere ein Schreiben mit einem Tipp, oder kopiere es zusammen mit einem Reflexions-Prompt, um es in die KI einzufügen, die du ohnehin nutzt, wenn du willst.
+Jeder Text liegt in einer Schublade, die von der Seite hereingleitet, datiert und durchsuchbar. Statistik zeigt deine Serie und die Tage, an denen du geschrieben hast.
 
-Deine Serie und ein Kalender der Tage, an denen du geschrieben hast, sind einen Tipp entfernt. Du hast heute geschrieben oder nicht.
+MACH SIE ZU DEINER
 
-DEINS, NUR DEINS
+Zehn Schriften. Acht Tinten. Vier Größen. Tag oder Nacht. Löschen und Autokorrektur, an oder aus.
 
-Anky verbindet sich mit keinem Server. Dein Schreiben wird nie hochgeladen, nie gelesen und nie für ein Training verwendet. Keine Analyse, keine Werbung. Wenn du ein Backup willst, aktiviere das verschlüsselte iCloud-Backup: Es landet in deiner eigenen iCloud.
+DEINS, UND NUR DEINS
 
-SCHREIB, BEVOR DU SCROLLST
+Anky hat keinen Server und kein Konto. Was du schreibst, verlässt nie dein iPhone: Es wird nie hochgeladen, nie gelesen und nie zum Trainieren von irgendetwas verwendet. Keine Analysen, keine Werbung. Wenn du ein Backup willst, schalte das verschlüsselte iCloud-Backup ein; es landet in deiner eigenen iCloud.
 
-Wenn du willst, stellt sich Anky zwischen dich und die Apps, die du öffnest, ohne es zu wollen. Wähle sie in den Einstellungen. Greifst du nach einer, schreibst du zuerst. Ein fertiger Satz öffnet einen kurzen Pass, deine Minuten öffnen den Rest des Tages. Jederzeit abschaltbar.
+ERST SCHREIBEN, DANN SCROLLEN
 
-In den Einstellungen findest du den Rest: Rücktaste, Autokorrektur, wie lange die Stille dauert, Schrift und Größe.
+Wenn du willst, stellt sich Anky zwischen dich und die Apps, die du öffnest, ohne es zu wollen. Wähle sie in den Einstellungen. Wenn du eine öffnest, schreib zuerst.
 
-Kostenlos. Kein Abo. Keine Käufe.
+ANKY PRO
 
-Datenschutzerklärung: https://anky.app/de/privacy-policy
-Nutzungsbedingungen: https://anky.app/de/terms
+Anky ist ein Monatsabo. Neue Abonnenten starten mit 3 Tagen gratis; der Preis wird vor dem Abschluss in der App angezeigt. Es verlängert sich automatisch, sofern es nicht mindestens 24 Stunden vor Ende des laufenden Zeitraums gekündigt wird. Verwalten oder kündigen kannst du jederzeit in deinen App-Store-Kontoeinstellungen. Deine Texte gehören immer dir: Du kannst sie mitnehmen, mit oder ohne Abo.
 
-Öffnen. Schreiben. Schließen.
+Datenschutz: https://anky.app/privacy-policy
+Nutzungsbedingungen: https://anky.app/terms
+
+Acht Minuten. Hör nicht auf.

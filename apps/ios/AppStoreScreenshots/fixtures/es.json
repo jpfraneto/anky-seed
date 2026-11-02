@@ -11,7 +11,7 @@
     "ritual": "Solo escribe.",
     "simplicity": "La app de escritura\nmás simple.",
     "finished": "Toca para seguir\nescribiendo.",
-    "timer": "Elige tus\nminutos.",
+    "ink": "Tu fuente.\nTu tinta.",
     "archive": "Cada página se queda\nen tu teléfono."
   },
   "ritual": {
@@ -83,5 +83,9 @@
       "text": "Empezar de nuevo. Siempre estoy empezando de nuevo. Quizás eso es todo, el comienzo, una y otra vez, hasta que es una vida.",
       "reflected": true
     }
-  ]
+  ],
+  "ink": {
+    "elapsedMs": 52000,
+    "text": "Esta noche las palabras llegan más lento, y está bien. No estoy aquí para ir rápido. Estoy aquí para quedarme."
+  }
 }

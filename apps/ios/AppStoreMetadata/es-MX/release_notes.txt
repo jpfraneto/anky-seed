@@ -1,15 +1,13 @@
-El Anky más simple hasta ahora.
+El telar.
 
-Anky ya no se conecta a ningún servidor. Sin reflexiones de IA, sin suscripción, sin cuenta. Tu escritura nunca sale de tu teléfono.
+La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Luego tus primeras líneas tejen una alfombra.
 
-Toca el reloj para ver una sola línea: la regla de los 8 segundos, un control para tus minutos y ∞.
+Un anky siempre dura ocho minutos. Deja de teclear ocho segundos y queda sellado.
 
-¿Terminaste una escritura? Tócala para seguir. La misma página, las mismas palabras.
+La página es más ligera y rápida, incluso al final de una escritura larga.
 
-El retroceso viene activado. Apágalo en Configuración si quieres escribir solo hacia adelante.
+Cuando terminas, el menú ya está abierto: copia tu escritura con una instrucción de reflexión en un toque.
 
-Copia cualquier escritura, o cópiala con un prompt de reflexión para pegarla en la IA que ya usas.
+Diez fuentes y ocho colores de tinta. Día o noche es un sol y una luna en Ajustes.
 
-Las estadísticas son más simples: ese día escribiste o no.
-
-Las apps bloqueadas se desbloquean en cuanto escribes, y el desbloqueo de emergencia del escudo vuelve a funcionar.
+Anky Pro: empieza con 3 días gratis, luego mensual.

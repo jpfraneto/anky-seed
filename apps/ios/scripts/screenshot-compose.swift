@@ -342,7 +342,7 @@ struct LocaleRow: Decodable {
 }
 struct LocaleManifest: Decodable { let locales: [LocaleRow] }
 
-let sceneOrder = ["ritual", "simplicity", "finished", "timer", "archive"]
+let sceneOrder = ["ritual", "simplicity", "finished", "ink", "archive"]
 
 do {
     let manifestData = try Data(contentsOf: root.appendingPathComponent("locales.json"))

@@ -4,7 +4,7 @@
     "ritual",
     "simplicity",
     "finished",
-    "timer",
+    "ink",
     "archive"
   ],
   "locales": {
@@ -21,7 +21,7 @@
         "ritual": "Just write.",
         "simplicity": "The simplest\nwriting app.",
         "finished": "Tap to keep\nwriting.",
-        "timer": "Choose your\nminutes.",
+        "ink": "Your font.\nYour ink.",
         "archive": "Every page stays\non your phone."
       },
       "ritual": {
@@ -93,7 +93,11 @@
           "text": "Begin again. I am always beginning again. Maybe that is the whole thing, the beginning, over and over, until it is a life.",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "Tonight the words come slower, and that is fine. I am not here to be fast. I am here to stay with it."
+      }
     },
     "es": {
       "appLocale": "es",
@@ -108,7 +112,7 @@
         "ritual": "Solo escribe.",
         "simplicity": "La app de escritura\nmás simple.",
         "finished": "Toca para seguir\nescribiendo.",
-        "timer": "Elige tus\nminutos.",
+        "ink": "Tu fuente.\nTu tinta.",
         "archive": "Cada página se queda\nen tu teléfono."
       },
       "ritual": {
@@ -180,7 +184,11 @@
           "text": "Empezar de nuevo. Siempre estoy empezando de nuevo. Quizás eso es todo, el comienzo, una y otra vez, hasta que es una vida.",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "Esta noche las palabras llegan más lento, y está bien. No estoy aquí para ir rápido. Estoy aquí para quedarme."
+      }
     },
     "fr": {
       "appLocale": "fr",
@@ -195,7 +203,7 @@
         "ritual": "Écris, c'est tout.",
         "simplicity": "L'app d'écriture\nla plus simple.",
         "finished": "Touche pour\ncontinuer.",
-        "timer": "Choisis tes\nminutes.",
+        "ink": "Ta police.\nTon encre.",
         "archive": "Chaque page reste\nsur ton téléphone."
       },
       "ritual": {
@@ -267,7 +275,11 @@
           "text": "Recommencer. Je suis toujours en train de recommencer. C'est peut-être ça, le commencement, encore et encore, jusqu'à faire une vie.",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "Ce soir les mots viennent plus lentement, et c'est bien. Je ne suis pas là pour aller vite. Je suis là pour rester."
+      }
     },
     "de": {
       "appLocale": "de",
@@ -282,7 +294,7 @@
         "ritual": "Schreib einfach.",
         "simplicity": "Die einfachste\nSchreib-App.",
         "finished": "Tippen und\nweiterschreiben.",
-        "timer": "Wähl deine\nMinuten.",
+        "ink": "Deine Schrift.\nDeine Tinte.",
         "archive": "Jede Seite bleibt\nauf deinem iPhone."
       },
       "ritual": {
@@ -354,7 +366,11 @@
           "text": "Neu anfangen. Ich fange immer wieder neu an. Vielleicht ist das alles, der Anfang, wieder und wieder, bis er ein Leben ist.",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "Heute Nacht kommen die Worte langsamer, und das ist gut. Ich bin nicht hier, um schnell zu sein. Ich bin hier, um zu bleiben."
+      }
     },
     "hi": {
       "appLocale": "hi",
@@ -370,7 +386,7 @@
         "ritual": "बस लिखें।",
         "simplicity": "सबसे सरल\nलेखन ऐप।",
         "finished": "टैप करें और\nलिखते रहें।",
-        "timer": "अपने मिनट\nचुनें।",
+        "ink": "आपका फ़ॉन्ट।\nआपकी स्याही।",
         "archive": "हर पन्ना आपके\nफ़ोन पर रहता है।"
       },
       "ritual": {
@@ -442,7 +458,11 @@
           "text": "फिर से शुरू। मैं हमेशा फिर से शुरू ही कर रहा होता हूँ। शायद यही सब कुछ है — शुरुआत, बार-बार, जब तक वह एक ज़िंदगी न बन जाए।",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "आज रात शब्द धीरे आ रहे हैं, और यह ठीक है। मैं यहाँ तेज़ होने नहीं आया। मैं यहाँ ठहरने आया हूँ।"
+      }
     },
     "zh-Hans": {
       "appLocale": "zh-Hans",
@@ -458,7 +478,7 @@
         "ritual": "只管写。",
         "simplicity": "最简单的\n写作应用。",
         "finished": "点一下\n继续写。",
-        "timer": "选择你的\n分钟数。",
+        "ink": "你的字体，\n你的墨色。",
         "archive": "每一页都留在\n你的手机上。"
       },
       "ritual": {
@@ -530,7 +550,11 @@
           "text": "重新开始。我一直都在重新开始。也许这就是全部了——开始，一次又一次，直到它成为一生。",
           "reflected": true
         }
-      ]
+      ],
+      "ink": {
+        "elapsedMs": 52000,
+        "text": "今晚文字来得慢一些，这没关系。我不是来求快的。我是来停留的。"
+      }
     }
   }
 }
