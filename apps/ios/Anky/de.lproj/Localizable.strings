@@ -728,24 +728,13 @@
 "Writing time" = "Schreibzeit";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
-"this is a loom." = "das ist ein webstuhl.";
-"here you weave yourself into being,\neight minutes at a time." = "hier webst du dich ins dasein,\nimmer acht minuten lang.";
-"begin" = "beginnen";
 "loom: skip" = "überspringen";
-"write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends." = "schreib, was kommt. hör nicht auf.\nwenn du acht sekunden ruhst, endet der faden.";
+"loom: write" = "schreib";
+"what you write never leaves this iPhone." = "was du schreibst, verlässt dieses iPhone nie.";
 "Your first thread" = "Dein erster Faden";
-"the loom is strung." = "der webstuhl ist bespannt.";
-"you wove this." = "das hast du gewebt.";
-"then you rested, and the thread ended." = "dann hast du geruht, und der faden endete.";
-"an anky is eight minutes of this." = "ein anky sind acht minuten davon.";
-"what you write stays on this iPhone.\nno one reads it. not even anky." = "was du schreibst, bleibt auf diesem iPhone.\nniemand liest es. nicht einmal anky.";
 "continue" = "weiter";
-"keep weaving." = "web weiter.";
-"a quiet place to write an anky, every day.\nyour writing never leaves this iPhone." = "ein stiller ort für einen anky, jeden tag.\ndein schreiben verlässt nie dieses iPhone.";
 "start my %d free days" = "meine %d kostenlosen tage starten";
 "subscribe" = "abonnieren";
-"Nothing is charged today. Cancel anytime in Settings before the trial ends." = "Heute wird nichts berechnet. Kündige jederzeit vor Ende des Probezeitraums in den Einstellungen.";
-"Renews monthly. Cancel anytime in Settings." = "Verlängert sich monatlich. Jederzeit in den Einstellungen kündbar.";
 "Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky Pro verlängert sich automatisch für %@ pro Monat, sofern es nicht mindestens 24 Stunden vor Ende des aktuellen Zeitraums gekündigt wird. Die Zahlung wird über deine Apple-ID abgerechnet. Verwalte oder kündige das Abo in den Einstellungen deines App-Store-Accounts.";
 "%d days free, then %@ a month" = "%d Tage kostenlos, danach %@ pro Monat";
 "%@ a month" = "%@ pro Monat";
@@ -753,7 +742,6 @@
 "Terms" = "Bedingungen";
 "take your writings with you" = "nimm deine texte mit";
 "Waiting for the purchase to be approved. The loom opens the moment it is." = "Der Kauf wartet auf Genehmigung. Der Webstuhl öffnet sich, sobald er genehmigt ist.";
-"welcome to the loom." = "willkommen am webstuhl.";
 "The App Store isn't answering. Check your connection and try again." = "Der App Store antwortet nicht. Prüfe deine Verbindung und versuch es erneut.";
 "Apple couldn't verify this purchase. Nothing was charged." = "Apple konnte diesen Kauf nicht bestätigen. Es wurde nichts berechnet.";
 "The purchase didn't go through. Nothing was charged." = "Der Kauf ist nicht durchgegangen. Es wurde nichts berechnet.";

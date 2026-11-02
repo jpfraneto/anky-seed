@@ -2,18 +2,16 @@
 //  LoomGateView.swift
 //  Anky
 //
-//  The way into Anky, and the only door: a welcome that lets the writer
-//  weave before anything is asked of them, then Anky Pro.
+//  The way into Anky, and the only door. The writer is here to write, not
+//  to read, so the welcome is almost wordless:
 //
-//      this is a loom.                       (the warp is strung)
-//      write whatever comes.                 (every character lays stitches)
-//      you wove this.                        (the cloth, theirs)
-//      keep weaving.                         (3 days free, then monthly)
+//      the loom, the keyboard up             (every character lays stitches)
+//      what you write never leaves this iPhone.
+//      Anky Pro                              (3 days free, then monthly)
 //
-//  Nothing is asked for: no name, no goals, no permissions. Anky speaks in
-//  a few plain lines and is otherwise present only in the cloth itself.
-//  Without an active trial or subscription the app stays here; the writer's
-//  past writings can always be taken with them.
+//  Nothing is asked for: no name, no goals, no permissions. Without an
+//  active trial or subscription the app stays here; the writer's past
+//  writings can always be taken with them.
 //
 
 import StoreKit
@@ -26,7 +24,11 @@ enum LoomLedger {
     private static let account = "loom.welcome.done.v1"
 
     static func needsWelcome() -> Bool {
-        ((try? KeychainClient().data(for: account)) ?? nil) == nil
+        #if DEBUG
+        // Replay the welcome without wiping anything: `-loomReplay`.
+        if ProcessInfo.processInfo.arguments.contains("-loomReplay") { return true }
+        #endif
+        return ((try? KeychainClient().data(for: account)) ?? nil) == nil
     }
 
     static func markDone() {
@@ -46,7 +48,6 @@ struct LoomGateView: View {
     let onEnter: () -> Void
 
     private enum Phase: Equatable {
-        case invitation
         case weaving
         case cloth
         case door
@@ -56,16 +57,13 @@ struct LoomGateView: View {
     @State private var phase: Phase
     @State private var sound = LoomSound()
 
-    // Invitation
     @State private var warpStrung: Double = 0
-    @State private var invitationStep = 0
 
     // Weaving
     @State private var text = ""
     @State private var charactersWoven = 0
     @State private var lastKeystroke: Date?
     @State private var silence: Double = 0
-    @State private var weaveEndedByStillness = false
     @FocusState private var writing: Bool
     @State private var stillnessWatch: Task<Void, Never>?
 
@@ -89,7 +87,7 @@ struct LoomGateView: View {
         self.pro = pro
         self.onWelcomed = onWelcomed
         self.onEnter = onEnter
-        _phase = State(initialValue: needsWelcome ? .invitation : .door)
+        _phase = State(initialValue: needsWelcome ? .weaving : .door)
         _warpStrung = State(initialValue: needsWelcome ? 0 : 1)
         // A returning writer meets the finished cloth.
         _charactersWoven = State(initialValue: needsWelcome ? 0 : Self.charactersForFullCarpet)
@@ -110,9 +108,6 @@ struct LoomGateView: View {
                 night
 
                 switch phase {
-                case .invitation:
-                    invitation(in: geometry.size)
-                        .transition(.opacity)
                 case .weaving:
                     weaving(in: geometry.size)
                         .transition(.opacity)
@@ -166,63 +161,23 @@ struct LoomGateView: View {
         .ignoresSafeArea()
     }
 
-    // MARK: - 1. The invitation
-
-    private func invitation(in size: CGSize) -> some View {
-        let side = min(size.width - 56, size.height * 0.46)
-        return VStack(spacing: 0) {
-            Spacer(minLength: 20)
-
-            LoomCarpetView(woven: 0, warpStrung: warpStrung)
-                .frame(width: side, height: side)
-
-            Spacer(minLength: 28)
-
-            VStack(spacing: 14) {
-                Text(AnkyLocalization.ui("this is a loom."))
-                    .font(.fraunces(30, weight: .light, relativeTo: .title))
-                    .foregroundStyle(LoomPalette.thread)
-                    .opacity(invitationStep >= 1 ? 1 : 0)
-
-                Text(AnkyLocalization.ui("here you weave yourself into being,\neight minutes at a time."))
-                    .font(.fraunces(18, weight: .light, italic: true))
-                    .foregroundStyle(LoomPalette.threadSoft)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(5)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(invitationStep >= 2 ? 1 : 0)
-            }
-            .padding(.horizontal, 32)
-
-            Spacer(minLength: 28)
-
-            ThreadButton(title: AnkyLocalization.ui("begin")) {
-                AnkyHaptics.light()
-                beginWeaving()
-            }
-            .opacity(invitationStep >= 3 ? 1 : 0)
-            .allowsHitTesting(invitationStep >= 3)
-            .padding(.bottom, 36)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     private func appear() {
-        if phase == .invitation {
+        if phase == .weaving {
+            // Straight to the page: the warp strings itself while the
+            // keyboard rises.
             sound.start()
             if reduceMotion {
                 warpStrung = 1
-                invitationStep = 3
-                return
+            } else {
+                withAnimation(.easeInOut(duration: 2.4)) { warpStrung = 1 }
             }
-            withAnimation(.easeInOut(duration: 4.2)) { warpStrung = 1 }
-            reveal([(1, 1.2), (2, 3.0), (3, 5.0)]) { invitationStep = max(invitationStep, $0) }
+            beginWeaving()
         } else if phase == .door, pro.access == .active {
             enter(celebrating: false)
         }
     }
 
-    // MARK: - 2. The first thread
+    // MARK: - 1. The first thread
 
     private func weaving(in size: CGSize) -> some View {
         VStack(spacing: 0) {
@@ -242,17 +197,7 @@ struct LoomGateView: View {
             }
             .padding(.top, 4)
 
-            Text(AnkyLocalization.ui("write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends."))
-                .font(.fraunces(16, weight: .light, italic: true))
-                .foregroundStyle(LoomPalette.threadSoft)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 28)
-                .opacity(charactersWoven == 0 ? 1 : 0)
-                .animation(.easeInOut(duration: 0.8), value: charactersWoven == 0)
-
-            LoomCarpetView(woven: woven, weaving: true)
+            LoomCarpetView(woven: woven, weaving: true, warpStrung: warpStrung)
                 .animation(.easeOut(duration: 0.35), value: woven)
                 .padding(.horizontal, 28)
                 .padding(.top, 14)
@@ -269,7 +214,7 @@ struct LoomGateView: View {
                 .padding(.top, 14)
                 .animation(.linear(duration: 0.12), value: silence)
 
-            TextField("", text: $text, axis: .vertical)
+            TextField("", text: $text, prompt: Text(AnkyLocalization.ui("loom: write")).foregroundColor(LoomPalette.threadFaint), axis: .vertical)
                 .font(.fraunces(18, weight: .light))
                 .foregroundStyle(LoomPalette.thread)
                 .tint(LoomPalette.thread)
@@ -290,7 +235,7 @@ struct LoomGateView: View {
 
     private func beginWeaving() {
         phase = .weaving
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { writing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { writing = true }
         stillnessWatch?.cancel()
         stillnessWatch = Task { @MainActor in
             while !Task.isCancelled, phase == .weaving {
@@ -299,7 +244,6 @@ struct LoomGateView: View {
                 let still = Date().timeIntervalSince(lastKeystroke)
                 silence = max(0, (still - 3) / (Self.stillnessLimit - 3))
                 if still >= Self.stillnessLimit {
-                    weaveEndedByStillness = true
                     finishWeaving()
                 }
             }
@@ -327,13 +271,13 @@ struct LoomGateView: View {
         silence = 0
         phase = .cloth
         if reduceMotion {
-            clothStep = 4
+            clothStep = 2
         } else {
-            reveal([(1, 0.9), (2, 2.6), (3, 4.4), (4, 5.6)]) { clothStep = max(clothStep, $0) }
+            reveal([(1, 0.9), (2, 2.4)]) { clothStep = max(clothStep, $0) }
         }
     }
 
-    // MARK: - 3. The cloth
+    // MARK: - 2. The cloth
 
     private func cloth(in size: CGSize) -> some View {
         let side = min(size.width - 56, size.height * 0.5)
@@ -345,37 +289,14 @@ struct LoomGateView: View {
 
             Spacer(minLength: 28)
 
-            VStack(spacing: 16) {
-                Text(charactersWoven == 0
-                     ? AnkyLocalization.ui("the loom is strung.")
-                     : AnkyLocalization.ui("you wove this."))
-                    .font(.fraunces(28, weight: .light, relativeTo: .title))
-                    .foregroundStyle(LoomPalette.thread)
-                    .opacity(clothStep >= 1 ? 1 : 0)
-
-                if weaveEndedByStillness, !carpetIsComplete {
-                    Text(AnkyLocalization.ui("then you rested, and the thread ended."))
-                        .font(.fraunces(17, weight: .light, italic: true))
-                        .foregroundStyle(LoomPalette.threadSoft)
-                        .opacity(clothStep >= 1 ? 1 : 0)
-                }
-
-                Text(AnkyLocalization.ui("an anky is eight minutes of this."))
-                    .font(.fraunces(19, weight: .light, italic: true))
-                    .foregroundStyle(LoomPalette.threadSoft)
-                    .opacity(clothStep >= 2 ? 1 : 0)
-
-                Text(AnkyLocalization.ui("what you write stays on this iPhone.\nno one reads it. not even anky."))
-                    .font(.fraunces(16, weight: .light))
-                    .foregroundStyle(LoomPalette.threadSoft)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(clothStep >= 3 ? 1 : 0)
-            }
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 32)
-            .animation(.easeInOut(duration: 1.1), value: clothStep)
+            Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
+                .font(.fraunces(20, weight: .light, italic: true))
+                .foregroundStyle(LoomPalette.thread)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 32)
+                .opacity(clothStep >= 1 ? 1 : 0)
+                .animation(.easeInOut(duration: 1.1), value: clothStep)
 
             Spacer(minLength: 28)
 
@@ -383,8 +304,8 @@ struct LoomGateView: View {
                 AnkyHaptics.light()
                 leaveWelcome()
             }
-            .opacity(clothStep >= 4 ? 1 : 0)
-            .allowsHitTesting(clothStep >= 4)
+            .opacity(clothStep >= 2 ? 1 : 0)
+            .allowsHitTesting(clothStep >= 2)
             .padding(.bottom, 36)
         }
         .frame(maxWidth: .infinity)
@@ -400,7 +321,7 @@ struct LoomGateView: View {
         }
     }
 
-    // MARK: - 4. The door
+    // MARK: - 3. The door
 
     @ViewBuilder
     private func door(in size: CGSize) -> some View {
@@ -414,25 +335,11 @@ struct LoomGateView: View {
                         .frame(width: min(size.width * 0.52, 230), height: min(size.width * 0.52, 230))
                         .padding(.top, 28)
 
-                    Text(AnkyLocalization.ui("keep weaving."))
-                        .font(.fraunces(32, weight: .light, relativeTo: .largeTitle))
-                        .foregroundStyle(LoomPalette.thread)
-                        .padding(.top, 30)
-
-                    Text(AnkyLocalization.ui("a quiet place to write an anky, every day.\nyour writing never leaves this iPhone."))
-                        .font(.fraunces(17, weight: .light, italic: true))
-                        .foregroundStyle(LoomPalette.threadSoft)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(5)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 12)
-                        .padding(.horizontal, 32)
-
                     Text("ANKY PRO")
                         .font(.system(size: 11, weight: .medium))
                         .kerning(2.4)
                         .foregroundStyle(LoomPalette.threadSoft)
-                        .padding(.top, 34)
+                        .padding(.top, 36)
 
                     Text(offerLine)
                         .font(.fraunces(19, weight: .regular))
@@ -451,16 +358,6 @@ struct LoomGateView: View {
                         Task { await purchase() }
                     }
                     .padding(.top, 16)
-
-                    Text(pro.isEligibleForTrial
-                         ? AnkyLocalization.ui("Nothing is charged today. Cancel anytime in Settings before the trial ends.")
-                         : AnkyLocalization.ui("Renews monthly. Cancel anytime in Settings."))
-                        .font(.fraunces(14, weight: .light))
-                        .foregroundStyle(LoomPalette.threadSoft)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 12)
-                        .padding(.horizontal, 36)
 
                     if let doorMessage {
                         Text(doorMessage)
@@ -575,12 +472,10 @@ struct LoomGateView: View {
         }.value
     }
 
-    // MARK: - 5. In
+    // MARK: - 4. In
 
     private var entering: some View {
-        Text(AnkyLocalization.ui("welcome to the loom."))
-            .font(.fraunces(28, weight: .light, relativeTo: .title))
-            .foregroundStyle(LoomPalette.thread)
+        Color.clear
     }
 
     private func enter(celebrating: Bool) {
@@ -591,7 +486,7 @@ struct LoomGateView: View {
             return
         }
         phase = .entering
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { onEnter() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onEnter() }
     }
 
     // MARK: - Pacing

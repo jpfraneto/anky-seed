@@ -728,24 +728,13 @@
 "Writing time" = "书写时长";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
-"this is a loom." = "这是一台织布机。";
-"here you weave yourself into being,\neight minutes at a time." = "在这里，你一点点织出自己，\n每次八分钟。";
-"begin" = "开始";
 "loom: skip" = "跳过";
-"write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends." = "想到什么就写什么。不要停。\n如果你歇上八秒，线就断了。";
+"loom: write" = "写";
+"what you write never leaves this iPhone." = "你写下的，永远不会离开这台 iPhone。";
 "Your first thread" = "你的第一根线";
-"the loom is strung." = "织机已经上好了线。";
-"you wove this." = "这是你织的。";
-"then you rested, and the thread ended." = "然后你歇了下来，线也就断了。";
-"an anky is eight minutes of this." = "一个 anky，就是这样的八分钟。";
-"what you write stays on this iPhone.\nno one reads it. not even anky." = "你写下的一切都留在这台 iPhone 上。\n没有人读。连 anky 也不读。";
 "continue" = "继续";
-"keep weaving." = "继续织下去。";
-"a quiet place to write an anky, every day.\nyour writing never leaves this iPhone." = "一个安静的地方，每天写一个 anky。\n你的文字从不离开这台 iPhone。";
 "start my %d free days" = "开始我的 %d 天免费试用";
 "subscribe" = "订阅";
-"Nothing is charged today. Cancel anytime in Settings before the trial ends." = "今天不会扣费。试用结束前可随时在设置中取消。";
-"Renews monthly. Cancel anytime in Settings." = "按月续订。可随时在设置中取消。";
 "Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "除非在当前周期结束前至少 24 小时取消，否则 Anky Pro 将以每月 %@ 的价格自动续订。费用将从你的 Apple ID 扣除。可在 App Store 账户设置中管理或取消订阅。";
 "%d days free, then %@ a month" = "免费 %d 天，之后每月 %@";
 "%@ a month" = "每月 %@";
@@ -753,7 +742,6 @@
 "Terms" = "条款";
 "take your writings with you" = "带走你的书写";
 "Waiting for the purchase to be approved. The loom opens the moment it is." = "正在等待购买获得批准。一旦批准，织布机就会打开。";
-"welcome to the loom." = "欢迎来到织布机前。";
 "The App Store isn't answering. Check your connection and try again." = "App Store 没有响应。请检查网络连接后重试。";
 "Apple couldn't verify this purchase. Nothing was charged." = "Apple 无法验证此次购买。未产生任何费用。";
 "The purchase didn't go through. Nothing was charged." = "购买未完成。未产生任何费用。";

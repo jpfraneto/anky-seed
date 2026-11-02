@@ -728,24 +728,13 @@
 "Writing time" = "Writing time";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
-"this is a loom." = "this is a loom.";
-"here you weave yourself into being,\neight minutes at a time." = "here you weave yourself into being,\neight minutes at a time.";
-"begin" = "begin";
 "loom: skip" = "skip";
-"write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends." = "write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends.";
+"loom: write" = "write";
+"what you write never leaves this iPhone." = "what you write never leaves this iPhone.";
 "Your first thread" = "Your first thread";
-"the loom is strung." = "the loom is strung.";
-"you wove this." = "you wove this.";
-"then you rested, and the thread ended." = "then you rested, and the thread ended.";
-"an anky is eight minutes of this." = "an anky is eight minutes of this.";
-"what you write stays on this iPhone.\nno one reads it. not even anky." = "what you write stays on this iPhone.\nno one reads it. not even anky.";
 "continue" = "continue";
-"keep weaving." = "keep weaving.";
-"a quiet place to write an anky, every day.\nyour writing never leaves this iPhone." = "a quiet place to write an anky, every day.\nyour writing never leaves this iPhone.";
 "start my %d free days" = "start my %d free days";
 "subscribe" = "subscribe";
-"Nothing is charged today. Cancel anytime in Settings before the trial ends." = "Nothing is charged today. Cancel anytime in Settings before the trial ends.";
-"Renews monthly. Cancel anytime in Settings." = "Renews monthly. Cancel anytime in Settings.";
 "Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.";
 "%d days free, then %@ a month" = "%d days free, then %@ a month";
 "%@ a month" = "%@ a month";
@@ -753,7 +742,6 @@
 "Terms" = "Terms";
 "take your writings with you" = "take your writings with you";
 "Waiting for the purchase to be approved. The loom opens the moment it is." = "Waiting for the purchase to be approved. The loom opens the moment it is.";
-"welcome to the loom." = "welcome to the loom.";
 "The App Store isn't answering. Check your connection and try again." = "The App Store isn't answering. Check your connection and try again.";
 "Apple couldn't verify this purchase. Nothing was charged." = "Apple couldn't verify this purchase. Nothing was charged.";
 "The purchase didn't go through. Nothing was charged." = "The purchase didn't go through. Nothing was charged.";

@@ -728,24 +728,13 @@
 "Writing time" = "Durée d'écriture";
 
 /* The loom: welcome and Anky Pro (2026-11-01) */
-"this is a loom." = "ceci est un métier à tisser.";
-"here you weave yourself into being,\neight minutes at a time." = "ici, tu tisses qui tu es,\nhuit minutes à la fois.";
-"begin" = "commencer";
 "loom: skip" = "passer";
-"write whatever comes. don't stop.\nif you rest for eight seconds, the thread ends." = "écris ce qui vient. ne t'arrête pas.\nsi tu fais une pause de huit secondes, le fil s'achève.";
+"loom: write" = "écris";
+"what you write never leaves this iPhone." = "ce que tu écris ne quitte jamais cet iPhone.";
 "Your first thread" = "Ton premier fil";
-"the loom is strung." = "le métier est monté.";
-"you wove this." = "tu as tissé ceci.";
-"then you rested, and the thread ended." = "puis tu as fait une pause, et le fil s'est achevé.";
-"an anky is eight minutes of this." = "un anky, c'est huit minutes de cela.";
-"what you write stays on this iPhone.\nno one reads it. not even anky." = "ce que tu écris reste sur cet iPhone.\npersonne ne le lit. pas même anky.";
 "continue" = "continuer";
-"keep weaving." = "continue à tisser.";
-"a quiet place to write an anky, every day.\nyour writing never leaves this iPhone." = "un endroit calme pour écrire un anky, chaque jour.\nton écriture ne quitte jamais cet iPhone.";
 "start my %d free days" = "commencer mes %d jours gratuits";
 "subscribe" = "m'abonner";
-"Nothing is charged today. Cancel anytime in Settings before the trial ends." = "Rien n'est facturé aujourd'hui. Annule à tout moment dans Réglages avant la fin de l'essai.";
-"Renews monthly. Cancel anytime in Settings." = "Renouvellement mensuel. Annule à tout moment dans Réglages.";
 "Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky Pro se renouvelle automatiquement au prix de %@ par mois, sauf annulation au moins 24 heures avant la fin de la période en cours. Le paiement est débité sur ton identifiant Apple. Gère ou annule l'abonnement dans les réglages de ton compte App Store.";
 "%d days free, then %@ a month" = "%d jours gratuits, puis %@ par mois";
 "%@ a month" = "%@ par mois";
@@ -753,7 +742,6 @@
 "Terms" = "Conditions";
 "take your writings with you" = "emporte tes écritures";
 "Waiting for the purchase to be approved. The loom opens the moment it is." = "En attente de l'approbation de l'achat. Le métier à tisser s'ouvre dès qu'il est approuvé.";
-"welcome to the loom." = "bienvenue au métier à tisser.";
 "The App Store isn't answering. Check your connection and try again." = "L'App Store ne répond pas. Vérifie ta connexion et réessaie.";
 "Apple couldn't verify this purchase. Nothing was charged." = "Apple n'a pas pu vérifier cet achat. Rien n'a été facturé.";
 "The purchase didn't go through. Nothing was charged." = "L'achat n'a pas abouti. Rien n'a été facturé.";
