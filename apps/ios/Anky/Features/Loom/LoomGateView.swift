@@ -261,7 +261,7 @@ struct LoomGateView: View {
         .buttonStyle(.plain)
         .padding(.leading, 12)
         .padding(.top, 4)
-        .accessibilityLabel(Text(AnkyLocalization.ui("Back")))
+        .accessibilityLabel(Text(welcomeText("Back")))
     }
 
     private func bottomBar(_ step: Step) -> some View {
@@ -272,12 +272,12 @@ struct LoomGateView: View {
             Group {
                 switch step {
                 case .firstLine:
-                    Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
+                    Text(welcomeText("what you write never leaves this iPhone."))
                         .font(.fraunces(15, weight: .light, italic: true))
                         .foregroundStyle(LoomPalette.threadSoft)
                 case .practice:
                     Button(action: advance) {
-                        Text(AnkyLocalization.ui("welcome: not now"))
+                        Text(welcomeText("welcome: not now"))
                             .font(.fraunces(16, weight: .light))
                             .foregroundStyle(LoomPalette.threadSoft)
                             .padding(.horizontal, 24)
@@ -294,7 +294,7 @@ struct LoomGateView: View {
 
             if step == .practice {
                 ThreadButton(
-                    title: AnkyLocalization.ui("remind me at %@", reminderTime.formatted(date: .omitted, time: .shortened)),
+                    title: welcomeText("remind me at %@", reminderTime.formatted(date: .omitted, time: .shortened)),
                     filled: true
                 ) {
                     AnkyHaptics.light()
@@ -302,7 +302,7 @@ struct LoomGateView: View {
                 }
             } else {
                 let enabled = step != .firstLine || hasFirstLine
-                ThreadButton(title: AnkyLocalization.ui("continue"), tint: tint) { advance() }
+                ThreadButton(title: welcomeText("continue"), tint: tint) { advance() }
                     .opacity(enabled ? 1 : 0.35)
                     .allowsHitTesting(enabled)
                     .animation(.easeInOut(duration: 0.3), value: enabled)
@@ -345,7 +345,7 @@ struct LoomGateView: View {
     private func whyLine(_ key: String) -> some View {
         VStack(spacing: 0) {
             Spacer()
-            Text(AnkyLocalization.ui(key))
+            Text(welcomeText(key))
                 .font(.fraunces(29, weight: .light, relativeTo: .title))
                 .foregroundStyle(LoomPalette.thread)
                 .multilineTextAlignment(.center)
@@ -364,7 +364,7 @@ struct LoomGateView: View {
     private func settingScreen<Control: View>(_ key: String, @ViewBuilder control: () -> Control) -> some View {
         VStack(spacing: 36) {
             Spacer()
-            Text(AnkyLocalization.ui(key))
+            Text(welcomeText(key))
                 .font(.fraunces(27, weight: .light, relativeTo: .title))
                 .foregroundStyle(LoomPalette.thread)
                 .multilineTextAlignment(.center)
@@ -403,7 +403,7 @@ struct LoomGateView: View {
             ZStack {
                 ground
                 VStack(spacing: 18) {
-                    Text(AnkyLocalization.ui("choose the color."))
+                    Text(welcomeText("choose the color."))
                         .font(preferences.fontChoice.font(size: 30))
                         .foregroundStyle(ink)
                         .multilineTextAlignment(.center)
@@ -420,7 +420,7 @@ struct LoomGateView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(AnkyLocalization.ui(isDay ? "Day" : "Night")))
+        .accessibilityLabel(Text(welcomeText(isDay ? "Day" : "Night")))
         .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 
@@ -436,7 +436,7 @@ struct LoomGateView: View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
             ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
                 choiceChip(isSelected: preferences.fontChoice == choice, height: 52) {
-                    Text(AnkyLocalization.ui(choice.displayName))
+                    Text(welcomeText(choice.displayName))
                         .font(choice.font(size: 19))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -452,7 +452,7 @@ struct LoomGateView: View {
         let sizes = AnkyWritingTextSize.allCases
         let index = sizes.firstIndex(of: preferences.textSize) ?? 1
         return VStack(spacing: 36) {
-            Text(AnkyLocalization.ui("this is how your words will look."))
+            Text(welcomeText("this is how your words will look."))
                 .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
                 .foregroundStyle(LoomPalette.thread)
                 .multilineTextAlignment(.center)
@@ -488,18 +488,18 @@ struct LoomGateView: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.3)
-        .accessibilityLabel(Text(AnkyLocalization.ui(label)))
+        .accessibilityLabel(Text(welcomeText(label)))
     }
 
     private var eraseChoice: some View {
         VStack(spacing: 10) {
             choiceChip(isSelected: preferences.backspaceAllowed, height: 58) {
-                Text(AnkyLocalization.ui("let me erase it")).font(.fraunces(19, weight: .light))
+                Text(welcomeText("let me erase it")).font(.fraunces(19, weight: .light))
             } choose: {
                 preferences.backspaceAllowed = true
             }
             choiceChip(isSelected: !preferences.backspaceAllowed, height: 58) {
-                Text(AnkyLocalization.ui("leave it, keep going")).font(.fraunces(19, weight: .light))
+                Text(welcomeText("leave it, keep going")).font(.fraunces(19, weight: .light))
             } choose: {
                 preferences.backspaceAllowed = false
             }
@@ -534,13 +534,20 @@ struct LoomGateView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    /// A tap chooses; the button at the bottom moves on. Everything stays
-    /// changeable in Settings.
+    /// A tap chooses and, a beat later, moves on. The button at the bottom
+    /// moves on too, for a writer who came back and keeps their answer.
+    /// Everything stays changeable in Settings.
     private func choose(_ apply: @escaping () -> Void) {
+        guard !advancing else { return }
+        advancing = true
         AnkyHaptics.selection()
         sound.pluck()
         withAnimation(.easeInOut(duration: 0.3)) { apply() }
         WritingPreferencesStore().save(preferences)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            advancing = false
+            next()
+        }
     }
 
     private func advance() {
@@ -557,7 +564,7 @@ struct LoomGateView: View {
             TextField(
                 "",
                 text: $firstLine,
-                prompt: Text(AnkyLocalization.ui("write one line.")).foregroundColor(LoomPalette.threadFaint),
+                prompt: Text(welcomeText("write one line.")).foregroundColor(LoomPalette.threadFaint),
                 axis: .vertical
             )
             .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
@@ -583,13 +590,13 @@ struct LoomGateView: View {
     private var practice: some View {
         VStack(spacing: 0) {
             Spacer()
-            Text(AnkyLocalization.ui("anky works when it's daily."))
+            Text(welcomeText("anky works when it's daily."))
                 .font(.fraunces(29, weight: .light, relativeTo: .title))
                 .foregroundStyle(LoomPalette.thread)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(lineShown ? 1 : 0)
-            Text(AnkyLocalization.ui("same time tomorrow? one quiet reminder a day."))
+            Text(welcomeText("same time tomorrow? one quiet reminder a day."))
                 .font(.fraunces(18, weight: .light, italic: true))
                 .foregroundStyle(LoomPalette.threadSoft)
                 .multilineTextAlignment(.center)
@@ -632,7 +639,7 @@ struct LoomGateView: View {
         } else {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
-                    Text(AnkyLocalization.ui("eight minutes a day, for yourself."))
+                    Text(welcomeText("eight minutes a day, for yourself."))
                         .font(.fraunces(27, weight: .light, relativeTo: .title))
                         .foregroundStyle(LoomPalette.thread)
                         .multilineTextAlignment(.center)
@@ -654,8 +661,8 @@ struct LoomGateView: View {
 
                     ThreadButton(
                         title: pro.isEligibleForTrial
-                            ? AnkyLocalization.ui("start my %d free days", pro.trialDays)
-                            : AnkyLocalization.ui("subscribe"),
+                            ? welcomeText("start my %d free days", pro.trialDays)
+                            : welcomeText("subscribe"),
                         filled: true,
                         isWorking: pro.isWorking
                     ) {
@@ -678,7 +685,7 @@ struct LoomGateView: View {
                     footer
                         .padding(.top, 28)
 
-                    Text(AnkyLocalization.ui("Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.", pro.priceText))
+                    Text(welcomeText("Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.", pro.priceText))
                         .font(.system(size: 11))
                         .foregroundStyle(LoomPalette.threadFaint)
                         .multilineTextAlignment(.center)
@@ -697,27 +704,27 @@ struct LoomGateView: View {
 
     private var offerLine: String {
         pro.isEligibleForTrial
-            ? AnkyLocalization.ui("%d days free, then %@ a month", pro.trialDays, pro.priceText)
-            : AnkyLocalization.ui("%@ a month", pro.priceText)
+            ? welcomeText("%d days free, then %@ a month", pro.trialDays, pro.priceText)
+            : welcomeText("%@ a month", pro.priceText)
     }
 
     private var footer: some View {
         VStack(spacing: 14) {
             HStack(spacing: 22) {
-                footerLink(AnkyLocalization.ui("Restore")) {
+                footerLink(welcomeText("Restore")) {
                     Task {
                         if case .failed(let text) = await pro.restore() {
                             withAnimation { doorMessage = text }
                         }
                     }
                 }
-                footerLink(AnkyLocalization.ui("Terms")) { showsTerms = true }
-                footerLink(AnkyLocalization.ui("Privacy")) { showsPrivacy = true }
+                footerLink(welcomeText("Terms")) { showsTerms = true }
+                footerLink(welcomeText("Privacy")) { showsPrivacy = true }
             }
 
             if let exportURL {
                 ShareLink(item: exportURL) {
-                    Text(AnkyLocalization.ui("take your writings with you"))
+                    Text(welcomeText("take your writings with you"))
                         .font(.fraunces(14, weight: .light, italic: true))
                         .foregroundStyle(LoomPalette.threadSoft)
                         .underline(color: LoomPalette.threadFaint)
@@ -745,7 +752,7 @@ struct LoomGateView: View {
             enter(celebrating: true)
         case .pending:
             withAnimation {
-                doorMessage = AnkyLocalization.ui("Waiting for the purchase to be approved. Anky opens the moment it is.")
+                doorMessage = welcomeText("Waiting for the purchase to be approved. Anky opens the moment it is.")
             }
         case .failed(let text):
             withAnimation { doorMessage = text }
@@ -854,4 +861,16 @@ private struct ProgressDots: View {
     private var color: Color {
         onNight ? Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757) : LoomPalette.thread
     }
+}
+
+/// The welcome's words, in sentence case whatever the strings file holds:
+/// the first letter of the line is a capital, the rest is left alone.
+private func welcomeText(_ key: String, _ arguments: CVarArg...) -> String {
+    let format = AnkyLocalization.ui(key)
+    let text = arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    // Skip opening punctuation (¿, «), but a line that opens with a number
+    // ("3 days free…") stays as it is.
+    guard let first = text.firstIndex(where: { $0.isLetter || $0.isNumber }),
+          text[first].isLetter else { return text }
+    return text.replacingCharacters(in: first...first, with: String(text[first]).uppercased())
 }
