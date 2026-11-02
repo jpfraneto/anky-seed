@@ -4,7 +4,7 @@ Anky is a page and a clock. You write for eight minutes, and if you stop typing 
 
 HOW IT WORKS
 
-The first time you open Anky, you set up your page with a few taps: day or night, your font, its size, and whether you can erase. Then you write your first lines on a loom, and every letter weaves a thread into a carpet.
+The first time you open Anky, you set up your page with a few taps: day or night, your font, its size, and whether you can erase. Then you write your first line, exactly as your page will look. If you want, Anky can send you one quiet reminder a day.
 
 After that it is always the same: open the app and you are already writing.
 

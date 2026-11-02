@@ -2,20 +2,21 @@
 //  LoomGateView.swift
 //  Anky
 //
-//  The way into Anky, and the only door. The writer is here to write, not
-//  to read, so the welcome is a line at a time, each one a setting:
+//  The way into Anky, and the only door. One line at a time, with quiet
+//  progress dots at the bottom:
 //
+//      why: three lines on what Anky is for
 //      day above, night below                (tap the half you write in)
-//      choose your font.                     (the typeface)
-//      how large?                            (the text size)
-//      erase, or only forward?               (backspace)
-//      the loom, the keyboard up             (every character lays stitches)
-//      what you write never leaves this iPhone.
+//      choose your font.                     (a grid, no scrolling)
+//      how large?                            (− and +, with a live line)
+//      when you make a typo:                 (erase, or keep going)
+//      write one line.                       (a plain page, as it will be)
+//      anky works when it's daily.           (an optional daily reminder)
 //      Anky Pro                              (3 days free, then monthly)
 //
-//  Nothing is asked for: no name, no goals, no permissions. Without an
-//  active trial or subscription the app stays here; the writer's past
-//  writings can always be taken with them.
+//  Nothing is asked for: no name, no goals, no account. Without an active
+//  trial or subscription the app stays here; the writer's past writings can
+//  always be taken with them.
 //
 
 import StoreKit
@@ -45,6 +46,16 @@ enum LoomLedger {
     }
 }
 
+/// The welcome's colors: it stands on the writer's own paper or night.
+enum LoomPalette {
+    static let ground = Color.ankyPaper
+    static let groundDeep = Color.ankyPaperDeep
+    /// The welcome's voice: umber on paper, gold on night.
+    static let thread = Color.ankyPigment(light: (0.310, 0.243, 0.180), night: (0.953, 0.757, 0.431))
+    static let threadSoft = thread.opacity(0.62)
+    static let threadFaint = thread.opacity(0.38)
+}
+
 struct LoomGateView: View {
     @ObservedObject var pro: AnkyPro
     /// Called once the welcome has been seen (the ledger is stamped here).
@@ -52,10 +63,16 @@ struct LoomGateView: View {
     /// The writer is in: the gate fades and the page takes the keyboard.
     let onEnter: () -> Void
 
+    /// Every step of the welcome, in order. The dots count these.
+    private enum Step: Int, CaseIterable {
+        case why1, why2, why3
+        case appearance, typeface, size, erase
+        case firstLine
+        case practice
+    }
+
     private enum Phase: Equatable {
-        case setting(Int)
-        case weaving
-        case cloth
+        case welcome(Step)
         case door
         case entering
     }
@@ -63,28 +80,20 @@ struct LoomGateView: View {
     @State private var phase: Phase
     @State private var sound = LoomSound()
 
-    @State private var warpStrung: Double = 0
-
-    // Setting up the page
-    private enum Setting: Int, CaseIterable {
-        case appearance, typeface, size, erase
-    }
     @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
     @State private var preferences = WritingPreferencesStore().load()
     @State private var advancing = false
     /// The half of the day/night split the writer tapped.
     @State private var splitChoice: AnkyAppearance?
+    /// Lines arrive a breath after their screen does.
+    @State private var lineShown = false
 
-    // Weaving
-    @State private var text = ""
-    @State private var charactersWoven = 0
-    @State private var lastKeystroke: Date?
-    @State private var silence: Double = 0
+    // The first line
+    @State private var firstLine = ""
     @FocusState private var writing: Bool
-    @State private var stillnessWatch: Task<Void, Never>?
 
-    // Cloth
-    @State private var clothStep = 0
+    // The practice
+    @State private var reminderTime = Date()
 
     // Door
     @State private var doorMessage: String?
@@ -95,59 +104,54 @@ struct LoomGateView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
-    /// A full carpet in about forty seconds of steady thumbs.
-    private static let charactersForFullCarpet = 170
-    private static let stillnessLimit: TimeInterval = 8
-
     init(pro: AnkyPro, needsWelcome: Bool, onWelcomed: @escaping () -> Void, onEnter: @escaping () -> Void) {
         self.pro = pro
         self.onWelcomed = onWelcomed
         self.onEnter = onEnter
-        _phase = State(initialValue: needsWelcome ? .setting(0) : .door)
-        _warpStrung = State(initialValue: needsWelcome ? 0 : 1)
-        // A returning writer meets the finished cloth.
-        _charactersWoven = State(initialValue: needsWelcome ? 0 : Self.charactersForFullCarpet)
-    }
-
-    private var woven: Double {
-        let perCharacter = Double(LoomPattern.stitchCount) / Double(Self.charactersForFullCarpet)
-        return min(Double(LoomPattern.stitchCount), Double(charactersWoven) * perCharacter)
-    }
-
-    private var carpetIsComplete: Bool {
-        charactersWoven >= Self.charactersForFullCarpet
+        _phase = State(initialValue: needsWelcome ? .welcome(.why1) : .door)
+        #if DEBUG
+        // Open the welcome at one step for QA: `-loomReplay -welcomeStep 4`.
+        if needsWelcome, let step = Step(rawValue: UserDefaults.standard.integer(forKey: "welcomeStep")),
+           UserDefaults.standard.object(forKey: "welcomeStep") != nil {
+            _phase = State(initialValue: .welcome(step))
+        }
+        #endif
     }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                night
+                LoomPalette.ground.ignoresSafeArea()
 
                 switch phase {
-                case .setting(let index):
-                    settingStep(Setting(rawValue: index) ?? .appearance)
-                        .id(index)
-                        .transition(.opacity)
-                case .weaving:
-                    weaving(in: geometry.size)
-                        .transition(.opacity)
-                case .cloth:
-                    cloth(in: geometry.size)
+                case .welcome(let step):
+                    welcomeStep(step)
+                        .id(step)
                         .transition(.opacity)
                 case .door:
                     door(in: geometry.size)
                         .transition(.opacity)
                 case .entering:
-                    entering
-                        .transition(.opacity)
+                    Color.clear
+                }
+
+                if case .welcome(let step) = phase {
+                    ProgressDots(count: Step.allCases.count, current: step.rawValue,
+                                 onNight: step == .appearance && splitChoice != .paper)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 10)
+                        .opacity(step == .firstLine && writing ? 0 : 1)
+                        .allowsHitTesting(false)
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.9), value: phase)
+        .animation(.easeInOut(duration: 0.6), value: phase)
         .onAppear(perform: appear)
         .onDisappear {
-            stillnessWatch?.cancel()
             sound.stop(over: 0.3)
+        }
+        .onChange(of: phase) { newPhase in
+            if case .welcome(let step) = newPhase { arrive(at: step) }
         }
         .onChange(of: pro.access) { access in
             // A restore, a renewal arriving, or the first StoreKit answer.
@@ -169,108 +173,107 @@ struct LoomGateView: View {
         }
     }
 
-    private var night: some View {
-        ZStack {
-            LoomPalette.groundDeep
-            RadialGradient(
-                colors: [LoomPalette.ground.opacity(1), LoomPalette.groundDeep.opacity(0)],
-                center: .center, startRadius: 10, endRadius: 520
-            )
-        }
-        .ignoresSafeArea()
-    }
-
     private func appear() {
-        if case .setting = phase {
+        if case .welcome(let step) = phase {
             sound.start()
+            arrive(at: step)
         } else if phase == .door, pro.access == .active {
             enter(celebrating: false)
         }
     }
 
-    // MARK: - 1. The page, set up one line at a time
-
-    @ViewBuilder
-    private func settingStep(_ setting: Setting) -> some View {
-        if setting == .appearance {
-            dayAndNight
-        } else {
-            settingLine(setting)
+    private func arrive(at step: Step) {
+        lineShown = reduceMotion
+        if !reduceMotion {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                withAnimation(.easeInOut(duration: 0.9)) { lineShown = true }
+            }
+        }
+        if step == .firstLine {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { writing = true }
+        }
+        if step == .practice {
+            reminderTime = Date()
         }
     }
 
-    private func settingLine(_ setting: Setting) -> some View {
-        VStack(spacing: 40) {
+    private func next() {
+        guard case .welcome(let step) = phase else { return }
+        writing = false
+        if let following = Step(rawValue: step.rawValue + 1) {
+            phase = .welcome(following)
+        } else {
+            leaveWelcome()
+        }
+    }
+
+    // MARK: - 1. The welcome, one step at a time
+
+    @ViewBuilder
+    private func welcomeStep(_ step: Step) -> some View {
+        switch step {
+        case .why1:
+            whyLine("your phone fills your day with other people's words.")
+        case .why2:
+            whyLine("anky gives you eight minutes for your own.")
+        case .why3:
+            whyLine("write without stopping. what comes out is what you were carrying.")
+        case .appearance:
+            dayAndNight
+        case .typeface:
+            settingScreen("choose your font.") { fontGrid }
+        case .size:
+            settingScreen("how large?") { sizeControl }
+        case .erase:
+            settingScreen("when you make a typo:") { eraseChoice }
+        case .firstLine:
+            firstLinePage
+        case .practice:
+            practice
+        }
+    }
+
+    /// One line, centered, and a way on. A tap anywhere also moves on.
+    private func whyLine(_ key: String) -> some View {
+        VStack(spacing: 0) {
             Spacer()
-            Text(AnkyLocalization.ui(line(for: setting)))
+            Text(AnkyLocalization.ui(key))
+                .font(.fraunces(29, weight: .light, relativeTo: .title))
+                .foregroundStyle(LoomPalette.thread)
+                .multilineTextAlignment(.center)
+                .lineSpacing(6)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 36)
+                .opacity(lineShown ? 1 : 0)
+            Spacer()
+            ThreadButton(title: AnkyLocalization.ui("continue")) { advance() }
+                .opacity(lineShown ? 1 : 0)
+                .padding(.bottom, 56)
+        }
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { advance() }
+    }
+
+    private func settingScreen<Control: View>(_ key: String, @ViewBuilder control: () -> Control) -> some View {
+        VStack(spacing: 36) {
+            Spacer()
+            Text(AnkyLocalization.ui(key))
                 .font(.fraunces(27, weight: .light, relativeTo: .title))
                 .foregroundStyle(LoomPalette.thread)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            control(for: setting)
-            Spacer()
+            control()
             Spacer()
         }
         .padding(.horizontal, 28)
+        .padding(.bottom, 32)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
     }
 
-    private func line(for setting: Setting) -> String {
-        switch setting {
-        case .appearance: return "paper or night?"
-        case .typeface: return "choose your font."
-        case .size: return "how large?"
-        case .erase: return "erase, or only forward?"
-        }
-    }
-
-    @ViewBuilder
-    private func control(for setting: Setting) -> some View {
-        switch setting {
-        case .appearance:
-            EmptyView() // drawn as the full-screen day/night split
-        case .typeface:
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 8) {
-                    ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
-                        choiceChip(isSelected: preferences.fontChoice == choice, height: 46) {
-                            Text(AnkyLocalization.ui(choice.displayName)).font(choice.font(size: 21))
-                        } choose: {
-                            preferences.fontChoice = choice
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: 280, maxHeight: 440)
-            .fixedSize(horizontal: false, vertical: true)
-        case .size:
-            HStack(spacing: 8) {
-                ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in
-                    choiceChip(isSelected: preferences.textSize == size, height: 72) {
-                        Text("Aa").font(preferences.fontChoice.font(size: size.pointSize))
-                    } choose: {
-                        preferences.textSize = size
-                    }
-                    .accessibilityLabel(Text(AnkyLocalization.ui(size.displayName)))
-                }
-            }
-        case .erase:
-            VStack(spacing: 10) {
-                choiceChip(isSelected: !preferences.backspaceAllowed, height: 54) {
-                    Text(AnkyLocalization.ui("only forward")).font(.fraunces(18, weight: .light))
-                } choose: {
-                    preferences.backspaceAllowed = false
-                }
-                choiceChip(isSelected: preferences.backspaceAllowed, height: 54) {
-                    Text(AnkyLocalization.ui("erase")).font(.fraunces(18, weight: .light))
-                } choose: {
-                    preferences.backspaceAllowed = true
-                }
-            }
-            .frame(maxWidth: 280)
-        }
-    }
+    // MARK: Day and night
 
     /// Day above, night below, like yin and yang: each half is a page
     /// with a line already written on it. Tap one and it fills the screen.
@@ -287,12 +290,8 @@ struct LoomGateView: View {
 
     private func half(_ choice: AnkyAppearance, height: CGFloat) -> some View {
         let isDay = choice == .paper
-        let ground = isDay
-            ? Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894)
-            : Color(.displayP3, red: 0.082, green: 0.075, blue: 0.114)
-        let ink = isDay
-            ? Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
-            : Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757)
+        let ground = isDay ? Self.dayGround : Self.nightGround
+        let ink = isDay ? Self.dayInk : Self.nightInk
         return Button {
             choose {
                 splitChoice = choice
@@ -315,6 +314,93 @@ struct LoomGateView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(AnkyLocalization.ui(isDay ? "Day" : "Night")))
+    }
+
+    fileprivate static let dayGround = Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894)
+    fileprivate static let nightGround = Color(.displayP3, red: 0.082, green: 0.075, blue: 0.114)
+    fileprivate static let dayInk = Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
+    fileprivate static let nightInk = Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757)
+
+    // MARK: Font, size, typos
+
+    /// Every font at once, each name in its own face: two columns, no scroll.
+    private var fontGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
+                choiceChip(isSelected: preferences.fontChoice == choice, height: 52) {
+                    Text(AnkyLocalization.ui(choice.displayName))
+                        .font(choice.font(size: 19))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                } choose: {
+                    preferences.fontChoice = choice
+                }
+            }
+        }
+    }
+
+    /// A line in the chosen font, and − / + to make it smaller or larger.
+    private var sizeControl: some View {
+        let sizes = AnkyWritingTextSize.allCases
+        let index = sizes.firstIndex(of: preferences.textSize) ?? 1
+        return VStack(spacing: 36) {
+            Text(AnkyLocalization.ui("this is how your words will look."))
+                .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
+                .foregroundStyle(LoomPalette.thread)
+                .multilineTextAlignment(.center)
+                .lineSpacing(preferences.textSize.pointSize * 0.42)
+                .frame(minHeight: 120)
+                .animation(.easeInOut(duration: 0.2), value: preferences.textSize)
+
+            HStack(spacing: 28) {
+                stepButton("minus", label: "Smaller", enabled: index > 0) {
+                    preferences.textSize = sizes[index - 1]
+                }
+                stepButton("plus", label: "Larger", enabled: index < sizes.count - 1) {
+                    preferences.textSize = sizes[index + 1]
+                }
+            }
+
+            ThreadButton(title: AnkyLocalization.ui("continue")) {
+                WritingPreferencesStore().save(preferences)
+                advance()
+            }
+        }
+    }
+
+    private func stepButton(_ symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            AnkyHaptics.selection()
+            sound.pluck()
+            action()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .light))
+                .foregroundStyle(LoomPalette.thread)
+                .frame(width: 64, height: 64)
+                .overlay(Circle().stroke(LoomPalette.thread.opacity(0.35), lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.3)
+        .accessibilityLabel(Text(AnkyLocalization.ui(label)))
+    }
+
+    private var eraseChoice: some View {
+        VStack(spacing: 10) {
+            choiceChip(isSelected: preferences.backspaceAllowed, height: 58) {
+                Text(AnkyLocalization.ui("let me erase it")).font(.fraunces(19, weight: .light))
+            } choose: {
+                preferences.backspaceAllowed = true
+            }
+            choiceChip(isSelected: !preferences.backspaceAllowed, height: 58) {
+                Text(AnkyLocalization.ui("leave it, keep going")).font(.fraunces(19, weight: .light))
+            } choose: {
+                preferences.backspaceAllowed = false
+            }
+        }
+        .frame(maxWidth: 300)
     }
 
     private func choiceChip<Label: View>(
@@ -346,7 +432,7 @@ struct LoomGateView: View {
 
     /// One tap sets it and moves on; everything stays changeable in Settings.
     private func choose(_ apply: @escaping () -> Void) {
-        guard !advancing, case .setting(let index) = phase else { return }
+        guard !advancing else { return }
         advancing = true
         AnkyHaptics.selection()
         sound.pluck()
@@ -354,152 +440,111 @@ struct LoomGateView: View {
         WritingPreferencesStore().save(preferences)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             advancing = false
-            if index + 1 < Setting.allCases.count {
-                phase = .setting(index + 1)
-            } else {
-                beginWeaving()
-            }
+            next()
         }
     }
 
-    // MARK: - 2. The first thread
+    private func advance() {
+        guard !advancing else { return }
+        AnkyHaptics.light()
+        next()
+    }
 
-    private func weaving(in size: CGSize) -> some View {
+    // MARK: - 2. The first line
+
+    /// The page as it will be: the writer's paper or night, font and size.
+    private var firstLinePage: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TextField(
+                "",
+                text: $firstLine,
+                prompt: Text(AnkyLocalization.ui("write one line.")).foregroundColor(LoomPalette.threadFaint),
+                axis: .vertical
+            )
+            .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
+            .foregroundStyle(preferences.inkChoice.color)
+            .tint(preferences.inkChoice.color)
+            .lineSpacing(preferences.textSize.pointSize * 0.42)
+            .focused($writing)
+            .submitLabel(.done)
+            .onSubmit { if hasFirstLine { advance() } }
+            .padding(.horizontal, 24)
+            .padding(.top, 80)
+
+            Spacer(minLength: 16)
+
+            VStack(spacing: 16) {
+                Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
+                    .font(.fraunces(15, weight: .light, italic: true))
+                    .foregroundStyle(LoomPalette.threadSoft)
+                    .multilineTextAlignment(.center)
+                ThreadButton(title: AnkyLocalization.ui("continue")) { advance() }
+                    .opacity(hasFirstLine ? 1 : 0)
+                    .allowsHitTesting(hasFirstLine)
+                    .animation(.easeInOut(duration: 0.4), value: hasFirstLine)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 20)
+        }
+    }
+
+    private var hasFirstLine: Bool {
+        firstLine.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3
+    }
+
+    // MARK: - 3. The practice
+
+    private var practice: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
+            Spacer()
+            Text(AnkyLocalization.ui("anky works when it's daily."))
+                .font(.fraunces(29, weight: .light, relativeTo: .title))
+                .foregroundStyle(LoomPalette.thread)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .opacity(lineShown ? 1 : 0)
+            Text(AnkyLocalization.ui("same time tomorrow? one quiet reminder a day."))
+                .font(.fraunces(18, weight: .light, italic: true))
+                .foregroundStyle(LoomPalette.threadSoft)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14)
+                .opacity(lineShown ? 1 : 0)
+            Spacer()
+            VStack(spacing: 14) {
+                ThreadButton(
+                    title: AnkyLocalization.ui("remind me at %@", reminderTime.formatted(date: .omitted, time: .shortened)),
+                    filled: true
+                ) {
+                    AnkyHaptics.light()
+                    Task { await scheduleReminder() }
+                }
                 Button {
-                    finishWeaving()
+                    advance()
                 } label: {
-                    Text(AnkyLocalization.ui("loom: skip"))
-                        .font(.fraunces(15, weight: .light))
-                        .foregroundStyle(LoomPalette.threadFaint)
-                        .padding(.horizontal, 18)
+                    Text(AnkyLocalization.ui("welcome: not now"))
+                        .font(.fraunces(16, weight: .light))
+                        .foregroundStyle(LoomPalette.threadSoft)
                         .padding(.vertical, 10)
+                        .padding(.horizontal, 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.top, 4)
-
-            LoomCarpetView(woven: woven, weaving: true, warpStrung: warpStrung)
-                .animation(.easeOut(duration: 0.35), value: woven)
-                .padding(.horizontal, 28)
-                .padding(.top, 14)
-                .layoutPriority(1)
-
-            // The silence, made visible: the thread thins as stillness
-            // gathers, and the next character restores it.
-            Capsule()
-                .fill(LoomPalette.thread)
-                .frame(height: 1.5)
-                .scaleEffect(x: max(0, 1 - silence), anchor: .center)
-                .opacity(silence > 0.3 ? 0.9 : 0)
-                .padding(.horizontal, 28)
-                .padding(.top, 14)
-                .animation(.linear(duration: 0.12), value: silence)
-
-            TextField("", text: $text, prompt: Text(AnkyLocalization.ui("loom: write")).foregroundColor(LoomPalette.threadFaint), axis: .vertical)
-                .font(preferences.fontChoice.font(size: preferences.textSize.pointSize))
-                .foregroundStyle(LoomPalette.thread)
-                .tint(LoomPalette.thread)
-                .lineLimit(1...3)
-                .multilineTextAlignment(.center)
-                .focused($writing)
-                .autocorrectionDisabled()
-                .padding(.horizontal, 28)
-                .padding(.top, 12)
-                .padding(.bottom, 14)
-                .onChange(of: text) { [previous = text] next in
-                    received(previous: previous, next: next)
-                }
-                .accessibilityLabel(AnkyLocalization.ui("Your first thread"))
+            .padding(.bottom, 44)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private func beginWeaving() {
-        phase = .weaving
-        // The warp strings itself while the keyboard rises.
-        if reduceMotion {
-            warpStrung = 1
-        } else {
-            withAnimation(.easeInOut(duration: 2.4)) { warpStrung = 1 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { writing = true }
-        stillnessWatch?.cancel()
-        stillnessWatch = Task { @MainActor in
-            while !Task.isCancelled, phase == .weaving {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                guard let lastKeystroke else { continue }
-                let still = Date().timeIntervalSince(lastKeystroke)
-                silence = max(0, (still - 3) / (Self.stillnessLimit - 3))
-                if still >= Self.stillnessLimit {
-                    finishWeaving()
-                }
-            }
-        }
-    }
-
-    private func received(previous: String, next: String) {
-        guard phase == .weaving else { return }
-        lastKeystroke = Date()
-        silence = 0
-        let added = next.count - previous.count
-        guard added > 0 else { return }
-        // A paste weaves a little, not the whole carpet.
-        charactersWoven = min(Self.charactersForFullCarpet, charactersWoven + min(added, 6))
-        sound.pluck()
-        if carpetIsComplete {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { finishWeaving() }
-        }
-    }
-
-    private func finishWeaving() {
-        guard phase == .weaving else { return }
-        stillnessWatch?.cancel()
-        writing = false
-        silence = 0
-        phase = .cloth
-        if reduceMotion {
-            clothStep = 2
-        } else {
-            reveal([(1, 0.9), (2, 2.4)]) { clothStep = max(clothStep, $0) }
-        }
-    }
-
-    // MARK: - 3. The cloth
-
-    private func cloth(in size: CGSize) -> some View {
-        let side = min(size.width - 56, size.height * 0.5)
-        return VStack(spacing: 0) {
-            Spacer(minLength: 20)
-
-            LoomCarpetView(woven: woven)
-                .frame(width: side, height: side)
-
-            Spacer(minLength: 28)
-
-            Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
-                .font(.fraunces(20, weight: .light, italic: true))
-                .foregroundStyle(LoomPalette.thread)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 32)
-                .opacity(clothStep >= 1 ? 1 : 0)
-                .animation(.easeInOut(duration: 1.1), value: clothStep)
-
-            Spacer(minLength: 28)
-
-            ThreadButton(title: AnkyLocalization.ui("continue")) {
-                AnkyHaptics.light()
-                leaveWelcome()
-            }
-            .opacity(clothStep >= 2 ? 1 : 0)
-            .allowsHitTesting(clothStep >= 2)
-            .padding(.bottom, 36)
-        }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
+    }
+
+    private func scheduleReminder() async {
+        let scheduler = LocalNotificationScheduler()
+        if await scheduler.requestAuthorization() {
+            let parts = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
+            try? await scheduler.scheduleDailyReminder(hour: parts.hour ?? 20, minute: parts.minute ?? 0)
+        }
+        next()
     }
 
     private func leaveWelcome() {
@@ -522,15 +567,19 @@ struct LoomGateView: View {
         } else {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
-                    LoomCarpetView(woven: woven)
-                        .frame(width: min(size.width * 0.52, 230), height: min(size.width * 0.52, 230))
-                        .padding(.top, 28)
+                    Text(AnkyLocalization.ui("eight minutes a day, for yourself."))
+                        .font(.fraunces(27, weight: .light, relativeTo: .title))
+                        .foregroundStyle(LoomPalette.thread)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 32)
+                        .padding(.top, max(48, size.height * 0.18))
 
                     Text("ANKY PRO")
                         .font(.system(size: 11, weight: .medium))
                         .kerning(2.4)
                         .foregroundStyle(LoomPalette.threadSoft)
-                        .padding(.top, 36)
+                        .padding(.top, 48)
 
                     Text(offerLine)
                         .font(.fraunces(19, weight: .regular))
@@ -631,7 +680,7 @@ struct LoomGateView: View {
             enter(celebrating: true)
         case .pending:
             withAnimation {
-                doorMessage = AnkyLocalization.ui("Waiting for the purchase to be approved. The loom opens the moment it is.")
+                doorMessage = AnkyLocalization.ui("Waiting for the purchase to be approved. Anky opens the moment it is.")
             }
         case .failed(let text):
             withAnimation { doorMessage = text }
@@ -665,10 +714,6 @@ struct LoomGateView: View {
 
     // MARK: - 5. In
 
-    private var entering: some View {
-        Color.clear
-    }
-
     private func enter(celebrating: Bool) {
         guard phase != .entering else { return }
         sound.stop()
@@ -680,19 +725,9 @@ struct LoomGateView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { onEnter() }
     }
 
-    // MARK: - Pacing
-
-    /// Each line arrives on its own breath.
-    private func reveal(_ steps: [(Int, Double)], apply: @escaping (Int) -> Void) {
-        for (value, delay) in steps {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                withAnimation(.easeInOut(duration: 1.1)) { apply(value) }
-            }
-        }
-    }
 }
 
-/// A gold thread of a button: outlined while inviting, filled when it is
+/// The welcome's button: outlined while inviting, filled when it is
 /// the one thing to do.
 private struct ThreadButton: View {
     let title: String
@@ -726,5 +761,31 @@ private struct ThreadButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isWorking)
+    }
+}
+
+
+/// Quiet progress: one dot per step, the current one a little longer.
+private struct ProgressDots: View {
+    let count: Int
+    let current: Int
+    /// The dots sit on the night half of the day/night split.
+    var onNight = false
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(color.opacity(index == current ? 0.75 : index < current ? 0.4 : 0.18))
+                    .frame(width: index == current ? 16 : 6, height: 6)
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: current)
+        .accessibilityElement()
+        .accessibilityLabel(Text("\(current + 1) / \(count)"))
+    }
+
+    private var color: Color {
+        onNight ? Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757) : LoomPalette.thread
     }
 }

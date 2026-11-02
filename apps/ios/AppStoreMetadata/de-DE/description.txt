@@ -4,7 +4,7 @@ Anky ist eine Seite und eine Uhr. Du schreibst acht Minuten lang, und wenn du ac
 
 SO FUNKTIONIERT ES
 
-Beim ersten Öffnen richtest du deine Seite mit ein paar Tipps ein: Tag oder Nacht, deine Schrift, ihre Größe und ob du löschen darfst. Dann schreibst du deine ersten Zeilen auf einem Webstuhl, und jeder Buchstabe webt einen Faden in einen Teppich.
+Beim ersten Öffnen richtest du deine Seite mit ein paar Tipps ein: Tag oder Nacht, deine Schrift, ihre Größe und ob du löschen darfst. Dann schreibst du deine erste Zeile, genau so, wie deine Seite aussehen wird. Wenn du willst, schickt dir Anky eine leise Erinnerung am Tag.
 
 Danach ist es immer gleich: Du öffnest die App und schreibst schon.
 

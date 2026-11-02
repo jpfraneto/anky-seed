@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		8A0000E7AAFC79D4A93AF440 /* Features/Loom/LoomGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */; };
 		8A0000E717A2658CB92DF5C9 /* Features/Loom/LoomSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */; };
-		8A0000E753FCEE19AEE1FF9D /* Features/Loom/LoomCarpet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */; };
 		8A0000E7F605C5395441AA32 /* Purchases/AnkyPro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */; };
 		8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001001 /* Screenshot/ScreenshotMode.swift */; };
 		8AF100000000000000000002 /* Screenshot/ScreenshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF100000000000000001002 /* Screenshot/ScreenshotFixtures.swift */; };
@@ -259,7 +258,6 @@
 /* Begin PBXFileReference section */
 		8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomGateView.swift; sourceTree = "<group>"; };
 		8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomSound.swift; sourceTree = "<group>"; };
-		8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Loom/LoomCarpet.swift; sourceTree = "<group>"; };
 		8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Purchases/AnkyPro.swift; sourceTree = "<group>"; };
 		8A0000010000000000001001 /* AnkyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkyApp.swift; sourceTree = "<group>"; };
 		8A0000010000000000001002 /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
@@ -488,7 +486,6 @@
 			children = (
 				8A0000E7A48B4D98F4A5302C /* Features/Loom/LoomGateView.swift */,
 				8A0000E78C9EE8002FC941D3 /* Features/Loom/LoomSound.swift */,
-				8A0000E7C776FC8B53981AF1 /* Features/Loom/LoomCarpet.swift */,
 				8A0000E7F81079D040E49C08 /* Purchases/AnkyPro.swift */,
 				8A0000040000000000001001 /* Assets.xcassets */,
 				8A0000FF0000000000001001 /* Fonts */,
@@ -1198,7 +1195,6 @@
 			files = (
 				8A0000E7AAFC79D4A93AF440 /* Features/Loom/LoomGateView.swift in Sources */,
 				8A0000E717A2658CB92DF5C9 /* Features/Loom/LoomSound.swift in Sources */,
-				8A0000E753FCEE19AEE1FF9D /* Features/Loom/LoomCarpet.swift in Sources */,
 				8A0000E7F605C5395441AA32 /* Purchases/AnkyPro.swift in Sources */,
 				8A0000010000000000000001 /* AnkyApp.swift in Sources */,
 				8AF100000000000000000001 /* Screenshot/ScreenshotMode.swift in Sources */,

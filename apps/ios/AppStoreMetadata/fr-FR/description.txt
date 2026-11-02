@@ -4,7 +4,7 @@ Anky, c'est une page et une horloge. Tu écris pendant huit minutes, et si tu ar
 
 COMMENT ÇA MARCHE
 
-La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Puis tu écris tes premières lignes sur un métier à tisser, et chaque lettre tisse un fil d'un tapis.
+La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Puis tu écris ta première ligne, telle que ta page l'affichera. Si tu veux, Anky t'envoie un doux rappel par jour.
 
 Ensuite, c'est toujours pareil : tu ouvres l'app et tu écris déjà.
 
