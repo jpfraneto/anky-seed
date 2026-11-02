@@ -6,7 +6,7 @@
 //  to read, so the welcome is a line at a time, each one a setting:
 //
 //      paper or night?                       (the page appears as chosen)
-//      choose your hand.                     (the typeface)
+//      choose your font.                     (the typeface)
 //      how large?                            (the text size)
 //      erase, or only forward?               (backspace)
 //      the loom, the keyboard up             (every character lays stitches)
@@ -207,7 +207,7 @@ struct LoomGateView: View {
     private func line(for setting: Setting) -> String {
         switch setting {
         case .appearance: return "paper or night?"
-        case .typeface: return "choose your hand."
+        case .typeface: return "choose your font."
         case .size: return "how large?"
         case .erase: return "erase, or only forward?"
         }
@@ -223,16 +223,16 @@ struct LoomGateView: View {
                 }
             }
         case .typeface:
-            HStack(spacing: 8) {
+            VStack(spacing: 10) {
                 ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
-                    choiceChip(isSelected: preferences.fontChoice == choice, height: 64) {
-                        Text("Aa").font(choice.font(size: 24))
+                    choiceChip(isSelected: preferences.fontChoice == choice, height: 54) {
+                        Text(AnkyLocalization.ui(choice.displayName)).font(choice.font(size: 21))
                     } choose: {
                         preferences.fontChoice = choice
                     }
-                    .accessibilityLabel(Text(AnkyLocalization.ui(choice.displayName)))
                 }
             }
+            .frame(maxWidth: 280)
         case .size:
             HStack(spacing: 8) {
                 ForEach(AnkyWritingTextSize.allCases, id: \.self) { size in
@@ -312,8 +312,11 @@ struct LoomGateView: View {
                 .frame(height: height)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(isSelected ? LoomPalette.thread : LoomPalette.threadFaint.opacity(0.6),
-                                lineWidth: isSelected ? 1.5 : 0.75)
+                        .fill(LoomPalette.thread.opacity(isSelected ? 0.10 : 0.035))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(LoomPalette.thread.opacity(isSelected ? 0.55 : 0.14), lineWidth: 0.75)
                 )
                 .contentShape(Rectangle())
         }
