@@ -83,6 +83,8 @@ struct LoomGateView: View {
     @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper
     @State private var preferences = WritingPreferencesStore().load()
     @State private var advancing = false
+    /// The welcome ran this launch, so the door can step back into it.
+    @State private var cameThroughWelcome = false
     /// The half of the day/night split the writer tapped.
     @State private var splitChoice: AnkyAppearance?
     /// Lines arrive a breath after their screen does.
@@ -126,6 +128,9 @@ struct LoomGateView: View {
                 switch phase {
                 case .welcome(let step):
                     welcomeStep(step)
+                        // The bar below never covers a step's content; the
+                        // day/night split runs underneath it on purpose.
+                        .padding(.bottom, step == .appearance ? 0 : Self.bottomBarHeight)
                         .id(step)
                         .transition(.opacity)
                 case .door:
@@ -135,13 +140,27 @@ struct LoomGateView: View {
                     Color.clear
                 }
 
+                // The same chrome on every step: back at the top left, and
+                // the way on in one fixed place at the bottom, over the dots.
                 if case .welcome(let step) = phase {
-                    ProgressDots(count: Step.allCases.count, current: step.rawValue,
-                                 onNight: step == .appearance && splitChoice != .paper)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 10)
-                        .opacity(step == .firstLine && writing ? 0 : 1)
-                        .allowsHitTesting(false)
+                    VStack(spacing: 0) {
+                        HStack {
+                            if step != .why1 {
+                                backButton(tint: step == .appearance ? Self.dayInk : LoomPalette.thread)
+                            }
+                            Spacer()
+                        }
+                        Spacer()
+                        bottomBar(step)
+                    }
+                } else if phase == .door, cameThroughWelcome {
+                    VStack {
+                        HStack {
+                            backButton(tint: LoomPalette.thread)
+                            Spacer()
+                        }
+                        Spacer()
+                    }
                 }
             }
         }
@@ -183,6 +202,10 @@ struct LoomGateView: View {
     }
 
     private func arrive(at step: Step) {
+        cameThroughWelcome = true
+        if step == .appearance, splitChoice == nil {
+            splitChoice = appearance
+        }
         lineShown = reduceMotion
         if !reduceMotion {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -205,6 +228,91 @@ struct LoomGateView: View {
         } else {
             leaveWelcome()
         }
+    }
+
+    private func back() {
+        AnkyHaptics.light()
+        writing = false
+        switch phase {
+        case .welcome(let step):
+            if let previous = Step(rawValue: step.rawValue - 1) {
+                phase = .welcome(previous)
+            }
+        case .door:
+            phase = .welcome(.practice)
+        case .entering:
+            break
+        }
+    }
+
+    // MARK: - The chrome
+
+    /// Secondary line + button + dots, always the same height.
+    private static let bottomBarHeight: CGFloat = 150
+
+    private func backButton(tint: Color) -> some View {
+        Button(action: back) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(tint.opacity(0.7))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 12)
+        .padding(.top, 4)
+        .accessibilityLabel(Text(AnkyLocalization.ui("Back")))
+    }
+
+    private func bottomBar(_ step: Step) -> some View {
+        let onNight = step == .appearance
+        let tint = onNight ? Self.nightInk : LoomPalette.thread
+        return VStack(spacing: 14) {
+            // The secondary line: always there, so the button never moves.
+            Group {
+                switch step {
+                case .firstLine:
+                    Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
+                        .font(.fraunces(15, weight: .light, italic: true))
+                        .foregroundStyle(LoomPalette.threadSoft)
+                case .practice:
+                    Button(action: advance) {
+                        Text(AnkyLocalization.ui("welcome: not now"))
+                            .font(.fraunces(16, weight: .light))
+                            .foregroundStyle(LoomPalette.threadSoft)
+                            .padding(.horizontal, 24)
+                            .frame(maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                default:
+                    Color.clear
+                }
+            }
+            .frame(height: 36)
+            .multilineTextAlignment(.center)
+
+            if step == .practice {
+                ThreadButton(
+                    title: AnkyLocalization.ui("remind me at %@", reminderTime.formatted(date: .omitted, time: .shortened)),
+                    filled: true
+                ) {
+                    AnkyHaptics.light()
+                    Task { await scheduleReminder() }
+                }
+            } else {
+                let enabled = step != .firstLine || hasFirstLine
+                ThreadButton(title: AnkyLocalization.ui("continue"), tint: tint) { advance() }
+                    .opacity(enabled ? 1 : 0.35)
+                    .allowsHitTesting(enabled)
+                    .animation(.easeInOut(duration: 0.3), value: enabled)
+            }
+
+            ProgressDots(count: Step.allCases.count, current: step.rawValue, onNight: onNight)
+                .allowsHitTesting(false)
+        }
+        .padding(.horizontal, 32)
+        .padding(.bottom, 10)
     }
 
     // MARK: - 1. The welcome, one step at a time
@@ -246,9 +354,6 @@ struct LoomGateView: View {
                 .padding(.horizontal, 36)
                 .opacity(lineShown ? 1 : 0)
             Spacer()
-            ThreadButton(title: AnkyLocalization.ui("continue")) { advance() }
-                .opacity(lineShown ? 1 : 0)
-                .padding(.bottom, 56)
         }
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -268,30 +373,27 @@ struct LoomGateView: View {
             Spacer()
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, 32)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
     }
 
     // MARK: Day and night
 
-    /// Day above, night below, like yin and yang: each half is a page
-    /// with a line already written on it. Tap one and it fills the screen.
+    /// Day above, night below, like yin and yang: each half is a page with
+    /// the same line written on it. Tap one to choose it.
     private var dayAndNight: some View {
-        GeometryReader { geometry in
-            let height = geometry.size.height
-            VStack(spacing: 0) {
-                half(.paper, height: splitChoice == .paper ? height : splitChoice == .night ? 0 : height / 2)
-                half(.night, height: splitChoice == .night ? height : splitChoice == .paper ? 0 : height / 2)
-            }
+        VStack(spacing: 0) {
+            half(.paper)
+            half(.night)
         }
         .ignoresSafeArea()
     }
 
-    private func half(_ choice: AnkyAppearance, height: CGFloat) -> some View {
+    private func half(_ choice: AnkyAppearance) -> some View {
         let isDay = choice == .paper
         let ground = isDay ? Self.dayGround : Self.nightGround
         let ink = isDay ? Self.dayInk : Self.nightInk
+        let isChosen = splitChoice == choice
         return Button {
             choose {
                 splitChoice = choice
@@ -300,20 +402,26 @@ struct LoomGateView: View {
         } label: {
             ZStack {
                 ground
-                Text(AnkyLocalization.ui(isDay ? "my words, by day." : "my words, by night."))
-                    .font(preferences.fontChoice.font(size: 30))
-                    .foregroundStyle(ink)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .opacity(splitChoice == nil || splitChoice == choice ? 1 : 0)
+                VStack(spacing: 18) {
+                    Text(AnkyLocalization.ui("choose the color."))
+                        .font(preferences.fontChoice.font(size: 30))
+                        .foregroundStyle(ink)
+                        .multilineTextAlignment(.center)
+                    Image(systemName: isChosen ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(ink.opacity(isChosen ? 0.9 : 0.35))
+                }
+                .padding(.horizontal, 32)
+                // The night half's line sits above the bar that overlays it.
+                .padding(.bottom, isDay ? 0 : Self.bottomBarHeight * 0.6)
+                .opacity(isChosen ? 1 : 0.45)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .clipped()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(AnkyLocalization.ui(isDay ? "Day" : "Night")))
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 
     fileprivate static let dayGround = Color(.displayP3, red: 0.965, green: 0.937, blue: 0.894)
@@ -360,11 +468,6 @@ struct LoomGateView: View {
                     preferences.textSize = sizes[index + 1]
                 }
             }
-
-            ThreadButton(title: AnkyLocalization.ui("continue")) {
-                WritingPreferencesStore().save(preferences)
-                advance()
-            }
         }
     }
 
@@ -373,6 +476,7 @@ struct LoomGateView: View {
             AnkyHaptics.selection()
             sound.pluck()
             action()
+            WritingPreferencesStore().save(preferences)
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: 22, weight: .light))
@@ -430,18 +534,13 @@ struct LoomGateView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    /// One tap sets it and moves on; everything stays changeable in Settings.
+    /// A tap chooses; the button at the bottom moves on. Everything stays
+    /// changeable in Settings.
     private func choose(_ apply: @escaping () -> Void) {
-        guard !advancing else { return }
-        advancing = true
         AnkyHaptics.selection()
         sound.pluck()
-        withAnimation(.easeInOut(duration: 0.5)) { apply() }
+        withAnimation(.easeInOut(duration: 0.3)) { apply() }
         WritingPreferencesStore().save(preferences)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            advancing = false
-            next()
-        }
     }
 
     private func advance() {
@@ -471,20 +570,7 @@ struct LoomGateView: View {
             .padding(.horizontal, 24)
             .padding(.top, 80)
 
-            Spacer(minLength: 16)
-
-            VStack(spacing: 16) {
-                Text(AnkyLocalization.ui("what you write never leaves this iPhone."))
-                    .font(.fraunces(15, weight: .light, italic: true))
-                    .foregroundStyle(LoomPalette.threadSoft)
-                    .multilineTextAlignment(.center)
-                ThreadButton(title: AnkyLocalization.ui("continue")) { advance() }
-                    .opacity(hasFirstLine ? 1 : 0)
-                    .allowsHitTesting(hasFirstLine)
-                    .animation(.easeInOut(duration: 0.4), value: hasFirstLine)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, 20)
+            Spacer(minLength: 0)
         }
     }
 
@@ -511,27 +597,6 @@ struct LoomGateView: View {
                 .padding(.top, 14)
                 .opacity(lineShown ? 1 : 0)
             Spacer()
-            VStack(spacing: 14) {
-                ThreadButton(
-                    title: AnkyLocalization.ui("remind me at %@", reminderTime.formatted(date: .omitted, time: .shortened)),
-                    filled: true
-                ) {
-                    AnkyHaptics.light()
-                    Task { await scheduleReminder() }
-                }
-                Button {
-                    advance()
-                } label: {
-                    Text(AnkyLocalization.ui("welcome: not now"))
-                        .font(.fraunces(16, weight: .light))
-                        .foregroundStyle(LoomPalette.threadSoft)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 24)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.bottom, 44)
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: 520)
@@ -733,6 +798,7 @@ private struct ThreadButton: View {
     let title: String
     var filled = false
     var isWorking = false
+    var tint: Color = LoomPalette.thread
     let action: () -> Void
 
     var body: some View {
@@ -743,18 +809,18 @@ private struct ThreadButton: View {
                     .opacity(isWorking ? 0 : 1)
                 if isWorking {
                     ProgressView()
-                        .tint(filled ? LoomPalette.groundDeep : LoomPalette.thread)
+                        .tint(filled ? LoomPalette.groundDeep : tint)
                 }
             }
-            .foregroundStyle(filled ? LoomPalette.groundDeep : LoomPalette.thread)
+            .foregroundStyle(filled ? LoomPalette.groundDeep : tint)
             .frame(minWidth: 220, minHeight: 54)
             .padding(.horizontal, 24)
             .background {
                 if filled {
-                    Capsule().fill(LoomPalette.thread)
-                        .shadow(color: LoomPalette.thread.opacity(0.35), radius: 18)
+                    Capsule().fill(tint)
+                        .shadow(color: tint.opacity(0.35), radius: 18)
                 } else {
-                    Capsule().stroke(LoomPalette.threadFaint, lineWidth: 1)
+                    Capsule().stroke(tint.opacity(0.38), lineWidth: 1)
                 }
             }
             .contentShape(Capsule())
