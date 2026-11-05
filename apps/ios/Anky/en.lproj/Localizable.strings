@@ -789,3 +789,13 @@
 "Waiting for the purchase to be approved. Anky opens the moment it is." = "Waiting for the purchase to be approved. Anky opens the moment it is.";
 "welcome: not now" = "not now";
 "choose the color." = "choose the color.";
+
+/* One Anky, yearly or monthly (2026-11-04) */
+"save %d%%" = "save %d%%";
+"%@ a month, billed yearly" = "%@ a month, billed yearly";
+"%@ a year" = "%@ a year";
+"%d days free, then %@ a year" = "%d days free, then %@ a year";
+"Anky renews automatically at %@ per year unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky renews automatically at %@ per year unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.";
+"Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.";
+"No Anky subscription was found for this Apple ID." = "No Anky subscription was found for this Apple ID.";
+"Done writing" = "Done writing";

@@ -789,3 +789,13 @@
 "Waiting for the purchase to be approved. Anky opens the moment it is." = "खरीद की मंज़ूरी का इंतज़ार है। मंज़ूरी मिलते ही Anky खुल जाएगा।";
 "welcome: not now" = "अभी नहीं";
 "choose the color." = "रंग चुनिए।";
+
+/* One Anky, yearly or monthly (2026-11-04) */
+"save %d%%" = "%d%% बचाएँ";
+"%@ a month, billed yearly" = "%@ प्रति माह, सालाना बिल";
+"%@ a year" = "%@ प्रति वर्ष";
+"%d days free, then %@ a year" = "%d दिन मुफ़्त, फिर %@ प्रति वर्ष";
+"Anky renews automatically at %@ per year unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky हर साल %@ पर अपने-आप नवीनीकृत होता है, जब तक कि मौजूदा अवधि ख़त्म होने से कम से कम 24 घंटे पहले उसे रद्द न किया जाए। भुगतान आपके Apple ID से लिया जाता है। अपनी App Store खाता सेटिंग्स में इसे प्रबंधित या रद्द करें।";
+"Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky हर महीने %@ पर अपने-आप नवीनीकृत होता है, जब तक कि मौजूदा अवधि ख़त्म होने से कम से कम 24 घंटे पहले उसे रद्द न किया जाए। भुगतान आपके Apple ID से लिया जाता है। अपनी App Store खाता सेटिंग्स में इसे प्रबंधित या रद्द करें।";
+"No Anky subscription was found for this Apple ID." = "इस Apple ID पर कोई Anky सदस्यता नहीं मिली।";
+"Done writing" = "लिखना पूरा हुआ";

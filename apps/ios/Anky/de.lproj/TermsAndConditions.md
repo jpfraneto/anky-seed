@@ -1,6 +1,6 @@
 # Anky Nutzungsbedingungen
 
-Gültig und überarbeitet: 1. November 2026
+Gültig und überarbeitet: 4. November 2026
 
 Diese Bedingungen regeln deine Nutzung der Anky-App und der Website anky.app, betrieben von **Anky, Inc.** Mit der Nutzung von Anky akzeptierst du diese Bedingungen und die [Datenschutzerklärung](https://anky.app/de/privacy-policy). Wenn du Anky aus Apples App Store geladen hast, gilt außerdem Apples [Standard-Lizenzvertrag für Endnutzer](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/).
 
@@ -10,9 +10,9 @@ Anky ist eine Schreib-App. Du schreibst, dein Schreiben wird auf deinem iPhone g
 
 Anky ist kein Therapeut, kein Arzt, kein Krisendienst und keine Beratung jeglicher Art. Wenn du dir oder anderen schaden könntest, wende dich sofort an den örtlichen Notdienst oder eine qualifizierte Person.
 
-## 2. Anky Pro
+## 2. Abo
 
-Zum Schreiben in Anky brauchst du Anky Pro, ein sich automatisch verlängerndes Monatsabo, das über Apple verkauft wird. Wenn du berechtigt bist, beginnt es mit einem kostenlosen Probezeitraum (derzeit 3 Tage). Sofern du nicht mindestens 24 Stunden vor Ende des Probezeitraums oder des aktuellen Zeitraums kündigst, verlängert sich das Abo jeden Monat zu dem in der App angezeigten Preis. Die Zahlung wird über deinen Apple Account abgerechnet.
+Zum Schreiben in Anky brauchst du ein sich automatisch verlängerndes Jahres- oder Monatsabo, das über Apple verkauft wird. Wenn du berechtigt bist, beginnt es mit einem kostenlosen Probezeitraum (derzeit 3 Tage). Sofern du nicht mindestens 24 Stunden vor Ende des Probezeitraums oder des aktuellen Zeitraums kündigst, verlängert sich das Abo je nach gewähltem Plan jedes Jahr oder jeden Monat zu dem in der App angezeigten Preis. Die Zahlung wird über deinen Apple Account abgerechnet.
 
 Du kannst das Abo jederzeit in den Einstellungen deines Apple Accounts verwalten oder kündigen. Eine Kündigung verhindert die nächste Verlängerung; du behältst den Zugang bis zum Ende des bereits bezahlten Zeitraums. Abrechnung und Erstattungen übernimmt Apple.
 

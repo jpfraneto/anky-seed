@@ -4,19 +4,19 @@ Anky, c'est une page et une horloge. Tu écris pendant huit minutes, et si tu ar
 
 COMMENT ÇA MARCHE
 
-La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Si tu veux, Anky t'envoie un doux rappel par jour.
+La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, la taille de tes mots et si tu peux effacer. Si tu veux, Anky t'envoie un doux rappel par jour.
 
 Ensuite, c'est toujours pareil : tu ouvres l'app et tu écris déjà.
 
 QUAND TU AS FINI
 
-Tes mots restent où ils sont. Copie-les d'une touche, ou copie-les dans une consigne de réflexion à coller dans l'IA que tu utilises déjà, si tu veux. Touche la page pour continuer à écrire.
+Tes mots restent où ils sont. Copie-les d'une touche, ou copie-les dans une consigne de réflexion à coller dans l'IA que tu utilises déjà, si tu veux. Touche la page pour continuer à écrire, puis ✓ quand tu as fini.
 
 Chaque écriture est rangée dans un tiroir qui glisse depuis le côté, datée et consultable. Statistiques montre ta série et les jours où tu as écrit.
 
 FAIS-LA TIENNE
 
-Dix polices. Huit encres. Quatre tailles. Jour ou nuit. Effacement et correction automatique, activés ou non.
+Huit encres. Quatre tailles. Jour ou nuit. Effacement et correction automatique, activés ou non.
 
 À TOI, ET SEULEMENT À TOI
 
@@ -26,9 +26,9 @@ Anky n'a ni serveur ni compte. Ce que tu écris ne quitte jamais ton iPhone : ja
 
 Si tu veux, Anky peut se placer entre toi et les apps que tu ouvres sans l'avoir décidé. Choisis-les dans Réglages. Quand tu en ouvres une, écris d'abord.
 
-ANKY PRO
+ABONNEMENT
 
-Anky est un abonnement mensuel. Les nouveaux abonnés commencent avec 3 jours gratuits ; le prix est affiché dans l'app avant de t'abonner. Il se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période en cours. Gère ou annule à tout moment dans les réglages de ton compte App Store. Tes écrits sont toujours à toi : tu peux les emporter, abonné ou non.
+Anky est un abonnement, annuel ou mensuel. Les nouveaux abonnés commencent avec 3 jours gratuits ; le prix est affiché dans l'app avant de t'abonner. Il se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période en cours. Gère ou annule à tout moment dans les réglages de ton compte App Store. Tes écrits sont toujours à toi : tu peux les emporter, abonné ou non.
 
 Politique de confidentialité : https://anky.app/privacy-policy
 Conditions d'utilisation : https://anky.app/terms

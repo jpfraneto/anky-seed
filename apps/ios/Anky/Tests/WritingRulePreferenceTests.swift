@@ -25,6 +25,23 @@ final class WritingRulePreferenceTests: XCTestCase {
         XCTAssertEqual(decoded.effectiveTerminalSilenceMs, 8000)
     }
 
+    func testAStoredFontChoiceIsLetGo() throws {
+        let stored = Data("""
+        {
+          "backspaceAllowed": true,
+          "autocorrectEnabled": true,
+          "fontChoice": "typewriter",
+          "textSize": "large"
+        }
+        """.utf8)
+
+        let decoded = try JSONDecoder().decode(WritingPreferences.self, from: stored)
+
+        // Every page is written in the default font; the size is still theirs.
+        XCTAssertEqual(decoded.fontChoice, .default)
+        XCTAssertEqual(decoded.textSize, .large)
+    }
+
     func testRitualDefaultKeepsTheRuleAndAFiniteDuration() {
         XCTAssertTrue(WritingPreferences.ritualDefault.eightSecondRuleEnabled)
         XCTAssertFalse(WritingPreferences.ritualDefault.durationIsInfinite)

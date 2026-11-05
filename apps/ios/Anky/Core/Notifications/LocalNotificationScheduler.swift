@@ -39,35 +39,6 @@ struct LocalNotificationScheduler {
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 
-    /// The honest trial reminder: 44 hours into the 72-hour free trial,
-    /// while there is still real time to cancel. Scheduling replaces any
-    /// previously pending reminder.
-    func scheduleTrialEndingReminder(at fireDate: Date) async throws {
-        let interval = fireDate.timeIntervalSinceNow
-        guard interval > 0 else {
-            return
-        }
-
-        let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString(
-            "Your Anky Pro trial ends tomorrow",
-            comment: "Annual Pro trial expiry notification title"
-        )
-        content.body = NSLocalizedString(
-            "Manage or cancel in Apple subscription settings. Pro gives you better reflections from Anky's strongest available model.",
-            comment: "Annual Pro trial expiry notification body"
-        )
-        content.sound = .default
-
-        let request = UNNotificationRequest(
-            identifier: trialReminderIdentifier,
-            content: content,
-            trigger: UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
-        )
-        center.removePendingNotificationRequests(withIdentifiers: [trialReminderIdentifier])
-        try await center.add(request)
-    }
-
     func cancelTrialEndingReminder() {
         center.removePendingNotificationRequests(withIdentifiers: [trialReminderIdentifier])
     }

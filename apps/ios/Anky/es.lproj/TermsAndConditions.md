@@ -1,6 +1,6 @@
 # Términos de uso de Anky
 
-Vigentes y revisados: 1 de noviembre de 2026
+Vigentes y revisados: 4 de noviembre de 2026
 
 Estos Términos rigen tu uso de la app de Anky y del sitio anky.app, operados por **Anky, Inc.** Al usar Anky aceptas estos Términos y la [Política de privacidad](https://anky.app/es/privacy-policy). Si descargaste Anky desde la App Store de Apple, también aplica el [Contrato de licencia estándar para el usuario final](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) de Apple.
 
@@ -10,9 +10,9 @@ Anky es una app de escritura. Escribes, tu escritura se guarda en tu teléfono y
 
 Anky no es terapeuta, médico, servicio de crisis ni asesor de ningún tipo. Si podrías hacerte daño o hacerle daño a alguien, contacta de inmediato a los servicios de emergencia locales o a una persona calificada.
 
-## 2. Anky Pro
+## 2. Suscripción
 
-Para escribir en Anky necesitas Anky Pro, una suscripción mensual de renovación automática que se vende a través de Apple. Si cumples los requisitos, empieza con una prueba gratis (actualmente de 3 días). Salvo que canceles al menos 24 horas antes de que termine la prueba o el período actual, la suscripción se renueva cada mes al precio que se muestra en la app. El pago se carga a tu cuenta de Apple.
+Para escribir en Anky necesitas una suscripción anual o mensual de renovación automática que se vende a través de Apple. Si cumples los requisitos, empieza con una prueba gratis (actualmente de 3 días). Salvo que canceles al menos 24 horas antes de que termine la prueba o el período actual, la suscripción se renueva cada año o cada mes, según el plan que elegiste, al precio que se muestra en la app. El pago se carga a tu cuenta de Apple.
 
 Puedes administrar o cancelar la suscripción en cualquier momento en la configuración de tu cuenta de Apple. Cancelar detiene la próxima renovación; conservas el acceso hasta el final del período ya pagado. Apple se encarga de la facturación y los reembolsos.
 

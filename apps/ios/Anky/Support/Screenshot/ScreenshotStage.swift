@@ -131,12 +131,12 @@ enum ScreenshotStage {
             $0.terminalSilenceMs = AnkyDuration.defaultTerminalSilenceMs
         }
 
-        // The ink scene shows the page made your own: night, another hand,
-        // another ink. Every other scene is the default page.
+        // The ink scene shows the page made your own: night and another
+        // ink. Every other scene is the default page.
         let isInk = ScreenshotMode.scene == .ink
         defaults.set((isInk ? AnkyAppearance.night : .paper).rawValue, forKey: AnkyAppearance.storageKey)
         WritingPreferencesStore().update {
-            $0.fontChoice = isInk ? .iowan : .default
+            $0.fontChoice = .default
             $0.inkChoice = isInk ? .sea : .default
         }
 
@@ -231,6 +231,12 @@ enum ScreenshotStage {
                 return
             }
             axis.openEntry(entry)
+            // QA: `-reopenFinished YES` taps the finished writing to keep going.
+            if UserDefaults.standard.bool(forKey: "reopenFinished") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    _ = writeViewModel.reopenFinishedSession()
+                }
+            }
         case .ink:
             guard stageWriting(fixture.ink, into: writeViewModel) else { return }
         case .archive:

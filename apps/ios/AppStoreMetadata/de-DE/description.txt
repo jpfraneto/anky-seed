@@ -4,19 +4,19 @@ Anky ist eine Seite und eine Uhr. Du schreibst acht Minuten lang, und wenn du ac
 
 SO FUNKTIONIERT ES
 
-Beim ersten Öffnen richtest du deine Seite mit ein paar Tipps ein: Tag oder Nacht, deine Schrift, ihre Größe und ob du löschen darfst. Wenn du willst, schickt dir Anky eine leise Erinnerung am Tag.
+Beim ersten Öffnen richtest du deine Seite mit ein paar Tipps ein: Tag oder Nacht, die Größe deiner Worte und ob du löschen darfst. Wenn du willst, schickt dir Anky eine leise Erinnerung am Tag.
 
 Danach ist es immer gleich: Du öffnest die App und schreibst schon.
 
 WENN DU FERTIG BIST
 
-Deine Worte bleiben, wo sie sind. Kopiere sie mit einem Tipp, oder kopiere sie in einer Reflexions-Anweisung, um sie in die KI einzufügen, die du schon nutzt, wenn du willst. Tippe auf die Seite, um weiterzuschreiben.
+Deine Worte bleiben, wo sie sind. Kopiere sie mit einem Tipp, oder kopiere sie in einer Reflexions-Anweisung, um sie in die KI einzufügen, die du schon nutzt, wenn du willst. Tippe auf die Seite, um weiterzuschreiben, und auf ✓, wenn du fertig bist.
 
 Jeder Text liegt in einer Schublade, die von der Seite hereingleitet, datiert und durchsuchbar. Statistik zeigt deine Serie und die Tage, an denen du geschrieben hast.
 
 MACH SIE ZU DEINER
 
-Zehn Schriften. Acht Tinten. Vier Größen. Tag oder Nacht. Löschen und Autokorrektur, an oder aus.
+Acht Tinten. Vier Größen. Tag oder Nacht. Löschen und Autokorrektur, an oder aus.
 
 DEINS, UND NUR DEINS
 
@@ -26,9 +26,9 @@ ERST SCHREIBEN, DANN SCROLLEN
 
 Wenn du willst, stellt sich Anky zwischen dich und die Apps, die du öffnest, ohne es zu wollen. Wähle sie in den Einstellungen. Wenn du eine öffnest, schreib zuerst.
 
-ANKY PRO
+ABO
 
-Anky ist ein Monatsabo. Neue Abonnenten starten mit 3 Tagen gratis; der Preis wird vor dem Abschluss in der App angezeigt. Es verlängert sich automatisch, sofern es nicht mindestens 24 Stunden vor Ende des laufenden Zeitraums gekündigt wird. Verwalten oder kündigen kannst du jederzeit in deinen App-Store-Kontoeinstellungen. Deine Texte gehören immer dir: Du kannst sie mitnehmen, mit oder ohne Abo.
+Anky ist ein Abo, jährlich oder monatlich. Neue Abonnenten starten mit 3 Tagen gratis; der Preis wird vor dem Abschluss in der App angezeigt. Es verlängert sich automatisch, sofern es nicht mindestens 24 Stunden vor Ende des laufenden Zeitraums gekündigt wird. Verwalten oder kündigen kannst du jederzeit in deinen App-Store-Kontoeinstellungen. Deine Texte gehören immer dir: Du kannst sie mitnehmen, mit oder ohne Abo.
 
 Datenschutz: https://anky.app/privacy-policy
 Nutzungsbedingungen: https://anky.app/terms

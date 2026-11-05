@@ -1,6 +1,6 @@
 # Anky Terms of Use
 
-Effective and revised: November 1, 2026
+Effective and revised: November 4, 2026
 
 These Terms govern your use of the Anky app and the anky.app website, operated by **Anky, Inc.** By using Anky you agree to these Terms and the [Privacy Policy](https://anky.app/privacy-policy). If you downloaded Anky from Apple's App Store, Apple's [Standard Licensed Application End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) also applies.
 
@@ -10,9 +10,9 @@ Anky is a writing app. You write, your writing is saved on your phone, and you c
 
 Anky is not a therapist, doctor, crisis service or advisor of any kind. If you might harm yourself or someone else, contact local emergency services or a qualified person immediately.
 
-## 2. Anky Pro
+## 2. Subscription
 
-Writing in Anky requires Anky Pro, an auto-renewing monthly subscription sold through Apple. If you are eligible, it starts with a free trial (currently 3 days). Unless you cancel at least 24 hours before the trial or the current period ends, the subscription renews each month at the price shown in the app. Payment is charged to your Apple Account.
+Writing in Anky requires a subscription: an auto-renewing yearly or monthly plan sold through Apple. If you are eligible, it starts with a free trial (currently 3 days). Unless you cancel at least 24 hours before the trial or the current period ends, the subscription renews each year or each month, depending on the plan you chose, at the price shown in the app. Payment is charged to your Apple Account.
 
 You can manage or cancel the subscription at any time in your Apple Account settings. Cancelling stops the next renewal; you keep access until the end of the period already paid for. Apple handles billing and refunds.
 

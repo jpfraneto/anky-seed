@@ -2,8 +2,9 @@
 //  AnkyPro.swift
 //  Anky
 //
-//  Anky Pro is the price of the loom: three days free, then monthly.
-//  Without it the app does not open past the paywall.
+//  The subscription is the price of Anky: three days free, then yearly
+//  or monthly. Without it the app does not open past the paywall. There is
+//  no "Pro": only Anky (founder, 2026-11-04).
 //
 //  StoreKit 2 only, straight with Apple. No Anky server and no third
 //  party: the entitlement is read from the transactions on this device,
@@ -17,10 +18,25 @@ import StoreKit
 final class AnkyPro: ObservableObject {
     static let shared = AnkyPro()
 
+    static let annualID = "anky.annual"
     static let monthlyID = "anky.monthly"
-    /// Every product that has ever granted Pro. The annual plan is off sale,
-    /// but anyone still holding one keeps the loom.
-    private static let entitlingIDs: Set<String> = ["anky.monthly", "anky.annual"]
+    /// Every product that opens Anky.
+    private static let entitlingIDs: Set<String> = [annualID, monthlyID]
+
+    /// The two ways to pay. Yearly is the one offered first.
+    enum Plan: String, CaseIterable, Identifiable {
+        case annual
+        case monthly
+
+        var id: String { rawValue }
+
+        var productID: String {
+            switch self {
+            case .annual: return AnkyPro.annualID
+            case .monthly: return AnkyPro.monthlyID
+            }
+        }
+    }
 
     enum Access: Equatable {
         /// Never confirmed on this device yet; the gate waits quietly.
@@ -37,7 +53,7 @@ final class AnkyPro: ObservableObject {
     }
 
     @Published private(set) var access: Access
-    @Published private(set) var product: Product?
+    @Published private(set) var products: [Plan: Product] = [:]
     @Published private(set) var isEligibleForTrial = true
     @Published private(set) var isWorking = false
 
@@ -92,21 +108,29 @@ final class AnkyPro: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.cachedExpiryKey)
             access = .inactive
         }
-        if product == nil { await loadProduct() }
+        if products.count < Plan.allCases.count { await loadProducts() }
     }
 
-    func loadProduct() async {
-        guard let loaded = try? await Product.products(for: [Self.monthlyID]).first else { return }
-        product = loaded
-        if let subscription = loaded.subscription {
+    func loadProducts() async {
+        guard let loaded = try? await Product.products(for: Plan.allCases.map(\.productID)) else { return }
+        var byPlan: [Plan: Product] = [:]
+        for product in loaded {
+            if let plan = Plan.allCases.first(where: { $0.productID == product.id }) {
+                byPlan[plan] = product
+            }
+        }
+        guard !byPlan.isEmpty else { return }
+        products = byPlan
+        // Trial eligibility is per subscription group: both plans agree.
+        if let subscription = (byPlan[.annual] ?? byPlan[.monthly])?.subscription {
             isEligibleForTrial = await subscription.isEligibleForIntroOffer
                 && subscription.introductoryOffer != nil
         }
     }
 
-    func purchase() async -> PurchaseOutcome {
-        if product == nil { await loadProduct() }
-        guard let product else {
+    func purchase(_ plan: Plan) async -> PurchaseOutcome {
+        if products[plan] == nil { await loadProducts() }
+        guard let product = products[plan] else {
             return .failed(AnkyLocalization.ui("The App Store isn't answering. Check your connection and try again."))
         }
         isWorking = true
@@ -140,17 +164,41 @@ final class AnkyPro: ObservableObject {
         await refresh()
         return access == .active
             ? .activated
-            : .failed(AnkyLocalization.ui("No Anky Pro subscription was found for this Apple ID."))
+            : .failed(AnkyLocalization.ui("No Anky subscription was found for this Apple ID."))
     }
 
     // MARK: - What the paywall says
 
-    var priceText: String {
-        product?.displayPrice ?? "$8.99"
+    /// The localized price, with the App Store's own answer when it has one.
+    func priceText(_ plan: Plan) -> String {
+        if let product = products[plan] { return product.displayPrice }
+        switch plan {
+        case .annual: return "$49.99"
+        case .monthly: return "$8.99"
+        }
+    }
+
+    /// What the yearly plan comes to per month, rounded down.
+    var annualPerMonthText: String? {
+        guard let annual = products[.annual] else { return nil }
+        var monthly = annual.price / 12
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &monthly, 2, .down)
+        return rounded.formatted(annual.priceFormatStyle)
+    }
+
+    /// How much less the yearly plan costs than twelve months, rounded down.
+    var annualSavingsPercent: Int? {
+        guard let annual = products[.annual], let monthly = products[.monthly] else { return nil }
+        let twelveMonths = monthly.price * 12
+        guard twelveMonths > 0 else { return nil }
+        let saved = NSDecimalNumber(decimal: 1 - annual.price / twelveMonths).doubleValue
+        let percent = Int((saved * 100).rounded(.down))
+        return percent > 0 ? percent : nil
     }
 
     var trialDays: Int {
-        guard let offer = product?.subscription?.introductoryOffer,
+        guard let offer = (products[.annual] ?? products[.monthly])?.subscription?.introductoryOffer,
               offer.paymentMode == .freeTrial else { return 3 }
         switch offer.period.unit {
         case .day: return offer.period.value

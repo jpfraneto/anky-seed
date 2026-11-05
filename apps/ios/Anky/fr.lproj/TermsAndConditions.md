@@ -1,6 +1,6 @@
 # Conditions d'utilisation d'Anky
 
-En vigueur et révisées : 1er novembre 2026
+En vigueur et révisées : 4 novembre 2026
 
 Ces Conditions régissent ton utilisation de l'app Anky et du site anky.app, exploités par **Anky, Inc.** En utilisant Anky, tu acceptes ces Conditions et la [Politique de confidentialité](https://anky.app/fr/privacy-policy). Si tu as téléchargé Anky sur l'App Store d'Apple, le [Contrat de licence standard de l'utilisateur final](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) d'Apple s'applique également.
 
@@ -10,9 +10,9 @@ Anky est une app d'écriture. Tu écris, ton écriture est enregistrée sur ton 
 
 Anky n'est ni un thérapeute, ni un médecin, ni un service de crise, ni un conseiller d'aucune sorte. Si tu risques de te faire du mal ou de faire du mal à quelqu'un, contacte immédiatement les services d'urgence locaux ou une personne qualifiée.
 
-## 2. Anky Pro
+## 2. Abonnement
 
-Écrire dans Anky nécessite Anky Pro, un abonnement mensuel à renouvellement automatique vendu par l'intermédiaire d'Apple. Si tu y as droit, il commence par un essai gratuit (actuellement de 3 jours). Sauf si tu annules au moins 24 heures avant la fin de l'essai ou de la période en cours, l'abonnement se renouvelle chaque mois au prix affiché dans l'app. Le paiement est débité sur ton compte Apple.
+Écrire dans Anky nécessite un abonnement annuel ou mensuel à renouvellement automatique vendu par l'intermédiaire d'Apple. Si tu y as droit, il commence par un essai gratuit (actuellement de 3 jours). Sauf si tu annules au moins 24 heures avant la fin de l'essai ou de la période en cours, l'abonnement se renouvelle chaque année ou chaque mois, selon la formule choisie, au prix affiché dans l'app. Le paiement est débité sur ton compte Apple.
 
 Tu peux gérer ou annuler l'abonnement à tout moment dans les réglages de ton compte Apple. L'annulation empêche le prochain renouvellement ; tu gardes l'accès jusqu'à la fin de la période déjà payée. Apple gère la facturation et les remboursements.
 

@@ -23,6 +23,10 @@ final class WriteViewModel: ObservableObject {
     /// True when the finished writing on the page was sealed a moment ago
     /// (not opened from the list): its menu opens on its own.
     @Published private(set) var finishedJustNow = false
+    /// The writer tapped a finished writing to keep going. There is no clock
+    /// and no 8 second rule now: the writing ends when they tap ✓ (or the
+    /// menu). Founder, 2026-11-04.
+    @Published private(set) var isContinuingFinishedWriting = false
     /// The writing chamber's switches, held here so the surface and the
     /// engine always read the same truth (the in-place decisions write them).
     @Published private(set) var preferences: WritingPreferences
@@ -89,8 +93,9 @@ final class WriteViewModel: ObservableObject {
     }
 
     /// An anky is eight minutes, and eight seconds of stillness ends it.
-    /// Neither is a setting.
-    var eightSecondRuleActive: Bool { true }
+    /// Neither is a setting. A finished writing reopened to keep going is
+    /// the one exception: the writer ends it themselves.
+    var eightSecondRuleActive: Bool { !isContinuingFinishedWriting }
 
     var backspaceEnabled: Bool {
         preferences.backspaceAllowed
@@ -445,12 +450,21 @@ final class WriteViewModel: ObservableObject {
     @discardableResult
     func reopenFinishedSession() -> Bool {
         guard let artifact = completedArtifact else { return false }
-        return continueSession(from: artifact, allowCompleted: true)
+        guard continueSession(from: artifact, allowCompleted: true) else { return false }
+        isContinuingFinishedWriting = true
+        return true
     }
 
-    /// The writer ended the writing themselves (the menu, mid-session).
+    /// The writer ended the writing themselves (✓, or the menu).
     func endWriting() {
         guard sessionEngine.isStarted, completedArtifact == nil, !protocolText.isEmpty else { return }
+        // Reopened and left untouched: the saved writing simply stands again.
+        if isFrozen, resumesOnNextInput, let untouched = continuedArtifactToReplace {
+            resetForNextSession()
+            draftStore.clear()
+            showFinishedSession(untouched)
+            return
+        }
         sealAndSave()
     }
 
@@ -678,6 +692,7 @@ final class WriteViewModel: ObservableObject {
                 )
             }
             finishedJustNow = true
+            isContinuingFinishedWriting = false
             completedArtifact = persisted
             isFrozen = true
             elapsedMs = persisted.durationMs
@@ -717,6 +732,7 @@ final class WriteViewModel: ObservableObject {
         resumesOnNextInput = false
         preservesRecoveredDraftGapOnNextInput = false
         continuedArtifactToReplace = nil
+        isContinuingFinishedWriting = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         writeBeforeScrollSessionTracker.reset()

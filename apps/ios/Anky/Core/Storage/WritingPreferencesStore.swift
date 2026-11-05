@@ -127,7 +127,10 @@ struct WritingPreferences: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         backspaceAllowed = try container.decode(Bool.self, forKey: .backspaceAllowed)
         autocorrectEnabled = try container.decode(Bool.self, forKey: .autocorrectEnabled)
-        fontChoice = try container.decode(AnkyWritingFontChoice.self, forKey: .fontChoice)
+        // One hand for everyone (founder, 2026-11-04: choosing a font is
+        // friction). A stored choice from an older version is let go.
+        _ = try container.decodeIfPresent(AnkyWritingFontChoice.self, forKey: .fontChoice)
+        fontChoice = .default
         textSize = try container.decode(AnkyWritingTextSize.self, forKey: .textSize)
         inkChoice = try container.decodeIfPresent(AnkyInkChoice.self, forKey: .inkChoice) ?? .default
         terminalSilenceMs = AnkyDuration.clampedTerminalSilenceMs(

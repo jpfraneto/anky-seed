@@ -22,11 +22,11 @@ struct GeshtuWorldView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsDeleteConfirmation = false
 
-    /// Anky Pro: the loom opens with a trial or a subscription.
+    /// The subscription: Anky opens with a trial, yearly or monthly.
     @ObservedObject private var pro = AnkyPro.shared
     /// The welcome is still owed (first launch only).
     @State private var needsWelcome = LoomLedger.needsWelcome()
-    /// The welcome and the door to Anky Pro stand over the page until the
+    /// The welcome and the subscription door stand over the page until the
     /// writer is in. The world waits fully covered beneath.
     @State private var gateIsUp = LoomLedger.needsWelcome() || AnkyPro.shared.access != .active
     @AppStorage(AnkyAppearance.storageKey) private var appearance: AnkyAppearance = .paper

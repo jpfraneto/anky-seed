@@ -4,19 +4,19 @@ Anky is a page and a clock. You write for eight minutes, and if you stop typing 
 
 HOW IT WORKS
 
-The first time you open Anky, you set up your page with a few taps: day or night, your font, its size, and whether you can erase. If you want, Anky can send you one quiet reminder a day.
+The first time you open Anky, you set up your page with a few taps: day or night, the size of your words, and whether you can erase. If you want, Anky can send you one quiet reminder a day.
 
 After that it is always the same: open the app and you are already writing.
 
 WHEN YOU FINISH
 
-Your words stay where they are. Copy them with one tap, or copy them inside a reflection prompt to paste into whatever AI you already use, if you want to. Tap the page to keep writing.
+Your words stay where they are. Copy them with one tap, or copy them inside a reflection prompt to paste into whatever AI you already use, if you want to. Tap the page to keep writing, and tap ✓ when you are done.
 
 Every writing is kept in a drawer that slides in from the side, dated and searchable. Stats shows your streak and the days you wrote.
 
 MAKE IT YOURS
 
-Ten fonts. Eight inks. Four sizes. Day or night. Backspace and autocorrect, on or off.
+Eight inks. Four sizes. Day or night. Backspace and autocorrect, on or off.
 
 YOURS, AND ONLY YOURS
 
@@ -26,9 +26,9 @@ WRITE BEFORE YOU SCROLL
 
 If you want, Anky can stand between you and the apps you reach for without deciding to. Choose them in Settings. When you open one, write first.
 
-ANKY PRO
+SUBSCRIPTION
 
-Anky is a monthly subscription. New subscribers start with 3 days free; the price is shown in the app before you subscribe. It renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in your App Store account settings. Your writings are always yours: you can take them with you whether or not you subscribe.
+Anky is a subscription, yearly or monthly. New subscribers start with 3 days free; the price is shown in the app before you subscribe. It renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in your App Store account settings. Your writings are always yours: you can take them with you whether or not you subscribe.
 
 Privacy Policy: https://anky.app/privacy-policy
 Terms of Use: https://anky.app/terms

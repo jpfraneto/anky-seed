@@ -4,19 +4,19 @@ Anky es una página y un reloj. Escribes durante ocho minutos, y si dejas de tec
 
 CÓMO FUNCIONA
 
-La primera vez que abres Anky, preparas tu página con unos toques: día o noche, tu fuente, su tamaño y si puedes borrar. Si quieres, Anky te manda un recordatorio suave al día.
+La primera vez que abres Anky, preparas tu página con unos toques: día o noche, el tamaño de tus palabras y si puedes borrar. Si quieres, Anky te manda un recordatorio suave al día.
 
 Después, siempre es igual: abres la app y ya estás escribiendo.
 
 CUANDO TERMINAS
 
-Tus palabras se quedan donde están. Cópialas con un toque, o cópialas dentro de una instrucción de reflexión para pegarlas en la IA que ya usas, si quieres. Toca la página para seguir escribiendo.
+Tus palabras se quedan donde están. Cópialas con un toque, o cópialas dentro de una instrucción de reflexión para pegarlas en la IA que ya usas, si quieres. Toca la página para seguir escribiendo y toca ✓ cuando termines.
 
 Cada escritura se guarda en un cajón que se desliza desde un lado, con fecha y con búsqueda. Estadísticas muestra tu racha y los días que escribiste.
 
 HAZLA TUYA
 
-Diez fuentes. Ocho tintas. Cuatro tamaños. Día o noche. Borrar y autocorrección, activados o no.
+Ocho tintas. Cuatro tamaños. Día o noche. Borrar y autocorrección, activados o no.
 
 TUYO, Y SOLO TUYO
 
@@ -26,9 +26,9 @@ ESCRIBE ANTES DE HACER SCROLL
 
 Si quieres, Anky puede ponerse entre tú y las apps que abres sin decidirlo. Elígelas en Ajustes. Cuando abras una, escribe primero.
 
-ANKY PRO
+SUSCRIPCIÓN
 
-Anky es una suscripción mensual. Los nuevos suscriptores empiezan con 3 días gratis; el precio se muestra en la app antes de suscribirte. Se renueva automáticamente salvo que la canceles al menos 24 horas antes del final del periodo actual. Gestiona o cancela cuando quieras en los ajustes de tu cuenta del App Store. Tus escrituras siempre son tuyas: puedes llevártelas te suscribas o no.
+Anky es una suscripción, anual o mensual. Los nuevos suscriptores empiezan con 3 días gratis; el precio se muestra en la app antes de suscribirte. Se renueva automáticamente salvo que la canceles al menos 24 horas antes del final del periodo actual. Gestiona o cancela cuando quieras en los ajustes de tu cuenta del App Store. Tus escrituras siempre son tuyas: puedes llevártelas te suscribas o no.
 
 Política de privacidad: https://anky.app/privacy-policy
 Términos de uso: https://anky.app/terms

@@ -1,6 +1,6 @@
 # Anky Datenschutzerklärung
 
-Gültig und überarbeitet: 1. November 2026
+Gültig und überarbeitet: 4. November 2026
 
 Anky ist eine Schreib-App, die dein Schreiben auf deinem iPhone behält. Ab Version 2.2 verbindet sich die Anky-App mit keinem Server von Anky. Es gibt kein Konto, keine Anmeldung, keine Analyse und keine Werbung.
 
@@ -30,7 +30,7 @@ Nichts davon wird an Anky gesendet. Wir können dein Schreiben nicht lesen und h
 
 ## 4. Apple-Dienste, die du nutzen kannst
 
-- **Anky Pro:** Das Abo wird über Apple gekauft. Apple wickelt die Zahlung ab, und die App prüft das Abo auf dem Gerät bei Apple. Anky erhält weder deinen Namen noch deine E-Mail-Adresse noch deine Zahlungsdaten.
+- **Abo:** Das Abo wird über Apple gekauft. Apple wickelt die Zahlung ab, und die App prüft das Abo auf dem Gerät bei Apple. Anky erhält weder deinen Namen noch deine E-Mail-Adresse noch deine Zahlungsdaten.
 - **iCloud-Backup:** Wenn du es aktivierst, verschlüsselt Anky deine Schreiben mit AES-GCM und speichert die verschlüsselte Datei in deinem eigenen iCloud Drive. Der Schlüssel kann in deinem iCloud-Schlüsselbund gesichert werden, um auf einem neuen iPhone wiederherzustellen. Apple betreibt iCloud; Anky sieht das Backup nie.
 - **Bildschirmzeit:** Wenn du die Sperre aktivierst, regeln Apples Bildschirmzeit-Frameworks die Berechtigung und die App-Auswahl. Deine App-Liste bleibt auf dem Gerät.
 - **Mitteilungen:** Erinnerungen und Mitteilungen der Sperre plant iOS lokal.

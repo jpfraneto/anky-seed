@@ -132,13 +132,6 @@ struct AnkySettingsView: View {
 
     private var typefaceGroup: some View {
         VStack(alignment: .leading, spacing: 28) {
-            group(title: "Font") {
-                ForEach(Array(AnkyWritingFontChoice.allCases.enumerated()), id: \.element) { index, choice in
-                    if index > 0 { listDivider }
-                    fontRow(choice)
-                }
-            }
-
             group(title: "Ink") {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 14) {
                     ForEach(AnkyInkChoice.allCases, id: \.self) { ink in
@@ -168,31 +161,6 @@ struct AnkySettingsView: View {
                 .padding(14)
             }
         }
-    }
-
-    /// Each font's name, written in that font.
-    private func fontRow(_ choice: AnkyWritingFontChoice) -> some View {
-        let isSelected = writingPreferences.fontChoice == choice
-        return Button {
-            setPreference { $0.fontChoice = choice }
-        } label: {
-            HStack {
-                Text(AnkyLocalization.ui(choice.displayName))
-                    .font(choice.font(size: 20))
-                    .foregroundStyle(isSelected ? writingPreferences.inkChoice.color : Color.ankyInk)
-                Spacer(minLength: 8)
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(writingPreferences.inkChoice.color)
-                }
-            }
-            .padding(.horizontal, 16)
-            .frame(minHeight: 50)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func inkSwatch(_ ink: AnkyInkChoice) -> some View {
@@ -239,17 +207,10 @@ struct AnkySettingsView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private var listDivider: some View {
-        Rectangle()
-            .fill(Color.ankyInk.opacity(0.08))
-            .frame(height: 0.5)
-            .padding(.leading, 16)
-    }
-
-    // MARK: Anky Pro
+    // MARK: Subscription
 
     private var proGroup: some View {
-        group(title: "Anky Pro") {
+        group(title: "Subscription") {
             Button {
                 AnkyHaptics.light()
                 showsManageSubscription = true

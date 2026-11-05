@@ -156,7 +156,6 @@ enum AnkyCopyRegistry {
 
     // MARK: Trial surface (phase-2 §5)
 
-    static let trialSurfaceHeadline = "Anky Pro supports the next chapter."
     static let trialSurfaceTrialFormat = "%d days free, then %@ per year"
     static let trialSurfacePriceFormat = "%@ per year"
 
@@ -167,7 +166,6 @@ enum AnkyCopyRegistry {
 
     // MARK: The veils (phase-3 §3) — *not yet*, never *denied*
 
-    static let veilReflection = "Anky Pro unlocks better reflections from stronger intelligence."
     static let veilCeremony = "This painting is still becoming."
     static let veilJourney = "The journey opens through writing."
 

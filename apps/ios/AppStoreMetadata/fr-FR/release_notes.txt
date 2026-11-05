@@ -1,13 +1,5 @@
-Un nouvel accueil.
+Désormais annuel ou mensuel. La formule annuelle coûte environ moitié moins, et les deux commencent par 3 jours gratuits.
 
-La première fois que tu ouvres Anky, tu prépares ta page en quelques touches : jour ou nuit, ta police, sa taille et si tu peux effacer. Si tu veux, un doux rappel par jour.
+Continue un anky terminé : touche la page, le menu reste, et ✓ le termine quand tu as fini. Pas d'horloge ni de règle des 8 secondes pendant que tu continues.
 
-Un anky dure toujours huit minutes. Arrête de taper huit secondes et il est scellé.
-
-La page est plus légère et plus rapide, même au bout d'une longue écriture.
-
-Quand tu as fini, le menu est déjà ouvert : copie ton écriture avec une consigne de réflexion en une touche.
-
-Dix polices et huit couleurs d'encre. Jour ou nuit, c'est un soleil et une lune dans Réglages.
-
-Anky Pro : 3 jours gratuits, puis mensuel.
+Une seule police pour toutes les pages : rien à choisir avant d'écrire.

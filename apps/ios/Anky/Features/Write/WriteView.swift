@@ -133,7 +133,9 @@ struct WriteView: View {
                     silenceProgress: silenceProgress,
                     isCompleted: isFinished,
                     showsMenu: showsMenuButton,
-                    onOpenWritings: handleMenuTap
+                    showsDone: viewModel.isContinuingFinishedWriting,
+                    onOpenWritings: handleMenuTap,
+                    onDone: handleDoneTap
                 )
                 .padding(.horizontal, 16)
                 .frame(width: geometry.size.width, height: 44, alignment: .top)
@@ -222,7 +224,8 @@ struct WriteView: View {
     // MARK: - The way out
 
     /// While the 8 second rule is holding a live writing, the way out is the
-    /// stillness itself and the menu stays out of sight.
+    /// stillness itself and the menu stays out of sight. A finished writing
+    /// reopened to keep going has no rule, so the menu stays.
     private var showsMenuButton: Bool {
         isFinished || !viewModel.hasStarted || !viewModel.eightSecondRuleActive
     }
@@ -234,6 +237,14 @@ struct WriteView: View {
         viewModel.endWriting()
         dismissKeyboard()
         onOpenMenu()
+    }
+
+    /// ✓ on a writing reopened to keep going: it is finished again, saved
+    /// with everything added.
+    private func handleDoneTap() {
+        AnkyHaptics.light()
+        viewModel.endWriting()
+        dismissKeyboard()
     }
 
     private func dismissKeyboard() {
@@ -316,7 +327,8 @@ struct WriteView: View {
 }
 
 /// The writing page's chrome: the menu on the left, the clock on the right.
-/// The clock only tells time; an anky is always eight minutes.
+/// The clock only tells time; an anky is always eight minutes. On a writing
+/// reopened to keep going, ✓ stands where the clock was.
 private struct AxisWritingTopBar: View {
     let timeText: String
     let silenceProgress: Double
@@ -324,7 +336,9 @@ private struct AxisWritingTopBar: View {
     /// to the finished writing's own controls.
     let isCompleted: Bool
     let showsMenu: Bool
+    let showsDone: Bool
     let onOpenWritings: () -> Void
+    let onDone: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -343,7 +357,18 @@ private struct AxisWritingTopBar: View {
 
             Spacer(minLength: 0)
 
-            if !isCompleted {
+            if showsDone, !isCompleted {
+                Button(action: onDone) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.ankyInkSoft)
+                        .frame(width: 44, height: 44)
+                        .ankyGlass(in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(AnkyLocalization.ui("Done writing"))
+                .transition(.opacity)
+            } else if !isCompleted {
                 Text(timeText)
                     .font(.system(size: 17, design: .serif))
                     .monospacedDigit()
@@ -361,6 +386,7 @@ private struct AxisWritingTopBar: View {
         .opacity(isCompleted ? 1 : chromeOpacity)
         .animation(.easeInOut(duration: 0.4), value: isCompleted)
         .animation(.easeInOut(duration: 0.3), value: showsMenu)
+        .animation(.easeInOut(duration: 0.3), value: showsDone)
         .animation(.linear(duration: 0.1), value: silenceProgress)
     }
 

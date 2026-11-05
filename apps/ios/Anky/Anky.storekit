@@ -12,8 +12,58 @@
   {
    "id": "A4000000",
    "localizations": [],
-   "name": "Anky Pro",
+   "name": "Anky",
    "subscriptions": [
+    {
+     "adHocOffers": [],
+     "codeOffers": [],
+     "displayPrice": "49.99",
+     "familyShareable": false,
+     "groupNumber": 1,
+     "internalID": "A4000004",
+     "introductoryOffer": {
+      "internalID": "A4000005",
+      "paymentMode": "free",
+      "subscriptionPeriod": "P3D"
+     },
+     "localizations": [
+      {
+       "description": "A quiet place to write, 8 minutes at a time.",
+       "displayName": "Anky Yearly",
+       "locale": "en_US"
+      },
+      {
+       "description": "Un lugar tranquilo para escribir, 8 minutos a la vez.",
+       "displayName": "Anky Anual",
+       "locale": "es_ES"
+      },
+      {
+       "description": "Un lieu calme pour écrire, 8 minutes à la fois.",
+       "displayName": "Anky annuel",
+       "locale": "fr_FR"
+      },
+      {
+       "description": "Ein stiller Ort zum Schreiben, 8 Minuten am Stück.",
+       "displayName": "Anky jährlich",
+       "locale": "de_DE"
+      },
+      {
+       "description": "一个安静的写作之地，每次 8 分钟。",
+       "displayName": "Anky 年度订阅",
+       "locale": "zh_Hans"
+      },
+      {
+       "description": "लिखने के लिए एक शांत जगह, एक बार में 8 मिनट।",
+       "displayName": "Anky वार्षिक",
+       "locale": "hi_IN"
+      }
+     ],
+     "productID": "anky.annual",
+     "recurringSubscriptionPeriod": "P1Y",
+     "referenceName": "Anky Yearly",
+     "subscriptionGroupID": "A4000000",
+     "type": "RecurringSubscription"
+    },
     {
      "adHocOffers": [],
      "codeOffers": [],
@@ -28,39 +78,39 @@
      },
      "localizations": [
       {
-       "description": "A place to write an anky, every day",
-       "displayName": "Anky Pro Monthly",
+       "description": "A quiet place to write, 8 minutes at a time.",
+       "displayName": "Anky Monthly",
        "locale": "en_US"
       },
       {
-       "description": "Un lugar para escribir un anky, cada día",
-       "displayName": "Anky Pro Mensual",
+       "description": "Un lugar tranquilo para escribir, 8 minutos a la vez.",
+       "displayName": "Anky Mensual",
        "locale": "es_ES"
       },
       {
-       "description": "Un lieu pour écrire un anky, chaque jour",
-       "displayName": "Anky Pro mensuel",
+       "description": "Un lieu calme pour écrire, 8 minutes à la fois.",
+       "displayName": "Anky mensuel",
        "locale": "fr_FR"
       },
       {
-       "description": "Ein Ort, um jeden Tag ein Anky zu schreiben",
-       "displayName": "Anky Pro monatlich",
+       "description": "Ein stiller Ort zum Schreiben, 8 Minuten am Stück.",
+       "displayName": "Anky monatlich",
        "locale": "de_DE"
       },
       {
-       "description": "每天写一篇 anky 的地方",
-       "displayName": "Anky Pro 月度订阅",
+       "description": "一个安静的写作之地，每次 8 分钟。",
+       "displayName": "Anky 月度订阅",
        "locale": "zh_Hans"
       },
       {
-       "description": "हर दिन एक anky लिखने की जगह",
-       "displayName": "Anky Pro मासिक",
+       "description": "लिखने के लिए एक शांत जगह, एक बार में 8 मिनट।",
+       "displayName": "Anky मासिक",
        "locale": "hi_IN"
       }
      ],
      "productID": "anky.monthly",
      "recurringSubscriptionPeriod": "P1M",
-     "referenceName": "Anky Pro Monthly",
+     "referenceName": "Anky Monthly",
      "subscriptionGroupID": "A4000000",
      "type": "RecurringSubscription"
     }

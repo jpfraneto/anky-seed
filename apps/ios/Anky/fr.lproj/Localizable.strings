@@ -789,3 +789,13 @@
 "Waiting for the purchase to be approved. Anky opens the moment it is." = "En attente de l'approbation de l'achat. Anky s'ouvre dès qu'elle arrive.";
 "welcome: not now" = "pas maintenant";
 "choose the color." = "choisis la couleur.";
+
+/* One Anky, yearly or monthly (2026-11-04) */
+"save %d%%" = "−%d%%";
+"%@ a month, billed yearly" = "%@ par mois, facturé à l'année";
+"%@ a year" = "%@ par an";
+"%d days free, then %@ a year" = "%d jours gratuits, puis %@ par an";
+"Anky renews automatically at %@ per year unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky se renouvelle automatiquement au prix de %@ par an, sauf annulation au moins 24 heures avant la fin de la période en cours. Le paiement est débité sur ton identifiant Apple. Gère ou annule l'abonnement dans les réglages de ton compte App Store.";
+"Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky se renouvelle automatiquement au prix de %@ par mois, sauf annulation au moins 24 heures avant la fin de la période en cours. Le paiement est débité sur ton identifiant Apple. Gère ou annule l'abonnement dans les réglages de ton compte App Store.";
+"No Anky subscription was found for this Apple ID." = "Aucun abonnement Anky n'a été trouvé pour cet identifiant Apple.";
+"Done writing" = "J'ai fini d'écrire";

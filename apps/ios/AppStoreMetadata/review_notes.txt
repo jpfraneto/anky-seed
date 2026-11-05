@@ -1,18 +1,19 @@
-Anky 2.3.0 (73) — notes for review
+Anky 2.3.1 (77) — notes for review
 
 WHAT CHANGED IN THIS VERSION
-- A first-launch welcome: three short lines on what Anky is for, then the user sets up the page (day or night, font, size, whether backspace is allowed) and may opt in to one daily local reminder notification.
-- Anky Pro, an auto-renewable monthly subscription (anky.monthly) with a 3-day free trial for new subscribers, is now required to use the writing page. Purchases use StoreKit 2 directly; there is no server and no account.
-- A writing is always 8 minutes; it ends after 8 seconds without typing.
-- Settings: ten fonts, eight ink colors, a day/night toggle.
+- The subscription is now offered yearly (anky.annual, $49.99/year) or monthly (anky.monthly, $8.99/month). Both are in the same subscription group, unlock the same thing (the writing page), and start with a 3-day free trial for eligible new subscribers. The yearly plan is selected by default on the paywall. Both products are submitted with this version.
+- The subscription is called simply "Anky": the name "Anky Pro" is gone from the app and the products.
+- The font is no longer a choice: the welcome no longer has a font step and Settings no longer lists fonts.
+- Keep writing: tapping a finished writing reopens it. The menu button stays visible and a ✓ button replaces the clock; the writing ends when the user taps ✓. While continuing, stopping for 8 seconds does not end it.
 The app still makes no network connections of its own. App Privacy: Data Not Collected.
 
 HOW TO TEST (no account or login required)
-1. On first launch, tap "Continue" through three lines, tap one option on each setup step, then choose "Remind me at …" (asks for notification permission) or "Not now".
-2. The paywall shows the price, the trial, Restore, Terms and Privacy, and the auto-renewal terms. Subscribe with a Sandbox Apple ID.
+1. On first launch, tap "Continue" through three lines, tap one option on each setup step (day or night, size, typos), then choose "Remind me at …" (asks for notification permission) or "Not now".
+2. The paywall shows two plans, Yearly (with the saving and per-month price) and Monthly, the trial, the price of the selected plan, Restore, Terms and Privacy, and the auto-renewal terms for the selected plan. Subscribe to either with a Sandbox Apple ID.
 3. Type on the page. The clock counts down 8:00. Stop typing for 8 seconds and the writing ends; it stays on the page.
-4. On a finished writing the "…" list (top right) is open: Copy prompt + writing, Copy writing, Delete. Tap the page to keep writing.
-5. The menu button (top left) opens the drawer: past writings, Settings and Stats.
+4. On a finished writing the "…" list (top right) is open: Copy prompt + writing, Copy writing, Delete.
+5. Tap the finished writing to keep writing: the menu button stays at the top left and a ✓ is at the top right. Type, pause as long as you like, then tap ✓ to finish.
+6. The menu button (top left) opens the drawer: past writings, Settings and Stats. Settings → Subscription → Manage subscription.
 If the user has writings and no subscription, the paywall always offers "take your writings with you" (a plain text export), so nobody loses their writing.
 
 NO CRYPTOCURRENCY FUNCTIONALITY

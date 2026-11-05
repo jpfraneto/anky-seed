@@ -7,11 +7,10 @@
 //
 //      why: three lines on what Anky is for
 //      day above, night below                (tap the half you write in)
-//      choose your font.                     (a grid, no scrolling)
 //      how large?                            (− and +, with a live line)
 //      when you make a typo:                 (erase, or keep going)
 //      anky works when it's daily.           (an optional daily reminder)
-//      Anky Pro                              (3 days free, then monthly)
+//      the door                              (yearly or monthly, 3 days free)
 //
 //  Nothing is asked for: no name, no goals, no account. Without an active
 //  trial or subscription the app stays here; the writer's past writings can
@@ -65,7 +64,7 @@ struct LoomGateView: View {
     /// Every step of the welcome, in order. The dots count these.
     private enum Step: Int, CaseIterable {
         case why1, why2, why3
-        case appearance, typeface, size, erase
+        case appearance, size, erase
         case practice
     }
 
@@ -93,6 +92,8 @@ struct LoomGateView: View {
 
     // Door
     @State private var doorMessage: String?
+    /// Yearly is offered first: the discount, and the same free days.
+    @State private var plan: AnkyPro.Plan = .annual
     @State private var showsTerms = false
     @State private var showsPrivacy = false
     @State private var exportURL: URL?
@@ -107,9 +108,14 @@ struct LoomGateView: View {
         _phase = State(initialValue: needsWelcome ? .welcome(.why1) : .door)
         #if DEBUG
         // Open the welcome at one step for QA: `-loomReplay -welcomeStep 4`.
-        if needsWelcome, let step = Step(rawValue: UserDefaults.standard.integer(forKey: "welcomeStep")),
-           UserDefaults.standard.object(forKey: "welcomeStep") != nil {
-            _phase = State(initialValue: .welcome(step))
+        // A step past the last one opens the door.
+        if needsWelcome, UserDefaults.standard.object(forKey: "welcomeStep") != nil {
+            let raw = UserDefaults.standard.integer(forKey: "welcomeStep")
+            if let step = Step(rawValue: raw) {
+                _phase = State(initialValue: .welcome(step))
+            } else if raw >= Step.allCases.count {
+                _phase = State(initialValue: .door)
+            }
         }
         #endif
     }
@@ -313,8 +319,6 @@ struct LoomGateView: View {
             whyLine("write without stopping. what comes out is what you were carrying.")
         case .appearance:
             dayAndNight
-        case .typeface:
-            settingScreen("choose your font.") { fontGrid }
         case .size:
             settingScreen("how large?") { sizeControl }
         case .erase:
@@ -412,25 +416,9 @@ struct LoomGateView: View {
     fileprivate static let dayInk = Color(.displayP3, red: 0.310, green: 0.243, blue: 0.180)
     fileprivate static let nightInk = Color(.displayP3, red: 0.925, green: 0.855, blue: 0.757)
 
-    // MARK: Font, size, typos
+    // MARK: Size, typos
 
-    /// Every font at once, each name in its own face: two columns, no scroll.
-    private var fontGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            ForEach(AnkyWritingFontChoice.allCases, id: \.self) { choice in
-                choiceChip(isSelected: preferences.fontChoice == choice, height: 52) {
-                    Text(welcomeText(choice.displayName))
-                        .font(choice.font(size: 19))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                } choose: {
-                    preferences.fontChoice = choice
-                }
-            }
-        }
-    }
-
-    /// A line in the chosen font, and − / + to make it smaller or larger.
+    /// A line in the page's font, and − / + to make it smaller or larger.
     private var sizeControl: some View {
         let sizes = AnkyWritingTextSize.allCases
         let index = sizes.firstIndex(of: preferences.textSize) ?? 1
@@ -605,19 +593,24 @@ struct LoomGateView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 32)
-                        .padding(.top, max(48, size.height * 0.18))
+                        .padding(.top, max(40, size.height * 0.12))
 
-                    Text("ANKY PRO")
-                        .font(.system(size: 11, weight: .medium))
-                        .kerning(2.4)
-                        .foregroundStyle(LoomPalette.threadSoft)
-                        .padding(.top, 48)
+                    VStack(spacing: 10) {
+                        ForEach(AnkyPro.Plan.allCases) { option in
+                            planCard(option)
+                        }
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 40)
 
                     Text(offerLine)
-                        .font(.fraunces(19, weight: .regular))
-                        .foregroundStyle(LoomPalette.thread)
+                        .font(.fraunces(16, weight: .light, italic: true))
+                        .foregroundStyle(LoomPalette.threadSoft)
                         .multilineTextAlignment(.center)
-                        .padding(.top, 6)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 18)
+                        .animation(.easeInOut(duration: 0.2), value: plan)
 
                     ThreadButton(
                         title: pro.isEligibleForTrial
@@ -629,7 +622,7 @@ struct LoomGateView: View {
                         AnkyHaptics.light()
                         Task { await purchase() }
                     }
-                    .padding(.top, 16)
+                    .padding(.top, 14)
 
                     if let doorMessage {
                         Text(doorMessage)
@@ -645,7 +638,7 @@ struct LoomGateView: View {
                     footer
                         .padding(.top, 28)
 
-                    Text(welcomeText("Anky Pro renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.", pro.priceText))
+                    Text(renewalTerms)
                         .font(.system(size: 11))
                         .foregroundStyle(LoomPalette.threadFaint)
                         .multilineTextAlignment(.center)
@@ -658,14 +651,89 @@ struct LoomGateView: View {
                 .frame(maxWidth: .infinity)
             }
             .task { await prepareExport() }
-            .task { if pro.product == nil { await pro.loadProduct() } }
+            .task { if pro.products.isEmpty { await pro.loadProducts() } }
         }
     }
 
+    /// One plan, as a card: the price on the right, and for yearly what it
+    /// saves. A tap only selects it; the button below buys it.
+    private func planCard(_ option: AnkyPro.Plan) -> some View {
+        let isSelected = plan == option
+        return Button {
+            guard plan != option else { return }
+            AnkyHaptics.selection()
+            withAnimation(.easeInOut(duration: 0.2)) { plan = option }
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .light))
+                    .foregroundStyle(isSelected ? LoomPalette.thread : LoomPalette.threadFaint)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(welcomeText(option == .annual ? "yearly" : "monthly"))
+                            .font(.fraunces(19, weight: .regular))
+                            .foregroundStyle(LoomPalette.thread)
+                        if option == .annual, let percent = pro.annualSavingsPercent {
+                            Text(welcomeText("save %d%%", percent))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(LoomPalette.groundDeep)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(LoomPalette.thread))
+                        }
+                    }
+                    if option == .annual, let perMonth = pro.annualPerMonthText {
+                        Text(welcomeText("%@ a month, billed yearly", perMonth))
+                            .font(.fraunces(14, weight: .light))
+                            .foregroundStyle(LoomPalette.threadSoft)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Text(welcomeText(option == .annual ? "%@ a year" : "%@ a month", pro.priceText(option)))
+                    .font(.fraunces(16, weight: .regular))
+                    .foregroundStyle(LoomPalette.thread)
+                    .multilineTextAlignment(.trailing)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 66)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(LoomPalette.thread.opacity(isSelected ? 0.09 : 0.03))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(LoomPalette.thread.opacity(isSelected ? 0.6 : 0.14), lineWidth: isSelected ? 1.2 : 0.75)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// What the button will do, in one line.
     private var offerLine: String {
-        pro.isEligibleForTrial
-            ? welcomeText("%d days free, then %@ a month", pro.trialDays, pro.priceText)
-            : welcomeText("%@ a month", pro.priceText)
+        let price = pro.priceText(plan)
+        switch (plan, pro.isEligibleForTrial) {
+        case (.annual, true):
+            return welcomeText("%d days free, then %@ a year", pro.trialDays, price)
+        case (.monthly, true):
+            return welcomeText("%d days free, then %@ a month", pro.trialDays, price)
+        case (.annual, false):
+            return welcomeText("%@ a year", price)
+        case (.monthly, false):
+            return welcomeText("%@ a month", price)
+        }
+    }
+
+    /// Apple's required words, for the plan that is selected.
+    private var renewalTerms: String {
+        let price = pro.priceText(plan)
+        return plan == .annual
+            ? welcomeText("Anky renews automatically at %@ per year unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.", price)
+            : welcomeText("Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings.", price)
     }
 
     private var footer: some View {
@@ -706,7 +774,7 @@ struct LoomGateView: View {
 
     private func purchase() async {
         doorMessage = nil
-        switch await pro.purchase() {
+        switch await pro.purchase(plan) {
         case .activated:
             AnkyHaptics.success()
             enter(celebrating: true)
