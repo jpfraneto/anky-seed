@@ -10,7 +10,7 @@ Ensuite, c'est toujours pareil : tu ouvres l'app et tu écris déjà.
 
 QUAND TU AS FINI
 
-Tes mots restent où ils sont. Copie-les d'une touche, ou copie-les dans une consigne de réflexion à coller dans l'IA que tu utilises déjà, si tu veux. Touche la page pour continuer à écrire, puis ✓ quand tu as fini.
+Tes mots restent où ils sont. Copie-les d'une touche, ou copie-les dans une consigne de réflexion à coller dans l'IA que tu utilises déjà, si tu veux. Touche la page pour continuer à écrire, puis la coche quand tu as fini.
 
 Chaque écriture est rangée dans un tiroir qui glisse depuis le côté, datée et consultable. Statistiques montre ta série et les jours où tu as écrit.
 

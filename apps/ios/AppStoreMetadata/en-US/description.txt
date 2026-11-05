@@ -10,7 +10,7 @@ After that it is always the same: open the app and you are already writing.
 
 WHEN YOU FINISH
 
-Your words stay where they are. Copy them with one tap, or copy them inside a reflection prompt to paste into whatever AI you already use, if you want to. Tap the page to keep writing, and tap ✓ when you are done.
+Your words stay where they are. Copy them with one tap, or copy them inside a reflection prompt to paste into whatever AI you already use, if you want to. Tap the page to keep writing, and tap the check mark when you are done.
 
 Every writing is kept in a drawer that slides in from the side, dated and searchable. Stats shows your streak and the days you wrote.
 

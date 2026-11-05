@@ -10,7 +10,7 @@ Después, siempre es igual: abres la app y ya estás escribiendo.
 
 CUANDO TERMINAS
 
-Tus palabras se quedan donde están. Cópialas con un toque, o cópialas dentro de una instrucción de reflexión para pegarlas en la IA que ya usas, si quieres. Toca la página para seguir escribiendo y toca ✓ cuando termines.
+Tus palabras se quedan donde están. Cópialas con un toque, o cópialas dentro de una instrucción de reflexión para pegarlas en la IA que ya usas, si quieres. Toca la página para seguir escribiendo y toca la palomita cuando termines.
 
 Cada escritura se guarda en un cajón que se desliza desde un lado, con fecha y con búsqueda. Estadísticas muestra tu racha y los días que escribiste.
 
