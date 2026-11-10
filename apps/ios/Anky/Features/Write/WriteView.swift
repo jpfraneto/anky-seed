@@ -18,17 +18,20 @@ struct WriteView: View {
     let shouldFocus: Bool
     private let onCompleted: (SavedAnky) -> Void
     private let onOpenMenu: () -> Void
+    private let onDeleteFinished: () -> Void
 
     init(
         viewModel: WriteViewModel,
         shouldFocus: Bool,
         onCompleted: @escaping (SavedAnky) -> Void,
-        onOpenMenu: @escaping () -> Void
+        onOpenMenu: @escaping () -> Void,
+        onDeleteFinished: @escaping () -> Void
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFocus = shouldFocus
         self.onCompleted = onCompleted
         self.onOpenMenu = onOpenMenu
+        self.onDeleteFinished = onDeleteFinished
     }
 
     var body: some View {
@@ -100,20 +103,25 @@ struct WriteView: View {
                 .position(x: geometry.size.width / 2, y: reserveTop + reserveHeight / 2)
                 .zIndex(-1)
 
-                // A finished writing: where the keys were, Anky offers the
-                // two copies. It can be swiped down or closed; the paper
-                // left behind still reopens the writing on a tap.
+                // A finished writing's menu IS Anky: where the keys were, it
+                // holds the page and offers the copies. The ⋯ (pressed while
+                // it is open) or a swipe down puts it away; the paper left
+                // behind still reopens the writing on a tap.
                 let keysHeight = max(0, globalFrame.maxY - keyboardTop)
-                if let finished = viewModel.completedArtifact, keysHeight > 120 {
+                if let finished = viewModel.completedArtifact,
+                   viewModel.finishedMenuIsOpen,
+                   keysHeight > 120 {
                     AnkyHoldingTheWriting(
                         writing: finished.reconstructedText,
                         bottomInset: geometry.safeAreaInsets.bottom,
-                        onTapPaper: reopenFinishedWriting
+                        onTapPaper: reopenFinishedWriting,
+                        onClose: { viewModel.finishedMenuIsOpen = false },
+                        onDelete: onDeleteFinished
                     )
                         .id(finished.hash)
                         .frame(width: geometry.size.width, height: reserveHeight)
                         .position(x: geometry.size.width / 2, y: reserveTop + reserveHeight / 2)
-                        .transition(.opacity)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
                 // Words that rise behind the top chrome melt into the paper.
@@ -178,6 +186,7 @@ struct WriteView: View {
         }
         .ignoresSafeArea(.keyboard)
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: isFinished)
+        .animation(.spring(response: 0.42, dampingFraction: 0.9), value: viewModel.finishedMenuIsOpen)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
             updateKeyboardFrame(from: notification)
         }
@@ -864,76 +873,76 @@ private struct ForwardOnlyTextView: UIViewRepresentable {
     }
 }
 
-// MARK: - Anky, offering the copies
+// MARK: - Anky, the finished writing's menu
 
-/// A finished writing: Anky comes into the space the keys left, holding the
-/// page, with the two copies. A swipe down or the × sends it away.
+/// A finished writing's menu: Anky in the space the keys left, holding the
+/// page, with the two copies and the way to delete. A swipe down (or the ⋯
+/// it hangs from) puts it away.
 private struct AnkyHoldingTheWriting: View {
     let writing: String
     let bottomInset: CGFloat
     let onTapPaper: () -> Void
+    let onClose: () -> Void
+    let onDelete: () -> Void
 
     private enum Copy { case withPrompt, withoutPrompt }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var arrived = false
-    @State private var dismissed = false
     @State private var dragOffset: CGFloat = 0
     @State private var breathes = false
     @State private var copied: Copy?
 
     var body: some View {
         GeometryReader { geometry in
-            let figureHeight = max(72, min(156, geometry.size.height - bottomInset - 150))
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 12) {
-                    Spacer(minLength: 0)
-                    Image("anky-recover-writing")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: figureHeight)
-                        .scaleEffect(breathes ? 1.012 : 1, anchor: .bottom)
-                        .accessibilityHidden(true)
+            let figureHeight = max(64, min(148, geometry.size.height - bottomInset - 176))
+            VStack(spacing: 12) {
+                Spacer(minLength: 0)
+                Image("anky-recover-writing")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: figureHeight)
+                    .scaleEffect(breathes ? 1.012 : 1, anchor: .bottom)
+                    .accessibilityHidden(true)
 
-                    Button { copy(.withPrompt) } label: {
-                        Text(AnkyLocalization.ui(copied == .withPrompt ? "anky: copied" : "anky: copy with prompt"))
-                            .font(.fraunces(17, weight: .regular))
-                            .foregroundStyle(copied == .withPrompt ? Color.ankySage : Color.ankyInk)
-                            .padding(.horizontal, 26)
-                            .frame(minHeight: 48)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .ankyGlass(in: Capsule(), interactive: true)
-
-                    Button { copy(.withoutPrompt) } label: {
-                        Text(AnkyLocalization.ui(copied == .withoutPrompt ? "anky: copied" : "anky: copy without prompt"))
-                            .font(.fraunces(15, weight: .light))
-                            .foregroundStyle(copied == .withoutPrompt ? Color.ankySage : Color.ankyInkSoft)
-                            .padding(.horizontal, 18)
-                            .frame(minHeight: 40)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    Spacer(minLength: 0)
+                Button { copy(.withPrompt) } label: {
+                    Text(AnkyLocalization.ui(copied == .withPrompt ? "anky: copied" : "anky: copy with prompt"))
+                        .font(.fraunces(17, weight: .regular))
+                        .foregroundStyle(copied == .withPrompt ? Color.ankySage : Color.ankyInk)
+                        .padding(.horizontal, 26)
+                        .frame(minHeight: 48)
+                        .contentShape(Capsule())
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 20)
-                .padding(.bottom, bottomInset)
-                .animation(.easeInOut(duration: 0.25), value: copied)
+                .buttonStyle(.plain)
+                .ankyGlass(in: Capsule(), interactive: true)
 
-                Button(action: dismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.ankyInkSoft)
-                        .frame(width: 44, height: 44)
+                Button { copy(.withoutPrompt) } label: {
+                    Text(AnkyLocalization.ui(copied == .withoutPrompt ? "anky: copied" : "anky: copy without prompt"))
+                        .font(.fraunces(15, weight: .light))
+                        .foregroundStyle(copied == .withoutPrompt ? Color.ankySage : Color.ankyInkSoft)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 36)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 14)
-                .padding(.trailing, 12)
-                .accessibilityLabel(AnkyLocalization.ui("anky: close"))
+
+                Button {
+                    AnkyHaptics.warning()
+                    onDelete()
+                } label: {
+                    Text(AnkyLocalization.ui("anky: delete"))
+                        .font(.fraunces(13, weight: .light))
+                        .foregroundStyle(Color.ankyMadder.opacity(0.8))
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+            .padding(.bottom, bottomInset)
+            .animation(.easeInOut(duration: 0.25), value: copied)
             .frame(width: geometry.size.width, height: geometry.size.height)
             // Anky's own patch of paper: a long writing passes beneath it,
             // softly, the way words melt under the top chrome.
@@ -959,31 +968,20 @@ private struct AnkyHoldingTheWriting: View {
                     .onChanged { dragOffset = max(0, $0.translation.height) }
                     .onEnded { value in
                         if value.translation.height > 70 || value.predictedEndTranslation.height > 160 {
-                            dismiss()
+                            AnkyHaptics.light()
+                            onClose()
                         } else {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { dragOffset = 0 }
                         }
                     }
             )
         }
-        .offset(y: (arrived || reduceMotion ? 0 : 14) + dragOffset + (dismissed ? 60 : 0))
-        .opacity(dismissed ? 0 : (arrived ? 1 : 0))
-        .allowsHitTesting(!dismissed)
+        .offset(y: dragOffset)
         .onAppear {
-            withAnimation(.easeOut(duration: reduceMotion ? 0.4 : 0.9).delay(0.3)) {
-                arrived = true
-            }
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true).delay(1.2)) {
+            withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true).delay(0.8)) {
                 breathes = true
             }
-        }
-    }
-
-    private func dismiss() {
-        AnkyHaptics.light()
-        withAnimation(.easeOut(duration: 0.32)) {
-            dismissed = true
         }
     }
 

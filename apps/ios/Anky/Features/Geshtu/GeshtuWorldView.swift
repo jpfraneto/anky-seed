@@ -172,17 +172,22 @@ struct GeshtuWorldView: View {
                 viewModel: writeViewModel,
                 shouldFocus: !gateIsUp && !axis.drawerIsOpen,
                 onCompleted: { _ in grantWriteBeforeScrollUnlock() },
-                onOpenMenu: { axis.openDrawer() }
+                onOpenMenu: { axis.openDrawer() },
+                onDeleteFinished: {
+                    AnkyHaptics.warning()
+                    showsDeleteConfirmation = true
+                }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if let finished = writeViewModel.completedArtifact {
                 FinishedWritingChrome(
-                    writing: finished.reconstructedText,
+                    menuIsOpen: writeViewModel.finishedMenuIsOpen,
                     onNewWriting: startNewWriting,
-                    onDelete: {
-                        AnkyHaptics.warning()
-                        showsDeleteConfirmation = true
+                    onToggleMenu: {
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.9)) {
+                            writeViewModel.finishedMenuIsOpen.toggle()
+                        }
                     }
                 )
                 .id(finished.hash)
@@ -431,38 +436,14 @@ private struct LeadingCornerCutouts: Shape {
 /// capsule with "new writing" and ⋯. The ⋯ list (copy prompt + writing,
 /// copy writing, delete) opens on its own right after a writing ends, so
 /// taking it to an AI is one tap.
+/// A finished writing's corner: a new writing, and the ⋯ that Anky's menu
+/// hangs from. While Anky is out, the ⋯ stays pressed.
 private struct FinishedWritingChrome: View {
-    let writing: String
+    let menuIsOpen: Bool
     let onNewWriting: () -> Void
-    let onDelete: () -> Void
-
-    @State private var isOpen = false
-    @State private var didCopy = false
+    let onToggleMenu: () -> Void
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            if isOpen {
-                // A tap anywhere else closes the list.
-                Color.clear
-                    .contentShape(Rectangle())
-                    .ignoresSafeArea()
-                    .onTapGesture { setOpen(false) }
-            }
-
-            VStack(alignment: .trailing, spacing: 8) {
-                capsule
-                if isOpen {
-                    list
-                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topTrailing)))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-    }
-
-    private var capsule: some View {
         HStack(spacing: 0) {
             Button {
                 AnkyHaptics.light()
@@ -479,74 +460,29 @@ private struct FinishedWritingChrome: View {
 
             Button {
                 AnkyHaptics.light()
-                setOpen(!isOpen)
+                onToggleMenu()
             } label: {
-                Image(systemName: didCopy ? "checkmark" : "ellipsis")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(didCopy ? Color.ankySage : Color.ankyInkSoft)
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 17, weight: menuIsOpen ? .semibold : .medium))
+                    .foregroundStyle(menuIsOpen ? Color.ankyPaper : Color.ankyInkSoft)
+                    .frame(width: 38, height: 34)
+                    .background {
+                        Capsule()
+                            .fill(Color.ankyInk.opacity(menuIsOpen ? 0.82 : 0))
+                    }
                     .frame(width: 48, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(AnkyLocalization.ui("More"))
+            .accessibilityAddTraits(menuIsOpen ? .isSelected : [])
+            .animation(.easeInOut(duration: 0.2), value: menuIsOpen)
         }
         .padding(.horizontal, 4)
         .ankyGlass(in: Capsule(), interactive: false)
-    }
-
-    private var list: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            row(AnkyLocalization.ui("Copy prompt + writing"), systemImage: "text.badge.plus") {
-                performCopy(AnkyReflectionPrompt.build(from: writing))
-            }
-            Divider().opacity(0.5)
-            row(AnkyLocalization.ui("Copy writing"), systemImage: "doc.on.doc") {
-                performCopy(writing)
-            }
-            Divider().opacity(0.5)
-            row(AnkyLocalization.ui("Delete"), systemImage: "trash", isDestructive: true) {
-                setOpen(false)
-                onDelete()
-            }
-        }
-        .frame(width: 250)
-        .ankyGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous), interactive: false)
-    }
-
-    private func row(
-        _ title: String,
-        systemImage: String,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                Spacer(minLength: 12)
-                Image(systemName: systemImage)
-            }
-            .font(.system(size: 16))
-            .foregroundStyle(isDestructive ? Color.red : Color.ankyInk)
-            .padding(.horizontal, 16)
-            .frame(height: 48)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func setOpen(_ open: Bool) {
-        withAnimation(.easeOut(duration: 0.18)) { isOpen = open }
-    }
-
-    private func performCopy(_ text: String) {
-        ClipboardClient().copy(text)
-        AnkyHaptics.light()
-        setOpen(false)
-        withAnimation(.easeInOut(duration: 0.2)) { didCopy = true }
-        Task {
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
-            withAnimation(.easeInOut(duration: 0.3)) { didCopy = false }
-        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
     }
 }
 

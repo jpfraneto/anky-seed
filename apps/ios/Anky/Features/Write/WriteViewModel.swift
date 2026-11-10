@@ -24,6 +24,9 @@ final class WriteViewModel: ObservableObject {
     /// and no 8 second rule now: the writing ends when they tap ✓ (or the
     /// menu). Founder, 2026-11-04.
     @Published private(set) var isContinuingFinishedWriting = false
+    /// Anky's menu on a finished writing (the ⋯, pressed). It opens by
+    /// itself when a writing is sealed; one opened from the list stays shut.
+    @Published var finishedMenuIsOpen = false
     /// The writing chamber's switches, held here so the surface and the
     /// engine always read the same truth (the in-place decisions write them).
     @Published private(set) var preferences: WritingPreferences
@@ -448,6 +451,7 @@ final class WriteViewModel: ObservableObject {
         guard let artifact = completedArtifact else { return false }
         guard continueSession(from: artifact, allowCompleted: true) else { return false }
         isContinuingFinishedWriting = true
+        finishedMenuIsOpen = false
         return true
     }
 
@@ -688,6 +692,7 @@ final class WriteViewModel: ObservableObject {
                 )
             }
             isContinuingFinishedWriting = false
+            finishedMenuIsOpen = true
             completedArtifact = persisted
             isFrozen = true
             elapsedMs = persisted.durationMs
@@ -728,6 +733,7 @@ final class WriteViewModel: ObservableObject {
         preservesRecoveredDraftGapOnNextInput = false
         continuedArtifactToReplace = nil
         isContinuingFinishedWriting = false
+        finishedMenuIsOpen = false
         lastMinuteHaptic = 0
         lastAlarmHapticSecond = 0
         writeBeforeScrollSessionTracker.reset()

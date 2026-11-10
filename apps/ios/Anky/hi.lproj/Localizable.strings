@@ -804,4 +804,4 @@
 "anky: copy with prompt" = "prompt के साथ copy करें";
 "anky: copy without prompt" = "prompt के बिना copy करें";
 "anky: copied" = "copy हो गया";
-"anky: close" = "बंद करें";
+"anky: delete" = "मिटाएँ";
