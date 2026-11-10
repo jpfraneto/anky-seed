@@ -799,3 +799,9 @@
 "Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky हर महीने %@ पर अपने-आप नवीनीकृत होता है, जब तक कि मौजूदा अवधि ख़त्म होने से कम से कम 24 घंटे पहले उसे रद्द न किया जाए। भुगतान आपके Apple ID से लिया जाता है। अपनी App Store खाता सेटिंग्स में इसे प्रबंधित या रद्द करें।";
 "No Anky subscription was found for this Apple ID." = "इस Apple ID पर कोई Anky सदस्यता नहीं मिली।";
 "Done writing" = "लिखना पूरा हुआ";
+
+/* Anky, offering the copies of a finished writing */
+"anky: copy with prompt" = "prompt के साथ copy करें";
+"anky: copy without prompt" = "prompt के बिना copy करें";
+"anky: copied" = "copy हो गया";
+"anky: close" = "बंद करें";

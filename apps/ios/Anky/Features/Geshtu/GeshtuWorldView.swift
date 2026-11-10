@@ -179,7 +179,6 @@ struct GeshtuWorldView: View {
             if let finished = writeViewModel.completedArtifact {
                 FinishedWritingChrome(
                     writing: finished.reconstructedText,
-                    startsOpen: writeViewModel.finishedJustNow,
                     onNewWriting: startNewWriting,
                     onDelete: {
                         AnkyHaptics.warning()
@@ -434,20 +433,11 @@ private struct LeadingCornerCutouts: Shape {
 /// taking it to an AI is one tap.
 private struct FinishedWritingChrome: View {
     let writing: String
-    let startsOpen: Bool
     let onNewWriting: () -> Void
     let onDelete: () -> Void
 
-    @State private var isOpen: Bool
+    @State private var isOpen = false
     @State private var didCopy = false
-
-    init(writing: String, startsOpen: Bool, onNewWriting: @escaping () -> Void, onDelete: @escaping () -> Void) {
-        self.writing = writing
-        self.startsOpen = startsOpen
-        self.onNewWriting = onNewWriting
-        self.onDelete = onDelete
-        _isOpen = State(initialValue: startsOpen)
-    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {

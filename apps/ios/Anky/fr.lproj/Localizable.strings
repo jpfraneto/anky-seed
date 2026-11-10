@@ -799,3 +799,9 @@
 "Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "Anky se renouvelle automatiquement au prix de %@ par mois, sauf annulation au moins 24 heures avant la fin de la période en cours. Le paiement est débité sur ton identifiant Apple. Gère ou annule l'abonnement dans les réglages de ton compte App Store.";
 "No Anky subscription was found for this Apple ID." = "Aucun abonnement Anky n'a été trouvé pour cet identifiant Apple.";
 "Done writing" = "J'ai fini d'écrire";
+
+/* Anky, offering the copies of a finished writing */
+"anky: copy with prompt" = "copier avec le prompt";
+"anky: copy without prompt" = "copier sans le prompt";
+"anky: copied" = "copié";
+"anky: close" = "fermer";

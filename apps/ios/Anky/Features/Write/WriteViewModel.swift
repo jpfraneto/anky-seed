@@ -20,9 +20,6 @@ final class WriteViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var isErrorMessageVisible = false
     @Published private(set) var completedArtifact: SavedAnky?
-    /// True when the finished writing on the page was sealed a moment ago
-    /// (not opened from the list): its menu opens on its own.
-    @Published private(set) var finishedJustNow = false
     /// The writer tapped a finished writing to keep going. There is no clock
     /// and no 8 second rule now: the writing ends when they tap ✓ (or the
     /// menu). Founder, 2026-11-04.
@@ -437,7 +434,6 @@ final class WriteViewModel: ObservableObject {
         resetForNextSession()
         clearErrorMessage()
         let text = artifact.reconstructedText
-        finishedJustNow = false
         completedArtifact = artifact
         displayedText = text
         protocolText = artifact.text
@@ -691,7 +687,6 @@ final class WriteViewModel: ObservableObject {
                     ]
                 )
             }
-            finishedJustNow = true
             isContinuingFinishedWriting = false
             completedArtifact = persisted
             isFrozen = true

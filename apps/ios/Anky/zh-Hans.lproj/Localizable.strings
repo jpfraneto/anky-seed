@@ -799,3 +799,9 @@
 "Anky renews automatically at %@ per month unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. Manage or cancel in your App Store account settings." = "除非在当前周期结束前至少 24 小时取消，否则 Anky 将以每月 %@ 的价格自动续订。费用将从你的 Apple ID 扣除。可在 App Store 账户设置中管理或取消订阅。";
 "No Anky subscription was found for this Apple ID." = "未找到此 Apple ID 的 Anky 订阅。";
 "Done writing" = "写完了";
+
+/* Anky, offering the copies of a finished writing */
+"anky: copy with prompt" = "连同提示词复制";
+"anky: copy without prompt" = "不带提示词复制";
+"anky: copied" = "已复制";
+"anky: close" = "关闭";
